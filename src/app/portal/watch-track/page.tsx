@@ -29,8 +29,8 @@ export default function WatchTrackPage() {
         <KPICard label="Avg Days to Pay" value="22" icon={<Clock size={20}/>}/>
       </div>
       <div className="flex gap-2 mb-4">
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search claims..." className="bg-white/5 border border-border rounded-lg px-3 py-1.5 text-xs text-white max-w-xs"/>
-        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="bg-white/5 border border-border rounded-lg px-3 py-1.5 text-xs text-white">
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search claims..." className="bg-foreground/5 border border-border rounded-lg px-3 py-1.5 text-xs text-foreground max-w-xs"/>
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="bg-foreground/5 border border-border rounded-lg px-3 py-1.5 text-xs text-foreground">
           <option value="">All Statuses</option>
           {['submitted','in_process','paid','partial_pay','denied','appealed'].map(s=><option key={s} value={s}>{s.replace(/_/g,' ')}</option>)}
         </select>
@@ -43,7 +43,7 @@ export default function WatchTrackPage() {
             <th className="text-left px-4 py-3">Status</th><th className="text-right px-4 py-3">Age</th>
           </tr></thead>
           <tbody>{filtered.map(c=>(
-            <tr key={c.id} className="border-b border-border last:border-0 hover:bg-white/5 cursor-pointer">
+            <tr key={c.id} className="border-b border-border last:border-0 hover:bg-foreground/5 cursor-pointer">
               <td className="px-4 py-3 font-mono text-xs">{c.id}</td>
               <td className="px-4 py-3">{c.patientName}</td>
               <td className="px-4 py-3 text-muted text-xs">{c.payer}</td>

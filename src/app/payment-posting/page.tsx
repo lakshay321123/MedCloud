@@ -40,7 +40,7 @@ export default function PaymentPostingPage() {
             <th className="text-left px-4 py-3">Status</th><th className="text-right px-4 py-3">Exceptions</th>
           </tr></thead>
           <tbody>{eras.map(e=>(
-            <tr key={e.id} className="border-b border-border last:border-0 hover:bg-white/5 cursor-pointer">
+            <tr key={e.id} className="border-b border-border last:border-0 hover:bg-foreground/5 cursor-pointer">
               <td className="px-4 py-3 font-mono text-xs">{e.file}</td>
               <td className="px-4 py-3 text-xs text-muted">{e.client}</td>
               <td className="px-4 py-3 text-right">{e.claims}</td>
@@ -60,7 +60,7 @@ export default function PaymentPostingPage() {
             <th className="text-left px-4 py-3">Action</th>
           </tr></thead>
           <tbody>{unmatched.map(u=>(
-            <tr key={u.id} className="border-b border-border last:border-0 hover:bg-white/5">
+            <tr key={u.id} className="border-b border-border last:border-0 hover:bg-foreground/5">
               <td className="px-4 py-3">{u.payer}</td>
               <td className="px-4 py-3 text-xs text-muted">{u.client}</td>
               <td className="px-4 py-3 text-right">${u.amount}</td>

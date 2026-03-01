@@ -28,7 +28,7 @@ export default function CodingPage() {
           <div className="overflow-y-auto flex-1">
             {queue.map(item => (
               <button key={item.id} onClick={() => setSelectedItem(item)}
-                className={`w-full text-left px-3 py-2.5 border-b border-border hover:bg-white/5 ${selectedItem?.id === item.id ? 'bg-brand/5 border-l-2 border-l-brand' : ''}`}>
+                className={`w-full text-left px-3 py-2.5 border-b border-border hover:bg-foreground/5 ${selectedItem?.id === item.id ? 'bg-brand/5 border-l-2 border-l-brand' : ''}`}>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">{item.patientName}</span>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${item.source === 'ai_scribe' ? 'bg-purple-500/10 text-purple-400' : 'bg-cyan-500/10 text-cyan-400'}`}>
@@ -44,7 +44,7 @@ export default function CodingPage() {
             <div className="border-t border-border p-3">
               <div className="text-[10px] text-muted mb-1 font-semibold">SOURCE DOCUMENT</div>
               {selectedItem.source === 'ai_scribe' ? (
-                <div className="bg-white/5 rounded-lg p-2 text-xs space-y-1">
+                <div className="bg-foreground/5 rounded-lg p-2 text-xs space-y-1">
                   <div className="flex items-center gap-1 text-purple-400 text-[10px] mb-1"><Mic size={10}/> AI Scribe — Signed SOAP Note</div>
                   <div><span className="text-muted">S:</span> Patient reports stable blood sugars, no new complaints...</div>
                   <div><span className="text-muted">O:</span> BP 128/82, HR 72, BMI 27.4. A1C 7.1% (prev 7.4%)...</div>
@@ -53,9 +53,9 @@ export default function CodingPage() {
                   <button className="text-[10px] text-purple-400 hover:underline mt-1">▶ Play visit recording</button>
                 </div>
               ) : (
-                <div className="bg-white/5 rounded-lg p-2 text-xs">
+                <div className="bg-foreground/5 rounded-lg p-2 text-xs">
                   <div className="flex items-center gap-1 text-cyan-400 text-[10px] mb-1"><Upload size={10}/> Uploaded Superbill</div>
-                  <div className="bg-white/10 rounded h-24 flex items-center justify-center text-muted text-[10px]">📄 PDF Viewer — {selectedItem.patientName} superbill</div>
+                  <div className="bg-foreground/10 rounded h-24 flex items-center justify-center text-muted text-[10px]">📄 PDF Viewer — {selectedItem.patientName} superbill</div>
                   {selectedItem.superbillCpt && <div className="text-[10px] text-muted mt-1">Superbill ticked: {selectedItem.superbillCpt.join(', ')}</div>}
                 </div>
               )}
@@ -106,7 +106,7 @@ export default function CodingPage() {
                     )
                   })}
                   {selectedItem.superbillCpt && (
-                    <div className="mt-2 text-[10px] text-muted bg-white/5 rounded p-2">
+                    <div className="mt-2 text-[10px] text-muted bg-foreground/5 rounded p-2">
                       Superbill codes: {selectedItem.superbillCpt.join(', ')} — {selectedItem.superbillCpt.every(c => selectedItem.aiSuggestedCpt.some(a => a.code === c)) ? <span className="text-emerald-400">✓ Matches AI</span> : <span className="text-amber-400">⚠ Review needed</span>}
                     </div>
                   )}
@@ -114,7 +114,7 @@ export default function CodingPage() {
               </div>
               <div className="p-3 border-t border-border flex gap-2">
                 <button className="flex-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg py-2 text-sm hover:bg-emerald-500/20">✓ Approve & Send to Billing</button>
-                <button className="bg-white/5 border border-border rounded-lg px-3 py-2 text-xs text-muted hover:text-white flex items-center gap-1"><MessageCircle size={12}/> Query Doctor</button>
+                <button className="bg-foreground/5 border border-border rounded-lg px-3 py-2 text-xs text-muted hover:text-foreground flex items-center gap-1"><MessageCircle size={12}/> Query Doctor</button>
               </div>
             </>
           ) : (

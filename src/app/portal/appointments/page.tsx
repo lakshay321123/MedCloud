@@ -67,7 +67,7 @@ export default function AppointmentsPage() {
       {/* Filter */}
       <div className="flex gap-2 mb-4">
         <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}
-          className="bg-white/5 border border-border rounded-lg px-3 py-1.5 text-xs text-white">
+          className="bg-foreground/5 border border-border rounded-lg px-3 py-1.5 text-xs text-foreground">
           <option value="">All Statuses</option>
           {['booked','confirmed','checked_in','in_progress','completed','no_show','cancelled','rescheduled','walk_in'].map(s=>(
             <option key={s} value={s}>{s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</option>
@@ -89,7 +89,7 @@ export default function AppointmentsPage() {
             {isClinic && <th className="text-left px-4 py-3">Actions</th>}
           </tr></thead>
           <tbody>{apts.map(a=>(
-            <tr key={a.id} className="border-b border-border last:border-0 hover:bg-white/5 transition-all">
+            <tr key={a.id} className="border-b border-border last:border-0 hover:bg-foreground/5 transition-all">
               <td className="px-4 py-3 font-mono text-xs">{a.date === '2026-03-02' ? a.time : <span className="text-muted">{a.date} {a.time}</span>}</td>
               <td className="px-4 py-3 font-medium">{a.patientName}</td>
               {isStaff && <td className="px-4 py-3 text-xs text-muted">{getClientName(a.clientId)}</td>}
@@ -116,24 +116,24 @@ export default function AppointmentsPage() {
             <h2 className="font-semibold mb-4">Book Appointment</h2>
             <div className="space-y-3">
               <div><label className="text-xs text-muted block mb-1">Patient *</label>
-                <select className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-sm text-white">
+                <select className="w-full bg-foreground/5 border border-border rounded-lg px-3 py-2 text-sm text-foreground">
                   <option value="">Search patient...</option>
                   {demoPatients.filter(p=>p.clientId==='org-102').map(p=><option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs text-muted block mb-1">Date *</label><input type="date" defaultValue="2026-03-03" className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-sm text-white"/></div>
-                <div><label className="text-xs text-muted block mb-1">Time *</label><input type="time" defaultValue="09:00" className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-sm text-white"/></div>
+                <div><label className="text-xs text-muted block mb-1">Date *</label><input type="date" defaultValue="2026-03-03" className="w-full bg-foreground/5 border border-border rounded-lg px-3 py-2 text-sm text-foreground"/></div>
+                <div><label className="text-xs text-muted block mb-1">Time *</label><input type="time" defaultValue="09:00" className="w-full bg-foreground/5 border border-border rounded-lg px-3 py-2 text-sm text-foreground"/></div>
               </div>
-              <div><label className="text-xs text-muted block mb-1">Provider</label><input className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-sm text-white" defaultValue="Dr. Martinez"/></div>
+              <div><label className="text-xs text-muted block mb-1">Provider</label><input className="w-full bg-foreground/5 border border-border rounded-lg px-3 py-2 text-sm text-foreground" defaultValue="Dr. Martinez"/></div>
               <div><label className="text-xs text-muted block mb-1">Visit Type</label>
-                <select className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-sm text-white">
+                <select className="w-full bg-foreground/5 border border-border rounded-lg px-3 py-2 text-sm text-foreground">
                   <option>Follow-up</option><option>New Patient</option><option>Consultation</option><option>Procedure</option><option>Telehealth</option>
                 </select>
               </div>
-              <div><label className="text-xs text-muted block mb-1">Notes</label><input className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-sm text-white" placeholder="Optional notes..."/></div>
+              <div><label className="text-xs text-muted block mb-1">Notes</label><input className="w-full bg-foreground/5 border border-border rounded-lg px-3 py-2 text-sm text-foreground" placeholder="Optional notes..."/></div>
               <div className="flex gap-2">
-                <button onClick={()=>setShowAdd(false)} className="flex-1 bg-white/5 border border-border rounded-lg py-2 text-sm text-muted">Cancel</button>
+                <button onClick={()=>setShowAdd(false)} className="flex-1 bg-foreground/5 border border-border rounded-lg py-2 text-sm text-muted">Cancel</button>
                 <button onClick={()=>setShowAdd(false)} className="flex-1 bg-brand text-white rounded-lg py-2 text-sm font-medium">Book</button>
               </div>
             </div>

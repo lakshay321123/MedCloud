@@ -14,36 +14,36 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
       <div className="bg-bg-secondary border border-border rounded-xl w-[480px] max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="font-semibold">Add Patient</h2>
-          <button onClick={onClose} className="text-muted hover:text-white"><X size={18}/></button>
+          <button onClick={onClose} className="text-muted hover:text-foreground"><X size={18}/></button>
         </div>
         <div className="p-4 space-y-4">
           <p className="text-xs text-muted bg-brand/5 border border-brand/20 rounded-lg p-2">Only name and phone are required to start. Fill in the rest when available.</p>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-xs text-muted block mb-1">First Name *</label><input className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-sm text-white" placeholder="First name"/></div>
-            <div><label className="text-xs text-muted block mb-1">Last Name *</label><input className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-sm text-white" placeholder="Last name"/></div>
+            <div><label className="text-xs text-muted block mb-1">First Name *</label><input className="w-full bg-foreground/5 border border-border rounded-lg px-3 py-2 text-sm text-foreground" placeholder="First name"/></div>
+            <div><label className="text-xs text-muted block mb-1">Last Name *</label><input className="w-full bg-foreground/5 border border-border rounded-lg px-3 py-2 text-sm text-foreground" placeholder="Last name"/></div>
           </div>
-          <div><label className="text-xs text-muted block mb-1">Phone *</label><input className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-sm text-white" placeholder="Phone number"/></div>
+          <div><label className="text-xs text-muted block mb-1">Phone *</label><input className="w-full bg-foreground/5 border border-border rounded-lg px-3 py-2 text-sm text-foreground" placeholder="Phone number"/></div>
           <div className="border-t border-border pt-3">
             <p className="text-xs text-muted mb-2">Optional — add when available</p>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs text-muted block mb-1">Date of Birth</label><input type="date" className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-sm text-white"/></div>
+              <div><label className="text-xs text-muted block mb-1">Date of Birth</label><input type="date" className="w-full bg-foreground/5 border border-border rounded-lg px-3 py-2 text-sm text-foreground"/></div>
               <div><label className="text-xs text-muted block mb-1">Gender</label>
-                <select className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-sm text-white"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select>
+                <select className="w-full bg-foreground/5 border border-border rounded-lg px-3 py-2 text-sm text-foreground"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select>
               </div>
             </div>
-            <div className="mt-3"><label className="text-xs text-muted block mb-1">Email</label><input className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-sm text-white" placeholder="Email"/></div>
+            <div className="mt-3"><label className="text-xs text-muted block mb-1">Email</label><input className="w-full bg-foreground/5 border border-border rounded-lg px-3 py-2 text-sm text-foreground" placeholder="Email"/></div>
           </div>
           <div className="border-t border-border pt-3">
             <div className="flex items-center gap-2 mb-2">
               <Upload size={14} className="text-brand"/>
               <span className="text-xs text-brand">Scan ID to auto-fill demographics</span>
             </div>
-            <button className="w-full bg-white/5 border border-dashed border-border rounded-lg py-3 text-xs text-muted hover:border-brand/30 hover:text-brand transition-all">
+            <button className="w-full bg-foreground/5 border border-dashed border-border rounded-lg py-3 text-xs text-muted hover:border-brand/30 hover:text-brand transition-all">
               Click to scan Driver&apos;s License / Emirates ID
             </button>
           </div>
           <div className="flex gap-2 pt-2">
-            <button onClick={onClose} className="flex-1 bg-white/5 border border-border rounded-lg py-2 text-sm text-muted hover:text-white">Cancel</button>
+            <button onClick={onClose} className="flex-1 bg-foreground/5 border border-border rounded-lg py-2 text-sm text-muted hover:text-foreground">Cancel</button>
             <button onClick={onClose} className="flex-1 bg-brand text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-dark">Save Patient</button>
           </div>
         </div>
@@ -68,14 +68,14 @@ function PatientDetail({ patient, onClose }: { patient: DemoPatient; onClose: ()
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
-              <div className={`w-16 h-1.5 rounded-full bg-white/10`}><div className={`h-full rounded-full ${completenessColor(patient.profileComplete)}`} style={{width:`${patient.profileComplete}%`}}/></div>
+              <div className={`w-16 h-1.5 rounded-full bg-foreground/10`}><div className={`h-full rounded-full ${completenessColor(patient.profileComplete)}`} style={{width:`${patient.profileComplete}%`}}/></div>
               <span className="text-[10px] text-muted">{patient.profileComplete}%</span>
             </div>
-            <button onClick={onClose} className="text-muted hover:text-white"><X size={18}/></button>
+            <button onClick={onClose} className="text-muted hover:text-foreground"><X size={18}/></button>
           </div>
         </div>
         <div className="flex border-b border-border">{(['demographics','insurance','documents','visits','messages'] as const).map(t=>(
-          <button key={t} onClick={()=>setTab(t)} className={`px-4 py-2 text-xs font-medium border-b-2 transition-all ${tab===t?'border-brand text-brand':'border-transparent text-muted hover:text-white'}`}>{t.charAt(0).toUpperCase()+t.slice(1)}</button>
+          <button key={t} onClick={()=>setTab(t)} className={`px-4 py-2 text-xs font-medium border-b-2 transition-all ${tab===t?'border-brand text-brand':'border-transparent text-muted hover:text-foreground'}`}>{t.charAt(0).toUpperCase()+t.slice(1)}</button>
         ))}</div>
         <div className="p-4 text-sm">
           {tab === 'demographics' && (
@@ -95,7 +95,7 @@ function PatientDetail({ patient, onClose }: { patient: DemoPatient; onClose: ()
           {tab === 'insurance' && (
             <div className="space-y-3">
               {patient.insurance ? (
-                <div className="bg-white/5 border border-border rounded-lg p-3">
+                <div className="bg-foreground/5 border border-border rounded-lg p-3">
                   <div className="text-xs text-muted mb-2">Primary Insurance</div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div><span className="text-muted">Payer:</span> {patient.insurance.payer}</div>
@@ -106,7 +106,7 @@ function PatientDetail({ patient, onClose }: { patient: DemoPatient; onClose: ()
                 </div>
               ) : <div className="text-center py-8 text-muted text-xs">No insurance on file. <button className="text-brand underline">Upload insurance card</button></div>}
               {patient.secondaryInsurance && (
-                <div className="bg-white/5 border border-border rounded-lg p-3">
+                <div className="bg-foreground/5 border border-border rounded-lg p-3">
                   <div className="text-xs text-muted mb-2">Secondary Insurance</div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div><span className="text-muted">Payer:</span> {patient.secondaryInsurance.payer}</div>
@@ -115,7 +115,7 @@ function PatientDetail({ patient, onClose }: { patient: DemoPatient; onClose: ()
                   </div>
                 </div>
               )}
-              <button className="w-full bg-white/5 border border-dashed border-border rounded-lg py-3 text-xs text-muted hover:border-brand/30">
+              <button className="w-full bg-foreground/5 border border-dashed border-border rounded-lg py-3 text-xs text-muted hover:border-brand/30">
                 <Upload size={14} className="inline mr-1"/> Scan insurance card to auto-fill
               </button>
             </div>
@@ -151,7 +151,7 @@ export default function PatientsPage() {
       <div className="mb-4 relative max-w-sm">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"/>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name, phone, ID..."
-          className="w-full bg-white/5 border border-border rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder:text-muted"/>
+          className="w-full bg-foreground/5 border border-border rounded-lg pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted"/>
       </div>
       <div className="bg-bg-secondary border border-border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
@@ -160,12 +160,12 @@ export default function PatientsPage() {
             <th className="text-left px-4 py-3">Insurance</th><th className="text-left px-4 py-3">Profile</th><th className="text-left px-4 py-3">Status</th>
           </tr></thead>
           <tbody>{patients.map(p=>(
-            <tr key={p.id} onClick={()=>setSelected(p)} className="border-b border-border last:border-0 hover:bg-white/5 cursor-pointer transition-all">
+            <tr key={p.id} onClick={()=>setSelected(p)} className="border-b border-border last:border-0 hover:bg-foreground/5 cursor-pointer transition-all">
               <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full bg-brand/10 flex items-center justify-center text-brand text-[10px] font-bold">{p.firstName[0]}{p.lastName[0]}</div><div><div className="font-medium">{p.firstName} {p.lastName}</div><div className="text-[10px] text-muted">{p.id}</div></div></div></td>
               <td className="px-4 py-3 text-muted">{p.dob || '—'}</td>
               <td className="px-4 py-3 text-muted">{p.phone}</td>
               <td className="px-4 py-3 text-muted text-xs">{p.insurance?.payer || <span className="text-amber-400">Not on file</span>}</td>
-              <td className="px-4 py-3"><div className="flex items-center gap-1.5"><div className="w-12 h-1.5 rounded-full bg-white/10"><div className={`h-full rounded-full ${completenessColor(p.profileComplete)}`} style={{width:`${p.profileComplete}%`}}/></div><span className="text-[10px] text-muted">{p.profileComplete}%</span></div></td>
+              <td className="px-4 py-3"><div className="flex items-center gap-1.5"><div className="w-12 h-1.5 rounded-full bg-foreground/10"><div className={`h-full rounded-full ${completenessColor(p.profileComplete)}`} style={{width:`${p.profileComplete}%`}}/></div><span className="text-[10px] text-muted">{p.profileComplete}%</span></div></td>
               <td className="px-4 py-3"><StatusBadge status={p.status} small/></td>
             </tr>
           ))}</tbody>

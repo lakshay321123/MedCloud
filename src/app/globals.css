@@ -18,26 +18,26 @@
   --topbar-height: 56px;
 }
 
-/* Dark mode defaults */
+/* Dark mode defaults — brand deep teals */
 .dark {
-  --bg-primary: #0a0f1a;
-  --bg-secondary: #111827;
-  --bg-card: #1a2236;
-  --bg-hover: #1e293b;
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --border-color: #1e293b;
+  --bg-primary: #021B22;
+  --bg-secondary: #03303B;
+  --bg-card: #044150;
+  --bg-hover: #055A6A;
+  --text-primary: #E6F5F8;
+  --text-secondary: #7FBAC8;
+  --border-color: #0A5E70;
 }
 
-/* Light mode */
+/* Light mode — clean whites, brand accents, good contrast */
 .light {
-  --bg-primary: #f8fafc;
-  --bg-secondary: #ffffff;
-  --bg-card: #ffffff;
-  --bg-hover: #f1f5f9;
-  --text-primary: #0f172a;
-  --text-secondary: #64748b;
-  --border-color: #e2e8f0;
+  --bg-primary: #F4F9FB;
+  --bg-secondary: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-hover: #E8F4F8;
+  --text-primary: #0A2E36;
+  --text-secondary: #4A7580;
+  --border-color: #C8DDE4;
 }
 
 body {
@@ -96,13 +96,13 @@ body {
 
 /* Frosted glass */
 .glass {
-  background: rgba(26, 34, 54, 0.8);
+  background: rgba(3, 48, 59, 0.8);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
 .light .glass {
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.85);
 }
 
 @keyframes gridPulse {

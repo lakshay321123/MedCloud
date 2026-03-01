@@ -37,7 +37,7 @@ export default function CredentialingPage() {
             <th className="text-right px-4 py-3">Payers</th><th className="text-left px-4 py-3">Status</th>
           </tr></thead>
           <tbody>{providers.map(p=>(
-            <tr key={p.id} className="border-b border-border last:border-0 hover:bg-white/5 cursor-pointer">
+            <tr key={p.id} className="border-b border-border last:border-0 hover:bg-foreground/5 cursor-pointer">
               <td className="px-4 py-3 font-medium">{p.name}</td>
               <td className="px-4 py-3 font-mono text-xs text-muted">{p.npi}</td>
               <td className="px-4 py-3 text-xs text-muted">{p.client}</td>

@@ -34,7 +34,7 @@ export default function TasksPage() {
             <th className="text-left px-4 py-3">Due</th><th className="text-left px-4 py-3">Priority</th><th className="text-left px-4 py-3">Status</th>
           </tr></thead>
           <tbody>{tasks.map(t=>(
-            <tr key={t.id} className="border-b border-border last:border-0 hover:bg-white/5 cursor-pointer">
+            <tr key={t.id} className="border-b border-border last:border-0 hover:bg-foreground/5 cursor-pointer">
               <td className="pl-2"><div className={`w-1.5 h-6 rounded-full ${slaColor(t.sla)}`}/></td>
               <td className="px-4 py-3 text-xs font-medium">{t.type}</td>
               <td className="px-4 py-3 text-xs">{t.entity}</td>

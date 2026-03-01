@@ -28,7 +28,7 @@ export default function IntegrationsPage() {
               <div className="text-[10px] text-muted">{i.status === 'connected' ? `Last sync: ${i.lastSync}` : i.status === 'error' ? `${i.errors} errors — last sync: ${i.lastSync}` : 'Not configured'}</div>
             </div>
           </div>
-          <button className={`text-xs px-3 py-1 rounded-lg border ${i.status==='not_configured'?'border-brand/30 text-brand hover:bg-brand/10':'border-border text-muted hover:text-white'}`}>
+          <button className={`text-xs px-3 py-1 rounded-lg border ${i.status==='not_configured'?'border-brand/30 text-brand hover:bg-brand/10':'border-border text-muted hover:text-foreground'}`}>
             {i.status === 'not_configured' ? 'Configure' : 'Settings'}
           </button>
         </div>

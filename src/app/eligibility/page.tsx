@@ -27,7 +27,7 @@ export default function EligibilityPage() {
       <div className="flex gap-2 mb-4">
         {(['single','batch'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-1.5 rounded-lg text-xs font-medium ${tab === t ? 'bg-brand/10 text-brand border border-brand/20' : 'bg-white/5 text-muted border border-border'}`}>
+            className={`px-4 py-1.5 rounded-lg text-xs font-medium ${tab === t ? 'bg-brand/10 text-brand border border-brand/20' : 'bg-foreground/5 text-muted border border-border'}`}>
             {t === 'single' ? 'Single Check' : 'Batch Overnight'}
           </button>
         ))}
@@ -41,7 +41,7 @@ export default function EligibilityPage() {
             <th className="text-left px-4 py-3">Deductible</th>
           </tr></thead>
           <tbody>{demoChecks.map(c => (
-            <tr key={c.id} className="border-b border-border last:border-0 hover:bg-white/5">
+            <tr key={c.id} className="border-b border-border last:border-0 hover:bg-foreground/5">
               <td className="px-4 py-3 font-medium">{c.patient}</td>
               <td className="px-4 py-3 text-xs text-muted">{c.client}</td>
               <td className="px-4 py-3 text-xs text-muted">{c.payer}</td>

@@ -32,7 +32,7 @@ export default function MessagesPage() {
         <div className="bg-bg-secondary border border-border rounded-xl overflow-hidden flex flex-col">
           <div className="p-3 border-b border-border">
             <select value={filter} onChange={e=>setFilter(e.target.value)}
-              className="w-full bg-white/5 border border-border rounded-lg px-3 py-1.5 text-xs text-white">
+              className="w-full bg-foreground/5 border border-border rounded-lg px-3 py-1.5 text-xs text-foreground">
               <option value="">All Types</option>
               {['patient','claim','submission','appointment','general'].map(t=>(
                 <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>
@@ -42,7 +42,7 @@ export default function MessagesPage() {
           <div className="flex-1 overflow-y-auto">
             {messages.map(m => (
               <button key={m.id} onClick={() => setSelected(m)}
-                className={`w-full text-left px-3 py-3 border-b border-border hover:bg-white/5 transition-all ${selected?.id===m.id ? 'bg-brand/5 border-l-2 border-l-brand' : ''}`}>
+                className={`w-full text-left px-3 py-3 border-b border-border hover:bg-foreground/5 transition-all ${selected?.id===m.id ? 'bg-brand/5 border-l-2 border-l-brand' : ''}`}>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-muted">{entityIcons[m.entityType]}</span>
                   <span className="text-xs font-medium truncate flex-1">{m.subject}</span>
@@ -75,7 +75,7 @@ export default function MessagesPage() {
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {selected.messages.map((msg, i) => (
                   <div key={i} className={`flex ${msg.role === 'client' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[70%] rounded-xl px-3 py-2 ${msg.role === 'client' ? 'bg-brand/10 border border-brand/20' : 'bg-white/5 border border-border'}`}>
+                    <div className={`max-w-[70%] rounded-xl px-3 py-2 ${msg.role === 'client' ? 'bg-brand/10 border border-brand/20' : 'bg-foreground/5 border border-border'}`}>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] font-medium">{msg.sender}</span>
                         <span className={`text-[9px] px-1 rounded ${msg.role === 'client' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>{msg.role}</span>
@@ -87,9 +87,9 @@ export default function MessagesPage() {
                 ))}
               </div>
               <div className="p-3 border-t border-border flex gap-2">
-                <button className="text-muted hover:text-white p-2"><Paperclip size={16}/></button>
+                <button className="text-muted hover:text-foreground p-2"><Paperclip size={16}/></button>
                 <input value={reply} onChange={e=>setReply(e.target.value)} placeholder="Type a message..."
-                  className="flex-1 bg-white/5 border border-border rounded-lg px-3 py-2 text-sm text-white placeholder:text-muted"
+                  className="flex-1 bg-foreground/5 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted"
                   onKeyDown={e => { if (e.key === 'Enter' && reply.trim()) setReply('') }}/>
                 <button onClick={() => setReply('')} className="bg-brand text-white rounded-lg px-3 py-2 hover:bg-brand-dark"><Send size={16}/></button>
               </div>

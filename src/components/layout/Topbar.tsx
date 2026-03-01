@@ -17,7 +17,7 @@ export default function Topbar() {
       <div className="flex-1 max-w-md relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
         <input type="text" placeholder="Search patients, claims, docs..."
-          className="w-full bg-white/5 border border-border rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder:text-muted focus:outline-none focus:border-brand/50" />
+          className="w-full bg-foreground/5 border border-border rounded-lg pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-brand/50" />
       </div>
 
       <div className="flex items-center gap-2 ml-auto">
@@ -29,7 +29,7 @@ export default function Topbar() {
                 const c = clients.find(c => c.id === e.target.value) || null
                 setSelectedClient(c)
               }}
-              className="appearance-none bg-white/5 border border-border rounded-lg pl-3 pr-8 py-1.5 text-xs text-white cursor-pointer focus:outline-none focus:border-brand/50">
+              className="appearance-none bg-foreground/5 border border-border rounded-lg pl-3 pr-8 py-1.5 text-xs text-foreground cursor-pointer focus:outline-none focus:border-brand/50">
               <option value="">All Clients</option>
               {clients.map(c => (
                 <option key={c.id} value={c.id}>{c.region === 'uae' ? '🇦🇪' : '🇺🇸'} {c.name}</option>
@@ -46,18 +46,18 @@ export default function Topbar() {
 
         {/* Language */}
         <button onClick={() => setLanguage(language === 'en' ? 'ar' : language === 'ar' ? 'es' : 'en')}
-          className="p-2 rounded-lg hover:bg-white/5 text-muted hover:text-white text-xs font-mono border border-border">
+          className="p-2 rounded-lg hover:bg-foreground/5 text-muted hover:text-foreground text-xs font-mono border border-border">
           {language.toUpperCase()}
         </button>
 
         {/* Theme */}
         <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="p-2 rounded-lg hover:bg-white/5 text-muted hover:text-white">
+          className="p-2 rounded-lg hover:bg-foreground/5 text-muted hover:text-foreground">
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
         {/* Notifications */}
-        <button className="p-2 rounded-lg hover:bg-white/5 text-muted hover:text-white relative">
+        <button className="p-2 rounded-lg hover:bg-foreground/5 text-muted hover:text-foreground relative">
           <Bell size={16} />
           <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white flex items-center justify-center">3</span>
         </button>

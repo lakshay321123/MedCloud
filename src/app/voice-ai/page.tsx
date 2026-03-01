@@ -33,7 +33,7 @@ export default function VoiceAIPage() {
             <th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3">Outcome</th>
           </tr></thead>
           <tbody>{calls.map(c=>(
-            <tr key={c.id} className="border-b border-border last:border-0 hover:bg-white/5 cursor-pointer">
+            <tr key={c.id} className="border-b border-border last:border-0 hover:bg-foreground/5 cursor-pointer">
               <td className="px-4 py-3 text-xs">{c.type}</td>
               <td className="px-4 py-3 text-xs">{c.target}</td>
               <td className="px-4 py-3 text-xs text-muted">{c.client}</td>

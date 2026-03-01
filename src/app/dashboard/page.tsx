@@ -65,7 +65,7 @@ function SupervisorDashboard() {
           {teams.map(t=>(
             <div key={t.name} className="mb-3">
               <div className="flex justify-between text-xs mb-1"><span>{t.name}</span><span className="text-muted">{t.used}%</span></div>
-              <div className="h-2 bg-white/5 rounded-full"><div className={`h-full rounded-full ${t.used>90?'bg-red-500':t.used>75?'bg-amber-500':'bg-brand'}`} style={{width:`${t.used}%`}}/></div>
+              <div className="h-2 bg-foreground/5 rounded-full"><div className={`h-full rounded-full ${t.used>90?'bg-red-500':t.used>75?'bg-amber-500':'bg-brand'}`} style={{width:`${t.used}%`}}/></div>
             </div>
           ))}
         </div>
@@ -219,7 +219,7 @@ function ClientDashboard() {
           <div className="grid grid-cols-2 gap-2">{[
             {l:'Upload Documents',h:'/portal/scan-submit'},{l:'Track Claims',h:'/portal/watch-track'},{l:'View Schedule',h:'/portal/appointments'},{l:'Messages',h:'/portal/messages'},
           ].map(a=>(
-            <a key={a.l} href={a.h} className="bg-white/5 border border-border rounded-lg px-3 py-2 text-xs text-center hover:border-brand/30 hover:text-brand transition-all">{a.l}</a>
+            <a key={a.l} href={a.h} className="bg-foreground/5 border border-border rounded-lg px-3 py-2 text-xs text-center hover:border-brand/30 hover:text-brand transition-all">{a.l}</a>
           ))}</div>
         </div>
       </div>

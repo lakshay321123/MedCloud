@@ -49,7 +49,7 @@ export default function ARManagementPage() {
             <th className="text-left px-4 py-3">Next F/U</th><th className="text-left px-4 py-3">Priority</th>
           </tr></thead>
           <tbody>{filtered.map(a=>(
-            <tr key={a.id} className="border-b border-border last:border-0 hover:bg-white/5 cursor-pointer">
+            <tr key={a.id} className="border-b border-border last:border-0 hover:bg-foreground/5 cursor-pointer">
               <td className="px-4 py-3 font-medium">{a.patient}</td>
               <td className="px-4 py-3 text-xs text-muted">{a.client}</td>
               <td className="px-4 py-3 text-xs text-muted">{a.payer}</td>

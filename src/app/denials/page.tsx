@@ -33,7 +33,7 @@ export default function DenialsPage() {
               <th className="text-left px-4 py-3">Status</th>
             </tr></thead>
             <tbody>{denials.map(d=>(
-              <tr key={d.id} onClick={()=>setSelected(d.id)} className={`border-b border-border last:border-0 cursor-pointer hover:bg-white/5 ${selected===d.id?'bg-brand/5':''}`}>
+              <tr key={d.id} onClick={()=>setSelected(d.id)} className={`border-b border-border last:border-0 cursor-pointer hover:bg-foreground/5 ${selected===d.id?'bg-brand/5':''}`}>
                 <td className="px-4 py-3 font-mono text-xs">{d.id}</td>
                 <td className="px-4 py-3">{d.patientName}</td>
                 <td className="px-4 py-3 text-xs text-muted">{d.payer}</td>
@@ -54,12 +54,12 @@ export default function DenialsPage() {
               <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-2 mb-3 text-xs text-red-400">Denial: {d.denialReason}</div>
               <div className="mb-3"><span className="text-xs text-muted block mb-1">Related Documents</span>
                 <div className="flex gap-2">{['Original Claim','Clinical Note','Denial Letter'].map(doc=>(
-                  <div key={doc} className="bg-white/5 border border-border rounded px-2 py-1 text-[10px] text-muted flex items-center gap-1"><FileText size={10}/>{doc}</div>
+                  <div key={doc} className="bg-foreground/5 border border-border rounded px-2 py-1 text-[10px] text-muted flex items-center gap-1"><FileText size={10}/>{doc}</div>
                 ))}</div>
               </div>
               <div className="flex-1">
                 <span className="text-xs text-muted block mb-1">AI-Generated Appeal Letter</span>
-                <textarea className="w-full h-full min-h-[120px] bg-white/5 border border-border rounded-lg p-2 text-xs text-white resize-none" defaultValue={`Dear ${d.payer} Appeals Department,\n\nWe are writing to appeal the denial of claim ${d.id} for patient ${d.patientName}, date of service ${d.dos}.\n\nThe denial reason cited was "${d.denialReason}". We respectfully disagree with this determination and have attached supporting documentation demonstrating medical necessity...\n\n[AI-drafted content — review before sending]`}/>
+                <textarea className="w-full h-full min-h-[120px] bg-foreground/5 border border-border rounded-lg p-2 text-xs text-foreground resize-none" defaultValue={`Dear ${d.payer} Appeals Department,\n\nWe are writing to appeal the denial of claim ${d.id} for patient ${d.patientName}, date of service ${d.dos}.\n\nThe denial reason cited was "${d.denialReason}". We respectfully disagree with this determination and have attached supporting documentation demonstrating medical necessity...\n\n[AI-drafted content — review before sending]`}/>
               </div>
               <button className="mt-3 bg-brand text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-dark">Submit Appeal (L1)</button>
             </>)

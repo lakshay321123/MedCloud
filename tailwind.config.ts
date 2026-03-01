@@ -16,6 +16,15 @@ const config: Config = {
           pale: '#A1DEED',
           ghost: '#D6EBF2',
         },
+        bg: {
+          primary: 'var(--bg-primary)',
+          secondary: 'var(--bg-secondary)',
+          card: 'var(--bg-card)',
+          hover: 'var(--bg-hover)',
+        },
+        foreground: 'var(--text-primary)',
+        muted: 'var(--text-secondary)',
+        border: 'var(--border-color)',
       },
       fontFamily: {
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],

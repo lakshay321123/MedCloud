@@ -15,12 +15,12 @@ export default function Sidebar() {
   return (
     <aside className={`${w} h-screen bg-bg-secondary border-r border-border flex flex-col transition-all duration-300 shrink-0 overflow-hidden`}>
       <div className="h-16 flex items-center px-4 border-b border-border gap-3">
-        <button onClick={toggleSidebar} className="p-1.5 rounded-lg hover:bg-white/5 text-brand">
+        <button onClick={toggleSidebar} className="p-1.5 rounded-lg hover:bg-foreground/5 text-brand">
           <Icons.Menu size={20} />
         </button>
         {!sidebarCollapsed && (
           <div className="flex flex-col leading-tight">
-            <span className="font-bold text-white text-sm">MedCloud</span>
+            <span className="font-bold text-foreground text-sm">MedCloud</span>
             <span className="text-[10px] text-muted">by Cosentus.ai</span>
           </div>
         )}
@@ -40,7 +40,7 @@ export default function Sidebar() {
               return (
                 <Link key={mod.id} href={mod.path}
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
-                    ${isActive ? 'bg-brand/10 text-brand border border-brand/20' : 'text-muted hover:text-white hover:bg-white/5 border border-transparent'}
+                    ${isActive ? 'bg-brand/10 text-brand border border-brand/20' : 'text-muted hover:text-foreground hover:bg-foreground/5 border border-transparent'}
                     ${sidebarCollapsed ? 'justify-center' : ''}`}
                   title={sidebarCollapsed ? mod.label : undefined}>
                   <IconComp size={18} />

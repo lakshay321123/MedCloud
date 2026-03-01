@@ -34,9 +34,9 @@ export default function ClaimsPage() {
         <div className="relative flex-1 max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"/>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search claim #, patient, payer..."
-            className="w-full bg-white/5 border border-border rounded-lg pl-8 pr-3 py-1.5 text-xs text-white"/>
+            className="w-full bg-foreground/5 border border-border rounded-lg pl-8 pr-3 py-1.5 text-xs text-foreground"/>
         </div>
-        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="bg-white/5 border border-border rounded-lg px-3 py-1.5 text-xs text-white">
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="bg-foreground/5 border border-border rounded-lg px-3 py-1.5 text-xs text-foreground">
           <option value="">All Statuses</option>
           {['draft','scrubbing','scrub_failed','ready','submitted','accepted','in_process','paid','partial_pay','denied','appealed','corrected','write_off'].map(s=>(
             <option key={s} value={s}>{s.replace(/_/g,' ')}</option>
@@ -53,7 +53,7 @@ export default function ClaimsPage() {
             <th className="text-right px-4 py-3">Age</th>
           </tr></thead>
           <tbody>{claims.map(c=>(
-            <tr key={c.id} className="border-b border-border last:border-0 hover:bg-white/5 cursor-pointer">
+            <tr key={c.id} className="border-b border-border last:border-0 hover:bg-foreground/5 cursor-pointer">
               <td className="px-4 py-3 font-mono text-xs">{c.id}</td>
               <td className="px-4 py-3">{c.patientName}</td>
               <td className="px-4 py-3 text-xs text-muted">{c.clientName}</td>

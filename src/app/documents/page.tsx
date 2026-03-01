@@ -32,14 +32,14 @@ export default function DocumentsPage() {
       <div className="flex gap-2 mb-4">
         {(['all','unlinked','fax'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-1.5 rounded-lg text-xs font-medium ${tab === t ? 'bg-brand/10 text-brand border border-brand/20' : 'bg-white/5 text-muted border border-border'}`}>
+            className={`px-4 py-1.5 rounded-lg text-xs font-medium ${tab === t ? 'bg-brand/10 text-brand border border-brand/20' : 'bg-foreground/5 text-muted border border-border'}`}>
             {t === 'all' ? 'All Documents' : t === 'unlinked' ? `Unlinked (${unlinkedCount})` : 'Fax Center'}
           </button>
         ))}
         <div className="relative ml-auto max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"/>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search documents..."
-            className="w-full bg-white/5 border border-border rounded-lg pl-8 pr-3 py-1.5 text-xs text-white"/>
+            className="w-full bg-foreground/5 border border-border rounded-lg pl-8 pr-3 py-1.5 text-xs text-foreground"/>
         </div>
       </div>
       {unlinkedCount > 0 && tab === 'all' && (
@@ -56,7 +56,7 @@ export default function DocumentsPage() {
             <th className="text-left px-4 py-3">Status</th>
           </tr></thead>
           <tbody>{filtered.map(d=>(
-            <tr key={d.id} className="border-b border-border last:border-0 hover:bg-white/5 cursor-pointer">
+            <tr key={d.id} className="border-b border-border last:border-0 hover:bg-foreground/5 cursor-pointer">
               <td className="px-4 py-3 font-mono text-xs">{d.name}</td>
               <td className="px-4 py-3 text-xs">{d.type}</td>
               <td className="px-4 py-3 text-xs text-muted">{d.client}</td>

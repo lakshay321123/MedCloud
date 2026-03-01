@@ -37,7 +37,7 @@ export default function ScanSubmitPage() {
                 <div>
                   <label className="text-xs text-muted block mb-1">Select Patient *</label>
                   <select value={patientId} onChange={e => setPatientId(e.target.value)}
-                    className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-sm text-white">
+                    className="w-full bg-foreground/5 border border-border rounded-lg px-3 py-2 text-sm text-foreground">
                     <option value="">Choose patient...</option>
                     {myPatients.map(p => <option key={p.id} value={p.id}>{p.firstName} {p.lastName} ({p.id})</option>)}
                   </select>
@@ -45,7 +45,7 @@ export default function ScanSubmitPage() {
                 <div>
                   <label className="text-xs text-muted block mb-1">Document Type</label>
                   <select value={docType} onChange={e => setDocType(e.target.value)}
-                    className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-sm text-white">
+                    className="w-full bg-foreground/5 border border-border rounded-lg px-3 py-2 text-sm text-foreground">
                     {['Superbill','Clinical Note','Op Report','Insurance Card','ID Card','Lab Results','Other'].map(t=>(
                       <option key={t}>{t}</option>
                     ))}
@@ -74,7 +74,7 @@ export default function ScanSubmitPage() {
                 <div>
                   <label className="text-xs text-muted block mb-1">Note (optional)</label>
                   <input value={note} onChange={e=>setNote(e.target.value)} placeholder="e.g., Two visits same day"
-                    className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-sm text-white placeholder:text-muted"/>
+                    className="w-full bg-foreground/5 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted"/>
                 </div>
                 <button onClick={handleSubmit} disabled={!patientId || !files.length}
                   className="w-full bg-brand text-white rounded-lg py-3 text-sm font-medium hover:bg-brand-dark disabled:opacity-30 disabled:cursor-not-allowed">

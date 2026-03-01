@@ -21,7 +21,7 @@ export default function AdminPage() {
     <ModuleShell title="Admin & Settings" subtitle="System administration" sprint={5}>
       <div className="flex gap-2 mb-4">
         {(['users','orgs','health'] as const).map(t=>(
-          <button key={t} onClick={()=>setTab(t)} className={`px-4 py-1.5 rounded-lg text-xs font-medium ${tab===t?'bg-brand/10 text-brand border border-brand/20':'bg-white/5 text-muted border border-border'}`}>
+          <button key={t} onClick={()=>setTab(t)} className={`px-4 py-1.5 rounded-lg text-xs font-medium ${tab===t?'bg-brand/10 text-brand border border-brand/20':'bg-foreground/5 text-muted border border-border'}`}>
             {t==='users'?'Users':t==='orgs'?'Organizations':'System Health'}
           </button>
         ))}
@@ -35,7 +35,7 @@ export default function AdminPage() {
               <th className="text-left px-4 py-3">Last Login</th><th className="text-left px-4 py-3">Status</th>
             </tr></thead>
             <tbody>{users.map(u=>(
-              <tr key={u.email} className="border-b border-border last:border-0 hover:bg-white/5 cursor-pointer">
+              <tr key={u.email} className="border-b border-border last:border-0 hover:bg-foreground/5 cursor-pointer">
                 <td className="px-4 py-3 font-medium">{u.name}</td>
                 <td className="px-4 py-3 text-xs text-muted">{u.email}</td>
                 <td className="px-4 py-3"><StatusBadge status={u.role === 'admin' ? 'urgent' : u.role === 'provider' ? 'in_progress' : 'active'} small/></td>
@@ -58,7 +58,7 @@ export default function AdminPage() {
               {n:'Gulf Medical Center',r:'🇦🇪 UAE',e:'MedCloud EHR'},{n:'Irvine Family Practice',r:'🇺🇸 US',e:'External EHR'},
               {n:'Patel Cardiology',r:'🇺🇸 US',e:'MedCloud EHR'},{n:'Dubai Wellness Clinic',r:'🇦🇪 UAE',e:'External EHR'},
             ].map(o=>(
-              <tr key={o.n} className="border-b border-border last:border-0 hover:bg-white/5 cursor-pointer">
+              <tr key={o.n} className="border-b border-border last:border-0 hover:bg-foreground/5 cursor-pointer">
                 <td className="px-4 py-3 font-medium">{o.n}</td><td className="px-4 py-3 text-xs">{o.r}</td>
                 <td className="px-4 py-3 text-xs text-muted">{o.e}</td><td className="px-4 py-3"><StatusBadge status="active" small/></td>
               </tr>

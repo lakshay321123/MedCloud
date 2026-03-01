@@ -31,7 +31,7 @@ export default function AnalyticsPage() {
           ].map(r=>(
             <div key={r.s}>
               <div className="flex justify-between text-xs mb-0.5"><span>{r.s}</span><span className="text-muted">{r.v}%</span></div>
-              <div className="h-2 bg-white/5 rounded-full"><div className={`h-full rounded-full ${r.c}`} style={{width:`${r.v}%`}}/></div>
+              <div className="h-2 bg-foreground/5 rounded-full"><div className={`h-full rounded-full ${r.c}`} style={{width:`${r.v}%`}}/></div>
             </div>
           ))}</div>
         </div>

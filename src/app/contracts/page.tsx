@@ -36,7 +36,7 @@ export default function ContractsPage() {
             <th className="text-left px-4 py-3">Status</th><th className="text-right px-4 py-3">Underpayments</th>
           </tr></thead>
           <tbody>{contracts.map(c=>(
-            <tr key={c.id} className="border-b border-border last:border-0 hover:bg-white/5 cursor-pointer">
+            <tr key={c.id} className="border-b border-border last:border-0 hover:bg-foreground/5 cursor-pointer">
               <td className="px-4 py-3 font-medium">{c.payer}</td>
               <td className="px-4 py-3 text-xs text-muted">{c.client}</td>
               <td className="px-4 py-3 text-xs text-muted">{c.effective}</td>

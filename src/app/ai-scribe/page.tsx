@@ -40,7 +40,7 @@ export default function AIScribePage() {
           </div>
           {notes.map(n => (
             <button key={n.id} onClick={() => setSelectedNote(n)}
-              className={`w-full text-left px-3 py-3 border-b border-border hover:bg-white/5 ${selectedNote.id === n.id ? 'bg-brand/5' : ''}`}>
+              className={`w-full text-left px-3 py-3 border-b border-border hover:bg-foreground/5 ${selectedNote.id === n.id ? 'bg-brand/5' : ''}`}>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">{n.patient}</span>
                 <StatusBadge status={n.status === 'signed' ? 'completed' : 'in_progress'} small/>
@@ -63,7 +63,7 @@ export default function AIScribePage() {
             {Object.entries(selectedNote.soap).map(([key, val]) => (
               <div key={key}>
                 <div className="text-xs font-semibold text-muted mb-1">{key === 's' ? 'SUBJECTIVE' : key === 'o' ? 'OBJECTIVE' : key === 'a' ? 'ASSESSMENT' : 'PLAN'}</div>
-                <div className="text-sm bg-white/5 rounded-lg p-2">{val}</div>
+                <div className="text-sm bg-foreground/5 rounded-lg p-2">{val}</div>
               </div>
             ))}
             <div className="border-t border-border pt-3">
