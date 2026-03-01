@@ -3,9 +3,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 type Country = 'uae' | 'usa'
+type PortalType = 'facility' | 'backoffice'
 
 export default function LoginPage() {
   const router = useRouter()
+  const [portalType, setPortalType] = useState<PortalType | null>(null)
   const [country, setCountry] = useState<Country | null>(null)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -14,22 +16,34 @@ export default function LoginPage() {
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
+    if (!portalType) { setError('Please select a portal type'); return }
     if (!country) { setError('Please select your region'); return }
     setLoading(true)
     setError('')
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, country }),
+      body: JSON.stringify({ username, password, country, portalType }),
     })
     if (res.ok) {
       localStorage.setItem('cosentus_region', country)
+      localStorage.setItem('cosentus_portal_type', portalType)
       router.push('/dashboard')
     } else {
       setError('Invalid username or password')
       setLoading(false)
     }
   }
+
+  const selectorBtn = (active: boolean) =>
+    `flex flex-col items-start gap-1 p-3 rounded-xl border-2 text-left transition-all ${
+      active ? 'border-brand bg-brand/5 text-content-primary' : 'border-separator bg-surface-elevated text-content-secondary hover:border-brand/30'
+    }`
+
+  const regionBtn = (active: boolean) =>
+    `flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
+      active ? 'border-brand bg-brand/5 text-content-primary' : 'border-separator bg-surface-elevated text-content-secondary hover:border-brand/30'
+    }`
 
   return (
     <div className="min-h-screen bg-surface-primary flex items-center justify-center p-4">
@@ -44,37 +58,39 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleLogin} className="card p-6 space-y-4">
-          {/* Country Selection — required first */}
+          {/* Step 1: Portal Type */}
+          <div>
+            <label className="text-xs font-medium text-content-secondary block mb-2">Portal Type</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setPortalType('facility')} className={selectorBtn(portalType === 'facility')}>
+                <span className="text-base">🏥</span>
+                <span className="text-xs font-semibold">Facility</span>
+                <span className="text-[10px] text-content-tertiary leading-tight">Doctors, Front Office, Clinic Staff</span>
+              </button>
+              <button type="button" onClick={() => setPortalType('backoffice')} className={selectorBtn(portalType === 'backoffice')}>
+                <span className="text-base">🏢</span>
+                <span className="text-xs font-semibold">Back Office</span>
+                <span className="text-[10px] text-content-tertiary leading-tight">Cosentus RCM Staff</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Step 2: Region */}
           <div>
             <label className="text-xs font-medium text-content-secondary block mb-2">Select Your Region</label>
             <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setCountry('uae')}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
-                  country === 'uae'
-                    ? 'border-brand bg-brand/5 text-content-primary'
-                    : 'border-separator bg-surface-elevated text-content-secondary hover:border-brand/30'
-                }`}
-              >
+              <button type="button" onClick={() => setCountry('uae')} className={regionBtn(country === 'uae')}>
                 <span className="text-2xl">🇦🇪</span>
                 <span className="text-xs font-medium">UAE</span>
               </button>
-              <button
-                type="button"
-                onClick={() => setCountry('usa')}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
-                  country === 'usa'
-                    ? 'border-brand bg-brand/5 text-content-primary'
-                    : 'border-separator bg-surface-elevated text-content-secondary hover:border-brand/30'
-                }`}
-              >
+              <button type="button" onClick={() => setCountry('usa')} className={regionBtn(country === 'usa')}>
                 <span className="text-2xl">🇺🇸</span>
                 <span className="text-xs font-medium">USA</span>
               </button>
             </div>
           </div>
 
+          {/* Credentials */}
           <div>
             <label className="text-xs font-medium text-content-secondary block mb-1">Username</label>
             <input

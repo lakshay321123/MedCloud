@@ -7,9 +7,9 @@ import { getModulesBySection, getSectionLabel } from '@/lib/modules'
 import * as Icons from 'lucide-react'
 
 export default function Sidebar() {
-  const { sidebarCollapsed, currentUser, toggleSidebar } = useApp()
+  const { sidebarCollapsed, currentUser, toggleSidebar, portalType } = useApp()
   const pathname = usePathname()
-  const sections = getModulesBySection(currentUser.role)
+  const sections = getModulesBySection(currentUser.role, portalType)
   const w = sidebarCollapsed ? 'w-[72px]' : 'w-[260px]'
 
   return (
@@ -31,7 +31,7 @@ export default function Sidebar() {
           <div key={section} className="mb-2">
             {!sidebarCollapsed && (
               <div className="text-[11px] font-semibold text-content-tertiary uppercase tracking-wider px-3 pt-5 pb-2">
-                {getSectionLabel(currentUser.role, section)}
+                {getSectionLabel(currentUser.role, section, portalType)}
               </div>
             )}
             {mods.map(mod => {
@@ -40,8 +40,8 @@ export default function Sidebar() {
               return (
                 <Link key={mod.id} href={mod.path}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-btn text-[14px] transition-all
-                    ${isActive 
-                      ? 'bg-brand/10 text-brand font-semibold' 
+                    ${isActive
+                      ? 'bg-brand/10 text-brand font-semibold'
                       : 'text-content-secondary hover:text-content-primary hover:bg-surface-elevated'}
                     ${sidebarCollapsed ? 'justify-center' : ''}`}
                   title={sidebarCollapsed ? mod.label : undefined}>

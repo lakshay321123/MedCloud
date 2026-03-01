@@ -8,23 +8,127 @@ export const demoClients: ClientOrg[] = [
 ]
 
 export interface DemoPatient {
-  id: string; firstName: string; lastName: string; dob?: string; gender?: string;
-  phone: string; email?: string; emiratesId?: string; ssn?: string;
-  insurance?: { payer: string; policyNo: string; groupNo?: string; memberId: string };
-  secondaryInsurance?: { payer: string; policyNo: string; memberId: string };
-  clientId: string; status: 'active' | 'inactive'; profileComplete: number;
-  noShowCount?: number;
+  id: string
+  firstName: string
+  lastName: string
+  middleName?: string
+  preferredName?: string
+  dob?: string
+  gender?: string
+  maritalStatus?: string
+  phone: string
+  secondaryPhone?: string
+  email?: string
+  preferredLanguage?: string
+  preferredContact?: string
+  emiratesId?: string
+  ssn?: string
+  driversLicense?: string
+  passport?: string
+  insurance?: {
+    payer: string
+    policyNo: string
+    groupNo?: string
+    memberId: string
+    subscriberName?: string
+    subscriberDob?: string
+    relationship?: string
+    copay?: number
+  }
+  secondaryInsurance?: { payer: string; policyNo: string; memberId: string }
+  address?: { line1: string; line2?: string; city: string; state: string; zip: string; country: string }
+  emergencyContact?: { name: string; relationship: string; phone: string }
+  employment?: { status: string; employer?: string; workPhone?: string; occupation?: string }
+  allergies?: string[]
+  medications?: string[]
+  referringPhysician?: string
+  primaryCarePhysician?: string
+  clientId: string
+  status: 'active' | 'inactive'
+  profileComplete: number
+  noShowCount?: number
 }
 
 export const demoPatients: DemoPatient[] = [
-  { id: 'P-001', firstName: 'John', lastName: 'Smith', dob: '1985-03-15', gender: 'Male', phone: '(949) 555-0101', email: 'john.smith@email.com', ssn: '***-**-4521', insurance: { payer: 'UnitedHealthcare', policyNo: 'UHC-889921', groupNo: 'GRP-4410', memberId: 'UHC884521' }, clientId: 'org-102', status: 'active', profileComplete: 100 },
-  { id: 'P-002', firstName: 'Sarah', lastName: 'Johnson', dob: '1992-07-22', gender: 'Female', phone: '(949) 555-0102', insurance: { payer: 'Aetna', policyNo: 'AET-334201', memberId: 'AET334201' }, clientId: 'org-102', status: 'active', profileComplete: 75 },
-  { id: 'P-003', firstName: 'Ahmed', lastName: 'Al Mansouri', dob: '1978-11-08', gender: 'Male', phone: '+971 50 123 4567', email: 'ahmed.m@email.com', emiratesId: '784-1978-1234567-1', insurance: { payer: 'Daman', policyNo: 'DAM-778834', memberId: 'DAM778834' }, clientId: 'org-101', status: 'active', profileComplete: 100 },
-  { id: 'P-004', firstName: 'Fatima', lastName: 'Hassan', phone: '+971 55 987 6543', clientId: 'org-101', status: 'active', profileComplete: 20 },
-  { id: 'P-005', firstName: 'Robert', lastName: 'Chen', dob: '1965-01-30', gender: 'Male', phone: '(714) 555-0201', email: 'r.chen@email.com', insurance: { payer: 'Medicare', policyNo: 'MED-112093', memberId: 'MED112093' }, secondaryInsurance: { payer: 'BCBS', policyNo: 'BCB-445201', memberId: 'BCB445201' }, clientId: 'org-103', status: 'active', profileComplete: 100, noShowCount: 3 },
-  { id: 'P-006', firstName: 'Maria', lastName: 'Garcia', dob: '1990-05-12', gender: 'Female', phone: '(949) 555-0303', clientId: 'org-102', status: 'active', profileComplete: 50 },
-  { id: 'P-007', firstName: 'Khalid', lastName: 'Ibrahim', dob: '1988-09-03', gender: 'Male', phone: '+971 52 456 7890', emiratesId: '784-1988-7654321-2', insurance: { payer: 'NAS', policyNo: 'NAS-992341', memberId: 'NAS992341' }, clientId: 'org-104', status: 'active', profileComplete: 85 },
-  { id: 'P-008', firstName: 'Emily', lastName: 'Williams', dob: '1975-12-20', gender: 'Female', phone: '(714) 555-0404', clientId: 'org-103', status: 'inactive', profileComplete: 60 },
+  {
+    id: 'P-001', firstName: 'John', middleName: 'Robert', lastName: 'Smith',
+    dob: '1985-03-15', gender: 'Male', maritalStatus: 'Married',
+    phone: '(949) 555-0101', secondaryPhone: '(949) 555-0199',
+    email: 'john.smith@email.com', preferredLanguage: 'English', preferredContact: 'Email',
+    ssn: '***-**-4521', driversLicense: 'CA-D3456789',
+    insurance: { payer: 'UnitedHealthcare', policyNo: 'UHC-889921', groupNo: 'GRP-4410', memberId: 'UHC884521', relationship: 'Self', copay: 30 },
+    address: { line1: '123 Irvine Blvd', city: 'Irvine', state: 'CA', zip: '92602', country: 'United States' },
+    emergencyContact: { name: 'Mary Smith', relationship: 'Spouse', phone: '(949) 555-0199' },
+    employment: { status: 'Employed', employer: 'TechCorp Inc', occupation: 'Software Engineer', workPhone: '(949) 555-9000' },
+    allergies: ['Penicillin'], medications: ['Metformin 500mg', 'Lisinopril 10mg'],
+    referringPhysician: 'Dr. James Wilson', primaryCarePhysician: 'Dr. Martinez',
+    clientId: 'org-102', status: 'active', profileComplete: 100,
+  },
+  {
+    id: 'P-002', firstName: 'Sarah', lastName: 'Johnson',
+    dob: '1992-07-22', gender: 'Female',
+    phone: '(949) 555-0102', email: 'sarah.j@email.com',
+    preferredLanguage: 'English', preferredContact: 'SMS',
+    insurance: { payer: 'Aetna', policyNo: 'AET-334201', memberId: 'AET334201', relationship: 'Self' },
+    address: { line1: '789 Campus Dr', city: 'Irvine', state: 'CA', zip: '92617', country: 'United States' },
+    clientId: 'org-102', status: 'active', profileComplete: 75,
+  },
+  {
+    id: 'P-003', firstName: 'Ahmed', lastName: 'Al Mansouri',
+    dob: '1978-11-08', gender: 'Male', maritalStatus: 'Married',
+    phone: '+971 50 123 4567', email: 'ahmed.m@email.com',
+    preferredLanguage: 'Arabic', preferredContact: 'Phone',
+    emiratesId: '784-1978-1234567-1', passport: 'AE1234567',
+    insurance: { payer: 'Daman', policyNo: 'DAM-778834', memberId: 'DAM778834', relationship: 'Self', copay: 0 },
+    address: { line1: 'Villa 42, Al Raha Gardens', city: 'Abu Dhabi', state: 'Abu Dhabi', zip: '', country: 'United Arab Emirates' },
+    emergencyContact: { name: 'Layla Al Mansouri', relationship: 'Spouse', phone: '+971 50 765 4321' },
+    employment: { status: 'Employed', employer: 'ADNOC', occupation: 'Engineer', workPhone: '+971 2 123 4567' },
+    allergies: [], medications: ['Aspirin 81mg'],
+    primaryCarePhysician: 'Dr. Al Zaabi',
+    clientId: 'org-101', status: 'active', profileComplete: 100,
+  },
+  {
+    id: 'P-004', firstName: 'Fatima', lastName: 'Hassan',
+    phone: '+971 55 987 6543', clientId: 'org-101', status: 'active', profileComplete: 20,
+  },
+  {
+    id: 'P-005', firstName: 'Robert', middleName: 'James', lastName: 'Chen',
+    dob: '1965-01-30', gender: 'Male', maritalStatus: 'Married',
+    phone: '(714) 555-0201', email: 'r.chen@email.com',
+    preferredLanguage: 'English', preferredContact: 'Phone',
+    ssn: '***-**-7788', driversLicense: 'CA-C9876543',
+    insurance: { payer: 'Medicare', policyNo: 'MED-112093', memberId: 'MED112093', relationship: 'Self', copay: 0 },
+    secondaryInsurance: { payer: 'BCBS', policyNo: 'BCB-445201', memberId: 'BCB445201' },
+    address: { line1: '456 Harbor Blvd', city: 'Anaheim', state: 'CA', zip: '92801', country: 'United States' },
+    emergencyContact: { name: 'Linda Chen', relationship: 'Spouse', phone: '(714) 555-0202' },
+    employment: { status: 'Retired', occupation: 'Former Engineer' },
+    allergies: ['Sulfa drugs', 'Aspirin'],
+    medications: ['Carvedilol 25mg', 'Furosemide 40mg', 'Warfarin 5mg'],
+    primaryCarePhysician: 'Dr. Patel',
+    clientId: 'org-103', status: 'active', profileComplete: 100, noShowCount: 3,
+  },
+  {
+    id: 'P-006', firstName: 'Maria', lastName: 'Garcia',
+    dob: '1990-05-12', gender: 'Female',
+    phone: '(949) 555-0303', preferredLanguage: 'Spanish', preferredContact: 'SMS',
+    clientId: 'org-102', status: 'active', profileComplete: 50,
+  },
+  {
+    id: 'P-007', firstName: 'Khalid', lastName: 'Ibrahim',
+    dob: '1988-09-03', gender: 'Male', maritalStatus: 'Single',
+    phone: '+971 52 456 7890', preferredLanguage: 'Arabic',
+    emiratesId: '784-1988-7654321-2',
+    insurance: { payer: 'NAS', policyNo: 'NAS-992341', memberId: 'NAS992341', relationship: 'Self' },
+    address: { line1: 'Apt 1204, Marina Residences', city: 'Dubai', state: 'Dubai', zip: '', country: 'United Arab Emirates' },
+    clientId: 'org-104', status: 'active', profileComplete: 85,
+  },
+  {
+    id: 'P-008', firstName: 'Emily', lastName: 'Williams',
+    dob: '1975-12-20', gender: 'Female',
+    phone: '(714) 555-0404', email: 'emily.w@email.com',
+    ssn: '***-**-3344',
+    clientId: 'org-103', status: 'inactive', profileComplete: 60,
+  },
 ]
 
 export interface DemoAppointment {
