@@ -18,28 +18,28 @@ const calls = [
 
 export default function VoiceAIPage() {
   return (
-    <ModuleShell title="Voice AI" subtitle="Automated calls to payers and patients" sprint={4}>
+    <ModuleShell title="Voice AI" subtitle="Automated calls to payers and patients">
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KPICard label="Calls Today" value={calls.filter(c=>c.status==='completed').length} icon={<Phone size={20}/>}/>
         <KPICard label="Avg Duration" value="3.2m" icon={<Clock size={20}/>}/>
         <KPICard label="Success Rate" value="87%"/>
         <KPICard label="Active Now" value={calls.filter(c=>c.status==='in_progress').length}/>
       </div>
-      <div className="bg-bg-secondary border border-border rounded-xl overflow-hidden">
+      <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-border text-xs text-muted">
+          <thead><tr className="border-b border-separator text-xs text-content-secondary">
             <th className="text-left px-4 py-3">Type</th><th className="text-left px-4 py-3">Target</th>
             <th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">Duration</th>
             <th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3">Outcome</th>
           </tr></thead>
           <tbody>{calls.map(c=>(
-            <tr key={c.id} className="border-b border-border last:border-0 hover:bg-white/5 cursor-pointer">
+            <tr key={c.id} className="border-b border-separator last:border-0 table-row cursor-pointer">
               <td className="px-4 py-3 text-xs">{c.type}</td>
               <td className="px-4 py-3 text-xs">{c.target}</td>
-              <td className="px-4 py-3 text-xs text-muted">{c.client}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{c.client}</td>
               <td className="px-4 py-3 font-mono text-xs">{c.duration}</td>
               <td className="px-4 py-3"><StatusBadge status={c.status === 'queued' ? 'booked' : c.status} small/></td>
-              <td className="px-4 py-3 text-xs text-muted">{c.outcome}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{c.outcome}</td>
             </tr>
           ))}</tbody>
         </table>

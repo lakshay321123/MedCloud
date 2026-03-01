@@ -13,24 +13,24 @@ export default function Sidebar() {
   const w = sidebarCollapsed ? 'w-[72px]' : 'w-[260px]'
 
   return (
-    <aside className={`${w} h-screen bg-bg-secondary border-r border-border flex flex-col transition-all duration-300 shrink-0 overflow-hidden`}>
-      <div className="h-16 flex items-center px-4 border-b border-border gap-3">
-        <button onClick={toggleSidebar} className="p-1.5 rounded-lg hover:bg-white/5 text-brand">
+    <aside className={`${w} h-screen bg-surface-secondary border-r border-separator flex flex-col transition-all duration-300 shrink-0 overflow-hidden`}>
+      <div className="h-16 flex items-center px-4 gap-3">
+        <button onClick={toggleSidebar} className="p-1.5 rounded-btn hover:bg-surface-elevated text-content-secondary transition-colors">
           <Icons.Menu size={20} />
         </button>
         {!sidebarCollapsed && (
           <div className="flex flex-col leading-tight">
-            <span className="font-bold text-white text-sm">MedCloud</span>
-            <span className="text-[10px] text-muted">by Cosentus.ai</span>
+            <span className="font-bold text-content-primary text-[15px] tracking-tight">MedCloud</span>
+            <span className="text-[11px] text-content-tertiary">by Cosentus.ai</span>
           </div>
         )}
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-1">
+      <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
         {Object.entries(sections).map(([section, mods]) => (
-          <div key={section}>
+          <div key={section} className="mb-2">
             {!sidebarCollapsed && (
-              <div className="text-[10px] font-semibold text-muted uppercase tracking-wider px-3 pt-4 pb-1">
+              <div className="text-[11px] font-semibold text-content-tertiary uppercase tracking-wider px-3 pt-5 pb-2">
                 {getSectionLabel(currentUser.role, section)}
               </div>
             )}
@@ -39,15 +39,14 @@ export default function Sidebar() {
               const IconComp = (Icons as unknown as Record<string, React.ComponentType<{ size?: number }>>)[mod.icon] || Icons.Circle
               return (
                 <Link key={mod.id} href={mod.path}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
-                    ${isActive ? 'bg-brand/10 text-brand border border-brand/20' : 'text-muted hover:text-white hover:bg-white/5 border border-transparent'}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-btn text-[14px] transition-all
+                    ${isActive 
+                      ? 'bg-brand/10 text-brand font-semibold' 
+                      : 'text-content-secondary hover:text-content-primary hover:bg-surface-elevated'}
                     ${sidebarCollapsed ? 'justify-center' : ''}`}
                   title={sidebarCollapsed ? mod.label : undefined}>
                   <IconComp size={18} />
                   {!sidebarCollapsed && <span className="truncate">{mod.label}</span>}
-                  {!sidebarCollapsed && mod.badge && (
-                    <span className="ml-auto bg-brand/20 text-brand text-[10px] px-1.5 py-0.5 rounded-full">{mod.badge}</span>
-                  )}
                 </Link>
               )
             })}

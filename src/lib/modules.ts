@@ -1,12 +1,11 @@
 import { ModuleConfig, UserRole } from '@/types'
 
 const staffRoles: UserRole[] = ['admin', 'director', 'supervisor', 'manager', 'coder', 'biller', 'ar_team', 'posting_team']
-const clinicRoles: UserRole[] = ['client', 'provider']
-const allRoles: UserRole[] = [...staffRoles, ...clinicRoles]
 const leaderRoles: UserRole[] = ['admin', 'director', 'supervisor', 'manager']
+const allRoles: UserRole[] = [...staffRoles, 'client', 'provider']
 
 export const modules: ModuleConfig[] = [
-  // OPERATIONS
+  // OPERATIONS (staff only)
   { id: 'dashboard', label: 'Dashboard', icon: 'LayoutDashboard', path: '/dashboard', section: 'operations', roles: allRoles },
   { id: 'claims', label: 'Claims Center', icon: 'FileText', path: '/claims', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
   { id: 'coding', label: 'AI Coding', icon: 'BrainCircuit', path: '/coding', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'coder'] },
@@ -28,17 +27,17 @@ export const modules: ModuleConfig[] = [
   { id: 'admin', label: 'Admin & Settings', icon: 'Settings', path: '/admin', section: 'system', roles: ['admin'] },
   { id: 'integrations', label: 'Integration Hub', icon: 'Plug', path: '/integrations', section: 'system', roles: ['admin', 'director'] },
 
-  // CLIENT PORTAL (shared between clinic + billing team)
-  { id: 'appointments', label: 'Appointments', icon: 'CalendarDays', path: '/portal/appointments', section: 'portal', roles: allRoles },
+  // PORTAL — client gets full portal, provider gets limited
+  { id: 'appointments', label: 'Appointments', icon: 'CalendarDays', path: '/portal/appointments', section: 'portal', roles: [...staffRoles, 'client', 'provider'] },
   { id: 'scan', label: 'Scan & Submit', icon: 'ScanLine', path: '/portal/scan-submit', section: 'portal', roles: ['client'] },
   { id: 'watch', label: 'Watch & Track', icon: 'Eye', path: '/portal/watch-track', section: 'portal', roles: ['client'] },
   { id: 'messages', label: 'Messages', icon: 'MessageCircle', path: '/portal/messages', section: 'portal', roles: allRoles },
-  { id: 'portal-patients', label: 'Patients', icon: 'Users', path: '/portal/patients', section: 'portal', roles: clinicRoles },
+  { id: 'portal-patients', label: 'Patients', icon: 'Users', path: '/portal/patients', section: 'portal', roles: ['client', 'provider'] },
 ]
 
 export const sectionLabels: Record<string, Record<string, string>> = {
-  provider: { operations: 'CLINICAL', ai: 'AI TOOLS', management: 'MANAGEMENT', portal: 'MY PRACTICE' },
-  client: { portal: 'MY PRACTICE', operations: 'OVERVIEW' },
+  provider: { operations: 'OVERVIEW', ai: 'AI TOOLS', management: 'FILES', portal: 'CLINICAL' },
+  client: { portal: 'MY PRACTICE' },
   default: { operations: 'OPERATIONS', ai: 'AI & AUTOMATION', management: 'MANAGEMENT', portal: 'CLIENT PORTAL', system: 'SYSTEM' },
 }
 

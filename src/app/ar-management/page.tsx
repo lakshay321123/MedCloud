@@ -23,40 +23,40 @@ export default function ARManagementPage() {
   const filtered = accounts.filter(a => !selectedClient || a.client.includes(selectedClient.name.split(' ')[0]))
 
   return (
-    <ModuleShell title="A/R Management" subtitle="Accounts receivable follow-up and collections" sprint={3}>
+    <ModuleShell title="A/R Management" subtitle="Accounts receivable follow-up and collections">
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KPICard label="Total A/R" value="$335K" icon={<TrendingUp size={20}/>}/>
         <KPICard label="Worked Today" value="28" sub="+6" trend="up"/>
         <KPICard label="Follow-ups Due" value="42"/>
         <KPICard label="Avg Days Outstanding" value="34.2"/>
       </div>
-      <div className="bg-bg-secondary border border-border rounded-xl p-4 mb-4">
-        <h3 className="text-xs font-semibold text-muted mb-2">AGING BUCKETS</h3>
+      <div className="card p-4 mb-4">
+        <h3 className="text-xs font-semibold text-content-secondary mb-2">AGING BUCKETS</h3>
         <div className="flex items-end gap-4 h-28 px-4">{buckets.map(b=>(
           <div key={b.l} className="flex-1 flex flex-col items-center gap-1">
-            <span className="text-[10px] text-muted">${(b.v/1000).toFixed(0)}K</span>
+            <span className="text-[10px] text-content-secondary">${(b.v/1000).toFixed(0)}K</span>
             <div className={`w-full ${b.c} rounded-t transition-all`} style={{height:`${(b.v/max)*90}px`}}/>
-            <span className="text-[10px] text-muted">{b.l} days</span>
+            <span className="text-[10px] text-content-secondary">{b.l} days</span>
           </div>
         ))}</div>
       </div>
-      <div className="bg-bg-secondary border border-border rounded-xl overflow-hidden">
+      <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-border text-xs text-muted">
+          <thead><tr className="border-b border-separator text-xs text-content-secondary">
             <th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Client</th>
             <th className="text-left px-4 py-3">Payer</th><th className="text-right px-4 py-3">Balance</th>
             <th className="text-right px-4 py-3">Age</th><th className="text-left px-4 py-3">Last Action</th>
             <th className="text-left px-4 py-3">Next F/U</th><th className="text-left px-4 py-3">Priority</th>
           </tr></thead>
           <tbody>{filtered.map(a=>(
-            <tr key={a.id} className="border-b border-border last:border-0 hover:bg-white/5 cursor-pointer">
+            <tr key={a.id} className="border-b border-separator last:border-0 table-row cursor-pointer">
               <td className="px-4 py-3 font-medium">{a.patient}</td>
-              <td className="px-4 py-3 text-xs text-muted">{a.client}</td>
-              <td className="px-4 py-3 text-xs text-muted">{a.payer}</td>
-              <td className="px-4 py-3 text-right font-mono">{a.balance > 0 ? `$${a.balance}` : <span className="text-emerald-400">Paid</span>}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{a.client}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{a.payer}</td>
+              <td className="px-4 py-3 text-right font-mono">{a.balance > 0 ? `$${a.balance}` : <span className="text-emerald-600 text-emerald-600 dark:text-emerald-400">Paid</span>}</td>
               <td className="px-4 py-3 text-right text-xs">{a.age}d</td>
-              <td className="px-4 py-3 text-xs text-muted">{a.lastAction}</td>
-              <td className="px-4 py-3 text-xs text-muted">{a.nextFollowup}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{a.lastAction}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{a.nextFollowup}</td>
               <td className="px-4 py-3"><StatusBadge status={a.priority} small/></td>
             </tr>
           ))}</tbody>

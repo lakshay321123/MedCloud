@@ -16,7 +16,7 @@ const contracts = [
 
 export default function ContractsPage() {
   return (
-    <ModuleShell title="Contract Manager" subtitle="Payer contracts, fee schedules, and underpayment detection" sprint={3}>
+    <ModuleShell title="Contract Manager" subtitle="Payer contracts, fee schedules, and underpayment detection">
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KPICard label="Active Contracts" value={contracts.filter(c=>c.status==='active').length} icon={<Scale size={20}/>}/>
         <KPICard label="Expiring (90 days)" value={contracts.filter(c=>c.status==='expiring').length} trend="down"/>
@@ -24,25 +24,25 @@ export default function ContractsPage() {
         <KPICard label="Total Payers" value={contracts.length}/>
       </div>
       {contracts.filter(c=>c.status==='expiring').length > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-4 text-xs text-amber-400 flex items-center gap-2">
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-4 text-xs text-amber-600 text-amber-600 dark:text-amber-400 flex items-center gap-2">
           <AlertTriangle size={14}/> {contracts.filter(c=>c.status==='expiring').length} contract(s) expiring within 90 days
         </div>
       )}
-      <div className="bg-bg-secondary border border-border rounded-xl overflow-hidden">
+      <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-border text-xs text-muted">
+          <thead><tr className="border-b border-separator text-xs text-content-secondary">
             <th className="text-left px-4 py-3">Payer</th><th className="text-left px-4 py-3">Client</th>
             <th className="text-left px-4 py-3">Effective</th><th className="text-left px-4 py-3">Expiry</th>
             <th className="text-left px-4 py-3">Status</th><th className="text-right px-4 py-3">Underpayments</th>
           </tr></thead>
           <tbody>{contracts.map(c=>(
-            <tr key={c.id} className="border-b border-border last:border-0 hover:bg-white/5 cursor-pointer">
+            <tr key={c.id} className="border-b border-separator last:border-0 table-row cursor-pointer">
               <td className="px-4 py-3 font-medium">{c.payer}</td>
-              <td className="px-4 py-3 text-xs text-muted">{c.client}</td>
-              <td className="px-4 py-3 text-xs text-muted">{c.effective}</td>
-              <td className="px-4 py-3 text-xs text-muted">{c.expiry}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{c.client}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{c.effective}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{c.expiry}</td>
               <td className="px-4 py-3"><StatusBadge status={c.status === 'expiring' ? 'high' : c.status === 'expired' ? 'denied' : 'active'} small/></td>
-              <td className="px-4 py-3 text-right">{c.underpayments > 0 ? <span className="text-amber-400">{c.underpayments}</span> : '0'}</td>
+              <td className="px-4 py-3 text-right">{c.underpayments > 0 ? <span className="text-amber-600 text-amber-600 dark:text-amber-400">{c.underpayments}</span> : '0'}</td>
             </tr>
           ))}</tbody>
         </table>

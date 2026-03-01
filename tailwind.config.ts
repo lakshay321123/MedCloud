@@ -16,43 +16,50 @@ const config: Config = {
           pale: '#A1DEED',
           ghost: '#D6EBF2',
         },
+        surface: {
+          primary: 'var(--surface-primary)',
+          secondary: 'var(--surface-secondary)',
+          elevated: 'var(--surface-elevated)',
+          overlay: 'var(--surface-overlay)',
+        },
+        content: {
+          primary: 'var(--content-primary)',
+          secondary: 'var(--content-secondary)',
+          tertiary: 'var(--content-tertiary)',
+          inverse: 'var(--content-inverse)',
+        },
+        separator: 'var(--separator)',
       },
       fontFamily: {
-        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['SF Mono', 'JetBrains Mono', 'monospace'],
+      },
+      borderRadius: {
+        'card': '16px',
+        'pill': '100px',
+        'btn': '12px',
+      },
+      boxShadow: {
+        'card': '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+        'card-hover': '0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)',
+        'elevated': '0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
+        'card-dark': '0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)',
+        'card-dark-hover': '0 4px 12px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.2)',
+        'elevated-dark': '0 8px 30px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)',
+        'glow': '0 0 20px rgba(0,181,214,0.15)',
+        'glow-strong': '0 0 30px rgba(0,181,214,0.25)',
       },
       animation: {
-        'glow': 'glow 2s ease-in-out infinite alternate',
-        'scan': 'scan 3s linear infinite',
-        'grid-pulse': 'gridPulse 4s ease-in-out infinite',
-        'slide-in': 'slideIn 0.3s ease-out',
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'fade-in': 'fadeIn 0.2s ease-out',
+        'slide-up': 'slideUp 0.3s ease-out',
       },
       keyframes: {
-        glow: {
-          '0%': { boxShadow: '0 0 5px rgba(0,181,214,0.2)' },
-          '100%': { boxShadow: '0 0 20px rgba(0,181,214,0.4)' },
-        },
-        scan: {
-          '0%': { transform: 'translateY(-100%)' },
-          '100%': { transform: 'translateY(100%)' },
-        },
-        gridPulse: {
-          '0%, 100%': { opacity: '0.03' },
-          '50%': { opacity: '0.06' },
-        },
-        slideIn: {
-          '0%': { transform: 'translateX(-10px)', opacity: '0' },
-          '100%': { transform: 'translateX(0)', opacity: '1' },
-        },
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
+        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+        slideUp: { '0%': { opacity: '0', transform: 'translateY(8px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
       },
     },
   },
   plugins: [],
 }
-
 export default config

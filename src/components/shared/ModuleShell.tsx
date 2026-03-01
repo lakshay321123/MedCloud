@@ -2,22 +2,18 @@
 import React from 'react'
 
 interface ModuleShellProps {
-  title: string; subtitle?: string; sprint?: number; children: React.ReactNode
-  actions?: React.ReactNode
+  title: string; subtitle?: string; children: React.ReactNode; actions?: React.ReactNode
 }
 
-export default function ModuleShell({ title, subtitle, sprint, children, actions }: ModuleShellProps) {
+export default function ModuleShell({ title, subtitle, children, actions }: ModuleShellProps) {
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="animate-fade-in">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold text-white">{title}</h1>
-            {sprint && <span className="text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20">Sprint {sprint}</span>}
-          </div>
-          {subtitle && <p className="text-sm text-muted mt-1">{subtitle}</p>}
+          <h1 className="text-[28px] font-bold tracking-tight text-content-primary">{title}</h1>
+          {subtitle && <p className="text-[15px] text-content-secondary mt-1">{subtitle}</p>}
         </div>
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
+        {actions && <div className="flex items-center gap-3">{actions}</div>}
       </div>
       {children}
     </div>

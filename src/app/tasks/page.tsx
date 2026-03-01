@@ -19,28 +19,28 @@ const tasks = [
 export default function TasksPage() {
   const slaColor = (s: string) => s === 'green' ? 'bg-emerald-500' : s === 'yellow' ? 'bg-amber-500' : 'bg-red-500'
   return (
-    <ModuleShell title="Tasks & Workflows" subtitle="Track and manage work across all departments" sprint={4}>
+    <ModuleShell title="Tasks & Workflows" subtitle="Track and manage work across all departments">
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KPICard label="Open Tasks" value={tasks.filter(t=>t.status!=='completed').length} icon={<ListChecks size={20}/>}/>
         <KPICard label="In Progress" value={tasks.filter(t=>t.status==='in_progress').length}/>
         <KPICard label="Blocked" value={tasks.filter(t=>t.status==='blocked').length} trend="down"/>
         <KPICard label="SLA Breached" value={tasks.filter(t=>t.sla==='red').length} trend="down"/>
       </div>
-      <div className="bg-bg-secondary border border-border rounded-xl overflow-hidden">
+      <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-border text-xs text-muted">
+          <thead><tr className="border-b border-separator text-xs text-content-secondary">
             <th className="w-2"></th><th className="text-left px-4 py-3">Type</th><th className="text-left px-4 py-3">Entity</th>
             <th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">Assigned</th>
             <th className="text-left px-4 py-3">Due</th><th className="text-left px-4 py-3">Priority</th><th className="text-left px-4 py-3">Status</th>
           </tr></thead>
           <tbody>{tasks.map(t=>(
-            <tr key={t.id} className="border-b border-border last:border-0 hover:bg-white/5 cursor-pointer">
+            <tr key={t.id} className="border-b border-separator last:border-0 table-row cursor-pointer">
               <td className="pl-2"><div className={`w-1.5 h-6 rounded-full ${slaColor(t.sla)}`}/></td>
               <td className="px-4 py-3 text-xs font-medium">{t.type}</td>
               <td className="px-4 py-3 text-xs">{t.entity}</td>
-              <td className="px-4 py-3 text-xs text-muted">{t.client}</td>
-              <td className="px-4 py-3 text-xs text-muted">{t.assigned}</td>
-              <td className="px-4 py-3 text-xs text-muted">{t.due}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{t.client}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{t.assigned}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{t.due}</td>
               <td className="px-4 py-3"><StatusBadge status={t.priority} small/></td>
               <td className="px-4 py-3"><StatusBadge status={t.status} small/></td>
             </tr>

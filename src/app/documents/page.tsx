@@ -27,42 +27,42 @@ export default function DocumentsPage() {
   const unlinkedCount = docs.filter(d => !d.linked).length
 
   return (
-    <ModuleShell title="Documents" subtitle="Document vault, fax center, and unlinked queue" sprint={4}
+    <ModuleShell title="Documents" subtitle="Document vault, fax center, and unlinked queue"
       actions={<button className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2"><Upload size={16}/> Bulk Upload</button>}>
       <div className="flex gap-2 mb-4">
         {(['all','unlinked','fax'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-1.5 rounded-lg text-xs font-medium ${tab === t ? 'bg-brand/10 text-brand border border-brand/20' : 'bg-white/5 text-muted border border-border'}`}>
+            className={`px-4 py-1.5 rounded-lg text-xs font-medium ${tab === t ? 'bg-brand/10 text-brand' : 'bg-surface-elevated text-content-secondary border border-separator'}`}>
             {t === 'all' ? 'All Documents' : t === 'unlinked' ? `Unlinked (${unlinkedCount})` : 'Fax Center'}
           </button>
         ))}
         <div className="relative ml-auto max-w-xs">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"/>
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary"/>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search documents..."
-            className="w-full bg-white/5 border border-border rounded-lg pl-8 pr-3 py-1.5 text-xs text-white"/>
+            className="w-full bg-surface-elevated border border-separator rounded-lg pl-8 pr-3 py-1.5 text-xs text-content-primary"/>
         </div>
       </div>
       {unlinkedCount > 0 && tab === 'all' && (
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-4 text-xs text-amber-400 flex items-center gap-2">
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-4 text-xs text-amber-600 text-amber-600 dark:text-amber-400 flex items-center gap-2">
           <AlertTriangle size={14}/> {unlinkedCount} document(s) not linked to any patient — review in Unlinked tab
         </div>
       )}
-      <div className="bg-bg-secondary border border-border rounded-xl overflow-hidden">
+      <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-border text-xs text-muted">
+          <thead><tr className="border-b border-separator text-xs text-content-secondary">
             <th className="text-left px-4 py-3">Document</th><th className="text-left px-4 py-3">Type</th>
             <th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">Patient</th>
             <th className="text-left px-4 py-3">Date</th><th className="text-left px-4 py-3">Source</th>
             <th className="text-left px-4 py-3">Status</th>
           </tr></thead>
           <tbody>{filtered.map(d=>(
-            <tr key={d.id} className="border-b border-border last:border-0 hover:bg-white/5 cursor-pointer">
+            <tr key={d.id} className="border-b border-separator last:border-0 table-row cursor-pointer">
               <td className="px-4 py-3 font-mono text-xs">{d.name}</td>
               <td className="px-4 py-3 text-xs">{d.type}</td>
-              <td className="px-4 py-3 text-xs text-muted">{d.client}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{d.client}</td>
               <td className="px-4 py-3 text-xs">{d.patient}</td>
-              <td className="px-4 py-3 text-xs text-muted">{d.date}</td>
-              <td className="px-4 py-3 text-xs text-muted">{d.source}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{d.date}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{d.source}</td>
               <td className="px-4 py-3">{d.linked ? <StatusBadge status="active" small/> : <button className="text-[10px] text-brand hover:underline">Link to Patient</button>}</td>
             </tr>
           ))}</tbody>

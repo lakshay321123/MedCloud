@@ -17,7 +17,7 @@ const demoChecks = [
 export default function EligibilityPage() {
   const [tab, setTab] = useState<'single'|'batch'>('single')
   return (
-    <ModuleShell title="Eligibility Verification" subtitle="Check insurance coverage and benefits" sprint={2}>
+    <ModuleShell title="Eligibility Verification" subtitle="Check insurance coverage and benefits">
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KPICard label="Checks Today" value="34" icon={<ShieldCheck size={20}/>}/>
         <KPICard label="Active" value="31" sub="91%" trend="up"/>
@@ -27,28 +27,28 @@ export default function EligibilityPage() {
       <div className="flex gap-2 mb-4">
         {(['single','batch'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-1.5 rounded-lg text-xs font-medium ${tab === t ? 'bg-brand/10 text-brand border border-brand/20' : 'bg-white/5 text-muted border border-border'}`}>
+            className={`px-4 py-1.5 rounded-lg text-xs font-medium ${tab === t ? 'bg-brand/10 text-brand' : 'bg-surface-elevated text-content-secondary border border-separator'}`}>
             {t === 'single' ? 'Single Check' : 'Batch Overnight'}
           </button>
         ))}
       </div>
-      <div className="bg-bg-secondary border border-border rounded-xl overflow-hidden">
+      <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-border text-xs text-muted">
+          <thead><tr className="border-b border-separator text-xs text-content-secondary">
             <th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Client</th>
             <th className="text-left px-4 py-3">Payer</th><th className="text-left px-4 py-3">Status</th>
             <th className="text-left px-4 py-3">Network</th><th className="text-left px-4 py-3">Copay</th>
             <th className="text-left px-4 py-3">Deductible</th>
           </tr></thead>
           <tbody>{demoChecks.map(c => (
-            <tr key={c.id} className="border-b border-border last:border-0 hover:bg-white/5">
+            <tr key={c.id} className="border-b border-separator last:border-0 table-row">
               <td className="px-4 py-3 font-medium">{c.patient}</td>
-              <td className="px-4 py-3 text-xs text-muted">{c.client}</td>
-              <td className="px-4 py-3 text-xs text-muted">{c.payer}</td>
-              <td className="px-4 py-3">{c.status === 'active' ? <span className="text-emerald-400 flex items-center gap-1 text-xs"><CheckCircle2 size={12}/> Active</span> : <span className="text-red-400 flex items-center gap-1 text-xs"><AlertTriangle size={12}/> Inactive</span>}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{c.client}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{c.payer}</td>
+              <td className="px-4 py-3">{c.status === 'active' ? <span className="text-emerald-600 text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-xs"><CheckCircle2 size={12}/> Active</span> : <span className="text-red-600 text-red-600 dark:text-red-400 flex items-center gap-1 text-xs"><AlertTriangle size={12}/> Inactive</span>}</td>
               <td className="px-4 py-3 text-xs">{c.network}</td>
               <td className="px-4 py-3 text-xs">{c.copay}</td>
-              <td className="px-4 py-3 text-xs text-muted">{c.deductible}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{c.deductible}</td>
             </tr>
           ))}</tbody>
         </table>
