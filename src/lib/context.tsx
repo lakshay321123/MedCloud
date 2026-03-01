@@ -1,8 +1,8 @@
 'use client'
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
-import { Theme, Language, UserRole, User } from '@/types'
-import { getDirection } from '@/i18n/translations'
+import { Theme, Language, UserRole, User, ClientOrg } from '@/types'
+import { demoClients } from '@/lib/demo-data'
 
 interface AppState {
   theme: Theme
@@ -10,13 +10,15 @@ interface AppState {
   direction: 'ltr' | 'rtl'
   sidebarCollapsed: boolean
   currentUser: User
+  selectedClient: ClientOrg | null
+  clients: ClientOrg[]
   setTheme: (t: Theme) => void
   setLanguage: (l: Language) => void
   toggleSidebar: () => void
   setRole: (r: UserRole) => void
+  setSelectedClient: (c: ClientOrg | null) => void
 }
 
-// Demo user for development
 const demoUser: User = {
   id: 'demo-001',
   name: 'Admin User',
@@ -27,11 +29,16 @@ const demoUser: User = {
 
 const AppContext = createContext<AppState | null>(null)
 
+function getDirection(lang: Language): 'ltr' | 'rtl' {
+  return lang === 'ar' ? 'rtl' : 'ltr'
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('dark')
   const [language, setLanguageState] = useState<Language>('en')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [currentUser, setCurrentUser] = useState<User>(demoUser)
+  const [selectedClient, setSelectedClientState] = useState<ClientOrg | null>(null)
 
   const direction = getDirection(language)
 
@@ -47,15 +54,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = l
   }, [])
 
-  const toggleSidebar = useCallback(() => {
-    setSidebarCollapsed(prev => !prev)
-  }, [])
+  const toggleSidebar = useCallback(() => setSidebarCollapsed(prev => !prev), [])
+  const setRole = useCallback((r: UserRole) => setCurrentUser(prev => ({ ...prev, role: r })), [])
+  const setSelectedClient = useCallback((c: ClientOrg | null) => setSelectedClientState(c), [])
 
-  const setRole = useCallback((r: UserRole) => {
-    setCurrentUser(prev => ({ ...prev, role: r }))
-  }, [])
-
-  // Initialize
   useEffect(() => {
     document.documentElement.classList.add(theme)
     document.documentElement.dir = direction
@@ -65,7 +67,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider value={{
       theme, language, direction, sidebarCollapsed, currentUser,
-      setTheme, setLanguage, toggleSidebar, setRole,
+      selectedClient, clients: demoClients,
+      setTheme, setLanguage, toggleSidebar, setRole, setSelectedClient,
     }}>
       {children}
     </AppContext.Provider>

@@ -1,385 +1,252 @@
 'use client'
-
 import React from 'react'
 import { useApp } from '@/lib/context'
-import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
-import { UserRole } from '@/types'
-import {
-  LayoutDashboard, DollarSign, FileText, ShieldAlert, Clock,
-  TrendingUp, Users, Phone, BrainCircuit, CheckCircle, AlertTriangle,
-  Target, Timer, ClipboardList, CreditCard, Upload, Eye, BarChart3,
-  Activity, Zap, ArrowUpRight, Receipt,
-} from 'lucide-react'
+import StatusBadge from '@/components/shared/StatusBadge'
+import { DollarSign, FileText, AlertTriangle, Clock, Users, Brain, Phone, Activity, Calendar, Mic, ClipboardList, TrendingUp } from 'lucide-react'
 
-/* ═══════════ EXECUTIVE DASHBOARD (admin, director) ═══════════ */
 function ExecutiveDashboard() {
   return (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KPICard title="Total Revenue" value="$2.4M" change={12.5} changeLabel="vs last month" icon={<DollarSign size={18} />} />
-        <KPICard title="Claims Submitted" value="3,847" change={8.2} changeLabel="vs last month" icon={<FileText size={18} />} />
-        <KPICard title="Denial Rate" value="4.2%" change={-1.8} changeLabel="improvement" icon={<ShieldAlert size={18} />} />
-        <KPICard title="Avg Days in A/R" value="28.5" change={-3.2} changeLabel="days faster" icon={<Clock size={18} />} />
+    <div>
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <KPICard label="Total Revenue (MTD)" value="$2.4M" sub="+8.2% vs last month" trend="up" icon={<DollarSign size={20}/>}/>
+        <KPICard label="Claims Submitted" value="3,847" sub="+124 today" trend="up" icon={<FileText size={20}/>}/>
+        <KPICard label="Denial Rate" value="4.2%" sub="-0.3% vs last month" trend="up" icon={<AlertTriangle size={20}/>}/>
+        <KPICard label="Avg Days in A/R" value="28.5" sub="-2.1 days" trend="up" icon={<Clock size={20}/>}/>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KPICard title="Collection Rate" value="96.8%" change={2.1} icon={<TrendingUp size={18} />} />
-        <KPICard title="Active Patients" value="12,450" change={5.4} icon={<Users size={18} />} />
-        <KPICard title="AI Calls Today" value="127" change={34} icon={<Phone size={18} />} />
-        <KPICard title="AI Coding Accuracy" value="94.2%" change={1.3} icon={<BrainCircuit size={18} />} />
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <KPICard label="Collection Rate" value="96.8%" sub="+0.4%" trend="up"/>
+        <KPICard label="Active Patients" value="12,450" icon={<Users size={20}/>}/>
+        <KPICard label="AI Calls Today" value="127" icon={<Phone size={20}/>}/>
+        <KPICard label="AI Coding Accuracy" value="94.2%" icon={<Brain size={20}/>}/>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 p-6 rounded-xl border bg-[var(--bg-card)] border-[var(--border-color)] glow-border">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Revenue Trend</h3>
-          <div className="h-48 flex items-center justify-center text-[var(--text-secondary)] text-xs font-mono">[ Chart — Sprint 3 ]</div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-bg-secondary border border-border rounded-xl p-4">
+          <h3 className="text-sm font-semibold mb-3">Revenue Trend (6 Months)</h3>
+          <div className="h-48 flex items-end gap-2 px-4">{[1.8,2.0,2.1,2.2,2.3,2.4].map((v,i)=>(
+            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+              <div className="w-full bg-brand/20 rounded-t" style={{height:`${(v/2.5)*180}px`}}><div className="w-full bg-brand rounded-t h-2"/></div>
+              <span className="text-[10px] text-muted">{['Oct','Nov','Dec','Jan','Feb','Mar'][i]}</span>
+            </div>
+          ))}</div>
         </div>
-        <div className="p-6 rounded-xl border bg-[var(--bg-card)] border-[var(--border-color)] glow-border">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Recent Activity</h3>
-          <div className="space-y-3">
-            {['Claim #4521 submitted', 'ERA file processed', 'Denial appeal sent', 'Voice call completed', 'Patient payment received'].map((item, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                <div className="w-1.5 h-1.5 rounded-full bg-brand/50 flex-shrink-0" />
-                <span>{item}</span>
-                <span className="ml-auto font-mono opacity-50">{i + 1}m ago</span>
-              </div>
-            ))}
-          </div>
+        <div className="bg-bg-secondary border border-border rounded-xl p-4">
+          <h3 className="text-sm font-semibold mb-3">Recent Activity</h3>
+          <div className="space-y-2 text-xs">{[
+            {t:'Claim #CLM-4501 paid — $250', c:'text-emerald-400', ago:'2h'},
+            {t:'ERA posted — 23 claims from UHC', c:'text-blue-400', ago:'3h'},
+            {t:'Denial pattern alert: Aetna no-auth', c:'text-red-400', ago:'4h'},
+            {t:'Voice AI completed 12 calls', c:'text-purple-400', ago:'5h'},
+            {t:'New provider credentialing started', c:'text-amber-400', ago:'6h'},
+          ].map((a,i)=>(
+            <div key={i} className="flex justify-between items-center py-1.5 border-b border-border last:border-0">
+              <span className={a.c}>{a.t}</span><span className="text-muted">{a.ago} ago</span>
+            </div>
+          ))}</div>
         </div>
       </div>
-    </>
+    </div>
   )
 }
 
-/* ═══════════ SUPERVISOR / MANAGER DASHBOARD ═══════════ */
 function SupervisorDashboard() {
+  const teams = [{name:'Coding',used:85,cap:100},{name:'Billing',used:72,cap:100},{name:'A/R',used:91,cap:100},{name:'Posting',used:65,cap:100}]
   return (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KPICard title="Team Productivity" value="94%" change={3.2} changeLabel="vs target" icon={<Target size={18} />} />
-        <KPICard title="Open Tasks" value="247" change={-12} changeLabel="less than yesterday" icon={<ClipboardList size={18} />} />
-        <KPICard title="Claims in Queue" value="182" change={-8.5} changeLabel="clearing faster" icon={<FileText size={18} />} />
-        <KPICard title="Avg Processing Time" value="4.2h" change={-15} changeLabel="faster" icon={<Timer size={18} />} />
+    <div>
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <KPICard label="Team Productivity" value="94%" sub="+2% today" trend="up"/>
+        <KPICard label="Open Tasks" value="247" icon={<ClipboardList size={20}/>}/>
+        <KPICard label="Claims in Queue" value="182"/>
+        <KPICard label="Escalations" value="8" sub="3 urgent" trend="down"/>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KPICard title="Denial Rate (Team)" value="4.2%" change={-1.8} icon={<ShieldAlert size={18} />} />
-        <KPICard title="First Pass Rate" value="91.3%" change={2.4} icon={<CheckCircle size={18} />} />
-        <KPICard title="Escalations Today" value="8" change={-3} icon={<AlertTriangle size={18} />} />
-        <KPICard title="Staff Online" value="42/48" icon={<Users size={18} />} />
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="p-6 rounded-xl border bg-[var(--bg-card)] border-[var(--border-color)] glow-border">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Team Workload</h3>
-          <div className="space-y-3">
-            {[
-              { name: 'Coding Team', tasks: 67, capacity: 80 },
-              { name: 'Billing Team', tasks: 54, capacity: 60 },
-              { name: 'AR Team', tasks: 82, capacity: 90 },
-              { name: 'Posting Team', tasks: 39, capacity: 50 },
-            ].map((team, i) => (
-              <div key={i}>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-[var(--text-primary)]">{team.name}</span>
-                  <span className="text-[var(--text-secondary)] font-mono">{team.tasks}/{team.capacity}</span>
-                </div>
-                <div className="h-2 bg-[var(--bg-primary)] rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-brand" style={{ width: `${(team.tasks / team.capacity) * 100}%`, opacity: 0.7 }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="p-6 rounded-xl border bg-[var(--bg-card)] border-[var(--border-color)] glow-border">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Pending Escalations</h3>
-          <div className="space-y-3">
-            {[
-              { issue: 'Claim #8821 — payer not responding 45+ days', priority: 'high' },
-              { issue: 'Patient complaint — billing dispute #3312', priority: 'high' },
-              { issue: 'ERA mismatch — Aetna batch #992', priority: 'medium' },
-              { issue: 'Coding query — modifier 25 usage', priority: 'low' },
-            ].map((esc, i) => (
-              <div key={i} className="flex items-start gap-2 text-xs">
-                <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${esc.priority === 'high' ? 'bg-red-400' : esc.priority === 'medium' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-                <span className="text-[var(--text-secondary)]">{esc.issue}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </>
-  )
-}
-
-/* ═══════════ CODER DASHBOARD ═══════════ */
-function CoderDashboard() {
-  return (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KPICard title="My Queue" value="23" icon={<ClipboardList size={18} />} />
-        <KPICard title="Coded Today" value="47" change={12} changeLabel="vs avg" icon={<CheckCircle size={18} />} />
-        <KPICard title="AI Suggestions Used" value="89%" change={4.2} icon={<BrainCircuit size={18} />} />
-        <KPICard title="Accuracy Rate" value="97.1%" change={0.8} icon={<Target size={18} />} />
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 p-6 rounded-xl border bg-[var(--bg-card)] border-[var(--border-color)] glow-border">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">My Coding Queue</h3>
-          <div className="space-y-2">
-            {[
-              { patient: 'Smith, John', type: 'E&M Visit', provider: 'Dr. Martinez', urgency: 'normal', age: '2h' },
-              { patient: 'Johnson, Mary', type: 'Surgical', provider: 'Dr. Chen', urgency: 'urgent', age: '4h' },
-              { patient: 'Williams, Robert', type: 'Lab/Path', provider: 'Dr. Patel', urgency: 'normal', age: '1h' },
-              { patient: 'Brown, Lisa', type: 'Radiology', provider: 'Dr. Kim', urgency: 'normal', age: '30m' },
-              { patient: 'Davis, Michael', type: 'E&M Visit', provider: 'Dr. Martinez', urgency: 'hold', age: '6h' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer">
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${item.urgency === 'urgent' ? 'bg-red-400' : item.urgency === 'hold' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-                <span className="text-sm text-[var(--text-primary)] w-40 truncate">{item.patient}</span>
-                <span className="text-xs text-[var(--text-secondary)] w-24">{item.type}</span>
-                <span className="text-xs text-[var(--text-secondary)] flex-1">{item.provider}</span>
-                <span className="text-xs font-mono text-[var(--text-secondary)]">{item.age}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="p-6 rounded-xl border bg-[var(--bg-card)] border-[var(--border-color)] glow-border">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">My Stats This Week</h3>
-          <div className="space-y-4">
-            {[
-              { label: 'Charts Coded', value: '234', trend: '+18%' },
-              { label: 'Avg Time per Chart', value: '6.2 min', trend: '-12%' },
-              { label: 'AI Override Rate', value: '11%', trend: '-3%' },
-              { label: 'Queries Sent', value: '4', trend: '' },
-              { label: 'Auditor Returns', value: '2', trend: '' },
-            ].map((stat, i) => (
-              <div key={i} className="flex justify-between items-center">
-                <span className="text-xs text-[var(--text-secondary)]">{stat.label}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-mono text-[var(--text-primary)]">{stat.value}</span>
-                  {stat.trend && <span className={`text-[10px] font-mono ${stat.trend.startsWith('+') ? 'text-emerald-400' : 'text-brand'}`}>{stat.trend}</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </>
-  )
-}
-
-/* ═══════════ BILLER DASHBOARD ═══════════ */
-function BillerDashboard() {
-  return (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KPICard title="Claims to Submit" value="34" icon={<FileText size={18} />} />
-        <KPICard title="Submitted Today" value="62" change={8} icon={<CheckCircle size={18} />} />
-        <KPICard title="Rejections (24h)" value="3" change={-2} changeLabel="fewer" icon={<AlertTriangle size={18} />} />
-        <KPICard title="First Pass Rate" value="93.1%" change={1.5} icon={<Target size={18} />} />
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="p-6 rounded-xl border bg-[var(--bg-card)] border-[var(--border-color)] glow-border">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Claims Ready for Submission</h3>
-          <div className="space-y-2">
-            {[
-              { id: 'CLM-4892', patient: 'Smith, John', payer: 'UHC', amount: '$1,250', status: 'ready' },
-              { id: 'CLM-4893', patient: 'Davis, Sarah', payer: 'Aetna', amount: '$820', status: 'ready' },
-              { id: 'CLM-4894', patient: 'Wilson, Tom', payer: 'BCBS', amount: '$2,100', status: 'needs_review' },
-              { id: 'CLM-4895', patient: 'Lee, Amy', payer: 'Cigna', amount: '$450', status: 'ready' },
-            ].map((claim, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-primary)]">
-                <span className="text-xs font-mono text-brand">{claim.id}</span>
-                <span className="text-sm text-[var(--text-primary)] w-32 truncate">{claim.patient}</span>
-                <span className="text-xs text-[var(--text-secondary)] w-16">{claim.payer}</span>
-                <span className="text-xs font-mono text-[var(--text-primary)] ml-auto">{claim.amount}</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full ${claim.status === 'ready' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                  {claim.status === 'ready' ? 'Ready' : 'Review'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="p-6 rounded-xl border bg-[var(--bg-card)] border-[var(--border-color)] glow-border">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Recent Rejections</h3>
-          <div className="space-y-3">
-            {[
-              { id: 'CLM-4870', reason: 'Missing modifier — CPT 99214', payer: 'UHC' },
-              { id: 'CLM-4865', reason: 'Invalid NPI — rendering provider', payer: 'Humana' },
-              { id: 'CLM-4851', reason: 'Duplicate claim submitted', payer: 'BCBS' },
-            ].map((rej, i) => (
-              <div key={i} className="p-3 rounded-lg bg-red-500/5 border border-red-500/10">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-mono text-red-400">{rej.id}</span>
-                  <span className="text-xs text-[var(--text-secondary)]">{rej.payer}</span>
-                </div>
-                <p className="text-xs text-[var(--text-secondary)]">{rej.reason}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </>
-  )
-}
-
-/* ═══════════ AR TEAM DASHBOARD ═══════════ */
-function ARDashboard() {
-  return (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KPICard title="My A/R Accounts" value="156" icon={<ClipboardList size={18} />} />
-        <KPICard title="Worked Today" value="28" change={5} icon={<CheckCircle size={18} />} />
-        <KPICard title="Follow-ups Due" value="42" icon={<Timer size={18} />} />
-        <KPICard title="Avg Days Outstanding" value="34.2" change={-4.1} changeLabel="days faster" icon={<Clock size={18} />} />
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="p-6 rounded-xl border bg-[var(--bg-card)] border-[var(--border-color)] glow-border">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Aging Buckets (My Accounts)</h3>
-          <div className="space-y-3">
-            {[
-              { bucket: '0-30 days', count: 45, color: 'bg-emerald-400' },
-              { bucket: '31-60 days', count: 38, color: 'bg-brand' },
-              { bucket: '61-90 days', count: 32, color: 'bg-amber-400' },
-              { bucket: '91-120 days', count: 24, color: 'bg-orange-400' },
-              { bucket: '120+ days', count: 17, color: 'bg-red-400' },
-            ].map((b, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <span className="text-xs text-[var(--text-secondary)] w-24">{b.bucket}</span>
-                <div className="flex-1 h-5 bg-[var(--bg-primary)] rounded overflow-hidden">
-                  <div className={`h-full rounded ${b.color}`} style={{ width: `${(b.count / 50) * 100}%`, opacity: 0.7 }} />
-                </div>
-                <span className="text-xs font-mono text-[var(--text-primary)] w-8 text-right">{b.count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="p-6 rounded-xl border bg-[var(--bg-card)] border-[var(--border-color)] glow-border">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Today&apos;s Follow-up Priority</h3>
-          <div className="space-y-2">
-            {[
-              { patient: 'Martinez, Carlos', payer: 'UHC', amount: '$4,200', days: 95, action: 'Call payer' },
-              { patient: 'Kim, Susan', payer: 'Aetna', amount: '$1,800', days: 72, action: 'Send appeal' },
-              { patient: 'Brown, James', payer: 'BCBS', amount: '$3,100', days: 64, action: 'Check portal' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-[var(--bg-primary)] text-xs">
-                <span className="text-[var(--text-primary)] w-32 truncate">{item.patient}</span>
-                <span className="text-[var(--text-secondary)] w-12">{item.payer}</span>
-                <span className="font-mono text-[var(--text-primary)]">{item.amount}</span>
-                <span className="font-mono text-amber-400 ml-auto">{item.days}d</span>
-                <span className="text-brand text-[10px]">{item.action}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </>
-  )
-}
-
-/* ═══════════ POSTING TEAM DASHBOARD ═══════════ */
-function PostingDashboard() {
-  return (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KPICard title="ERAs to Process" value="12" icon={<Receipt size={18} />} />
-        <KPICard title="Posted Today" value="89" change={14} icon={<CheckCircle size={18} />} />
-        <KPICard title="Unmatched Payments" value="4" icon={<AlertTriangle size={18} />} />
-        <KPICard title="Auto-Posted (AI)" value="76%" change={8.3} icon={<Zap size={18} />} />
-      </div>
-      <div className="p-6 rounded-xl border bg-[var(--bg-card)] border-[var(--border-color)] glow-border">
-        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Pending ERA Files</h3>
-        <div className="space-y-2">
-          {[
-            { file: 'ERA_UHC_20260301.835', claims: 45, total: '$34,200' },
-            { file: 'ERA_AETNA_20260301.835', claims: 28, total: '$18,700' },
-            { file: 'ERA_BCBS_20260228.835', claims: 12, total: '$8,400' },
-          ].map((era, i) => (
-            <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-primary)]">
-              <Receipt size={14} className="text-brand flex-shrink-0" />
-              <span className="text-xs font-mono text-[var(--text-primary)] flex-1 truncate">{era.file}</span>
-              <span className="text-xs text-[var(--text-secondary)]">{era.claims} claims</span>
-              <span className="text-xs font-mono text-[var(--text-primary)]">{era.total}</span>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-bg-secondary border border-border rounded-xl p-4">
+          <h3 className="text-sm font-semibold mb-3">Team Workload</h3>
+          {teams.map(t=>(
+            <div key={t.name} className="mb-3">
+              <div className="flex justify-between text-xs mb-1"><span>{t.name}</span><span className="text-muted">{t.used}%</span></div>
+              <div className="h-2 bg-white/5 rounded-full"><div className={`h-full rounded-full ${t.used>90?'bg-red-500':t.used>75?'bg-amber-500':'bg-brand'}`} style={{width:`${t.used}%`}}/></div>
             </div>
           ))}
         </div>
+        <div className="bg-bg-secondary border border-border rounded-xl p-4">
+          <h3 className="text-sm font-semibold mb-3">Pending Escalations</h3>
+          <div className="space-y-2 text-xs">{[
+            {t:'High-dollar claim aging 95 days — P. Chen',p:'urgent'},{t:'Timely filing risk — K. Ibrahim',p:'high'},{t:'Repeated denials from Aetna',p:'high'},
+          ].map((e,i)=>(
+            <div key={i} className="flex justify-between items-center py-1.5 border-b border-border last:border-0">
+              <span>{e.t}</span><StatusBadge status={e.p} small/>
+            </div>
+          ))}</div>
+        </div>
       </div>
-    </>
+    </div>
   )
 }
 
-/* ═══════════ CLIENT DASHBOARD ═══════════ */
+function CoderDashboard() {
+  return (
+    <div>
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <KPICard label="My Queue" value="23" icon={<ClipboardList size={20}/>}/>
+        <KPICard label="Coded Today" value="47" sub="+12 vs yesterday" trend="up"/>
+        <KPICard label="AI Suggestions Used" value="89%"/>
+        <KPICard label="Accuracy Rate" value="97.1%"/>
+      </div>
+      <div className="bg-bg-secondary border border-border rounded-xl p-4">
+        <h3 className="text-sm font-semibold mb-3">My Stats</h3>
+        <div className="grid grid-cols-4 gap-4 text-xs">
+          <div><span className="text-muted block">Charts Coded (MTD)</span><span className="text-lg font-bold">234</span></div>
+          <div><span className="text-muted block">Avg Time/Chart</span><span className="text-lg font-bold">6.2 min</span></div>
+          <div><span className="text-muted block">AI Override Rate</span><span className="text-lg font-bold">11%</span></div>
+          <div><span className="text-muted block">Auditor Returns</span><span className="text-lg font-bold">2</span></div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BillerDashboard() {
+  return (
+    <div>
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <KPICard label="Claims to Submit" value="34"/>
+        <KPICard label="Submitted Today" value="62" trend="up" sub="+15 vs yesterday"/>
+        <KPICard label="Rejections (24h)" value="3" trend="down"/>
+        <KPICard label="First Pass Rate" value="93.1%"/>
+      </div>
+    </div>
+  )
+}
+
+function ARDashboard() {
+  const buckets = [{l:'0-30',v:45000,c:'bg-emerald-500'},{l:'31-60',v:32000,c:'bg-cyan-500'},{l:'61-90',v:18000,c:'bg-amber-500'},{l:'91-120',v:8500,c:'bg-orange-500'},{l:'120+',v:4200,c:'bg-red-500'}]
+  const max = Math.max(...buckets.map(b=>b.v))
+  return (
+    <div>
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <KPICard label="My A/R Accounts" value="156" icon={<TrendingUp size={20}/>}/>
+        <KPICard label="Worked Today" value="28"/>
+        <KPICard label="Follow-ups Due" value="42"/>
+        <KPICard label="Avg Days Outstanding" value="34.2"/>
+      </div>
+      <div className="bg-bg-secondary border border-border rounded-xl p-4">
+        <h3 className="text-sm font-semibold mb-3">My Aging Buckets</h3>
+        <div className="flex items-end gap-4 h-32 px-4">{buckets.map(b=>(
+          <div key={b.l} className="flex-1 flex flex-col items-center gap-1">
+            <span className="text-[10px] text-muted">${(b.v/1000).toFixed(0)}K</span>
+            <div className={`w-full ${b.c} rounded-t`} style={{height:`${(b.v/max)*100}px`}}/>
+            <span className="text-[10px] text-muted">{b.l}</span>
+          </div>
+        ))}</div>
+      </div>
+    </div>
+  )
+}
+
+function PostingDashboard() {
+  return (
+    <div>
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <KPICard label="ERAs to Process" value="12"/>
+        <KPICard label="Posted Today" value="89" trend="up" sub="+23"/>
+        <KPICard label="Unmatched Payments" value="4"/>
+        <KPICard label="Auto-Posted (AI)" value="76%"/>
+      </div>
+    </div>
+  )
+}
+
+function ProviderDashboard() {
+  return (
+    <div>
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <KPICard label="Today's Patients" value="14" icon={<Calendar size={20}/>}/>
+        <KPICard label="Pending Sign-offs" value="3" icon={<Mic size={20}/>}/>
+        <KPICard label="Seen Today" value="5"/>
+        <KPICard label="Clinical Alerts" value="1" sub="Drug interaction" trend="down"/>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-bg-secondary border border-border rounded-xl p-4">
+          <h3 className="text-sm font-semibold mb-3">Today&apos;s Schedule</h3>
+          <div className="space-y-2 text-xs">{[
+            {t:'9:00',p:'John Smith',type:'Follow-up',s:'completed'},{t:'9:30',p:'Sarah Johnson',type:'Consultation',s:'checked_in'},
+            {t:'10:00',p:'Walk-in TBD',type:'Walk-in',s:'walk_in'},{t:'10:30',p:'Maria Garcia',type:'New Patient',s:'booked'},
+          ].map((a,i)=>(
+            <div key={i} className="flex items-center gap-3 py-1.5 border-b border-border last:border-0">
+              <span className="text-muted w-12">{a.t}</span><span className="flex-1">{a.p}</span><span className="text-muted">{a.type}</span><StatusBadge status={a.s} small/>
+            </div>
+          ))}</div>
+        </div>
+        <div className="bg-bg-secondary border border-border rounded-xl p-4">
+          <h3 className="text-sm font-semibold mb-3">Pending Sign-offs</h3>
+          <div className="space-y-2 text-xs">{[
+            {p:'Robert Chen',d:'Mar 1',type:'Cardiology Consult'},{p:'Ahmed Al Mansouri',d:'Mar 1',type:'Follow-up'},{p:'Khalid Ibrahim',d:'Feb 28',type:'Check-up'},
+          ].map((n,i)=>(
+            <div key={i} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
+              <div><span className="font-medium">{n.p}</span><span className="text-muted ml-2">{n.type}</span></div>
+              <span className="text-muted">{n.d}</span>
+            </div>
+          ))}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ClientDashboard() {
   return (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KPICard title="Claims This Month" value="342" change={5.2} icon={<FileText size={18} />} />
-        <KPICard title="Pending Claims" value="28" icon={<Clock size={18} />} />
-        <KPICard title="Denial Rate" value="3.8%" change={-1.2} changeLabel="improving" icon={<ShieldAlert size={18} />} />
-        <KPICard title="Avg Days to Payment" value="22" change={-5} changeLabel="days faster" icon={<Timer size={18} />} />
+    <div>
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <KPICard label="Claims This Month" value="342" icon={<FileText size={20}/>}/>
+        <KPICard label="Pending Claims" value="28"/>
+        <KPICard label="Denial Rate" value="3.8%" trend="up" sub="-0.5%"/>
+        <KPICard label="Avg Days to Payment" value="22" trend="up" sub="-3 days"/>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 p-6 rounded-xl border bg-[var(--bg-card)] border-[var(--border-color)] glow-border">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Claims Summary</h3>
-          <div className="h-48 flex items-center justify-center text-[var(--text-secondary)] text-xs font-mono">[ Claims by Status Chart — Sprint 3 ]</div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-bg-secondary border border-border rounded-xl p-4">
+          <h3 className="text-sm font-semibold mb-3">Today&apos;s Appointments</h3>
+          <div className="space-y-2 text-xs">{[
+            {t:'9:00',p:'John Smith',s:'completed'},{t:'9:30',p:'Sarah Johnson',s:'checked_in'},{t:'10:30',p:'Maria Garcia',s:'booked'},
+          ].map((a,i)=>(
+            <div key={i} className="flex items-center gap-3 py-1.5 border-b border-border last:border-0">
+              <span className="text-muted w-12">{a.t}</span><span className="flex-1">{a.p}</span><StatusBadge status={a.s} small/>
+            </div>
+          ))}</div>
         </div>
-        <div className="p-6 rounded-xl border bg-[var(--bg-card)] border-[var(--border-color)] glow-border">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Quick Actions</h3>
-          <div className="space-y-2">
-            {[
-              { label: 'Upload Superbill', icon: Upload, path: '/portal/scan-submit' },
-              { label: 'Track Claims', icon: Eye, path: '/portal/watch-track' },
-              { label: 'Add New Patient', icon: Users, path: '/portal/patients' },
-              { label: 'Contact Support', icon: Activity, path: '/portal/talk-to-us' },
-            ].map((action, i) => (
-              <a key={i} href={action.path} className="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer">
-                <action.icon size={16} className="text-brand" />
-                <span className="text-sm text-[var(--text-primary)]">{action.label}</span>
-                <ArrowUpRight size={14} className="ml-auto text-[var(--text-secondary)]" />
-              </a>
-            ))}
-          </div>
+        <div className="bg-bg-secondary border border-border rounded-xl p-4">
+          <h3 className="text-sm font-semibold mb-3">Quick Actions</h3>
+          <div className="grid grid-cols-2 gap-2">{[
+            {l:'Upload Documents',h:'/portal/scan-submit'},{l:'Track Claims',h:'/portal/watch-track'},{l:'View Schedule',h:'/portal/appointments'},{l:'Messages',h:'/portal/messages'},
+          ].map(a=>(
+            <a key={a.l} href={a.h} className="bg-white/5 border border-border rounded-lg px-3 py-2 text-xs text-center hover:border-brand/30 hover:text-brand transition-all">{a.l}</a>
+          ))}</div>
         </div>
       </div>
-    </>
+    </div>
   )
 }
 
-/* ═══════════ MAPPING ═══════════ */
-const dashboardMap: Record<string, React.ComponentType> = {
-  admin: ExecutiveDashboard,
-  director: ExecutiveDashboard,
-  supervisor: SupervisorDashboard,
-  manager: SupervisorDashboard,
-  coder: CoderDashboard,
-  biller: BillerDashboard,
-  ar_team: ARDashboard,
-  posting_team: PostingDashboard,
-  client: ClientDashboard,
-}
-
-const subtitleMap: Record<string, string> = {
-  admin: 'Executive Overview',
-  director: 'Executive Overview',
-  supervisor: 'Team Performance',
-  manager: 'Team Performance',
-  coder: 'My Coding Workspace',
-  biller: 'My Billing Queue',
-  ar_team: 'My A/R Workload',
-  posting_team: 'Payment Processing',
-  client: 'Your Practice Overview',
+const dashboardMap: Record<string, React.FC> = {
+  admin: ExecutiveDashboard, director: ExecutiveDashboard,
+  supervisor: SupervisorDashboard, manager: SupervisorDashboard,
+  coder: CoderDashboard, biller: BillerDashboard,
+  ar_team: ARDashboard, posting_team: PostingDashboard,
+  provider: ProviderDashboard, client: ClientDashboard,
 }
 
 export default function DashboardPage() {
-  const { currentUser } = useApp()
-  const Dashboard = dashboardMap[currentUser.role] || ExecutiveDashboard
-  const subtitle = subtitleMap[currentUser.role] || 'Overview'
-
+  const { currentUser, selectedClient } = useApp()
+  const DashComp = dashboardMap[currentUser.role] || ExecutiveDashboard
   return (
-    <ModuleShell
-      title="Dashboard"
-      subtitle={`${subtitle} — Welcome, ${currentUser.name}`}
-      sprint="Sprint 1"
-      icon={<LayoutDashboard size={20} />}
-    >
-      <Dashboard />
-    </ModuleShell>
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-bold">Dashboard</h1>
+          <p className="text-sm text-muted">{selectedClient ? selectedClient.name : 'All Clients'} • {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        </div>
+      </div>
+      <DashComp />
+    </div>
   )
 }

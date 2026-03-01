@@ -1,32 +1,18 @@
 'use client'
-
 import React from 'react'
-import { AppProvider, useApp } from '@/lib/context'
-import Sidebar from '@/components/layout/Sidebar'
-import Topbar from '@/components/layout/Topbar'
-import { cn } from '@/lib/utils'
-
-function ShellInner({ children }: { children: React.ReactNode }) {
-  const { sidebarCollapsed } = useApp()
-
-  return (
-    <>
-      <Sidebar />
-      <Topbar />
-      <main className={cn(
-        'transition-all duration-300 mt-14 p-6 grid-bg min-h-[calc(100vh-56px)]',
-        sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]',
-      )}>
-        {children}
-      </main>
-    </>
-  )
-}
+import Sidebar from './Sidebar'
+import Topbar from './Topbar'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <AppProvider>
-      <ShellInner>{children}</ShellInner>
-    </AppProvider>
+    <div className="flex h-screen bg-bg-primary text-white overflow-hidden">
+      <Sidebar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Topbar />
+        <main className="flex-1 overflow-y-auto p-6">
+          {children}
+        </main>
+      </div>
+    </div>
   )
 }

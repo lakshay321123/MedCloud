@@ -1,0 +1,1840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedCloud — Complete RCM Workflow Map</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #080c14;
+    --surface: #0f1520;
+    --card: #151d2e;
+    --border: #1e293b;
+    --brand: #00B5D6;
+    --brand-dim: rgba(0,181,214,0.15);
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --clinic: #10b981;
+    --clinic-bg: rgba(16,185,129,0.08);
+    --staff: #3b82f6;
+    --staff-bg: rgba(59,130,246,0.08);
+    --ai: #a855f7;
+    --ai-bg: rgba(168,85,247,0.08);
+    --shared: #f59e0b;
+    --shared-bg: rgba(245,158,11,0.08);
+    --uae: #06b6d4;
+    --us: #ef4444;
+  }
+
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    padding: 0;
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* Header */
+  .hero {
+    text-align: center;
+    padding: 48px 24px 32px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(0,181,214,0.04) 0%, transparent 100%);
+  }
+  .hero h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+  .hero h1 span { color: var(--brand); }
+  .hero p { color: var(--muted); font-size: 14px; max-width: 700px; margin: 0 auto; }
+
+  /* Legend */
+  .legend {
+    display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;
+    padding: 16px 24px; border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 6px; font-size: 12px;
+  }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+
+  /* Tab navigation */
+  .tabs {
+    display: flex; gap: 0; border-bottom: 1px solid var(--border);
+    background: var(--surface); padding: 0 24px;
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 12px 20px; font-size: 13px; font-weight: 500;
+    color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent;
+    white-space: nowrap; transition: all 0.2s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--brand); border-bottom-color: var(--brand); }
+
+  /* Content area */
+  .content { padding: 32px 24px; max-width: 1400px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Section headers */
+  .section-title {
+    font-size: 18px; font-weight: 600; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title .badge {
+    font-size: 10px; padding: 2px 8px; border-radius: 99px;
+    font-weight: 600; letter-spacing: 0.5px;
+  }
+
+  /* Flow diagram */
+  .flow { display: flex; flex-direction: column; gap: 0; margin-bottom: 40px; }
+  .flow-step {
+    display: flex; align-items: stretch; gap: 0; position: relative;
+  }
+  .flow-num {
+    width: 48px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center;
+    padding-top: 20px;
+  }
+  .flow-num .circle {
+    width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; z-index: 1;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .flow-num .line {
+    width: 2px; flex: 1; margin-top: 4px;
+  }
+  .flow-card {
+    flex: 1; padding: 16px 20px; border: 1px solid var(--border);
+    border-radius: 10px; margin: 6px 0; transition: all 0.2s;
+  }
+  .flow-card:hover {
+    border-color: var(--brand); box-shadow: 0 0 20px rgba(0,181,214,0.08);
+  }
+  .flow-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .flow-card p { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .flow-card .who { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; }
+  .flow-card .modules { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+  .flow-card .mod-tag {
+    font-size: 10px; padding: 2px 8px; border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    border: 1px solid var(--border); background: var(--surface);
+  }
+  .flow-card .ai-tag {
+    font-size: 10px; padding: 2px 8px; border-radius: 4px;
+    background: var(--ai-bg); color: var(--ai); border: 1px solid rgba(168,85,247,0.2);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .flow-card .region-tag {
+    font-size: 9px; padding: 1px 6px; border-radius: 3px;
+    font-weight: 600; margin-left: 4px;
+  }
+  .tag-uae { background: rgba(6,182,212,0.1); color: var(--uae); border: 1px solid rgba(6,182,212,0.2); }
+  .tag-us { background: rgba(239,68,68,0.1); color: var(--us); border: 1px solid rgba(239,68,68,0.2); }
+  .tag-both { background: rgba(245,158,11,0.1); color: var(--shared); border: 1px solid rgba(245,158,11,0.2); }
+
+  /* Owner colors */
+  .owner-clinic { border-left: 3px solid var(--clinic); }
+  .owner-clinic .who { color: var(--clinic); }
+  .owner-clinic .circle { background: var(--clinic); color: #000; }
+  .owner-clinic .line { background: var(--clinic); opacity: 0.2; }
+
+  .owner-staff { border-left: 3px solid var(--staff); }
+  .owner-staff .who { color: var(--staff); }
+  .owner-staff .circle { background: var(--staff); color: #fff; }
+  .owner-staff .line { background: var(--staff); opacity: 0.2; }
+
+  .owner-ai { border-left: 3px solid var(--ai); }
+  .owner-ai .who { color: var(--ai); }
+  .owner-ai .circle { background: var(--ai); color: #fff; }
+  .owner-ai .line { background: var(--ai); opacity: 0.2; }
+
+  .owner-shared { border-left: 3px solid var(--shared); }
+  .owner-shared .who { color: var(--shared); }
+  .owner-shared .circle { background: var(--shared); color: #000; }
+  .owner-shared .line { background: var(--shared); opacity: 0.2; }
+
+  /* Module map table */
+  .mod-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 32px; }
+  .mod-table th { text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--border); color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .mod-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .mod-table tr:hover td { background: rgba(0,181,214,0.03); }
+  .mod-table .mod-name { font-weight: 600; color: var(--text); }
+  .mod-table .mod-path { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); }
+
+  /* Diff boxes */
+  .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+  .diff-box { padding: 20px; border-radius: 10px; border: 1px solid var(--border); }
+  .diff-box h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .diff-box ul { list-style: none; padding: 0; }
+  .diff-box li { font-size: 12px; color: var(--muted); padding: 4px 0; padding-left: 16px; position: relative; }
+  .diff-box li::before { content: '→'; position: absolute; left: 0; color: var(--brand); }
+  .diff-uae { background: rgba(6,182,212,0.03); }
+  .diff-uae h3 { color: var(--uae); }
+  .diff-us { background: rgba(239,68,68,0.03); }
+  .diff-us h3 { color: var(--us); }
+
+  /* Role matrix */
+  .role-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 32px; }
+  .role-card { padding: 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); }
+  .role-card h4 { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--brand); }
+  .role-card .dash-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .role-card .kpis { font-size: 11px; color: var(--text); }
+  .role-card .kpis li { padding: 2px 0; }
+  .role-card .no-see { font-size: 10px; color: #ef4444; margin-top: 8px; font-style: italic; }
+
+  /* Summary box */
+  .summary-box {
+    padding: 20px; border-radius: 10px; border: 1px solid var(--brand);
+    background: var(--brand-dim); margin-bottom: 32px;
+  }
+  .summary-box h3 { font-size: 14px; font-weight: 600; color: var(--brand); margin-bottom: 8px; }
+  .summary-box p { font-size: 12px; color: var(--text); }
+
+  @media (max-width: 768px) {
+    .diff-grid { grid-template-columns: 1fr; }
+    .role-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1><span>MedCloud</span> — Complete RCM Workflow Map</h1>
+  <p>How data flows from patient encounter to payment collection. Who does what. Where AI plugs in. UAE vs US differences. Module-to-role mapping.</p>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--clinic)"></div> Clinic / Client (Doctor's Office)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--staff)"></div> Cosentus Staff (RCM Team)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--ai)"></div> AI / Automation</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--shared)"></div> Shared / Both</div>
+  <div class="legend-item"><span class="region-tag tag-uae">UAE</span></div>
+  <div class="legend-item"><span class="region-tag tag-us">US</span></div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('flow')">RCM Flow (13 Steps)</div>
+  <div class="tab" onclick="showTab('modules')">Module → Role Map</div>
+  <div class="tab" onclick="showTab('regions')">UAE vs US Differences</div>
+  <div class="tab" onclick="showTab('roles')">Dashboard per Role</div>
+  <div class="tab" onclick="showTab('ai')">15 AI Features Map</div>
+  <div class="tab" onclick="showTab('docaccess')">Document Access Pattern</div>
+  <div class="tab" onclick="showTab('multiorg')">Multi-Client (Staff View)</div>
+  <div class="tab" onclick="showTab('doctor')">Doctor's Experience</div>
+  <div class="tab" onclick="showTab('scenarios')">Real-World Scenarios</div>
+  <div class="tab active-fix" onclick="showTab('clientflow')" style="color:var(--us);">⚠ Corrected Client Flow</div>
+  <div class="tab" onclick="showTab('issues')">Current Issues to Fix</div>
+</div>
+
+<div class="content">
+
+<!-- ═══════════ TAB 1: RCM FLOW ═══════════ -->
+<div id="flow" class="panel active">
+  <div class="summary-box">
+    <h3>Key Insight: Cosentus is the RCM COMPANY, not the clinic</h3>
+    <p>Cosentus serves 60+ clinics/practices as clients. <strong>The CLINIC</strong> does: patient registration, scheduling, encounters, clinical notes, AI Scribe dictation. <strong>Cosentus STAFF</strong> does: coding, billing, claim submission, payment posting, denials, AR follow-up, voice AI calls to payers. <strong>The Client Portal</strong> is how clinics upload work to Cosentus and track their revenue.</p>
+  </div>
+
+  <div class="section-title">Complete Revenue Cycle — 13 Steps</div>
+
+  <div class="flow">
+    <!-- Step 1 -->
+    <div class="flow-step">
+      <div class="flow-num owner-clinic"><div class="circle">1</div><div class="line"></div></div>
+      <div class="flow-card owner-clinic">
+        <div class="who">Clinic / Client</div>
+        <h3>Patient Registration & Scheduling</h3>
+        <p>Clinic front desk registers new patient: demographics, ID, insurance info. Schedules appointment. For UAE: Emirates ID, TPA. For US: SSN (optional), commercial payer.</p>
+        <div class="modules">
+          <span class="mod-tag">Patients</span>
+          <span class="mod-tag">Scheduling</span>
+          <span class="region-tag tag-uae">Emirates ID</span>
+          <span class="region-tag tag-us">SSN</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="flow-step">
+      <div class="flow-num owner-shared"><div class="circle">2</div><div class="line"></div></div>
+      <div class="flow-card owner-shared">
+        <div class="who">Shared — AI Automated</div>
+        <h3>Insurance Verification & Eligibility</h3>
+        <p>Verify patient has active coverage BEFORE the visit. Real-time 270/271 (US) or TPA portal check (UAE via RPA bot). Returns: coverage status, copay, deductible, network, benefits.</p>
+        <div class="modules">
+          <span class="mod-tag">Eligibility</span>
+          <span class="ai-tag">AI #6 Eligibility</span>
+          <span class="ai-tag">AI #9 Voice AI (payer IVR)</span>
+          <span class="region-tag tag-uae">RPA Bot → TPA Portal</span>
+          <span class="region-tag tag-us">EDI 270/271</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="flow-step">
+      <div class="flow-num owner-clinic"><div class="circle">3</div><div class="line"></div></div>
+      <div class="flow-card owner-clinic">
+        <div class="who">Clinic / Doctor</div>
+        <h3>Prior Authorization (if required)</h3>
+        <p>For procedures requiring pre-approval: submit prior auth request to payer. UAE: DHA pre-auth via TPA. US: Payer-specific forms. AI can pre-fill and check requirements.</p>
+        <div class="modules">
+          <span class="mod-tag">Eligibility (Prior Auth tab)</span>
+          <span class="ai-tag">AI #5 Prior Auth</span>
+          <span class="region-tag tag-uae">DHA eClaim Pre-Auth</span>
+          <span class="region-tag tag-us">Payer Portal / Fax</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="flow-step">
+      <div class="flow-num owner-clinic"><div class="circle">4</div><div class="line"></div></div>
+      <div class="flow-card owner-clinic">
+        <div class="who">Clinic / Doctor</div>
+        <h3>Patient Encounter & Clinical Documentation</h3>
+        <p>Doctor sees patient. Documents visit: SOAP note, procedures performed, diagnoses. This is where AI Scribe kicks in — doctor dictates, AI generates structured note. This step is 100% clinic-side.</p>
+        <div class="modules">
+          <span class="mod-tag">AI Scribe</span>
+          <span class="mod-tag">Scheduling (visit record)</span>
+          <span class="ai-tag">AI #8 Ambient Scribe</span>
+          <span class="ai-tag">AI #14 Clinical Decision Support</span>
+          <span class="region-tag tag-both">Both</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="flow-step">
+      <div class="flow-num owner-clinic"><div class="circle">5</div><div class="line"></div></div>
+      <div class="flow-card owner-clinic">
+        <div class="who">Clinic → Cosentus (Handoff Point)</div>
+        <h3>Charge Capture & Superbill Submission</h3>
+        <p>Clinic sends superbill/encounter info to Cosentus for billing. This is the CLIENT PORTAL handoff — upload superbill PDF, clinical notes, insurance card. AI Textract extracts all fields automatically.</p>
+        <div class="modules">
+          <span class="mod-tag">Scan & Submit (Client Portal)</span>
+          <span class="mod-tag">Documents</span>
+          <span class="ai-tag">AI #11 Charge Capture</span>
+          <span class="ai-tag">AI Textract (OCR)</span>
+          <span class="region-tag tag-both">Both</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 6 -->
+    <div class="flow-step">
+      <div class="flow-num owner-ai"><div class="circle">6</div><div class="line"></div></div>
+      <div class="flow-card owner-ai">
+        <div class="who">AI → Coder Review</div>
+        <h3>Medical Coding (CPT/ICD-10/HCPCS)</h3>
+        <p>AI reads clinical notes + superbill, suggests CPT procedure codes and ICD-10 diagnosis codes. Human coder reviews, adjusts, approves. This is a COSENTUS STAFF function — the clinic doesn't code.</p>
+        <div class="modules">
+          <span class="mod-tag">AI Coding</span>
+          <span class="ai-tag">AI #1 Auto-Coding</span>
+          <span class="ai-tag">AI #11 Charge Capture</span>
+          <span class="region-tag tag-both">Both (CPT/ICD universal, DHA has extras)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 7 -->
+    <div class="flow-step">
+      <div class="flow-num owner-ai"><div class="circle">7</div><div class="line"></div></div>
+      <div class="flow-card owner-ai">
+        <div class="who">AI → Biller Review</div>
+        <h3>Claim Scrubbing & Submission</h3>
+        <p>AI scrubs the claim for errors BEFORE submission: missing fields, invalid codes, payer-specific rules, timely filing. Biller reviews, then submits. US: 837P/837I via clearinghouse. UAE: DHA eClaim XML.</p>
+        <div class="modules">
+          <span class="mod-tag">Claims Center</span>
+          <span class="ai-tag">AI #2 Claim Scrubbing</span>
+          <span class="region-tag tag-uae">DHA eClaim XML</span>
+          <span class="region-tag tag-us">837P/837I EDI</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 8 -->
+    <div class="flow-step">
+      <div class="flow-num owner-staff"><div class="circle">8</div><div class="line"></div></div>
+      <div class="flow-card owner-staff">
+        <div class="who">Cosentus Staff (Biller)</div>
+        <h3>Claim Tracking & Follow-up</h3>
+        <p>Track submitted claims: accepted, rejected, pending. Handle 999 acknowledgments (US) and DHA responses (UAE). Resubmit corrected claims. Client watches this via Watch & Track portal.</p>
+        <div class="modules">
+          <span class="mod-tag">Claims Center</span>
+          <span class="mod-tag">Watch & Track (Client Portal)</span>
+          <span class="ai-tag">AI #9 Voice AI (call payer for status)</span>
+          <span class="region-tag tag-both">Both</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 9 -->
+    <div class="flow-step">
+      <div class="flow-num owner-ai"><div class="circle">9</div><div class="line"></div></div>
+      <div class="flow-card owner-ai">
+        <div class="who">AI → Posting Team</div>
+        <h3>Payment Posting (ERA/EOB Processing)</h3>
+        <p>Payer sends payment + ERA 835 file. AI auto-matches payments to claims, posts adjustments, identifies underpayments. Human reviews exceptions. Triggers secondary billing if needed.</p>
+        <div class="modules">
+          <span class="mod-tag">Payment Posting</span>
+          <span class="ai-tag">AI #3 Auto-Posting</span>
+          <span class="ai-tag">AI #12 Contract Manager (underpayment detection)</span>
+          <span class="region-tag tag-us">ERA 835 EDI</span>
+          <span class="region-tag tag-uae">TPA Remittance</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 10 -->
+    <div class="flow-step">
+      <div class="flow-num owner-staff"><div class="circle">10</div><div class="line"></div></div>
+      <div class="flow-card owner-staff">
+        <div class="who">Cosentus Staff (AR Team)</div>
+        <h3>Denial Management & Appeals</h3>
+        <p>Denied claims get categorized by reason. AI predicts denial likelihood before it happens. When denied: AI generates appeal letter. Staff manages L1/L2/L3 appeal workflow. Voice AI calls payer reps.</p>
+        <div class="modules">
+          <span class="mod-tag">Denials & Appeals</span>
+          <span class="ai-tag">AI #4 Auto-Appeals</span>
+          <span class="ai-tag">AI #7 Denial Prediction</span>
+          <span class="ai-tag">AI #9 Voice AI (payer rep calls)</span>
+          <span class="region-tag tag-both">Both</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 11 -->
+    <div class="flow-step">
+      <div class="flow-num owner-staff"><div class="circle">11</div><div class="line"></div></div>
+      <div class="flow-card owner-staff">
+        <div class="who">Cosentus Staff (AR Team)</div>
+        <h3>A/R Management & Insurance Follow-up</h3>
+        <p>Aging buckets (0-30, 31-60, 61-90, 91-120, 120+). Prioritized worklist. AI routes tasks by urgency and skill. Voice AI makes outbound calls to payers for claim status.</p>
+        <div class="modules">
+          <span class="mod-tag">A/R Management</span>
+          <span class="mod-tag">Tasks & Workflows</span>
+          <span class="ai-tag">AI #15 Agentic Workflows</span>
+          <span class="ai-tag">AI #9 Voice AI</span>
+          <span class="region-tag tag-both">Both</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 12 -->
+    <div class="flow-step">
+      <div class="flow-num owner-shared"><div class="circle">12</div><div class="line"></div></div>
+      <div class="flow-card owner-shared">
+        <div class="who">Shared — Patient-Facing</div>
+        <h3>Patient Billing & Collections</h3>
+        <p>After insurance pays: calculate patient responsibility (copay, coinsurance, deductible). Generate statement. Send via mail/email/SMS. Accept payment (Stripe). Voice AI calls patients for balances.</p>
+        <div class="modules">
+          <span class="mod-tag">Patient Billing (in Patients module)</span>
+          <span class="ai-tag">AI #10 Patient Billing</span>
+          <span class="ai-tag">AI #9 Voice AI (patient calls)</span>
+          <span class="region-tag tag-both">Both</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 13 -->
+    <div class="flow-step">
+      <div class="flow-num owner-shared"><div class="circle">13</div><div class="line"></div></div>
+      <div class="flow-card owner-shared">
+        <div class="who">Shared — Reporting</div>
+        <h3>Reporting, Analytics & Reconciliation</h3>
+        <p>Revenue reports, collection rates, denial trends, payer analysis, staff productivity, AI accuracy. Client sees their dashboard. Cosentus sees everything. AI predicts revenue forecasts and anomalies.</p>
+        <div class="modules">
+          <span class="mod-tag">Analytics</span>
+          <span class="mod-tag">Dashboard</span>
+          <span class="mod-tag">Watch & Track (Client Portal)</span>
+          <span class="ai-tag">AI Predictive Insights</span>
+          <span class="region-tag tag-both">Both</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB 2: MODULE MAP ═══════════ -->
+<div id="modules" class="panel">
+  <div class="section-title">All 23 Modules — Who Uses What</div>
+
+  <table class="mod-table">
+    <thead>
+      <tr>
+        <th>Module</th>
+        <th>Route</th>
+        <th>Primary User</th>
+        <th>RCM Step</th>
+        <th>Region Differences</th>
+        <th>Sprint</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td colspan="6" style="color:var(--staff);font-weight:600;font-size:11px;padding-top:16px;">OPERATIONS — Cosentus Staff Only</td></tr>
+      <tr><td class="mod-name">Dashboard</td><td class="mod-path">/dashboard</td><td>ALL (role-specific)</td><td>Step 13</td><td>Currency (AED/USD), KPI labels</td><td>1</td></tr>
+      <tr><td class="mod-name">Claims Center</td><td class="mod-path">/claims</td><td>Biller, Supervisor</td><td>Steps 7-8</td><td>UAE: DHA XML, US: 837P/837I</td><td>2</td></tr>
+      <tr><td class="mod-name">AI Coding</td><td class="mod-path">/coding</td><td>Coder, Supervisor</td><td>Step 6</td><td>Receives from BOTH: AI Scribe sign-off + Upload pipeline</td><td>2</td></tr>
+      <tr><td class="mod-name">Eligibility</td><td class="mod-path">/eligibility</td><td>Biller, AR Team</td><td>Steps 2-3</td><td>UAE: RPA bot + TPA, US: EDI 270/271</td><td>2</td></tr>
+      <tr><td class="mod-name">Denials & Appeals</td><td class="mod-path">/denials</td><td>AR Team, Supervisor</td><td>Step 10</td><td>UAE: TPA denial codes, US: CARC/RARC</td><td>3</td></tr>
+      <tr><td class="mod-name">A/R Management</td><td class="mod-path">/ar-management</td><td>AR Team, Manager</td><td>Step 11</td><td>Timely filing limits differ</td><td>3</td></tr>
+      <tr><td class="mod-name">Payment Posting</td><td class="mod-path">/payment-posting</td><td>Posting Team</td><td>Step 9</td><td>UAE: TPA remittance, US: ERA 835</td><td>3</td></tr>
+      <tr><td class="mod-name">Contract Manager</td><td class="mod-path">/contracts</td><td>Director, Manager</td><td>Step 9</td><td>Fee schedules differ by market</td><td>3</td></tr>
+      <tr><td class="mod-name">Scheduling</td><td class="mod-path">/scheduling</td><td>Clinic (front desk)</td><td>Step 1</td><td>Same</td><td>2</td></tr>
+
+      <tr><td colspan="6" style="color:var(--ai);font-weight:600;font-size:11px;padding-top:16px;">AI & AUTOMATION</td></tr>
+      <tr><td class="mod-name">Voice AI</td><td class="mod-path">/voice-ai</td><td>Manager, AR Team</td><td>Steps 2,8,10,11,12</td><td>UAE: Arabic+English, US: English+Spanish</td><td>2</td></tr>
+      <tr><td class="mod-name">AI Scribe</td><td class="mod-path">/ai-scribe</td><td><strong style="color:var(--clinic)">Doctor (Clinic)</strong></td><td>Step 4</td><td>UAE: Arabic+English, US: English+Spanish</td><td>4</td></tr>
+      <tr><td class="mod-name">Tasks & Workflows</td><td class="mod-path">/tasks</td><td>ALL Staff</td><td>Steps 6-12</td><td>Same</td><td>4</td></tr>
+
+      <tr><td colspan="6" style="color:var(--shared);font-weight:600;font-size:11px;padding-top:16px;">MANAGEMENT</td></tr>
+      <tr><td class="mod-name">Documents</td><td class="mod-path">/documents</td><td>ALL</td><td>All steps</td><td>Same</td><td>4</td></tr>
+      <tr><td class="mod-name">Credentialing</td><td class="mod-path">/credentialing</td><td>Manager, Director</td><td>Pre-step 1</td><td>UAE: DHA licensing, US: CAQH/payer enrollment</td><td>4</td></tr>
+      <tr><td class="mod-name">Analytics</td><td class="mod-path">/analytics</td><td>Director, Manager</td><td>Step 13</td><td>Currency, payer mix</td><td>5</td></tr>
+      <tr><td class="mod-name">Admin & Settings</td><td class="mod-path">/admin</td><td>Admin only</td><td>—</td><td>Region config, compliance settings</td><td>4</td></tr>
+      <tr><td class="mod-name">Integration Hub</td><td class="mod-path">/integrations</td><td>Admin, Director</td><td>—</td><td>UAE: DHA/TPA APIs, US: clearinghouse/EHR</td><td>5</td></tr>
+
+      <tr><td colspan="6" style="color:var(--clinic);font-weight:600;font-size:11px;padding-top:16px;">CLIENT PORTAL — Clinic/Practice Users</td></tr>
+      <tr><td class="mod-name">Appointments</td><td class="mod-path">/portal/appointments</td><td>Clinic + Billing Team (read)</td><td>Steps 1-2</td><td>Same</td><td>2</td></tr>
+      <tr><td class="mod-name">Scan & Submit</td><td class="mod-path">/portal/scan-submit</td><td>Clinic staff</td><td>Step 5 (handoff)</td><td>Same (no codes shown)</td><td>2</td></tr>
+      <tr><td class="mod-name">Watch & Track</td><td class="mod-path">/portal/watch-track</td><td>Clinic manager</td><td>Steps 8,9,13</td><td>Currency display</td><td>3</td></tr>
+      <tr><td class="mod-name">Messages</td><td class="mod-path">/portal/messages</td><td>Clinic ↔ Cosentus</td><td>—</td><td>Same</td><td>2</td></tr>
+      <tr><td class="mod-name">Patients</td><td class="mod-path">/portal/patients</td><td>Clinic front desk</td><td>Step 1</td><td><strong>UAE: Emirates ID, TPA. US: SSN, Commercial payer</strong></td><td>2</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════ TAB 3: REGIONS ═══════════ -->
+<div id="regions" class="panel">
+  <div class="section-title">UAE vs US — What's Different</div>
+
+  <div class="diff-grid">
+    <div class="diff-box diff-uae">
+      <h3>🇦🇪 UAE (me-central-1)</h3>
+      <ul>
+        <li><strong>Patient ID:</strong> Emirates ID (784-YYYY-NNNNNNN-N)</li>
+        <li><strong>Payers:</strong> TPAs — NAS, Mednet, NextCare, Almadallah, Daman, ADNIC, etc.</li>
+        <li><strong>Regulator:</strong> DHA (Dubai Health Authority), HAAD (Abu Dhabi)</li>
+        <li><strong>Claim format:</strong> DHA eClaim XML</li>
+        <li><strong>Eligibility:</strong> RPA bot logs into TPA portal, scrapes</li>
+        <li><strong>Prior Auth:</strong> DHA electronic pre-authorization</li>
+        <li><strong>Currency:</strong> AED (د.إ)</li>
+        <li><strong>Languages:</strong> Arabic + English</li>
+        <li><strong>Compliance:</strong> NESA, DHA regulations, data residency</li>
+        <li><strong>Coding extras:</strong> DHA activity codes alongside CPT/ICD</li>
+        <li><strong>No SSN</strong> — Emirates ID is the universal identifier</li>
+        <li><strong>Voice AI:</strong> Arabic + English, TPA IVR navigation</li>
+      </ul>
+    </div>
+    <div class="diff-box diff-us">
+      <h3>🇺🇸 US (us-west-1)</h3>
+      <ul>
+        <li><strong>Patient ID:</strong> SSN (optional), MRN, DOB+Name</li>
+        <li><strong>Payers:</strong> UHC, Aetna, BCBS, Cigna, Humana, Medicare, Medicaid, etc.</li>
+        <li><strong>Regulator:</strong> CMS, state DOIs</li>
+        <li><strong>Claim format:</strong> 837P (professional), 837I (institutional) EDI</li>
+        <li><strong>Eligibility:</strong> EDI 270/271 real-time via clearinghouse</li>
+        <li><strong>Prior Auth:</strong> Payer portal, phone, fax, X12 278</li>
+        <li><strong>Currency:</strong> USD ($)</li>
+        <li><strong>Languages:</strong> English + Spanish</li>
+        <li><strong>Compliance:</strong> HIPAA, HITECH, state laws</li>
+        <li><strong>Coding:</strong> CPT, ICD-10-CM, HCPCS Level II</li>
+        <li><strong>No Emirates ID</strong> — SSN is optional, MRN is primary</li>
+        <li><strong>Voice AI:</strong> English + Spanish, US payer IVR trees</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="summary-box">
+    <h3>Implementation Rule</h3>
+    <p>The patient registration form MUST be region-aware. UAE shows Emirates ID field (required) and TPA dropdown. US shows SSN field (optional) and commercial payer dropdown. <strong>Never mix them on the same form.</strong> The region is set at the organization level (each client is configured as UAE or US).</p>
+  </div>
+</div>
+
+<!-- ═══════════ TAB 4: ROLES ═══════════ -->
+<div id="roles" class="panel">
+  <div class="section-title">Dashboard KPIs per Role — What Each Person Sees</div>
+
+  <div class="role-grid">
+    <div class="role-card">
+      <h4>Admin / Director</h4>
+      <div class="dash-label">Sees Everything</div>
+      <ul class="kpis">
+        <li>Total revenue, collections, net collection rate</li>
+        <li>Denial rate across all clients</li>
+        <li>Days in A/R, clean claim rate</li>
+        <li>Staff productivity (claims/hour)</li>
+        <li>AI feature accuracy metrics</li>
+        <li>Revenue forecast (AI predictive)</li>
+        <li>Voice AI call volume and success rate</li>
+      </ul>
+    </div>
+    <div class="role-card">
+      <h4>Supervisor / Manager</h4>
+      <div class="dash-label">Team Performance</div>
+      <ul class="kpis">
+        <li>Team productivity vs target</li>
+        <li>Open tasks, queue depth</li>
+        <li>Staff online/offline</li>
+        <li>Escalations pending</li>
+        <li>First pass rate, denial rate (team)</li>
+        <li>Workload distribution bars</li>
+      </ul>
+      <div class="no-see">❌ Cannot see: Total revenue, collections</div>
+    </div>
+    <div class="role-card">
+      <h4>Coder</h4>
+      <div class="dash-label">My Coding Queue</div>
+      <ul class="kpis">
+        <li>My queue count</li>
+        <li>Charts coded today</li>
+        <li>AI suggestion acceptance rate</li>
+        <li>My accuracy rate</li>
+        <li>Avg time per chart</li>
+        <li>Auditor return rate</li>
+      </ul>
+      <div class="no-see">❌ Cannot see: Revenue, collections, other teams, dollar amounts</div>
+    </div>
+    <div class="role-card">
+      <h4>Biller</h4>
+      <div class="dash-label">My Billing Queue</div>
+      <ul class="kpis">
+        <li>Claims ready to submit</li>
+        <li>Submitted today</li>
+        <li>Rejections in last 24h</li>
+        <li>First pass rate</li>
+        <li>Pending scrub issues</li>
+      </ul>
+      <div class="no-see">❌ Cannot see: Revenue totals, AR data, other queues</div>
+    </div>
+    <div class="role-card">
+      <h4>AR Team</h4>
+      <div class="dash-label">My A/R Workload</div>
+      <ul class="kpis">
+        <li>My assigned accounts</li>
+        <li>Accounts worked today</li>
+        <li>Follow-ups due</li>
+        <li>Aging buckets (my accounts only)</li>
+        <li>Avg days outstanding</li>
+        <li>Calls scheduled (Voice AI)</li>
+      </ul>
+      <div class="no-see">❌ Cannot see: Total revenue, coding metrics, posting data</div>
+    </div>
+    <div class="role-card">
+      <h4>Posting Team</h4>
+      <div class="dash-label">Payment Processing</div>
+      <ul class="kpis">
+        <li>ERAs pending processing</li>
+        <li>Payments posted today</li>
+        <li>Unmatched payments</li>
+        <li>Auto-post rate (AI)</li>
+        <li>Adjustment exceptions</li>
+      </ul>
+      <div class="no-see">❌ Cannot see: Total revenue, coding, AR aging</div>
+    </div>
+    <div class="role-card">
+      <h4>Client (Clinic)</h4>
+      <div class="dash-label">Their Practice Only</div>
+      <ul class="kpis">
+        <li>Their claims count and status breakdown</li>
+        <li>Their denial rate</li>
+        <li>Avg days to payment</li>
+        <li>Quick actions: upload, track, message</li>
+        <li>Patient balance totals</li>
+      </ul>
+      <div class="no-see">❌ Cannot see: ANYTHING about Cosentus operations, other clients, staff metrics</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB 5: AI FEATURES ═══════════ -->
+<div id="ai" class="panel">
+  <div class="section-title">15 AI Features — Where They Plug In</div>
+
+  <table class="mod-table">
+    <thead><tr><th>#</th><th>AI Feature</th><th>RCM Step</th><th>Module</th><th>How It Works</th><th>Sprint</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">1</td><td class="mod-name">Auto-Coding</td><td>Step 6</td><td>AI Coding</td><td>Clinical note → CPT/ICD suggestions via Bedrock</td><td>2</td></tr>
+      <tr><td class="mono">2</td><td class="mod-name">Claim Scrubbing</td><td>Step 7</td><td>Claims Center</td><td>Pre-submit error detection, payer rules check</td><td>2</td></tr>
+      <tr><td class="mono">3</td><td class="mod-name">Auto-Posting</td><td>Step 9</td><td>Payment Posting</td><td>ERA 835 → auto-match payments to claims</td><td>3</td></tr>
+      <tr><td class="mono">4</td><td class="mod-name">Auto-Appeals</td><td>Step 10</td><td>Denials & Appeals</td><td>Generate appeal letter from denial reason + clinical docs</td><td>3</td></tr>
+      <tr><td class="mono">5</td><td class="mod-name">Prior Auth</td><td>Step 3</td><td>Eligibility</td><td>Auto-fill forms, check requirements per payer</td><td>2</td></tr>
+      <tr><td class="mono">6</td><td class="mod-name">Eligibility</td><td>Step 2</td><td>Eligibility</td><td>Real-time verification, batch overnight checks</td><td>2</td></tr>
+      <tr><td class="mono">7</td><td class="mod-name">Denial Prediction</td><td>Step 7</td><td>Claims Center</td><td>Flag claims likely to deny BEFORE submission</td><td>3</td></tr>
+      <tr><td class="mono">8</td><td class="mod-name">Ambient Scribe</td><td>Step 4 → 6</td><td>AI Scribe → AI Coding queue</td><td>Doctor dictates → SOAP + codes → sign-off → coding task created (Path A)</td><td>4</td></tr>
+      <tr><td class="mono">9</td><td class="mod-name">Voice AI</td><td>Steps 2,8,10,11,12</td><td>Voice AI</td><td>Outbound calls: payer IVR, reps, patients</td><td>2</td></tr>
+      <tr><td class="mono">10</td><td class="mod-name">Patient Billing</td><td>Step 12</td><td>Patients</td><td>Statement generation, payment plans, SMS reminders</td><td>3</td></tr>
+      <tr><td class="mono">11</td><td class="mod-name">Charge Capture</td><td>Steps 5-6</td><td>AI Coding</td><td>Detect billable services from notes, flag missing</td><td>2</td></tr>
+      <tr><td class="mono">12</td><td class="mod-name">Contract Manager</td><td>Step 9</td><td>Contract Manager</td><td>Detect underpayments vs contracted rates</td><td>3</td></tr>
+      <tr><td class="mono">13</td><td class="mod-name">Credentialing</td><td>Pre-Step 1</td><td>Credentialing</td><td>CAQH auto-fill, expiration alerts</td><td>4</td></tr>
+      <tr><td class="mono">14</td><td class="mod-name">Clinical Decision</td><td>Step 4</td><td>AI Scribe</td><td>Drug interactions, quality measures</td><td>4</td></tr>
+      <tr><td class="mono">15</td><td class="mod-name">Agentic Workflows</td><td>Steps 6-12</td><td>Tasks & Workflows</td><td>Auto-assign, escalate, predict SLA breach</td><td>4</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════ TAB: DOCUMENT ACCESS PATTERN ═══════════ -->
+<div id="docaccess" class="panel">
+  <div class="section-title">Document Access — Every Module Needs Source Files</div>
+
+  <div class="summary-box">
+    <h3>Core Principle: Documents Follow the Work, Not the Other Way Around</h3>
+    <p>Staff should NEVER need to leave their module to find a document. Every module has a contextual document viewer — a side drawer or split pane that shows all files linked to the entity they're working on (patient, claim, encounter). The standalone "Documents" module is for managing, searching, classifying, and bulk operations — but document <strong>access</strong> is embedded everywhere.</p>
+  </div>
+
+  <div class="section-title" style="margin-top:32px;">How Each Module Accesses Documents</div>
+
+  <table class="mod-table">
+    <thead><tr><th>Module</th><th>What They're Working On</th><th>Documents They Need to See</th><th>UI Pattern</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="mod-name">AI Coding</td>
+        <td>Coding an encounter</td>
+        <td>Original superbill (PDF/image), clinical note, insurance card, AI Scribe output, any uploaded attachments</td>
+        <td><strong style="color:var(--brand)">Split Pane:</strong> Document viewer LEFT, coding workspace RIGHT. Coder reads the note while selecting codes.</td>
+      </tr>
+      <tr>
+        <td class="mod-name">Claims Center</td>
+        <td>Reviewing/submitting a claim</td>
+        <td>Superbill, coding worksheet, insurance verification result, prior auth approval, any payer correspondence</td>
+        <td><strong style="color:var(--brand)">Doc Drawer:</strong> Click "View Docs" on any claim → side panel slides out with all linked files. Tabs for each doc type.</td>
+      </tr>
+      <tr>
+        <td class="mod-name">Eligibility</td>
+        <td>Verifying patient coverage</td>
+        <td>Insurance card (front/back images), ID card, eligibility response PDF</td>
+        <td><strong style="color:var(--brand)">Inline Preview:</strong> Insurance card image shown right in the eligibility result panel. Click to enlarge.</td>
+      </tr>
+      <tr>
+        <td class="mod-name">Denials & Appeals</td>
+        <td>Building an appeal</td>
+        <td>Denial letter/EOB, original claim, clinical note, operative report, lab results — everything needed to argue the case</td>
+        <td><strong style="color:var(--brand)">Split Pane:</strong> Document stack LEFT (browse through all related docs), appeal builder RIGHT. AI drafts appeal using the docs.</td>
+      </tr>
+      <tr>
+        <td class="mod-name">A/R Management</td>
+        <td>Following up on aged claim</td>
+        <td>Claim history, all EOBs/ERAs, any prior appeal docs, patient correspondence, voice call transcripts</td>
+        <td><strong style="color:var(--brand)">Doc Drawer:</strong> Account detail view has "Documents" tab showing full history of all attached files.</td>
+      </tr>
+      <tr>
+        <td class="mod-name">Payment Posting</td>
+        <td>Matching payment to claim</td>
+        <td>ERA 835 file, original claim, contract rate sheet, adjustment explanation docs</td>
+        <td><strong style="color:var(--brand)">Split Pane:</strong> ERA detail LEFT, claim detail RIGHT. Side-by-side comparison for matching.</td>
+      </tr>
+      <tr>
+        <td class="mod-name">Contract Manager</td>
+        <td>Checking underpayment</td>
+        <td>Payer contract PDF, fee schedule, ERA showing underpaid amount</td>
+        <td><strong style="color:var(--brand)">Doc Drawer:</strong> Contract viewer with search. Compare contract rate to payment.</td>
+      </tr>
+      <tr>
+        <td class="mod-name">Voice AI</td>
+        <td>Reviewing a completed call</td>
+        <td>Call recording (audio), transcription, call notes, any referenced claim/account docs</td>
+        <td><strong style="color:var(--brand)">Inline Player:</strong> Audio player + transcript viewer in call detail. Links to referenced claims.</td>
+      </tr>
+      <tr>
+        <td class="mod-name">AI Scribe</td>
+        <td>Doctor reviewing AI-generated note</td>
+        <td>Audio recording of visit, AI-generated SOAP note, suggested codes, any uploaded reference docs</td>
+        <td><strong style="color:var(--brand)">Split Pane:</strong> Audio/transcript LEFT, editable SOAP note RIGHT. Doctor reviews, edits, signs off.</td>
+      </tr>
+      <tr>
+        <td class="mod-name">Tasks & Workflows</td>
+        <td>Working on an assigned task</td>
+        <td>Whatever entity the task is about — claim docs, patient file, denial letter, etc.</td>
+        <td><strong style="color:var(--brand)">Doc Drawer:</strong> Task detail links to parent entity. "View Related Docs" opens all attached files.</td>
+      </tr>
+      <tr>
+        <td class="mod-name">Credentialing</td>
+        <td>Managing provider credentials</td>
+        <td>License copies, DEA certificate, malpractice insurance, CAQH profile, board certifications</td>
+        <td><strong style="color:var(--brand)">Doc Drawer:</strong> Provider profile has documents tab with all credential files, expiry dates, upload.</td>
+      </tr>
+      <tr style="background:rgba(16,185,129,0.03);">
+        <td class="mod-name">Patients (Client Portal)</td>
+        <td>Viewing patient profile</td>
+        <td>Insurance card images, ID card, patient-uploaded forms, consent documents</td>
+        <td><strong style="color:var(--brand)">Profile Tabs:</strong> Demographics | Insurance | Documents | Visit History | Billing. Documents tab shows all patient-linked files.</td>
+      </tr>
+      <tr style="background:rgba(16,185,129,0.03);">
+        <td class="mod-name">Scan & Submit (Client Portal)</td>
+        <td>Uploading documents</td>
+        <td>Preview of what they just uploaded, AI extraction results overlay, linked patient</td>
+        <td><strong style="color:var(--brand)">Upload + Preview:</strong> Upload zone → document preview with AI-extracted fields overlaid → confirm → routes to coding queue.</td>
+      </tr>
+      <tr style="background:rgba(16,185,129,0.03);">
+        <td class="mod-name">Watch & Track (Client Portal)</td>
+        <td>Tracking claim status</td>
+        <td>Claim detail, linked superbill, any EOB/denial letter, appeal status</td>
+        <td><strong style="color:var(--brand)">Doc Drawer:</strong> Click claim → detail panel with "Documents" section showing all related files (read-only for client).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="section-title" style="margin-top:32px;">Shared Document Viewer Component</div>
+
+  <div class="summary-box">
+    <h3>Implementation: One Reusable DocViewer Component</h3>
+    <p>Build ONE shared document viewer component that gets embedded in every module. It takes an entity ID (patient_id, claim_id, encounter_id) and fetches all linked documents. Features: PDF rendering, image zoom/rotate, side-by-side comparison, AI extraction overlay, download, print. Three display modes:</p>
+  </div>
+
+  <div class="diff-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+    <div class="diff-box" style="background:rgba(0,181,214,0.03);">
+      <h3 style="color:var(--brand);">Split Pane</h3>
+      <ul>
+        <li>Used by: AI Coding, Denials, Payment Posting, AI Scribe</li>
+        <li>50/50 or resizable split</li>
+        <li>Document on left, workspace on right</li>
+        <li>Can browse multiple docs (tabs)</li>
+        <li>Best for: modules where you READ a doc while DOING work</li>
+      </ul>
+    </div>
+    <div class="diff-box" style="background:rgba(59,130,246,0.03);">
+      <h3 style="color:var(--staff);">Side Drawer</h3>
+      <ul>
+        <li>Used by: Claims, A/R, Tasks, Credentialing, Watch & Track</li>
+        <li>Slides in from right (400-600px wide)</li>
+        <li>Overlays on top of the main view</li>
+        <li>Close to return to worklist</li>
+        <li>Best for: quick reference while working a list</li>
+      </ul>
+    </div>
+    <div class="diff-box" style="background:rgba(16,185,129,0.03);">
+      <h3 style="color:var(--clinic);">Inline Preview</h3>
+      <ul>
+        <li>Used by: Eligibility, Scan & Submit, Patient profile</li>
+        <li>Thumbnail with click-to-expand</li>
+        <li>Small preview embedded in the form/card</li>
+        <li>Modal for full-size view</li>
+        <li>Best for: single doc reference (insurance card, ID)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="summary-box" style="border-color: #a855f7; background: rgba(168,85,247,0.05); margin-top: 16px;">
+    <h3 style="color:var(--ai);">Standalone "Documents" Module — What It's Actually For</h3>
+    <p>The Documents module at <span class="mono">/documents</span> is NOT the primary way staff access docs. It's the MANAGEMENT layer:</p>
+    <ul style="margin-top:8px; font-size:12px; color: var(--text); list-style:none;">
+      <li style="padding:3px 0;">→ <strong>Document Vault:</strong> Search across ALL documents (full-text via OpenSearch)</li>
+      <li style="padding:3px 0;">→ <strong>Bulk Upload:</strong> Upload batch of docs and AI auto-classifies them (superbill, EOB, clinical note, etc.)</li>
+      <li style="padding:3px 0;">→ <strong>Fax Center:</strong> Inbound/outbound fax management</li>
+      <li style="padding:3px 0;">→ <strong>Unlinked Docs:</strong> Queue of uploaded docs that haven't been linked to a patient/claim yet</li>
+      <li style="padding:3px 0;">→ <strong>Retention:</strong> Compliance rules for document retention periods</li>
+      <li style="padding:3px 0;">→ <strong>Audit Trail:</strong> Who accessed what document and when</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════ TAB: REAL-WORLD SCENARIOS ═══════════ -->
+<div id="scenarios" class="panel">
+  <div class="section-title">Real-World Scenarios — What ACTUALLY Happens Day to Day</div>
+
+  <div class="summary-box">
+    <h3>Why This Matters</h3>
+    <p>Every module needs to handle the messy reality — not just the happy path. A patient no-shows. A payer takes back money they already paid. A doctor disagrees with AI codes. An ERA doesn't match any claim. The UI must support every one of these scenarios with clear status tracking, actions, and resolution workflows.</p>
+  </div>
+
+  <!-- ── SCHEDULING ── -->
+  <div class="diff-box" style="background:rgba(16,185,129,0.03); margin-bottom:16px; border-color:var(--clinic);">
+    <h3 style="color:var(--clinic);">Scheduling — All Appointment States</h3>
+    <ul>
+      <li><strong>Booked:</strong> Appointment created, patient confirmed</li>
+      <li><strong>Confirmed:</strong> Patient confirmed via SMS/call/portal (automated reminder sent 24h + 2h before)</li>
+      <li><strong>Checked In:</strong> Patient arrived at front desk</li>
+      <li><strong>In Progress:</strong> Doctor has started the visit</li>
+      <li><strong>Completed:</strong> Visit done, note pending</li>
+      <li><strong style="color:#ef4444;">No-Show:</strong> Patient didn't come, didn't cancel. Track no-show count per patient. Auto-flag repeat no-showers. May trigger no-show fee. Slot wasted = lost revenue.</li>
+      <li><strong style="color:#f59e0b;">Cancelled (Patient):</strong> Patient cancelled ahead of time. Track cancellation reason. Slot freed for waitlist.</li>
+      <li><strong style="color:#f59e0b;">Cancelled (Provider):</strong> Doctor sick, emergency. All patients for that day need rescheduling. Batch notify patients.</li>
+      <li><strong>Rescheduled:</strong> Moved to new date. Link old and new appointment for audit trail.</li>
+      <li><strong>Walk-In:</strong> No appointment. Front desk creates on the spot. Marked as walk-in for reporting.</li>
+      <li><strong>Waitlisted:</strong> No available slot. Patient on waitlist. Auto-notify when a cancellation frees up a slot.</li>
+      <li><strong>Late Arrival:</strong> Patient came but past window. Doctor decides: see them (reduced time) or reschedule.</li>
+      <li><strong>Telehealth:</strong> Virtual visit. Different workflow — no check-in, sends video link instead.</li>
+      <li><strong>Recurring:</strong> Follow-up every 3 months. Auto-schedule series. Track compliance.</li>
+    </ul>
+    <p style="margin-top:12px; font-size:11px; color:var(--text);">
+      <strong>KPIs the scheduling module must track:</strong> No-show rate, cancellation rate, schedule utilization %, wait time (check-in to seen), avg visit duration, slots filled vs available.
+    </p>
+  </div>
+
+  <!-- ── PATIENT REGISTRATION ── -->
+  <div class="diff-box" style="background:rgba(16,185,129,0.03); margin-bottom:16px; border-color:var(--clinic);">
+    <h3 style="color:var(--clinic);">Patient Registration — Edge Cases</h3>
+    <ul>
+      <li><strong>New patient, complete info:</strong> Normal registration flow</li>
+      <li><strong>New patient, missing insurance:</strong> Flag as "self-pay until verified". Allow partial registration.</li>
+      <li><strong>Insurance changed:</strong> Patient got new job/plan. Old insurance goes to "prior coverage" history. New one becomes primary. All future claims use new payer.</li>
+      <li><strong>Multiple insurances:</strong> Primary + Secondary + sometimes Tertiary. Coordination of Benefits (COB) rules apply. After primary pays, secondary gets billed for remainder.</li>
+      <li><strong>Dependent (child):</strong> Patient is minor on parent's plan. Store subscriber info (parent) separately from patient info (child). Birthday rule for COB if both parents have coverage.</li>
+      <li><strong>Self-pay / Uninsured:</strong> No insurance billed. Patient responsible for 100%. May qualify for sliding scale, charity care, or payment plan.</li>
+      <li><strong>Workers' Compensation:</strong> Employer's WC carrier pays. Different claim form. Need employer info, injury date, WC case number.</li>
+      <li><strong>Auto Accident / Liability:</strong> Third-party liability. Need accident date, attorney info, case number. May hold billing until settlement.</li>
+      <li><strong>Patient deceased:</strong> Mark inactive. Close out any open claims. Balance goes to estate.</li>
+      <li><strong>Demographic changes:</strong> Name change (marriage), address change, phone change. Audit trail on all changes.</li>
+      <li><strong>Duplicate patient:</strong> Same person registered twice. Merge function needed. Carry over all claims, docs, history.</li>
+    </ul>
+  </div>
+
+  <!-- ── ELIGIBILITY ── -->
+  <div class="diff-box" style="background:rgba(245,158,11,0.03); margin-bottom:16px; border-color:var(--shared);">
+    <h3 style="color:var(--shared);">Eligibility Verification — All Outcomes</h3>
+    <ul>
+      <li><strong>Active coverage, in-network:</strong> Green light. Show copay, deductible remaining, benefits.</li>
+      <li><strong>Active but out-of-network:</strong> Warn. Higher patient responsibility. May need patient consent to proceed.</li>
+      <li><strong style="color:#ef4444;">Inactive / Terminated:</strong> Red flag. Stop. Notify patient immediately. Ask for updated insurance or self-pay agreement.</li>
+      <li><strong>Deductible not met:</strong> Patient owes more out-of-pocket. Show remaining deductible amount. Collect upfront if possible.</li>
+      <li><strong>Prior auth required:</strong> Certain procedures need pre-approval. Flag before visit. Route to prior auth workflow.</li>
+      <li><strong>Pending effective date:</strong> Coverage starts next month. Can't bill yet. Reschedule or collect self-pay.</li>
+      <li><strong>COB conflict:</strong> Two active coverages. Determine primary vs secondary. Birthday rule, gender rule, or ask patient.</li>
+      <li><strong style="color:#ef4444;">System down:</strong> TPA portal offline (UAE) or clearinghouse timeout (US). Queue for retry. Allow provisional visit with disclaimer.</li>
+      <li><strong>Batch overnight check:</strong> Run all next-day appointments through eligibility overnight. Flag any issues for front desk to resolve before patient arrives.</li>
+    </ul>
+  </div>
+
+  <!-- ── AI SCRIBE ── -->
+  <div class="diff-box" style="background:rgba(168,85,247,0.03); margin-bottom:16px; border-color:var(--ai);">
+    <h3 style="color:var(--ai);">AI Scribe — What Can Go Wrong</h3>
+    <ul>
+      <li><strong>Normal:</strong> Dictate → AI generates SOAP → doctor signs → routes to coding ✓</li>
+      <li><strong>Doctor disagrees with AI codes:</strong> Overrides suggestions. Override is tracked (AI learns from it).</li>
+      <li><strong>Bad audio quality:</strong> Background noise, mumbling. AI flags low-confidence sections in yellow. Doctor must manually fill those sections.</li>
+      <li><strong>Multi-language visit:</strong> Patient speaks Arabic, doctor explains in English. AI handles code-switching. Transcript shows both languages.</li>
+      <li><strong>Doctor wants to amend signed note:</strong> Addendum workflow. Original note preserved. Amendment logged with timestamp and reason.</li>
+      <li><strong>Incomplete note:</strong> Doctor gets interrupted mid-visit. Note saved as draft. Can resume later. Draft doesn't route to coding.</li>
+      <li><strong>Multiple patients queued:</strong> Doctor finishes 3 visits before sitting down to dictate. Dictates for each patient sequentially. Each generates separate note.</li>
+      <li><strong>Specialist referral generated:</strong> During visit, doctor decides to refer. AI detects referral language and auto-creates referral order. (Sprint 4+)</li>
+      <li><strong>Sensitive content:</strong> Mental health, substance abuse. AI must respect 42 CFR Part 2 restrictions. Extra consent required for sharing.</li>
+    </ul>
+  </div>
+
+  <!-- ── CODING ── -->
+  <div class="diff-box" style="background:rgba(168,85,247,0.03); margin-bottom:16px; border-color:var(--ai);">
+    <h3 style="color:var(--ai);">Coding — Daily Scenarios</h3>
+    <ul>
+      <li><strong>AI codes correct:</strong> Coder approves. Done in 30 seconds per chart.</li>
+      <li><strong>AI codes wrong:</strong> Coder corrects. Override tracked. AI retrains.</li>
+      <li><strong style="color:#f59e0b;">Missing documentation:</strong> Clinical note doesn't support the code. Coder sends QUERY back to doctor: "Please clarify if this was a level 3 or 4 visit. Documentation shows..." Doctor responds via query queue.</li>
+      <li><strong>Upcoding flag:</strong> AI or audit detects code higher than documentation supports. Compliance alert. Must review before submission.</li>
+      <li><strong>Downcoding risk:</strong> AI or coder suggests lower code than documentation supports. Lost revenue. Flag for review.</li>
+      <li><strong>Modifiers needed:</strong> Multiple procedures same session (modifier 51/59). Bilateral (modifier 50). Distinct procedure (modifier XE/XS). Reduced service (modifier 52). AI should suggest modifiers.</li>
+      <li><strong>E&M level determination:</strong> 2021 guidelines (MDM-based). AI evaluates: number of problems, data reviewed, risk. Suggests E&M level (99211-99215).</li>
+      <li><strong>Unlisted code:</strong> Procedure has no specific CPT. Use unlisted code + description + comparable code for pricing. Needs supporting documentation.</li>
+      <li><strong>Bundling/unbundling:</strong> CCI edits. Some code pairs can't be billed together. AI checks CCI edits before coder even sees it. NCCI edits for Medicare.</li>
+      <li><strong>Held for audit:</strong> Random or targeted chart pulled for internal audit before submission. Compliance requirement.</li>
+    </ul>
+  </div>
+
+  <!-- ── CLAIMS ── -->
+  <div class="diff-box" style="background:rgba(59,130,246,0.03); margin-bottom:16px; border-color:var(--staff);">
+    <h3 style="color:var(--staff);">Claims Center — Every Claim State</h3>
+    <ul>
+      <li><strong>Draft:</strong> Claim created but not yet scrubbed/submitted</li>
+      <li><strong>Scrubbing:</strong> AI running payer rules. Checking for errors.</li>
+      <li><strong style="color:#f59e0b;">Scrub Failed:</strong> Errors found. Biller must fix: missing auth, invalid code, wrong payer ID, etc. Shows specific error list.</li>
+      <li><strong>Ready to Submit:</strong> Passed all scrub rules. In submission queue.</li>
+      <li><strong>Submitted:</strong> Sent to clearinghouse (US) or DHA (UAE). Awaiting acknowledgment.</li>
+      <li><strong>Accepted (999/277):</strong> Clearinghouse or payer accepted for processing. Now waiting for adjudication.</li>
+      <li><strong style="color:#ef4444;">Rejected:</strong> Clearinghouse rejected (technical error — bad format, missing field). Fix and resubmit. NOT a denial.</li>
+      <li><strong>In Process:</strong> Payer is adjudicating. Typical: 14-45 days.</li>
+      <li><strong>Paid (Full):</strong> Payer paid contracted amount. ERA received. Auto-posted.</li>
+      <li><strong style="color:#f59e0b;">Paid (Partial):</strong> Payer paid less than expected. Could be: applied to deductible, out-of-network reduction, bundling, downcoded. Review needed.</li>
+      <li><strong style="color:#ef4444;">Denied:</strong> Payer refused payment. Denial reason code (CARC/RARC for US, TPA reason for UAE). Routes to Denials module.</li>
+      <li><strong>Appealed:</strong> Denial appealed. Track appeal level (L1/L2/L3), deadline, supporting docs sent.</li>
+      <li><strong>Corrected/Replaced:</strong> Original claim had error. Void original + submit corrected (837 frequency code 7 or 8).</li>
+      <li><strong>Secondary Billing:</strong> Primary paid their portion. Remaining balance billed to secondary insurance with primary's EOB attached.</li>
+      <li><strong>Patient Responsibility:</strong> After insurance, remaining balance → patient statement.</li>
+      <li><strong>Write-Off:</strong> Balance deemed uncollectable. Contractual write-off (normal) vs bad debt write-off (needs approval).</li>
+      <li><strong style="color:#ef4444;">Timely Filing Risk:</strong> Approaching payer's filing deadline. URGENT flag. Typical: 90 days (commercial), 365 days (Medicare), varies by payer.</li>
+    </ul>
+  </div>
+
+  <!-- ── PAYMENT POSTING ── -->
+  <div class="diff-box" style="background:rgba(59,130,246,0.03); margin-bottom:16px; border-color:var(--staff);">
+    <h3 style="color:var(--staff);">Payment Posting — All Scenarios</h3>
+    <ul>
+      <li><strong>ERA auto-match:</strong> AI matches payment to claim, posts adjustments. Human reviews exceptions only. Best case.</li>
+      <li><strong>Orphan payment:</strong> Payment received but doesn't match any claim in system. Unmatched queue. Manual investigation needed.</li>
+      <li><strong>Underpayment vs contract:</strong> Payer paid less than contracted rate. AI flags for Contract Manager review. May appeal.</li>
+      <li><strong>Overpayment:</strong> Payer paid more than expected. Must refund. Compliance risk if not returned promptly. Track refund.</li>
+      <li><strong style="color:#ef4444;">Recoupment / Takeback:</strong> Payer TAKES BACK money they already paid. Shows as negative on ERA. Often from audit. Must track and potentially appeal.</li>
+      <li><strong>Patient copay at time of service:</strong> Collected at front desk. Post to patient account. Reconcile with ERA when insurance pays.</li>
+      <li><strong>Patient payment (after insurance):</strong> Patient pays balance via statement, portal, phone. Post to account. Multiple payment methods: check, credit card, payment plan.</li>
+      <li><strong>Adjustment codes:</strong> Each adjustment has a reason (CO = contractual obligation, PR = patient responsibility, OA = other adjustment, PI = payer initiated). AI must categorize correctly.</li>
+      <li><strong>ERA with multiple claims:</strong> Single ERA file contains payments for 50+ claims. Batch posting. Exceptions flagged individually.</li>
+      <li><strong>Manual EOB (no ERA):</strong> Smaller payers send paper EOB. Must be scanned, OCR'd, manually posted. Or uploaded and AI extracts payment info.</li>
+      <li><strong>Write-off approval:</strong> Contractual write-offs auto-approved. Bad debt write-offs need supervisor approval above threshold (e.g., $500+).</li>
+    </ul>
+  </div>
+
+  <!-- ── DENIALS ── -->
+  <div class="diff-box" style="background:rgba(59,130,246,0.03); margin-bottom:16px; border-color:var(--staff);">
+    <h3 style="color:var(--staff);">Denials & Appeals — Reason Categories and Actions</h3>
+    <ul>
+      <li><strong>No prior authorization:</strong> Appeal with: auth number if it exists, or request retroactive auth. Attach clinical necessity docs.</li>
+      <li><strong>Not medically necessary:</strong> Appeal with: clinical notes, peer-reviewed literature, letter of medical necessity from doctor.</li>
+      <li><strong>Timely filing:</strong> Appeal with: proof of original submission (clearinghouse report, fax confirmation, tracking number).</li>
+      <li><strong>Duplicate claim:</strong> Prove it's not a duplicate. Show different dates of service, or different procedures, or show original was voided.</li>
+      <li><strong>Patient not eligible:</strong> Verify coverage was active on DOS. If yes, appeal with eligibility proof. If no, rebill correct payer or bill patient.</li>
+      <li><strong>Coding error (from payer perspective):</strong> Review their logic. If wrong, appeal. If valid, correct code and resubmit.</li>
+      <li><strong>Missing information:</strong> Supply the missing info. Resubmit within payer's correction window.</li>
+      <li><strong>L1 → L2 → L3 appeal escalation:</strong> Each level has its own deadline, format, and recipient. L3 is often external/independent review. Track where each appeal sits.</li>
+      <li><strong style="color:#ef4444;">Pattern detection:</strong> Same denial reason hitting multiple claims → systemic issue. Example: "No auth" denials spiking → prior auth process is broken. Alert supervisor.</li>
+      <li><strong>Partial overturn:</strong> Appeal partially successful. Payer pays some, but not all. May need L2 appeal for remainder.</li>
+      <li><strong>Payer audit / Post-payment review:</strong> Payer audits past claims. May demand money back. Track audit, respond with records, contest if appropriate.</li>
+    </ul>
+  </div>
+
+  <!-- ── A/R MANAGEMENT ── -->
+  <div class="diff-box" style="background:rgba(59,130,246,0.03); margin-bottom:16px; border-color:var(--staff);">
+    <h3 style="color:var(--staff);">A/R Management — Prioritization and Actions</h3>
+    <ul>
+      <li><strong>High-dollar aged account:</strong> $5,000+ sitting 90+ days. Priority 1. Voice AI calls payer. If no response, escalate to supervisor.</li>
+      <li><strong>Approaching timely filing:</strong> URGENT. 30 days before deadline. Must get status or resubmit. Voice AI auto-scheduled call.</li>
+      <li><strong>Payer says "in process" repeatedly:</strong> Call log shows 3 "in process" responses over 60 days. Escalation trigger. Request supervisor review or formal complaint.</li>
+      <li><strong>Patient portion unpaid:</strong> After insurance paid, patient balance outstanding. Statement cycle: 30 days → 60 days → 90 days → final notice → collections consideration.</li>
+      <li><strong>Payment plan:</strong> Patient can't pay full balance. Set up installment plan. Track monthly payments. Flag if payment missed.</li>
+      <li><strong>Hardship / Charity care:</strong> Patient qualifies for financial assistance. Application workflow. Discount or write-off with documentation.</li>
+      <li><strong>Bad debt transfer:</strong> Account uncollectable after exhausting internal efforts. Transfer to external collections agency. Requires director approval. Track agency performance.</li>
+      <li><strong>Credit balance:</strong> Patient or payer overpaid. Account has negative balance. Must refund within regulatory timeframe (varies by state/payer). Compliance risk.</li>
+      <li><strong>Shift handoff:</strong> AR rep worked accounts all day. Shift ends. Incomplete follow-ups need notes and handoff to next shift. Timezone-aware for UAE/US.</li>
+    </ul>
+  </div>
+
+  <!-- ── VOICE AI ── -->
+  <div class="diff-box" style="background:rgba(168,85,247,0.03); margin-bottom:16px; border-color:var(--ai);">
+    <h3 style="color:var(--ai);">Voice AI — Call Scenarios</h3>
+    <ul>
+      <li><strong>Outbound to payer (claim status):</strong> AI dials payer → navigates IVR → reaches rep → provides claim info → gets status → logs result → updates claim.</li>
+      <li><strong>Outbound to payer (appeal follow-up):</strong> Same flow but asks about appeal status. If denied, gets reason. Logs for AR team.</li>
+      <li><strong>Outbound to patient (balance reminder):</strong> AI calls patient → explains balance → offers payment options → sends SMS payment link → tracks response.</li>
+      <li><strong>Outbound to patient (appointment reminder):</strong> "You have an appointment tomorrow at 2pm with Dr. Patel. Press 1 to confirm, 2 to reschedule." Updates scheduling module.</li>
+      <li><strong>Inbound from patient (billing question):</strong> Patient calls office. AI answers: "I see your last visit on Feb 15. Your insurance paid $280, your remaining balance is $45. Would you like to pay now?" If complex → transfer to human.</li>
+      <li><strong style="color:#f59e0b;">Long hold time:</strong> Payer puts AI on hold for 45 minutes. AI detects hold music/silence. Stays on line. Logs hold duration. Resumes when rep answers.</li>
+      <li><strong>IVR navigation failure:</strong> Payer changed their phone tree. AI can't navigate. Flags as "IVR script needs update". Falls back to human caller.</li>
+      <li><strong>Voicemail:</strong> Patient/payer not available. AI leaves message with callback number. Schedules retry for next business day.</li>
+      <li><strong>Language switch:</strong> Call starts in English, patient prefers Arabic/Spanish. AI switches language mid-call.</li>
+      <li><strong>Patient disputes charge:</strong> Patient says "I already paid this" or "I never got this service". AI notes dispute. Routes to billing team for review. Does NOT argue with patient.</li>
+      <li><strong>Patient requests payment plan:</strong> AI offers standard plan options (3/6/12 months). Patient selects. Confirms via SMS. Posts plan to account.</li>
+      <li><strong>Patient in distress:</strong> AI detects emotional distress (crying, anger). Immediately offers transfer to human. Logs sentiment.</li>
+      <li><strong>Call recording + transcript:</strong> Every call recorded and transcribed. Linked to claim/patient. Accessible from Voice AI module AND from the related claim/account doc drawer.</li>
+    </ul>
+  </div>
+
+  <!-- ── DOCUMENTS ── -->
+  <div class="diff-box" style="background:rgba(245,158,11,0.03); margin-bottom:16px; border-color:var(--shared);">
+    <h3 style="color:var(--shared);">Documents — All Ingest Scenarios</h3>
+    <ul>
+      <li><strong>Upload via portal:</strong> Client uploads superbill/note. AI classifies, extracts, links to patient.</li>
+      <li><strong>Upload via email:</strong> Client emails docs. System ingests from monitored inbox. AI classifies and routes.</li>
+      <li><strong>SharePoint sync:</strong> Client shares a folder. MedCloud syncs new files automatically.</li>
+      <li><strong>Inbound fax:</strong> Fax received via cloud fax service. Auto-OCR'd. AI classifies. Routes to appropriate queue.</li>
+      <li><strong>EHR integration pull:</strong> Auto-pull clinical notes from EHR via HL7/FHIR. No manual upload needed.</li>
+      <li><strong style="color:#f59e0b;">Blurry / Unreadable:</strong> AI OCR confidence below threshold. Flags for manual data entry. Shows low-confidence fields in yellow.</li>
+      <li><strong style="color:#f59e0b;">Unlinked document:</strong> Can't determine which patient it belongs to. Sits in "Unlinked Queue". Staff manually matches to patient.</li>
+      <li><strong>Medical records request:</strong> Payer or attorney requests patient records. Track request, deadline, what was sent, who authorized release. HIPAA logging.</li>
+      <li><strong>Document retention:</strong> Different retention periods: medical records (7-10 years), billing records (6 years), HIPAA audit logs (6 years). Auto-flag approaching expiry.</li>
+    </ul>
+  </div>
+
+  <!-- ── CREDENTIALING ── -->
+  <div class="diff-box" style="background:rgba(245,158,11,0.03); margin-bottom:16px; border-color:var(--shared);">
+    <h3 style="color:var(--shared);">Credentialing — Provider Lifecycle</h3>
+    <ul>
+      <li><strong>New provider onboarding:</strong> Checklist: medical license, DEA, malpractice insurance, board cert, NPI, CAQH profile. Track each document status.</li>
+      <li><strong>Payer enrollment:</strong> Each payer requires separate enrollment. Track application status per payer. Some take 60-120 days.</li>
+      <li><strong style="color:#ef4444;">License expiring:</strong> Alerts at 90/60/30 days. If expired: CANNOT bill under that provider. Claims will deny. Urgent action.</li>
+      <li><strong>Malpractice renewal:</strong> Annual renewal. Track premium, carrier, coverage limits, effective dates.</li>
+      <li><strong>CAQH re-attestation:</strong> Required every 120 days. AI auto-fills if data hasn't changed. Alert when due.</li>
+      <li><strong>Privilege delineation:</strong> Which procedures each provider is credentialed to perform at each facility. Affects what can be billed.</li>
+      <li><strong>Provider leaves practice:</strong> Offboarding: terminate payer enrollments, reassign patients, close open encounters, final billing run.</li>
+    </ul>
+  </div>
+
+  <!-- ── TASKS & WORKFLOWS ── -->
+  <div class="diff-box" style="background:rgba(245,158,11,0.03); margin-bottom:16px; border-color:var(--shared);">
+    <h3 style="color:var(--shared);">Tasks & Workflows — Operational Scenarios</h3>
+    <ul>
+      <li><strong>Auto-assigned task:</strong> AI assigns based on skill + workload + client assignment. Staff sees it in "My Tasks".</li>
+      <li><strong>SLA breach approaching:</strong> Task has been open 3 days, SLA is 5 days. Yellow flag at 3 days. Red at 4. Auto-escalate at 5.</li>
+      <li><strong>Task blocked:</strong> Waiting on external info (doctor response, payer callback). Mark as "blocked" with reason. Doesn't count against SLA.</li>
+      <li><strong>Staff out sick:</strong> All their tasks auto-redistributed to pool or backup person. Manager notified.</li>
+      <li><strong>Task reassigned:</strong> Supervisor moves task from one person to another. Audit trail tracks all assignments.</li>
+      <li><strong>Recurring task:</strong> Monthly eligibility re-verification for all active patients. Quarterly credentialing check. Auto-generated.</li>
+      <li><strong>Shift handoff:</strong> Night shift → day shift. Incomplete tasks carry over with notes. Handoff report generated automatically.</li>
+      <li><strong>Escalation chain:</strong> Staff → Supervisor → Manager → Director. Each level has a time window before auto-escalating to next.</li>
+      <li><strong>Batch operations:</strong> "Rework all claims denied for code X in January" → creates tasks for each affected claim and assigns to relevant billers.</li>
+    </ul>
+  </div>
+
+  <!-- ── CONTRACT MANAGER ── -->
+  <div class="diff-box" style="background:rgba(59,130,246,0.03); margin-bottom:16px; border-color:var(--staff);">
+    <h3 style="color:var(--staff);">Contract Manager — Financial Scenarios</h3>
+    <ul>
+      <li><strong>New contract loaded:</strong> Fee schedule imported (CSV/PDF). Mapped to CPT codes. Effective date set.</li>
+      <li><strong>Underpayment detected:</strong> AI compares ERA payment to contracted rate. Flags variance above threshold (e.g., >$5 or >2%). Routes to appeal/followup.</li>
+      <li><strong>Contract expiring:</strong> Alert 90/60/30 days before. Trigger renewal negotiation workflow.</li>
+      <li><strong>Rate change mid-year:</strong> Payer updates fee schedule. Must load new rates with effective date. Old claims use old rates, new claims use new rates.</li>
+      <li><strong>Multiple contracts per payer:</strong> Different rates for different service types (office visit vs surgery vs radiology). Must match correctly.</li>
+      <li><strong>No contract (out of network):</strong> Billed at practice's chargemaster rate. Expect lower payment. Track allowed amounts for negotiation leverage.</li>
+    </ul>
+  </div>
+
+</div>
+
+<!-- ═══════════ TAB: CORRECTED CLIENT FLOW ═══════════ -->
+<div id="clientflow" class="panel">
+  <div class="section-title">Corrected Client Portal Flow <span class="badge" style="background:var(--us);color:white;">CRITICAL FIXES</span></div>
+
+  <div class="summary-box" style="border-color: #ef4444; background: rgba(239,68,68,0.05);">
+    <h3 style="color:#ef4444;">What Was Wrong</h3>
+    <p>The current Scan &amp; Submit shows AI-extracted CPT codes, ICD-10 codes, and charges to the CLIENT. The client doesn't know what these are — that's Cosentus's job. The patient form requires too many fields upfront. The entire client experience was built from a billing perspective instead of a clinic perspective.</p>
+  </div>
+
+  <div class="section-title" style="margin-top:32px;">The REAL Patient Journey — Step by Step</div>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-num owner-clinic"><div class="circle">1</div><div class="line"></div></div>
+      <div class="flow-card owner-clinic">
+        <div class="who">Clinic Front Desk — Phone Rings</div>
+        <h3>Patient Calls to Book an Appointment</h3>
+        <p>"Hi, I'd like to see Dr. Patel next Tuesday." Front desk opens MedCloud, goes to scheduling. Types: <strong>Name + Phone Number</strong>. Maybe DOB if they ask. That's it. Patient doesn't have their insurance card handy. They'll bring it when they come in. System creates a <strong>minimal patient record</strong> — name, phone, maybe DOB. Everything else is blank for now. Appointment created.</p>
+        <div class="modules">
+          <span class="mod-tag">Scheduling</span>
+          <span class="mod-tag">Patients (auto-created, minimal)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num owner-ai"><div class="circle">2</div><div class="line"></div></div>
+      <div class="flow-card owner-ai">
+        <div class="who">AI — Automated</div>
+        <h3>Appointment Reminders Sent</h3>
+        <p>24h before: SMS/email reminder with option to confirm or cancel. 2h before: final reminder. If patient confirms → status changes to "Confirmed". If no response → stays as "Booked" (potential no-show risk). If cancels → slot freed, waitlist notified.</p>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num owner-clinic"><div class="circle">3</div><div class="line"></div></div>
+      <div class="flow-card owner-clinic">
+        <div class="who">Clinic Front Desk — Patient Arrives</div>
+        <h3>Check-In &amp; Profile Building</h3>
+        <p>Patient arrives. Front desk checks them in. NOW the profile gets built:</p>
+        <div style="margin:8px 0; padding:12px; background:rgba(0,181,214,0.05); border-radius:8px; font-size:12px;">
+          <strong style="color:var(--brand);">Option A: Scan &amp; AI Fill</strong><br>
+          Front desk scans patient's <strong>driver's license / Emirates ID</strong> → AI extracts: full name, DOB, gender, address, ID number.<br>
+          Then scans <strong>insurance card (front &amp; back)</strong> → AI extracts: payer name, policy #, group #, member ID, copay, plan type.<br>
+          Patient reviews, confirms. Done in 60 seconds.
+        </div>
+        <div style="margin:8px 0; padding:12px; background:rgba(100,116,139,0.05); border-radius:8px; font-size:12px;">
+          <strong style="color:var(--muted);">Option B: Manual Entry</strong><br>
+          Front desk types in demographics from the forms patient filled out in the waiting room. Enters insurance info manually. Slower but works.
+        </div>
+        <div class="modules">
+          <span class="mod-tag">Patients (profile completion)</span>
+          <span class="ai-tag">AI Textract (ID + insurance card OCR)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num owner-shared"><div class="circle">4</div><div class="line"></div></div>
+      <div class="flow-card owner-shared">
+        <div class="who">Automated / Cosentus Team</div>
+        <h3>Eligibility Verification</h3>
+        <p>Once insurance info is in the system, eligibility check runs — can be automatic (batch for next-day appointments) or on-demand. If coverage is inactive or issues found, front desk is alerted BEFORE the visit happens.</p>
+        <div class="modules">
+          <span class="mod-tag">Eligibility</span>
+          <span class="ai-tag">AI #6 Eligibility</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num owner-clinic"><div class="circle">5</div><div class="line"></div></div>
+      <div class="flow-card owner-clinic">
+        <div class="who">Doctor — Patient Visit</div>
+        <h3>Encounter Happens</h3>
+        <p><strong>Mode A (MedCloud EHR):</strong> Doctor uses AI Scribe. Dictates, AI generates SOAP note, doctor signs off → auto-routes to Cosentus coding queue.<br>
+        <strong>Mode B (External EHR):</strong> Doctor uses their own system. After visit, the clinic needs to get the documentation to Cosentus (next step).</p>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num owner-clinic"><div class="circle">6</div><div class="line"></div></div>
+      <div class="flow-card owner-clinic">
+        <div class="who">Clinic Staff — THE HANDOFF</div>
+        <h3>Upload Documents to Cosentus</h3>
+        <p>This is what the <strong>Scan &amp; Submit</strong> page is actually for. The clinic uploads:</p>
+        <div style="margin:8px 0; padding:12px; background:rgba(16,185,129,0.05); border-radius:8px; font-size:12px;">
+          <strong style="color:var(--clinic);">What the client sees:</strong><br>
+          1. Select patient (search by name) <br>
+          2. Upload file(s): superbill, clinical note, op report, whatever the doctor gives them<br>
+          3. Select document type from dropdown<br>
+          4. Click "Submit to Cosentus"<br>
+          5. See confirmation: "Received! We'll take it from here. Track progress in Watch &amp; Track."<br>
+          <strong>THAT'S IT. No codes. No extraction results. No charges. No fields to review.</strong>
+        </div>
+        <div style="margin:8px 0; padding:12px; background:rgba(59,130,246,0.05); border-radius:8px; font-size:12px;">
+          <strong style="color:var(--staff);">What happens on Cosentus side (invisible to client):</strong><br>
+          1. Document hits S3 bucket → triggers AI pipeline<br>
+          2. AWS Textract extracts text, fields, tables from document<br>
+          3. AI classifies document type (superbill vs clinical note vs insurance card vs EOB)<br>
+          4. AI extracts codes (if superbill has tick marks), diagnoses, DOS, provider, charges<br>
+          5. AI runs auto-coding on clinical notes → suggests CPT/ICD<br>
+          6. Everything appears in the <strong>Cosentus coder's queue</strong> with extracted data<br>
+          7. Coder sees split pane: original document LEFT, AI-suggested codes RIGHT<br>
+          8. Coder reviews, adjusts, approves → moves to billing
+        </div>
+        <div class="modules">
+          <span class="mod-tag">Scan &amp; Submit (Client sees this)</span>
+          <span class="mod-tag">AI Coding (Cosentus sees this)</span>
+          <span class="ai-tag">AI Textract</span>
+          <span class="ai-tag">AI #1 Auto-Coding</span>
+          <span class="ai-tag">AI #11 Charge Capture</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num owner-staff"><div class="circle">7</div><div class="line"></div></div>
+      <div class="flow-card owner-staff">
+        <div class="who">Cosentus Team — Takes Over</div>
+        <h3>Coding → Scrubbing → Submission → Posting → Collection</h3>
+        <p>From here, it's 100% Cosentus. Client just watches progress in Watch &amp; Track. Steps 6-13 of the RCM flow happen without any client involvement.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Patient Form Fix -->
+  <div class="section-title" style="margin-top:32px;">Patient Registration — Progressive Profile Building</div>
+
+  <div class="summary-box" style="border-color:var(--brand);">
+    <h3>Principle: Only Require What You Have RIGHT NOW</h3>
+    <p>A patient record starts minimal and gets richer over time. The form adapts based on what stage the patient is at. <strong>Never block a save because insurance isn't filled in yet.</strong></p>
+  </div>
+
+  <table class="mod-table">
+    <thead><tr><th>Stage</th><th>When</th><th>Required Fields</th><th>Optional / Added Later</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="mod-name">Phone Booking</td>
+        <td>Patient calls to schedule</td>
+        <td><strong>First Name, Last Name, Phone</strong></td>
+        <td>DOB, email</td>
+      </tr>
+      <tr>
+        <td class="mod-name">Check-In</td>
+        <td>Patient arrives at clinic</td>
+        <td>+ DOB, Gender</td>
+        <td>Address, email, emergency contact</td>
+      </tr>
+      <tr>
+        <td class="mod-name">ID Scan</td>
+        <td>Front desk scans license/Emirates ID</td>
+        <td colspan="2">AI auto-fills: Full legal name, DOB, gender, address, ID number. Staff confirms.</td>
+      </tr>
+      <tr>
+        <td class="mod-name">Insurance Scan</td>
+        <td>Front desk scans insurance card</td>
+        <td colspan="2">AI auto-fills: Payer, policy #, group #, member ID, copay. Staff confirms.</td>
+      </tr>
+      <tr>
+        <td class="mod-name">Full Profile</td>
+        <td>After first visit processed</td>
+        <td colspan="2">Everything filled. Secondary insurance if applicable. Emergency contact. Consent forms signed. Referring provider. PCP info.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top:16px; padding:16px; border:1px solid var(--border); border-radius:10px; font-size:12px;">
+    <strong style="color:var(--brand);">Profile Completeness Indicator:</strong> Show a visual bar on each patient record —
+    <span style="color:#ef4444;">●</span> 20% (name + phone only) →
+    <span style="color:#f59e0b;">●</span> 50% (+ DOB + gender) →
+    <span style="color:#00B5D6;">●</span> 75% (+ insurance) →
+    <span style="color:#10b981;">●</span> 100% (fully complete).
+    Flag incomplete profiles that are blocking billing: "Cannot submit claim — missing insurance info."
+  </div>
+
+  <!-- Corrected Scan & Submit -->
+  <div class="section-title" style="margin-top:32px;">Corrected Scan &amp; Submit — What the Client Actually Sees</div>
+
+  <div class="diff-grid">
+    <div class="diff-box" style="background:rgba(239,68,68,0.03); border-color:#ef4444;">
+      <h3 style="color:#ef4444;">❌ WRONG (Current Build)</h3>
+      <ul>
+        <li>Upload zone with document type selector</li>
+        <li>AI "processing" animation</li>
+        <li>Modal showing: CPT Codes, ICD-10, DOS, Provider, Charges</li>
+        <li>"Confirm &amp; Submit to Coding" button</li>
+        <li>Client sees internal billing data</li>
+        <li>Client expected to verify codes they don't understand</li>
+      </ul>
+    </div>
+    <div class="diff-box" style="background:rgba(16,185,129,0.03); border-color:#10b981;">
+      <h3 style="color:#10b981;">✓ CORRECT (What to Build)</h3>
+      <ul>
+        <li>Select patient from dropdown (search by name)</li>
+        <li>Upload file(s) — drag &amp; drop or click</li>
+        <li>Optional: add a note ("Two visits on same day" etc.)</li>
+        <li>Click "Submit to Cosentus"</li>
+        <li>See: "✓ Received! Tracking ID: #SUB-2024-0847"</li>
+        <li>See: Upload history with status (Received → In Coding → Claim Submitted → Paid)</li>
+        <li><strong>ZERO coding data shown. ZERO charges. ZERO medical codes.</strong></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Corrected Watch & Track -->
+  <div class="section-title" style="margin-top:32px;">Corrected Watch &amp; Track — What the Client Sees vs Doesn't</div>
+
+  <div class="diff-grid">
+    <div class="diff-box" style="background:rgba(16,185,129,0.03); border-color:#10b981;">
+      <h3 style="color:#10b981;">✓ Client CAN See</h3>
+      <ul>
+        <li>Claim status: Received → In Process → Submitted to Payer → Paid / Denied</li>
+        <li>Patient name, date of service, payer name</li>
+        <li>Total charges (the amount billed to insurance)</li>
+        <li>Amount paid, amount pending, patient balance</li>
+        <li>Denial status and whether appeal is in progress</li>
+        <li>Summary KPIs: total claims, collection rate, avg days to payment</li>
+        <li>Monthly/quarterly revenue reports</li>
+      </ul>
+    </div>
+    <div class="diff-box" style="background:rgba(239,68,68,0.03); border-color:#ef4444;">
+      <h3 style="color:#ef4444;">❌ Client Should NOT See</h3>
+      <ul>
+        <li>Individual CPT/ICD codes on claims</li>
+        <li>Which coder worked on it</li>
+        <li>Internal notes between Cosentus staff</li>
+        <li>AI confidence scores</li>
+        <li>Scrub error details</li>
+        <li>Internal task assignments</li>
+        <li>Other clients' data (obviously)</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Dual Path into Coding Queue -->
+  <div class="section-title" style="margin-top:32px;">Two Paths Into the Coding Queue — How Work Reaches Cosentus Coders</div>
+
+  <div class="summary-box" style="border-color:var(--brand);">
+    <h3>Every Encounter Ends Up in the Same Place</h3>
+    <p>Whether the doctor uses AI Scribe or the clinic uploads a superbill PDF — the coder sees it in the same AI Coding module, same split-pane layout, same review workflow. The difference is data quality: Scribe path gives structured data (no OCR guessing), Upload path needs AI extraction first.</p>
+  </div>
+
+  <div class="diff-grid">
+    <div class="diff-box" style="background:rgba(168,85,247,0.03); border-color:var(--ai);">
+      <h3 style="color:var(--ai);">Path A: AI Scribe → Coding Queue</h3>
+      <ul>
+        <li><strong>1.</strong> Doctor opens AI Scribe, starts visit recording</li>
+        <li><strong>2.</strong> AI generates SOAP note + CPT/ICD suggestions</li>
+        <li><strong>3.</strong> Doctor reviews, edits, clicks "Sign &amp; Send to Billing"</li>
+        <li><strong>4.</strong> System creates a <strong>coding task</strong> automatically:</li>
+        <li style="padding-left:24px;">— Patient linked ✓</li>
+        <li style="padding-left:24px;">— Source document = signed SOAP note (structured text, not a PDF)</li>
+        <li style="padding-left:24px;">— AI-suggested codes already attached (from Scribe)</li>
+        <li style="padding-left:24px;">— Audio recording + transcript linked as reference</li>
+        <li style="padding-left:24px;">— Client name + provider name on the task</li>
+        <li><strong>5.</strong> Task appears in coder's AI Coding queue</li>
+        <li><strong>6.</strong> Coder opens split pane: SOAP note LEFT, codes RIGHT</li>
+        <li style="color:var(--clinic);"><strong>Data quality: HIGH</strong> — structured note, no OCR needed, codes pre-suggested by AI that heard the actual visit</li>
+      </ul>
+    </div>
+    <div class="diff-box" style="background:rgba(16,185,129,0.03); border-color:var(--clinic);">
+      <h3 style="color:var(--clinic);">Path B: Upload → AI Extract → Coding Queue</h3>
+      <ul>
+        <li><strong>1.</strong> Clinic uploads superbill / clinical note via Scan &amp; Submit</li>
+        <li><strong>2.</strong> Document hits S3 → triggers AI pipeline</li>
+        <li><strong>3.</strong> Textract OCRs the document (extracts text, tables, checkboxes)</li>
+        <li><strong>4.</strong> AI classifies document type, extracts fields</li>
+        <li><strong>5.</strong> AI Auto-Coding reads extracted text → suggests CPT/ICD</li>
+        <li><strong>6.</strong> System creates a <strong>coding task</strong>:</li>
+        <li style="padding-left:24px;">— Patient linked (from upload form) ✓</li>
+        <li style="padding-left:24px;">— Source document = original PDF/image</li>
+        <li style="padding-left:24px;">— AI-extracted fields (codes from superbill ticks, if any)</li>
+        <li style="padding-left:24px;">— AI-suggested codes (from clinical note text)</li>
+        <li style="padding-left:24px;">— Confidence scores on each extraction</li>
+        <li><strong>7.</strong> Task appears in coder's AI Coding queue</li>
+        <li><strong>8.</strong> Coder opens split pane: original document LEFT, codes RIGHT</li>
+        <li style="color:var(--shared);"><strong>Data quality: VARIES</strong> — depends on scan quality, handwriting, template format. Low-confidence fields flagged in yellow.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div style="margin-top:16px; padding:16px; border:1px solid var(--border); border-radius:10px; font-size:12px;">
+    <strong style="color:var(--brand);">What the Coder Sees in AI Coding (Both Paths):</strong><br><br>
+    <strong>Left Panel (Source Documents):</strong><br>
+    — Tabs across top if multiple docs: "SOAP Note" | "Superbill" | "Insurance Card" | "Clinical Note"<br>
+    — Path A: Rendered SOAP note (formatted text, sections highlighted)<br>
+    — Path B: PDF/image viewer with zoom, rotate, pan. AI-extracted text overlaid with confidence highlighting<br>
+    — Audio player (if from Scribe — coder can listen to the actual visit recording if something is unclear)<br><br>
+    <strong>Right Panel (Coding Workspace):</strong><br>
+    — Patient info header: name, DOB, insurance, client name<br>
+    — Date of Service<br>
+    — Diagnosis codes (ICD-10): AI-suggested list, each with confidence %. Coder can accept, remove, add, reorder (primary dx first)<br>
+    — Procedure codes (CPT): AI-suggested list with confidence %. Modifiers. Units. Coder can accept, remove, add<br>
+    — If superbill had ticked codes: show comparison — "Superbill says: 99214, AI says: 99213" with yellow flag<br>
+    — Charges auto-calculated from fee schedule once codes confirmed<br>
+    — "Approve &amp; Send to Billing" button → claim created, moves to Claims Center<br>
+    — "Query Doctor" button → opens message thread on this encounter, asks doctor for clarification
+  </div>
+
+  <!-- How Cosentus Validates -->
+  <div class="section-title" style="margin-top:32px;">How Cosentus Validates Accuracy</div>
+
+  <div class="summary-box" style="border-color:var(--ai); background:rgba(168,85,247,0.05);">
+    <h3 style="color:var(--ai);">The Clinic Sends Codes on Superbills — But We Don't Trust Them Blindly</h3>
+    <p>Many clinics have superbills with pre-printed CPT codes that doctors tick off. These are a <strong>starting point</strong>, not the final word. Here's the validation chain:</p>
+    <ul style="margin-top:8px; font-size:12px; color: var(--text); list-style:none;">
+      <li style="padding:4px 0;">1. <strong>Client uploads superbill</strong> (with ticked codes) + clinical note</li>
+      <li style="padding:4px 0;">2. <strong>AI Textract</strong> extracts ticked codes from superbill + reads clinical note</li>
+      <li style="padding:4px 0;">3. <strong>AI Auto-Coding</strong> independently generates code suggestions from the clinical note text</li>
+      <li style="padding:4px 0;">4. <strong>AI compares:</strong> Superbill codes vs AI-suggested codes. Matches are green. Mismatches are flagged yellow.</li>
+      <li style="padding:4px 0;">5. <strong>Human coder reviews:</strong> Sees both sets side by side. Makes final decision. Common fixes: upcoding correction, missing modifier, bundling issue, documentation doesn't support code.</li>
+      <li style="padding:4px 0;">6. <strong>AI Claim Scrubbing</strong> runs payer-specific rules on final codes before submission</li>
+    </ul>
+    <p style="margin-top:8px;">This way: even if the doctor ticks the wrong box, or the AI misreads a checkbox, or the codes don't match documentation — a human coder catches it before it goes to the payer.</p>
+  </div>
+
+  <!-- What about existing data flow to our side -->
+  <div class="section-title" style="margin-top:32px;">All the Ways Work Arrives at Cosentus</div>
+
+  <table class="mod-table">
+    <thead><tr><th>Ingest Method</th><th>How It Works</th><th>Client Action</th><th>Where It Lands</th></tr></thead>
+    <tbody>
+      <tr><td class="mod-name">Portal Upload</td><td>Client uploads via Scan &amp; Submit</td><td>Select patient → upload → submit</td><td>AI pipeline → Coding queue</td></tr>
+      <tr><td class="mod-name">AI Scribe</td><td>Doctor signs note in MedCloud</td><td>Doctor clicks "Sign &amp; Send"</td><td>Direct to Coding queue with structured data</td></tr>
+      <tr><td class="mod-name">Email</td><td>Client emails docs to billing@client.medcloud.ai</td><td>Send email with attachments</td><td>Monitored inbox → AI classifies → Unlinked queue (staff matches to patient)</td></tr>
+      <tr><td class="mod-name">SharePoint / Drive</td><td>Shared folder syncs automatically</td><td>Drop file in shared folder</td><td>Auto-sync → AI classifies → Unlinked queue</td></tr>
+      <tr><td class="mod-name">Fax</td><td>Cloud fax number receives documents</td><td>Fax from their system</td><td>Fax center → OCR → AI classifies → Unlinked queue</td></tr>
+      <tr><td class="mod-name">EHR Integration</td><td>HL7/FHIR pull from client's EHR</td><td>None (automatic)</td><td>Direct to Coding queue with structured data</td></tr>
+    </tbody>
+  </table>
+
+  <!-- APPOINTMENTS: SHARED VIEW -->
+  <div class="section-title" style="margin-top:32px;">Appointments — Shared Between Clinic &amp; Billing Team</div>
+
+  <div class="summary-box" style="border-color:var(--brand);">
+    <h3>Why Both Sides Need This</h3>
+    <p>Cosentus can't bill for a visit that didn't happen. If a patient no-shows, there's no encounter, no superbill, no claim. The billing team needs to see the appointment status in real-time — not wait for the clinic to tell them days later. The Appointments module is a <strong>shared view</strong> that both sides see, but with different permissions.</p>
+  </div>
+
+  <div class="diff-grid">
+    <div class="diff-box" style="background:rgba(16,185,129,0.03); border-color:var(--clinic);">
+      <h3 style="color:var(--clinic);">What the Clinic Sees &amp; Does</h3>
+      <ul>
+        <li><strong>Create appointments:</strong> Book new, reschedule, cancel</li>
+        <li><strong>Collect info at booking:</strong> Can enter insurance, DOB, everything — OR just name + phone (flexible)</li>
+        <li><strong>Update status:</strong> Check in patient, mark as no-show, mark as completed</li>
+        <li><strong>Add visit notes:</strong> "Patient needs referral" or "Brought new insurance card"</li>
+        <li><strong>View their schedule:</strong> Day/week/month calendar view</li>
+        <li><strong>See appointment reminders:</strong> Which patients confirmed, which didn't respond</li>
+      </ul>
+    </div>
+    <div class="diff-box" style="background:rgba(59,130,246,0.03); border-color:var(--staff);">
+      <h3 style="color:var(--staff);">What Cosentus Billing Team Sees</h3>
+      <ul>
+        <li><strong>View only</strong> — cannot create/modify appointments</li>
+        <li><strong>Completed visits:</strong> "These are the ones we can bill for"</li>
+        <li><strong>No-shows:</strong> "Don't expect superbills for these"</li>
+        <li><strong>Pending check-in:</strong> "Visit might generate work soon"</li>
+        <li><strong>Missing documentation flag:</strong> Visit completed 3 days ago but no superbill uploaded yet → auto-task created</li>
+        <li><strong>Volume forecasting:</strong> "Client has 40 appointments next week → expect 35-38 superbills" (helps staffing)</li>
+        <li><strong>Filter by client:</strong> See appointments across all clients or one specific client</li>
+      </ul>
+    </div>
+  </div>
+
+  <div style="margin-top:16px; padding:16px; border:1px solid var(--border); border-radius:10px; font-size:12px;">
+    <strong style="color:var(--brand);">Auto-triggers from appointment status changes:</strong><br>
+    <span style="color:var(--muted);">Completed → </span>Start 48-hour countdown for superbill. If no upload after 48h → auto-message clinic: "Visit for John Smith on Feb 28 — documentation not yet received."<br>
+    <span style="color:var(--muted);">No-Show → </span>Mark on patient record. Increment no-show counter. If 3+ no-shows → flag patient for clinic review.<br>
+    <span style="color:var(--muted);">Cancelled → </span>Remove from billing pipeline. If superbill was already uploaded → alert: "Visit was cancelled but docs were submitted — please verify."<br>
+    <span style="color:var(--muted);">Rescheduled → </span>Link old and new appointment. Update eligibility check date if coverage is date-sensitive.
+  </div>
+
+  <!-- CONTEXTUAL MESSAGING -->
+  <div class="section-title" style="margin-top:32px;">Contextual Messaging — No More Email Chains</div>
+
+  <div class="summary-box" style="border-color:var(--brand);">
+    <h3>Principle: Every Conversation Attached to Something</h3>
+    <p>Instead of email: "Hey, for patient John Smith claim #4521, we need the op report" — the message lives ON that claim. Both sides see it in context. No hunting through inboxes. No lost emails. Full audit trail.</p>
+  </div>
+
+  <div class="diff-grid">
+    <div class="diff-box" style="background:rgba(239,68,68,0.03); border-color:#ef4444;">
+      <h3 style="color:#ef4444;">❌ OLD: "Talk to Us" (Generic Tickets)</h3>
+      <ul>
+        <li>Client creates a work order: "Missing ERA for January"</li>
+        <li>Conversation thread under that ticket</li>
+        <li>No link to specific patient or claim</li>
+        <li>Manager has to search to find context</li>
+        <li>Feels like a support desk, not a partnership</li>
+      </ul>
+    </div>
+    <div class="diff-box" style="background:rgba(16,185,129,0.03); border-color:#10b981;">
+      <h3 style="color:#10b981;">✓ NEW: Contextual Messages on Every Entity</h3>
+      <ul>
+        <li>Message thread on a <strong>patient:</strong> "Missing insurance card for John Smith"</li>
+        <li>Message thread on a <strong>claim:</strong> "Payer denied — need operative report"</li>
+        <li>Message thread on a <strong>submission:</strong> "This superbill is illegible, can you resend?"</li>
+        <li>Message thread on an <strong>appointment:</strong> "Patient rescheduled to next week"</li>
+        <li>Both sides see the thread right on the entity they're looking at</li>
+        <li><strong>Plus</strong> a unified inbox that shows ALL threads across all entities</li>
+      </ul>
+    </div>
+  </div>
+
+  <table class="mod-table" style="margin-top:16px;">
+    <thead><tr><th>Entity</th><th>Who Can Message</th><th>Typical Conversations</th><th>Auto-Triggers</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="mod-name">Patient</td>
+        <td>Clinic ↔ Cosentus</td>
+        <td>"Insurance card expired, need updated copy" / "Demographics don't match payer file"</td>
+        <td>Profile incomplete for 48h+ → auto-nudge</td>
+      </tr>
+      <tr>
+        <td class="mod-name">Claim</td>
+        <td>Cosentus → Clinic</td>
+        <td>"Need op report for appeal" / "Claim denied, here's why, here's what we're doing"</td>
+        <td>Denial → auto-notify client with plain-English explanation</td>
+      </tr>
+      <tr>
+        <td class="mod-name">Submission (Upload)</td>
+        <td>Cosentus → Clinic</td>
+        <td>"Can't read page 2" / "Which patient is this for?"</td>
+        <td>Unlinked doc in queue 24h+ → auto-ask clinic</td>
+      </tr>
+      <tr>
+        <td class="mod-name">Appointment</td>
+        <td>Clinic ↔ Cosentus</td>
+        <td>"Patient came but forgot insurance card" / "Visit completed, superbill coming tomorrow"</td>
+        <td>Completed visit, no superbill after 48h → auto-ask</td>
+      </tr>
+      <tr>
+        <td class="mod-name">General (Account-level)</td>
+        <td>Clinic ↔ Cosentus Manager</td>
+        <td>"Monthly report question" / "New provider starting next week" / "Changing insurance contracts"</td>
+        <td>None — these are proactive conversations</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top:16px; padding:16px; border:1px solid var(--border); border-radius:10px; font-size:12px;">
+    <strong style="color:var(--brand);">UI Pattern:</strong> Every entity detail view (patient profile, claim detail, submission detail, appointment detail) has a <strong>"Messages" tab or expandable section</strong> at the bottom. Shows threaded conversation. Either side can reply. File attachments supported (clinic can attach the missing doc right in the thread). <strong>Notifications:</strong> New message → in-app notification + optional email digest. Unread count badge on the entity. Unified inbox at <span class="mono">/messages</span> shows ALL threads sorted by most recent, filterable by entity type and client.
+  </div>
+
+  <div style="margin-top:16px; padding:16px; border:1px solid var(--border); border-radius:10px; font-size:12px;">
+    <strong style="color:var(--brand);">"Talk to Us" still exists but becomes the General/Account-level conversation tab.</strong> For things that don't attach to a specific patient or claim: "We're adding a new provider next month" / "Can you run our quarterly report?" / "We want to change our billing contact." It's one of the message categories, not a separate module.
+  </div>
+
+</div>
+
+<!-- ═══════════ TAB 6: ISSUES ═══════════ -->
+<!-- ═══════════ TAB: MULTI-CLIENT (STAFF VIEW) ═══════════ -->
+<div id="multiorg" class="panel">
+  <div class="section-title">Multi-Client Architecture — How Staff Work Across 60+ Clients</div>
+
+  <div class="summary-box">
+    <h3>The Core Problem</h3>
+    <p>A Cosentus coder opens their queue at 9am. They have 40 charts to code. Some are from "Gulf Medical Center" (Dubai), some from "Irvine Family Practice" (CA), some from "Patel Cardiology" (TX). Each client has different payers, fee schedules, superbill templates, and preferences. <strong>Every single screen in MedCloud must show which client the work belongs to.</strong></p>
+  </div>
+
+  <div class="section-title" style="margin-top:24px;">Topbar: Global Client Switcher</div>
+
+  <div class="diff-box" style="background:rgba(0,181,214,0.03); margin-bottom:24px;">
+    <h3 style="color:var(--brand);">Topbar Layout for Cosentus Staff</h3>
+    <ul>
+      <li><strong>Left:</strong> MedCloud logo</li>
+      <li><strong>Center:</strong> Global search (patients, claims, docs across all clients)</li>
+      <li><strong>Right side, in order:</strong></li>
+      <li style="padding-left:32px;"><strong>Client Filter:</strong> Dropdown — "All Clients" | "Gulf Medical Center" | "Irvine Family Practice" | etc. When set to a specific client, ALL data in ALL modules filters to that client only.</li>
+      <li style="padding-left:32px;"><strong>Region indicator:</strong> UAE or US flag (auto-set by selected client, or shows "Mixed" when on All)</li>
+      <li style="padding-left:32px;">Language switcher (EN/AR/ES)</li>
+      <li style="padding-left:32px;">Theme toggle (dark/light)</li>
+      <li style="padding-left:32px;">Notifications bell</li>
+      <li style="padding-left:32px;">Profile avatar + role badge</li>
+    </ul>
+  </div>
+
+  <div class="section-title" style="margin-top:24px;">Every Worklist Shows Client Context</div>
+
+  <table class="mod-table">
+    <thead><tr><th>Module</th><th>Client Context Shown</th><th>How</th></tr></thead>
+    <tbody>
+      <tr><td class="mod-name">AI Coding Queue</td><td>Client name + logo on each chart row</td><td>Column: "Client" | Color badge | Sort/filter by client</td></tr>
+      <tr><td class="mod-name">Claims Center</td><td>Client on every claim row</td><td>Column: "Client" | Bulk filter | Client-specific payer rules auto-applied</td></tr>
+      <tr><td class="mod-name">Denials &amp; Appeals</td><td>Client on every denial</td><td>Column: "Client" | Denial patterns per client visible</td></tr>
+      <tr><td class="mod-name">A/R Management</td><td>Client on every account</td><td>Column: "Client" | Aging report filterable by client</td></tr>
+      <tr><td class="mod-name">Payment Posting</td><td>Client on every ERA/payment</td><td>ERA files come per client anyway — labeled clearly</td></tr>
+      <tr><td class="mod-name">Eligibility</td><td>Client on every verification</td><td>Client determines which TPA/payer list to show</td></tr>
+      <tr><td class="mod-name">Tasks &amp; Workflows</td><td>Client on every task</td><td>Tasks auto-created with client context from parent entity</td></tr>
+      <tr><td class="mod-name">Voice AI</td><td>Client on every call</td><td>Call scripts load per client payer mix</td></tr>
+      <tr><td class="mod-name">Dashboard</td><td>KPIs filterable by client</td><td>Topbar client filter — dashboard recalculates. "All Clients" = aggregate.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="section-title" style="margin-top:24px;">Staff Assignment Model</div>
+
+  <div class="diff-grid">
+    <div class="diff-box" style="background:rgba(59,130,246,0.03);">
+      <h3 style="color:var(--staff);">Dedicated Teams</h3>
+      <ul>
+        <li>Staff assigned to specific clients</li>
+        <li>Queue only shows work from assigned clients</li>
+        <li>Client filter defaults to their assigned clients</li>
+        <li>Supervisor sees "assigned to: Sarah — Gulf Medical, Irvine Family"</li>
+        <li>Common for: large clients needing dedicated resources</li>
+      </ul>
+    </div>
+    <div class="diff-box" style="background:rgba(245,158,11,0.03);">
+      <h3 style="color:var(--shared);">Mixed/Pool Teams</h3>
+      <ul>
+        <li>Staff work across all clients in shared queue</li>
+        <li>Work assigned by AI Workflows (skill, workload, availability)</li>
+        <li>Client filter defaults to "All Clients"</li>
+        <li>Client name prominently displayed on every item</li>
+        <li>Common for: smaller clients, overflow, general pool</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="summary-box" style="margin-top:16px;">
+    <h3>Client Config Object — What is Stored Per Client</h3>
+    <ul style="margin-top:8px; font-size:12px; color: var(--text); list-style:none;">
+      <li style="padding:3px 0;">— <strong>Region:</strong> UAE or US (determines forms, payer lists, ID fields, currency, compliance)</li>
+      <li style="padding:3px 0;">— <strong>EHR Mode:</strong> "medcloud_ehr" (doctor uses MedCloud) or "external_ehr" (upload/email only)</li>
+      <li style="padding:3px 0;">— <strong>Branding:</strong> Client logo, colors (white-label client portal)</li>
+      <li style="padding:3px 0;">— <strong>Pricing Model:</strong> % of collections, per-claim, flat fee, hybrid</li>
+      <li style="padding:3px 0;">— <strong>Payer Mix:</strong> Which payers this client bills to</li>
+      <li style="padding:3px 0;">— <strong>Fee Schedules:</strong> Contracted rates per payer</li>
+      <li style="padding:3px 0;">— <strong>Superbill Template:</strong> Which template for AI extraction</li>
+      <li style="padding:3px 0;">— <strong>Clearinghouse:</strong> Which clearinghouse connection</li>
+      <li style="padding:3px 0;">— <strong>Staff Assignment:</strong> Dedicated team vs pool</li>
+      <li style="padding:3px 0;">— <strong>Providers:</strong> List of doctors under this practice</li>
+      <li style="padding:3px 0;">— <strong>Locations:</strong> Practice locations (multi-site)</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════ TAB: DOCTOR'S EXPERIENCE ═══════════ -->
+<div id="doctor" class="panel">
+  <div class="section-title">The Doctor's Experience — Two Modes</div>
+
+  <div class="diff-grid">
+    <div class="diff-box" style="background:rgba(0,181,214,0.03); border-color: var(--brand);">
+      <h3 style="color:var(--brand);">Mode A: MedCloud IS Their EHR</h3>
+      <ul>
+        <li>Doctor logs in as role: <strong>"provider"</strong></li>
+        <li>Completely different interface — clinical, not billing</li>
+        <li>Full AI Scribe, scheduling, patient charts</li>
+        <li>Signs off on notes, reviews AI-suggested codes</li>
+        <li>Never sees claims, billing, revenue, A/R</li>
+        <li>Org config: ehr_mode = "medcloud_ehr"</li>
+      </ul>
+    </div>
+    <div class="diff-box" style="background:rgba(100,116,139,0.05);">
+      <h3 style="color:var(--muted);">Mode B: External EHR (Epic, Cerner, etc.)</h3>
+      <ul>
+        <li>Doctor NEVER logs into MedCloud</li>
+        <li>Office manager uploads superbills via portal or email</li>
+        <li>Docs come in via: upload, email, SharePoint, fax, EHR integration</li>
+        <li>No AI Scribe needed (own EHR dictation)</li>
+        <li>Org config: ehr_mode = "external_ehr"</li>
+        <li>AI Scribe and Scheduling modules hidden for this org</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section-title" style="margin-top:32px;">Mode A: What the Doctor Sees</div>
+
+  <div class="diff-box" style="background:rgba(0,181,214,0.03); margin-bottom: 24px; border-color: var(--brand);">
+    <h3 style="color:var(--brand);">Doctor's Dashboard</h3>
+    <ul>
+      <li><strong>Today's Schedule:</strong> Patient list with time, visit type, status (checked in / waiting / in progress / completed)</li>
+      <li><strong>Pending Sign-offs:</strong> AI-generated SOAP notes needing doctor review and signature</li>
+      <li><strong>Patients Seen Today / This Week:</strong> Simple count</li>
+      <li><strong>Clinical Alerts:</strong> Drug interactions, overdue preventive care, abnormal labs (AI #14)</li>
+      <li><strong>Recent Notes:</strong> Last 5 notes — draft / signed / sent to billing</li>
+      <li><strong>Quick Actions:</strong> "Start New Visit" opens AI Scribe, "View Schedule" opens calendar</li>
+    </ul>
+  </div>
+
+  <div class="section-title">Doctor's Sidebar — Only 5 Modules</div>
+
+  <table class="mod-table">
+    <thead><tr><th>Module</th><th>What Doctor Does Here</th><th>AI Features</th></tr></thead>
+    <tbody>
+      <tr><td class="mod-name">Dashboard</td><td>Today's schedule, pending sign-offs, clinical alerts</td><td><span class="ai-tag">AI #14 Clinical Decision</span></td></tr>
+      <tr><td class="mod-name">Schedule</td><td>View calendar, see appointments (may be read-only — front desk manages)</td><td>—</td></tr>
+      <tr><td class="mod-name">AI Scribe</td><td>Record visit — AI generates SOAP note — doctor reviews, edits, signs off — auto-routes to coding</td><td><span class="ai-tag">AI #8 Scribe</span> <span class="ai-tag">AI #1 Auto-Coding</span></td></tr>
+      <tr><td class="mod-name">Patients</td><td>Patient chart: demographics, visit history, past notes, labs, insurance. NO billing tab visible.</td><td><span class="ai-tag">AI #14 Clinical Decision</span></td></tr>
+      <tr><td class="mod-name">Documents</td><td>Clinical documents only: lab results, imaging, referrals, consent forms. No billing docs.</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <div class="section-title" style="margin-top:32px;">Doctor's Workflow — A Typical Day</div>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-num owner-clinic"><div class="circle">1</div><div class="line"></div></div>
+      <div class="flow-card owner-clinic">
+        <div class="who">Doctor — Start of Day</div>
+        <h3>Dashboard — Today's Schedule</h3>
+        <p>9:00am — Dr. Patel logs in. Dashboard: 14 patients today. 3 notes pending sign-off from yesterday. 1 clinical alert (drug interaction).</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num owner-clinic"><div class="circle">2</div><div class="line"></div></div>
+      <div class="flow-card owner-clinic">
+        <div class="who">Doctor — Before Visit</div>
+        <h3>Review Patient Chart</h3>
+        <p>Clicks first patient. Reviews: last visit notes, medications, allergies, labs. Clinical Decision Support: overdue A1C check.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num owner-ai"><div class="circle">3</div><div class="line"></div></div>
+      <div class="flow-card owner-ai">
+        <div class="who">AI Scribe — During Visit</div>
+        <h3>Patient Encounter — AI Records</h3>
+        <p>Doctor clicks "Start Visit". AI Scribe begins ambient recording. Doctor talks to patient normally. AI captures everything. Or: doctor dictates after visit ends.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num owner-ai"><div class="circle">4</div><div class="line"></div></div>
+      <div class="flow-card owner-ai">
+        <div class="who">AI Generates Note</div>
+        <h3>SOAP Note + Code Suggestions</h3>
+        <p>Visit ends. AI generates: Subjective, Objective, Assessment, Plan. Suggests CPT/ICD codes. Split pane: transcript LEFT, editable SOAP note RIGHT.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num owner-clinic"><div class="circle">5</div><div class="line"></div></div>
+      <div class="flow-card owner-clinic">
+        <div class="who">Doctor — Sign-off</div>
+        <h3>Review, Edit, Sign — Done</h3>
+        <p>Doctor reviews AI note, corrects if needed, clicks "Sign &amp; Send to Billing". Signed note + codes auto-appear in Cosentus coder queue. Doctor moves to next patient. <strong>This is the handoff point.</strong></p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num owner-staff"><div class="circle">6</div><div class="line"></div></div>
+      <div class="flow-card owner-staff">
+        <div class="who">Cosentus Coder (Invisible to Doctor)</div>
+        <h3>Note Appears in Coding Queue</h3>
+        <p>Signed note arrives in AI Coding module with AI-suggested codes. Coder reviews, adjusts, sends to billing. Doctor never sees this.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="summary-box" style="border-color: var(--ai); background: rgba(168,85,247,0.05);">
+    <h3 style="color:var(--ai);">The Doctor's Sign-off IS the Handoff</h3>
+    <p>"Sign &amp; Send to Billing" = Step 5 in the RCM flow. The AI Scribe output replaces the paper superbill. The signed note has everything the coder needs: diagnoses, procedures, clinical justification.</p>
+  </div>
+
+  <div class="summary-box" style="margin-top:16px;">
+    <h3>New Role Required: "provider"</h3>
+    <p>Current roles: admin, director, supervisor, manager, coder, biller, ar_team, posting_team, client. <strong>Missing: "provider" (doctor).</strong> Sidebar: 5 items instead of 21. Dashboard: clinical, not financial. Completely different experience from all other roles.</p>
+  </div>
+</div>
+
+<div id="issues" class="panel">
+  <div class="section-title">Current Issues to Fix <span class="badge" style="background:var(--us);color:white;">PRIORITY</span></div>
+
+  <div class="summary-box" style="border-color: #ef4444; background: rgba(239,68,68,0.05);">
+    <h3 style="color:#ef4444;">Critical: No Shared Appointments View</h3>
+    <p>Billing team has zero visibility into whether a patient actually came. Need a shared Appointments module: clinic creates/updates status (booked, checked-in, completed, no-show), billing team sees it read-only. Auto-triggers: completed visit with no superbill after 48h → auto-message clinic. No-show → don't expect superbill. This replaces the old "Scheduling" module.</p>
+  </div>
+
+  <div class="summary-box" style="border-color: #ef4444; background: rgba(239,68,68,0.05);">
+    <h3 style="color:#ef4444;">Critical: Communication is Generic Tickets, Not Contextual</h3>
+    <p>"Talk to Us" creates floating work orders with no link to patients or claims. Must replace with contextual messaging: message threads attached to EACH entity (patient, claim, submission, appointment). "Need insurance card for John Smith" lives on John Smith's profile. "Need op report for claim #4521" lives on that claim. Plus a unified inbox at /messages showing all threads. "Talk to Us" becomes just the general/account-level category.</p>
+  </div>
+
+  <div class="summary-box" style="border-color: #ef4444; background: rgba(239,68,68,0.05);">
+    <h3 style="color:#ef4444;">Critical: Scan &amp; Submit Shows Internal Coding Data to Client</h3>
+    <p>AI Extracted Fields modal shows CPT codes, ICD-10, charges to the CLIENT. They don't know what these are. Client should see: select patient → upload → "Received, we'll take it from here." ZERO codes, ZERO charges, ZERO extraction results. All that happens on the Cosentus side invisibly.</p>
+  </div>
+
+  <div class="summary-box" style="border-color: #ef4444; background: rgba(239,68,68,0.05);">
+    <h3 style="color:#ef4444;">Critical: Patient Form Too Rigid — Blocks Workflow</h3>
+    <p>Real life: patient calls, front desk types name + phone. That's a valid patient record. Current form requires too many fields. Must support progressive profile building: phone booking (name+phone) → check-in (add DOB) → ID scan (AI fills demographics) → insurance scan (AI fills payer info). Show profile completeness % indicator. Never block a save because insurance isn't entered yet.</p>
+  </div>
+
+  <div class="summary-box" style="border-color: #ef4444; background: rgba(239,68,68,0.05);">
+    <h3 style="color:#ef4444;">Bug: Role Switcher Changes When Navigating</h3>
+    <p>When in client role viewing Patients page, clicking "Add Patient" switches the topbar to show "admin" instead of staying as "client". Role context is leaking between pages.</p>
+  </div>
+
+  <div class="summary-box" style="border-color: #ef4444; background: rgba(239,68,68,0.05);">
+    <h3 style="color:#ef4444;">Critical: ZERO Client Context — Staff Don't Know Who They're Working For</h3>
+    <p>No client name on any worklist row. No client filter in topbar. No client config model. A coder sees 40 charts with no idea which practice they belong to. EVERY module needs a "Client" column and the topbar needs a global client filter dropdown.</p>
+  </div>
+
+  <div class="summary-box" style="border-color: #ef4444; background: rgba(239,68,68,0.05);">
+    <h3 style="color:#ef4444;">Critical: Missing "provider" (Doctor) Role</h3>
+    <p>No doctor experience exists. Need a new "provider" role that sees: clinical dashboard (schedule, sign-offs, alerts), AI Scribe, Patients (clinical view only), Schedule, Documents (clinical only). Only 5 sidebar items. Zero billing/revenue visibility. Also need org-level ehr_mode config ("medcloud_ehr" vs "external_ehr") to show/hide doctor features per client.</p>
+  </div>
+
+  <div class="summary-box" style="border-color: #ef4444; background: rgba(239,68,68,0.05);">
+    <h3 style="color:#ef4444;">Critical: Documents Must Be Accessible From Every Module</h3>
+    <p>Staff should NEVER leave their module to find a document. AI Coding needs split-pane (doc left, codes right). Claims/AR/Tasks need a side drawer. Eligibility needs inline insurance card preview. Build ONE reusable DocViewer component with three modes (split pane, drawer, inline) and embed it everywhere.</p>
+  </div>
+
+  <div class="summary-box" style="border-color: #ef4444; background: rgba(239,68,68,0.05);">
+    <h3 style="color:#ef4444;">Critical: Region-Aware Patient Form</h3>
+    <p>Emirates ID and SSN are currently shown together. Must be separated based on organization region. UAE clients see Emirates ID + TPA dropdown. US clients see SSN (optional) + Commercial payer dropdown. NEVER mixed.</p>
+  </div>
+
+  <div class="summary-box" style="border-color: #ef4444; background: rgba(239,68,68,0.05);">
+    <h3 style="color:#ef4444;">Critical: AI Scribe belongs to DOCTORS, not RCM staff</h3>
+    <p>AI Scribe is used during Step 4 (patient encounter). It's a CLINIC-SIDE tool. The doctor dictates, AI generates SOAP note. Should be accessible to client role (doctors) AND to coders who need to review the output.</p>
+  </div>
+
+  <div class="summary-box" style="border-color: #ef4444; background: rgba(239,68,68,0.05);">
+    <h3 style="color:#ef4444;">Critical: Scheduling belongs to CLINICS</h3>
+    <p>Scheduling is Step 1 — the clinic's front desk books appointments. It should be in the Client Portal section, not Operations. Cosentus staff may view schedules but don't create appointments.</p>
+  </div>
+
+  <div class="summary-box" style="border-color: #f59e0b; background: rgba(245,158,11,0.05);">
+    <h3 style="color:#f59e0b;">Patient CRUD Missing Features</h3>
+    <p>No edit, no deactivate, no secondary insurance, no visit history tab, no linked claims, no linked documents, no notes. Region-aware fields needed.</p>
+  </div>
+
+  <div class="summary-box" style="border-color: #f59e0b; background: rgba(245,158,11,0.05);">
+    <h3 style="color:#f59e0b;">Client Portal: Scan & Submit Needs Patient Linking</h3>
+    <p>Uploads must be linked to existing patients. Need patient search/select. Document preview. "Confirm & Submit to Coding" must actually transition the work to the coding queue.</p>
+  </div>
+
+  <div class="summary-box" style="border-color: #3b82f6; background: rgba(59,130,246,0.05);">
+    <h3 style="color:#3b82f6;">All 16 Staff Modules Need Real UI</h3>
+    <p>Every staff module (Claims, Coding, Eligibility, Denials, AR, Posting, Contracts, Voice AI, Tasks, Documents, Credentialing, Analytics, Admin, Integrations, AI Scribe, Scheduling) is currently an empty shell. Each needs real interactive UI with demo data.</p>
+  </div>
+</div>
+
+</div>
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>

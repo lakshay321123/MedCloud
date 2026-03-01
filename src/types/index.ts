@@ -1,6 +1,8 @@
 export type Theme = 'dark' | 'light'
 export type Language = 'en' | 'ar' | 'es'
 export type Direction = 'ltr' | 'rtl'
+export type Region = 'us' | 'uae'
+export type EhrMode = 'medcloud_ehr' | 'external_ehr'
 
 export type UserRole =
   | 'admin'
@@ -11,6 +13,7 @@ export type UserRole =
   | 'biller'
   | 'ar_team'
   | 'posting_team'
+  | 'provider'
   | 'client'
 
 export interface User {
@@ -20,6 +23,27 @@ export interface User {
   role: UserRole
   avatar?: string
   organization_id: string
+}
+
+export interface ClientOrg {
+  id: string
+  name: string
+  region: Region
+  ehr_mode: EhrMode
+  logo_url?: string
+}
+
+export interface Organization {
+  id: string
+  name: string
+  type: 'rcm_provider' | 'practice' | 'tpa'
+  region: Region
+  ehr_mode: EhrMode
+  branding?: {
+    logo_url?: string
+    primary_color?: string
+    name?: string
+  }
 }
 
 export interface ModuleConfig {
@@ -32,14 +56,8 @@ export interface ModuleConfig {
   badge?: number
 }
 
-export interface Organization {
-  id: string
-  name: string
-  type: 'rcm_provider' | 'practice' | 'tpa'
-  region: 'us' | 'uae'
-  branding?: {
-    logo_url?: string
-    primary_color?: string
-    name?: string
-  }
-}
+export type AppointmentStatus = 'booked' | 'confirmed' | 'checked_in' | 'in_progress' | 'completed' | 'no_show' | 'cancelled' | 'rescheduled' | 'walk_in' | 'late'
+export type ClaimStatus = 'draft' | 'scrubbing' | 'scrub_failed' | 'ready' | 'submitted' | 'accepted' | 'in_process' | 'paid' | 'partial_pay' | 'denied' | 'appealed' | 'corrected' | 'write_off'
+export type MessageEntityType = 'patient' | 'claim' | 'submission' | 'appointment' | 'general'
+export type TaskStatus = 'open' | 'in_progress' | 'blocked' | 'completed'
+export type Priority = 'low' | 'medium' | 'high' | 'urgent'

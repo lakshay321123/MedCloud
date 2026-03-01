@@ -1,46 +1,50 @@
 import { ModuleConfig, UserRole } from '@/types'
 
-const allRoles: UserRole[] = ['admin', 'director', 'supervisor', 'manager', 'coder', 'biller', 'ar_team', 'posting_team', 'client']
 const staffRoles: UserRole[] = ['admin', 'director', 'supervisor', 'manager', 'coder', 'biller', 'ar_team', 'posting_team']
-const clientRoles: UserRole[] = ['client']
+const clinicRoles: UserRole[] = ['client', 'provider']
+const allRoles: UserRole[] = [...staffRoles, ...clinicRoles]
+const leaderRoles: UserRole[] = ['admin', 'director', 'supervisor', 'manager']
 
 export const modules: ModuleConfig[] = [
-  // === OPERATIONS (Core RCM) ===
-  { id: 'dashboard', label: 'mod.dashboard', icon: 'LayoutDashboard', path: '/dashboard', section: 'operations', roles: allRoles },
-  { id: 'claims', label: 'mod.claims', icon: 'FileText', path: '/claims', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
-  { id: 'coding', label: 'mod.coding', icon: 'BrainCircuit', path: '/coding', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'coder'] },
-  { id: 'eligibility', label: 'mod.eligibility', icon: 'ShieldCheck', path: '/eligibility', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
-  { id: 'denials', label: 'mod.denials', icon: 'ShieldAlert', path: '/denials', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller', 'ar_team'] },
-  { id: 'ar', label: 'mod.ar', icon: 'TrendingUp', path: '/ar-management', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'ar_team'] },
-  { id: 'posting', label: 'mod.posting', icon: 'Receipt', path: '/payment-posting', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'posting_team'] },
-  { id: 'contracts', label: 'mod.contracts', icon: 'Scale', path: '/contracts', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager'] },
-  { id: 'scheduling', label: 'mod.scheduling', icon: 'CalendarDays', path: '/scheduling', section: 'operations', roles: staffRoles },
+  // OPERATIONS
+  { id: 'dashboard', label: 'Dashboard', icon: 'LayoutDashboard', path: '/dashboard', section: 'operations', roles: allRoles },
+  { id: 'claims', label: 'Claims Center', icon: 'FileText', path: '/claims', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
+  { id: 'coding', label: 'AI Coding', icon: 'BrainCircuit', path: '/coding', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'coder'] },
+  { id: 'eligibility', label: 'Eligibility', icon: 'ShieldCheck', path: '/eligibility', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
+  { id: 'denials', label: 'Denials & Appeals', icon: 'ShieldAlert', path: '/denials', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller', 'ar_team'] },
+  { id: 'ar', label: 'A/R Management', icon: 'TrendingUp', path: '/ar-management', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'ar_team'] },
+  { id: 'posting', label: 'Payment Posting', icon: 'Receipt', path: '/payment-posting', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'posting_team'] },
+  { id: 'contracts', label: 'Contract Manager', icon: 'Scale', path: '/contracts', section: 'operations', roles: leaderRoles },
 
-  // === AI & AUTOMATION ===
-  { id: 'voice', label: 'mod.voice', icon: 'Phone', path: '/voice-ai', section: 'ai', roles: ['admin', 'director', 'supervisor', 'manager', 'ar_team'] },
-  { id: 'scribe', label: 'mod.scribe', icon: 'Mic', path: '/ai-scribe', section: 'ai', roles: ['admin', 'director', 'supervisor', 'manager', 'coder'] },
-  { id: 'tasks', label: 'mod.tasks', icon: 'ListChecks', path: '/tasks', section: 'ai', roles: staffRoles },
+  // AI & AUTOMATION
+  { id: 'voice', label: 'Voice AI', icon: 'Phone', path: '/voice-ai', section: 'ai', roles: ['admin', 'director', 'supervisor', 'manager', 'ar_team'] },
+  { id: 'scribe', label: 'AI Scribe', icon: 'Mic', path: '/ai-scribe', section: 'ai', roles: ['admin', 'director', 'supervisor', 'manager', 'coder', 'provider'] },
+  { id: 'tasks', label: 'Tasks & Workflows', icon: 'ListChecks', path: '/tasks', section: 'ai', roles: staffRoles },
 
-  // === MANAGEMENT ===
-  { id: 'documents', label: 'mod.documents', icon: 'FolderOpen', path: '/documents', section: 'management', roles: staffRoles },
-  { id: 'credentialing', label: 'mod.credentialing', icon: 'BadgeCheck', path: '/credentialing', section: 'management', roles: ['admin', 'director', 'supervisor', 'manager'] },
-  { id: 'analytics', label: 'mod.analytics', icon: 'BarChart3', path: '/analytics', section: 'management', roles: ['admin', 'director', 'supervisor', 'manager'] },
-  { id: 'admin', label: 'mod.admin', icon: 'Settings', path: '/admin', section: 'system', roles: ['admin'] },
-  { id: 'integrations', label: 'mod.integrations', icon: 'Plug', path: '/integrations', section: 'system', roles: ['admin', 'director'] },
+  // MANAGEMENT
+  { id: 'documents', label: 'Documents', icon: 'FolderOpen', path: '/documents', section: 'management', roles: [...staffRoles, 'provider'] },
+  { id: 'credentialing', label: 'Credentialing', icon: 'BadgeCheck', path: '/credentialing', section: 'management', roles: leaderRoles },
+  { id: 'analytics', label: 'Analytics', icon: 'BarChart3', path: '/analytics', section: 'management', roles: leaderRoles },
+  { id: 'admin', label: 'Admin & Settings', icon: 'Settings', path: '/admin', section: 'system', roles: ['admin'] },
+  { id: 'integrations', label: 'Integration Hub', icon: 'Plug', path: '/integrations', section: 'system', roles: ['admin', 'director'] },
 
-  // === CLIENT PORTAL ===
-  { id: 'scan', label: 'mod.scan', icon: 'ScanLine', path: '/portal/scan-submit', section: 'portal', roles: clientRoles },
-  { id: 'watch', label: 'mod.watch', icon: 'Eye', path: '/portal/watch-track', section: 'portal', roles: clientRoles },
-  { id: 'talk', label: 'mod.talk', icon: 'MessageSquare', path: '/portal/talk-to-us', section: 'portal', roles: clientRoles },
-  { id: 'portal-patients', label: 'mod.patients', icon: 'Users', path: '/portal/patients', section: 'portal', roles: clientRoles },
+  // CLIENT PORTAL (shared between clinic + billing team)
+  { id: 'appointments', label: 'Appointments', icon: 'CalendarDays', path: '/portal/appointments', section: 'portal', roles: allRoles },
+  { id: 'scan', label: 'Scan & Submit', icon: 'ScanLine', path: '/portal/scan-submit', section: 'portal', roles: ['client'] },
+  { id: 'watch', label: 'Watch & Track', icon: 'Eye', path: '/portal/watch-track', section: 'portal', roles: ['client'] },
+  { id: 'messages', label: 'Messages', icon: 'MessageCircle', path: '/portal/messages', section: 'portal', roles: allRoles },
+  { id: 'portal-patients', label: 'Patients', icon: 'Users', path: '/portal/patients', section: 'portal', roles: clinicRoles },
 ]
 
-export const sectionLabels: Record<string, string> = {
-  operations: 'nav.operations',
-  ai: 'nav.ai',
-  management: 'nav.management',
-  portal: 'nav.portal',
-  system: 'nav.system',
+export const sectionLabels: Record<string, Record<string, string>> = {
+  provider: { operations: 'CLINICAL', ai: 'AI TOOLS', management: 'MANAGEMENT', portal: 'MY PRACTICE' },
+  client: { portal: 'MY PRACTICE', operations: 'OVERVIEW' },
+  default: { operations: 'OPERATIONS', ai: 'AI & AUTOMATION', management: 'MANAGEMENT', portal: 'CLIENT PORTAL', system: 'SYSTEM' },
+}
+
+export function getSectionLabel(role: UserRole, section: string): string {
+  const roleLabels = sectionLabels[role] || sectionLabels.default
+  return roleLabels[section] || sectionLabels.default[section] || section.toUpperCase()
 }
 
 export function getModulesForRole(role: UserRole): ModuleConfig[] {

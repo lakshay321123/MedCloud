@@ -1,125 +1,73 @@
 'use client'
-
-import React, { useState } from 'react'
+import React from 'react'
 import { useApp } from '@/lib/context'
-import { t } from '@/i18n/translations'
-import { cn } from '@/lib/utils'
-import { Language, UserRole } from '@/types'
-import {
-  Search, Bell, Sun, Moon, Globe, User, ChevronDown,
-} from 'lucide-react'
+import { UserRole } from '@/types'
+import { Search, Globe, Sun, Moon, Bell, ChevronDown, Building2 } from 'lucide-react'
 
-const languages: { code: Language; label: string; flag: string }[] = [
-  { code: 'en', label: 'English', flag: '🇺🇸' },
-  { code: 'ar', label: 'العربية', flag: '🇦🇪' },
-  { code: 'es', label: 'Español', flag: '🇪🇸' },
-]
-
-const roles: { value: UserRole; label: string }[] = [
-  { value: 'admin', label: 'Admin' },
-  { value: 'director', label: 'Director' },
-  { value: 'supervisor', label: 'Supervisor' },
-  { value: 'manager', label: 'Manager' },
-  { value: 'coder', label: 'Coder' },
-  { value: 'biller', label: 'Biller' },
-  { value: 'ar_team', label: 'AR Team' },
-  { value: 'posting_team', label: 'Posting' },
-  { value: 'client', label: 'Client' },
-]
+const allRoles: UserRole[] = ['admin', 'director', 'supervisor', 'manager', 'coder', 'biller', 'ar_team', 'posting_team', 'provider', 'client']
+const staffRoles: UserRole[] = ['admin', 'director', 'supervisor', 'manager', 'coder', 'biller', 'ar_team', 'posting_team']
 
 export default function Topbar() {
-  const { theme, language, currentUser, sidebarCollapsed, setTheme, setLanguage, setRole } = useApp()
-  const [showLang, setShowLang] = useState(false)
-  const [showRole, setShowRole] = useState(false)
+  const { theme, setTheme, language, setLanguage, currentUser, setRole, selectedClient, setSelectedClient, clients } = useApp()
+  const isStaff = staffRoles.includes(currentUser.role)
 
   return (
-    <header className={cn(
-      'fixed top-0 right-0 h-14 z-30 flex items-center justify-between px-4 border-b transition-all duration-300',
-      'bg-[var(--bg-secondary)] border-[var(--border-color)]',
-      sidebarCollapsed ? 'left-[72px]' : 'left-[260px]',
-    )}>
+    <header className="h-16 bg-bg-secondary border-b border-border flex items-center px-4 gap-3 shrink-0">
       {/* Search */}
-      <div className="flex items-center gap-2 flex-1 max-w-md">
-        <div className="relative flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" />
-          <input
-            type="text"
-            placeholder={t('common.search', language)}
-            className="w-full pl-9 pr-4 py-1.5 text-sm rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-brand/50 transition-colors"
-          />
-        </div>
+      <div className="flex-1 max-w-md relative">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+        <input type="text" placeholder="Search patients, claims, docs..."
+          className="w-full bg-white/5 border border-border rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder:text-muted focus:outline-none focus:border-brand/50" />
       </div>
 
-      {/* Right controls */}
-      <div className="flex items-center gap-1">
-        {/* Role switcher (dev only) */}
-        <div className="relative">
-          <button
-            onClick={() => { setShowRole(!showRole); setShowLang(false) }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono bg-brand/10 text-brand hover:bg-brand/20 transition-colors"
-          >
-            <User size={13} />
-            <span>{currentUser.role}</span>
-            <ChevronDown size={12} />
-          </button>
-          {showRole && (
-            <div className="absolute right-0 top-full mt-1 w-40 py-1 rounded-lg shadow-xl border bg-[var(--bg-secondary)] border-[var(--border-color)] animate-fade-in z-50">
-              {roles.map(r => (
-                <button
-                  key={r.value}
-                  onClick={() => { setRole(r.value); setShowRole(false) }}
-                  className={cn(
-                    'w-full px-3 py-1.5 text-left text-xs hover:bg-[var(--bg-hover)] transition-colors',
-                    currentUser.role === r.value ? 'text-brand' : 'text-[var(--text-primary)]'
-                  )}
-                >
-                  {r.label}
-                </button>
+      <div className="flex items-center gap-2 ml-auto">
+        {/* Client Filter — staff only */}
+        {isStaff && (
+          <div className="relative">
+            <select value={selectedClient?.id || ''}
+              onChange={e => {
+                const c = clients.find(c => c.id === e.target.value) || null
+                setSelectedClient(c)
+              }}
+              className="appearance-none bg-white/5 border border-border rounded-lg pl-3 pr-8 py-1.5 text-xs text-white cursor-pointer focus:outline-none focus:border-brand/50">
+              <option value="">All Clients</option>
+              {clients.map(c => (
+                <option key={c.id} value={c.id}>{c.region === 'uae' ? '🇦🇪' : '🇺🇸'} {c.name}</option>
               ))}
-            </div>
-          )}
-        </div>
+            </select>
+            <Building2 size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+          </div>
+        )}
+
+        {/* Region indicator */}
+        {selectedClient && (
+          <span className="text-lg">{selectedClient.region === 'uae' ? '🇦🇪' : '🇺🇸'}</span>
+        )}
 
         {/* Language */}
-        <div className="relative">
-          <button
-            onClick={() => { setShowLang(!showLang); setShowRole(false) }}
-            className="p-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
-          >
-            <Globe size={17} />
-          </button>
-          {showLang && (
-            <div className="absolute right-0 top-full mt-1 w-36 py-1 rounded-lg shadow-xl border bg-[var(--bg-secondary)] border-[var(--border-color)] animate-fade-in z-50">
-              {languages.map(l => (
-                <button
-                  key={l.code}
-                  onClick={() => { setLanguage(l.code); setShowLang(false) }}
-                  className={cn(
-                    'w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 hover:bg-[var(--bg-hover)] transition-colors',
-                    language === l.code ? 'text-brand' : 'text-[var(--text-primary)]'
-                  )}
-                >
-                  <span>{l.flag}</span>
-                  <span>{l.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <button onClick={() => setLanguage(language === 'en' ? 'ar' : language === 'ar' ? 'es' : 'en')}
+          className="p-2 rounded-lg hover:bg-white/5 text-muted hover:text-white text-xs font-mono border border-border">
+          {language.toUpperCase()}
+        </button>
 
-        {/* Theme toggle */}
-        <button
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="p-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
-        >
-          {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+        {/* Theme */}
+        <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          className="p-2 rounded-lg hover:bg-white/5 text-muted hover:text-white">
+          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
         {/* Notifications */}
-        <button className="p-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors relative">
-          <Bell size={17} />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-brand rounded-full" />
+        <button className="p-2 rounded-lg hover:bg-white/5 text-muted hover:text-white relative">
+          <Bell size={16} />
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white flex items-center justify-center">3</span>
         </button>
+
+        {/* Role Switcher (dev only) */}
+        <select value={currentUser.role}
+          onChange={e => setRole(e.target.value as UserRole)}
+          className="appearance-none bg-brand/10 border border-brand/30 text-brand rounded-lg px-3 py-1.5 text-xs font-medium cursor-pointer focus:outline-none">
+          {allRoles.map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
       </div>
     </header>
   )
