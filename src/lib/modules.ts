@@ -6,7 +6,7 @@ const clientRoles: UserRole[] = ['client']
 
 export const modules: ModuleConfig[] = [
   // === OPERATIONS (Core RCM) ===
-  { id: 'dashboard', label: 'mod.dashboard', icon: 'LayoutDashboard', path: '/dashboard', section: 'operations', roles: staffRoles },
+  { id: 'dashboard', label: 'mod.dashboard', icon: 'LayoutDashboard', path: '/dashboard', section: 'operations', roles: allRoles },
   { id: 'claims', label: 'mod.claims', icon: 'FileText', path: '/claims', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
   { id: 'coding', label: 'mod.coding', icon: 'BrainCircuit', path: '/coding', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'coder'] },
   { id: 'eligibility', label: 'mod.eligibility', icon: 'ShieldCheck', path: '/eligibility', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
