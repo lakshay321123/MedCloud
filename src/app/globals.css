@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --brand: #00B5D6;
+  --brand-dark: #047285;
+  --brand-deep: #014E5C;
+  --brand-mid: #069DB8;
+  --brand-light: #36C2DE;
+  --brand-lighter: #68D1E6;
+  --brand-pale: #A1DEED;
+  --brand-ghost: #D6EBF2;
+  --sidebar-width: 260px;
+  --sidebar-collapsed: 72px;
+  --topbar-height: 56px;
+}
+
+/* Dark mode defaults */
+.dark {
+  --bg-primary: #0a0f1a;
+  --bg-secondary: #111827;
+  --bg-card: #1a2236;
+  --bg-hover: #1e293b;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --border-color: #1e293b;
+}
+
+/* Light mode */
+.light {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--brand-dark); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--brand); }
+
+/* Grid background */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(0,181,214,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,181,214,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: gridPulse 4s ease-in-out infinite;
+}
+
+/* Glow effects */
+.glow-border {
+  box-shadow: 0 0 0 1px rgba(0,181,214,0.15), 0 0 15px -3px rgba(0,181,214,0.1);
+}
+
+.glow-border:hover {
+  box-shadow: 0 0 0 1px rgba(0,181,214,0.3), 0 0 20px -3px rgba(0,181,214,0.2);
+}
+
+/* Corner accents */
+.corner-accents {
+  position: relative;
+}
+.corner-accents::before,
+.corner-accents::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--brand);
+  opacity: 0.4;
+}
+.corner-accents::before {
+  top: -1px; left: -1px;
+  border-top: 2px solid;
+  border-left: 2px solid;
+}
+.corner-accents::after {
+  bottom: -1px; right: -1px;
+  border-bottom: 2px solid;
+  border-right: 2px solid;
+}
+
+/* Frosted glass */
+.glass {
+  background: rgba(26, 34, 54, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.light .glass {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+@keyframes gridPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
