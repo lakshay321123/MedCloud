@@ -12,11 +12,13 @@ interface AppState {
   currentUser: User
   selectedClient: ClientOrg | null
   clients: ClientOrg[]
+  country: 'uae' | 'usa' | null
   setTheme: (t: Theme) => void
   setLanguage: (l: Language) => void
   toggleSidebar: () => void
   setRole: (r: UserRole) => void
   setSelectedClient: (c: ClientOrg | null) => void
+  setCountry: (c: 'uae' | 'usa') => void
 }
 
 const demoUser: User = {
@@ -39,6 +41,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [currentUser, setCurrentUser] = useState<User>(demoUser)
   const [selectedClient, setSelectedClientState] = useState<ClientOrg | null>(null)
+  const [country, setCountryState] = useState<'uae' | 'usa' | null>(
+    () => (typeof window !== 'undefined' ? (localStorage.getItem('cosentus_region') as 'uae' | 'usa') : null)
+  )
 
   const direction = getDirection(language)
 
@@ -57,6 +62,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const toggleSidebar = useCallback(() => setSidebarCollapsed(prev => !prev), [])
   const setRole = useCallback((r: UserRole) => setCurrentUser(prev => ({ ...prev, role: r })), [])
   const setSelectedClient = useCallback((c: ClientOrg | null) => setSelectedClientState(c), [])
+  const setCountry = useCallback((c: 'uae' | 'usa') => {
+    setCountryState(c)
+    if (typeof window !== 'undefined') localStorage.setItem('cosentus_region', c)
+  }, [])
 
   useEffect(() => {
     document.documentElement.classList.add(theme)
@@ -68,6 +77,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider value={{
       theme, language, direction, sidebarCollapsed, currentUser,
       selectedClient, clients: demoClients,
+      country, setCountry,
       setTheme, setLanguage, toggleSidebar, setRole, setSelectedClient,
     }}>
       {children}

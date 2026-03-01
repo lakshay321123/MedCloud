@@ -16,7 +16,7 @@ export default function Topbar() {
       <div className="flex-1 max-w-md relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-tertiary" />
         <input type="text" placeholder="Search patients, claims, docs..."
-          className="w-full bg-surface-elevated rounded-btn pl-9 pr-4 py-2 text-[14px] text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-brand/30 transition-shadow" />
+          className="w-full bg-surface-elevated rounded-btn pl-9 pr-4 py-2 text-[14px] text-content-primary placeholder:text-content-tertiary outline-none border border-transparent focus:border-brand/40 transition-colors" />
       </div>
 
       <div className="flex items-center gap-2 ml-auto">

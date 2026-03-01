@@ -37,6 +37,15 @@
   --content-tertiary: #636366;
   --content-inverse: #000000;
   --separator: rgba(255,255,255,0.08);
+  --brand: #00A2BF;        /* slightly toned down, less neon */
+  --brand-hover: #0091AB;
+}
+
+.dark .bg-brand {
+  background-color: #00A2BF !important;
+}
+.dark .bg-brand:hover {
+  background-color: #0091AB !important;
 }
 
 /* ── BASE ─── */
