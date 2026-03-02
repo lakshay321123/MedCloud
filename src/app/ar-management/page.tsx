@@ -10,21 +10,26 @@ const buckets = [{ l: '0-30', v: 145000, c: 'bg-emerald-500' }, { l: '31-60', v:
 const max = Math.max(...buckets.map(b => b.v))
 
 const accounts = [
-  { id: 'AR-001', patient: 'Robert Chen', client: 'Patel Cardiology', payer: 'Medicare', original: 1200, balance: 488, age: 95, lastAction: 'Voice AI call — "In process"', nextFollowup: '2026-03-04', priority: 'urgent' as const, source: 'Partial Payment' },
-  { id: 'AR-002', patient: 'Khalid Ibrahim', client: 'Dubai Wellness Clinic', payer: 'NAS', original: 320, balance: 320, age: 46, lastAction: 'Initial submission', nextFollowup: '2026-03-03', priority: 'high' as const, source: 'Denial Appeal' },
-  { id: 'AR-003', patient: 'Sarah Johnson', client: 'Irvine Family Practice', payer: 'Aetna', original: 350, balance: 126, age: 12, lastAction: 'Partial payment posted', nextFollowup: '2026-03-10', priority: 'medium' as const, source: 'Patient Balance' },
-  { id: 'AR-004', patient: 'John Smith', client: 'Irvine Family Practice', payer: 'UHC', original: 250, balance: 0, age: 5, lastAction: 'Paid in full', nextFollowup: '-', priority: 'low' as const, source: 'Paid in Full' },
-  { id: 'AR-005', patient: 'Ahmed Al Mansouri', client: 'Gulf Medical Center', payer: 'Daman', original: 480, balance: 0, age: 31, lastAction: 'Paid in full', nextFollowup: '-', priority: 'low' as const, source: 'Paid in Full' },
-  { id: 'AR-006', patient: 'Emily Williams', client: 'Patel Cardiology', payer: 'BCBS', original: 890, balance: 890, age: 120, lastAction: 'Appeal L1 submitted', nextFollowup: '2026-03-02', priority: 'urgent' as const, source: 'Denial Appeal' },
+  { id: 'AR-001', patient: 'Robert Chen', client: 'Patel Cardiology', payer: 'Medicare', original: 1200, balance: 488, age: 95, lastAction: 'Voice AI call — "In process"', nextFollowup: '2026-03-04', priority: 'urgent' as const, source: 'denied_claim' as const },
+  { id: 'AR-002', patient: 'Khalid Ibrahim', client: 'Dubai Wellness Clinic', payer: 'NAS', original: 320, balance: 320, age: 46, lastAction: 'Initial submission', nextFollowup: '2026-03-03', priority: 'high' as const, source: 'underpayment' as const },
+  { id: 'AR-003', patient: 'Sarah Johnson', client: 'Irvine Family Practice', payer: 'Aetna', original: 350, balance: 126, age: 12, lastAction: 'Partial payment posted', nextFollowup: '2026-03-10', priority: 'medium' as const, source: 'patient_balance' as const },
+  { id: 'AR-004', patient: 'John Smith', client: 'Irvine Family Practice', payer: 'UHC', original: 250, balance: 0, age: 5, lastAction: 'Paid in full', nextFollowup: '-', priority: 'low' as const, source: 'denied_claim' as const },
+  { id: 'AR-005', patient: 'Ahmed Al Mansouri', client: 'Gulf Medical Center', payer: 'Daman', original: 480, balance: 0, age: 31, lastAction: 'Paid in full', nextFollowup: '-', priority: 'low' as const, source: 'denied_claim' as const },
+  { id: 'AR-006', patient: 'Emily Williams', client: 'Patel Cardiology', payer: 'BCBS', original: 890, balance: 890, age: 120, lastAction: 'Appeal L1 submitted', nextFollowup: '2026-03-02', priority: 'urgent' as const, source: 'timely_filing_risk' as const },
 ]
 
 const sourceColors: Record<string, string> = {
-  'Partial Payment': 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
-  'Denial Appeal': 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
-  'Patient Balance': 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  'Paid in Full': 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  'Unpaid Claim': 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
-  'Recoupment': 'bg-red-500/10 text-red-600 dark:text-red-400',
+  denied_claim: 'bg-red-500/10 text-red-600 dark:text-red-400',
+  underpayment: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  patient_balance: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  timely_filing_risk: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+}
+
+const sourceLabel: Record<string, string> = {
+  denied_claim: 'Denied Claim',
+  underpayment: 'Underpayment',
+  patient_balance: 'Patient Balance',
+  timely_filing_risk: 'Timely Filing Risk',
 }
 
 export default function ARManagementPage() {
@@ -69,7 +74,7 @@ export default function ARManagementPage() {
               <td className="px-4 py-3 text-xs text-content-secondary">{a.payer}</td>
               <td className="px-4 py-3">
                 <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-pill ${sourceColors[a.source] || 'bg-surface-elevated text-content-secondary'}`}>
-                  {a.source}
+                  {sourceLabel[a.source]}
                 </span>
               </td>
               <td className="px-4 py-3 text-right font-mono">{a.balance > 0 ? `$${a.balance}` : <span className="text-emerald-600 dark:text-emerald-400">Paid</span>}</td>

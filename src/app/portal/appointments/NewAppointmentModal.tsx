@@ -7,7 +7,7 @@ import { X, ChevronDown } from 'lucide-react'
 type PatientMode = 'existing' | 'new'
 
 export default function NewAppointmentModal({ onClose }: { onClose: () => void }) {
-  const { selectedClient } = useApp()
+  const { currentUser, selectedClient } = useApp()
   const [mode, setMode] = useState<PatientMode>('existing')
   const [showInsurance, setShowInsurance] = useState(false)
   const [selectedPatient, setSelectedPatient] = useState('')
@@ -17,11 +17,12 @@ export default function NewAppointmentModal({ onClose }: { onClose: () => void }
     insuranceProvider: '', memberId: '', policyNo: '',
   })
 
-  // Staff with no client selected sees all patients; with client selected, filter by that client
-  const orgId = selectedClient?.id || null
-  const patients = orgId
-    ? demoPatients.filter(p => p.clientId === orgId)
+  // In demo mode, show patients from all clients (or use selectedClient from context)
+  const patients = selectedClient
+    ? demoPatients.filter(p => p.clientId === selectedClient.id)
     : demoPatients
+
+  void currentUser
 
   const filteredPatients = search.length > 0
     ? patients.filter(p => `${p.firstName} ${p.lastName}`.toLowerCase().includes(search.toLowerCase()))

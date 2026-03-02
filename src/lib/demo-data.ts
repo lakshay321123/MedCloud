@@ -173,144 +173,218 @@ export const demoClaims: DemoClaim[] = [
   { id: 'CLM-4512', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'org-103', clientName: 'Patel Cardiology', payer: 'BCBS', dos: '2026-02-28', cptCodes: ['93005'], icdCodes: ['R00.0'], charges: 150, paid: 0, status: 'scrubbing', age: 2 },
 ]
 
+export interface AISuggestedCode {
+  code: string
+  desc: string
+  confidence: number
+  modifiers?: string[]
+  reasoning?: string
+}
+
 export interface DemoCodingItem {
-  id: string; patientName: string; clientId: string; clientName: string;
-  source: 'ai_scribe' | 'upload'; dos: string; provider: string;
-  aiSuggestedCpt: { code: string; desc: string; confidence: number }[];
-  aiSuggestedIcd: { code: string; desc: string; confidence: number }[];
-  superbillCpt?: string[]; priority: Priority; receivedAt: string;
-  hasSuperbill: boolean;
-  visitNote: { subjective: string; objective: string; assessment: string; plan: string };
+  id: string
+  patientName: string
+  patientId: string
+  clientId: string
+  clientName: string
+  source: 'upload' | 'ai_scribe'
+  dos: string
+  provider: string
+  providerSpecialty: string
+  aiSuggestedCpt: AISuggestedCode[]
+  aiSuggestedIcd: AISuggestedCode[]
+  superbillCpt?: string[]
+  hasSuperbill: boolean
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  receivedAt: string
+  visitNote: {
+    subjective: string
+    objective: string
+    assessment: string
+    plan: string
+  }
 }
 
 export const demoCodingQueue: DemoCodingItem[] = [
   {
-    id: 'COD-001', patientName: 'John Smith', clientId: 'org-102', clientName: 'Irvine Family Practice',
-    source: 'upload', dos: '2026-03-02', provider: 'Dr. Martinez',
-    aiSuggestedCpt: [{ code: '99214', desc: 'Office visit, est. patient, moderate', confidence: 94 }, { code: '93000', desc: 'Electrocardiogram, routine', confidence: 78 }],
-    aiSuggestedIcd: [{ code: 'E11.9', desc: 'Type 2 diabetes without complications', confidence: 97 }, { code: 'I10', desc: 'Essential hypertension', confidence: 92 }],
-    superbillCpt: ['99214', '93000'], priority: 'medium', receivedAt: '2026-03-02T08:30:00',
-    hasSuperbill: true,
+    id: 'COD-001', patientName: 'John Smith', patientId: 'P-001', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    source: 'upload', dos: '2026-03-02', provider: 'Dr. Martinez', providerSpecialty: 'Family Medicine',
+    hasSuperbill: true, superbillCpt: ['99214', '93000'], priority: 'medium', receivedAt: '2026-03-02T08:30:00',
+    aiSuggestedCpt: [
+      { code: '99214', desc: 'Office visit, est. patient, moderate', confidence: 94, modifiers: [], reasoning: 'Moderate complexity: 4 HPI elements, 2 organ systems examined, moderate MDM with prescription management.' },
+      { code: '93000', desc: 'Electrocardiogram, routine', confidence: 78, modifiers: [], reasoning: 'ECG documented in objective. Separate reportable service.' }
+    ],
+    aiSuggestedIcd: [
+      { code: 'E11.9', desc: 'Type 2 diabetes without complications', confidence: 97 },
+      { code: 'I10', desc: 'Essential hypertension', confidence: 92 }
+    ],
     visitNote: {
-      subjective: 'Patient reports fatigue and increased thirst over the past 2 weeks. Blood sugar readings at home averaging 160–180 mg/dL. Mild headache, denies chest pain or shortness of breath.',
-      objective: 'BP 138/86 mmHg, HR 82 bpm, SpO2 98%, Weight 212 lbs. Lungs CTA. A1c 8.1% (up from 7.6%). FBG 174 mg/dL. Metformin compliance confirmed.',
-      assessment: '1. Type 2 diabetes mellitus, suboptimally controlled (E11.9). 2. Essential hypertension, stable (I10).',
-      plan: 'Increase Metformin to 1000mg BID. Continue Lisinopril 10mg. Dietary counseling. Repeat A1c in 3 months. RTC 3 months.',
-    },
+      subjective: 'Patient presents for routine follow-up of type 2 diabetes and hypertension. Reports increasing fatigue over the past 2 weeks. Compliant with metformin and lisinopril. Denies chest pain, shortness of breath, or visual changes. Diet adherence has been inconsistent.',
+      objective: 'Vitals: BP 138/86, HR 78, SpO2 96%, Temp 98.4°F, Weight 198 lbs (up 3 lbs). General: Alert, oriented, no acute distress. HEENT: Normal. Cardiovascular: RRR, no murmurs. Lungs: Clear bilateral. Extremities: No edema. ECG: Normal sinus rhythm.',
+      assessment: `1. Type 2 diabetes mellitus — HbA1c due, fatigue may indicate suboptimal control
+2. Essential hypertension — slightly elevated today, may need adjustment
+3. Weight gain — counseling on diet and exercise`,
+      plan: `1. Order HbA1c and CMP
+2. Continue metformin 1000mg BID
+3. Increase lisinopril to 20mg daily
+4. ECG performed today — normal sinus rhythm
+5. Nutrition counseling referral
+6. Follow-up 3 months`
+    }
   },
   {
-    id: 'COD-002', patientName: 'Ahmed Al Mansouri', clientId: 'org-101', clientName: 'Gulf Medical Center',
-    source: 'ai_scribe', dos: '2026-03-01', provider: 'Dr. Al Zaabi',
-    aiSuggestedCpt: [{ code: '99213', desc: 'Office visit, est. patient, low', confidence: 88 }],
-    aiSuggestedIcd: [{ code: 'I25.10', desc: 'Atherosclerotic heart disease', confidence: 95 }],
-    priority: 'medium', receivedAt: '2026-03-01T16:20:00',
-    hasSuperbill: false,
+    id: 'COD-002', patientName: 'Ahmed Al Mansouri', patientId: 'P-003', clientId: 'org-101', clientName: 'Gulf Medical Center',
+    source: 'ai_scribe', dos: '2026-03-01', provider: 'Dr. Al Zaabi', providerSpecialty: 'Internal Medicine',
+    hasSuperbill: false, priority: 'medium', receivedAt: '2026-03-01T16:20:00',
+    aiSuggestedCpt: [
+      { code: '99213', desc: 'Office visit, est. patient, low', confidence: 88, modifiers: [], reasoning: 'Low complexity: 2 HPI elements, limited exam, straightforward MDM.' }
+    ],
+    aiSuggestedIcd: [{ code: 'I25.10', desc: 'Atherosclerotic heart disease of native coronary artery', confidence: 95 }],
     visitNote: {
-      subjective: 'Patient presents for cardiac follow-up. Reports mild exertional chest discomfort, no radiation. Denies syncope, palpitations, or significant dyspnea at rest.',
-      objective: 'BP 132/80 mmHg, HR 72 bpm, SpO2 97%. Heart rate regular, no murmurs. ECG: Normal sinus rhythm, no new changes vs prior.',
-      assessment: '1. Atherosclerotic heart disease of native coronary artery (I25.10). Stable.',
-      plan: 'Continue aspirin 81mg and statin therapy. Stress echo scheduled for next month. Lifestyle modification counseling. Follow-up 6 weeks.',
-    },
+      subjective: 'Patient returns for follow-up of known coronary artery disease. Stable on current medications. No chest pain, palpitations, or dyspnea. Walking 30 minutes daily without symptoms. Compliant with aspirin, statin, and beta-blocker.',
+      objective: 'Vitals: BP 124/78, HR 64, SpO2 98%. Cardiovascular: RRR, no murmurs or gallops. Lungs: Clear. No peripheral edema. Medications reviewed and reconciled.',
+      assessment: 'Stable atherosclerotic heart disease on optimal medical therapy. Risk factors well controlled.',
+      plan: `1. Continue aspirin 81mg, atorvastatin 40mg, metoprolol 50mg BID
+2. Lipid panel in 3 months
+3. Follow-up 6 months unless symptoms change`
+    }
   },
   {
-    id: 'COD-003', patientName: 'Robert Chen', clientId: 'org-103', clientName: 'Patel Cardiology',
-    source: 'ai_scribe', dos: '2026-03-02', provider: 'Dr. Patel',
-    aiSuggestedCpt: [{ code: '93306', desc: 'TTE with Doppler, complete', confidence: 96 }, { code: '93320', desc: 'Doppler echo, complete', confidence: 91 }],
+    id: 'COD-003', patientName: 'Robert Chen', patientId: 'P-005', clientId: 'org-103', clientName: 'Patel Cardiology',
+    source: 'ai_scribe', dos: '2026-03-02', provider: 'Dr. Patel', providerSpecialty: 'Cardiology',
+    hasSuperbill: false, priority: 'high', receivedAt: '2026-03-02T09:45:00',
+    aiSuggestedCpt: [
+      { code: '93306', desc: 'TTE with Doppler, complete', confidence: 96, modifiers: ['26'], reasoning: 'Complete transthoracic echo with Doppler documented. Modifier 26 for professional component — interpretation only.' },
+      { code: '93320', desc: 'Doppler echo, complete', confidence: 91, modifiers: [], reasoning: 'Separate Doppler study documented with spectral and color flow analysis.' }
+    ],
     aiSuggestedIcd: [{ code: 'I50.9', desc: 'Heart failure, unspecified', confidence: 93 }, { code: 'I25.10', desc: 'ASHD of native coronary artery', confidence: 87 }],
-    priority: 'high', receivedAt: '2026-03-02T09:45:00',
-    hasSuperbill: false,
     visitNote: {
-      subjective: 'Patient with known CHF presents with worsening dyspnea on exertion over 2 weeks, 2-pillow orthopnea. Weight gain of 4 lbs. Bilateral ankle swelling noted.',
-      objective: 'BP 142/90 mmHg, HR 88 bpm, SpO2 94% on room air. JVD present. Bilateral crackles at bases. +1 pitting edema bilateral LE. BNP 820 pg/mL.',
-      assessment: '1. Heart failure, unspecified (I50.9). Decompensated. 2. ASHD of native coronary artery (I25.10).',
-      plan: 'Increase Furosemide to 80mg daily. Daily weight monitoring. TTE ordered. Cardiology follow-up 2 weeks. ER precautions reviewed.',
-    },
+      subjective: 'Patient presents with progressive dyspnea on exertion over 3 weeks. Can walk only 1 block before stopping. Two-pillow orthopnea. Mild lower extremity swelling. Denies chest pain. History of CAD with 2-vessel stenting 2019.',
+      objective: 'Vitals: BP 146/92, HR 88, SpO2 93% on RA, Weight 210 lbs (up 8 lbs in 2 weeks). JVD present at 10cm. Cardiovascular: S3 gallop, 2/6 systolic murmur at apex. Lungs: Bibasilar crackles. Extremities: 2+ bilateral pitting edema. Echo: EF 35% (prev 50%), moderate MR, diastolic dysfunction Grade II.',
+      assessment: `1. New-onset heart failure with reduced ejection fraction — EF 35%, likely ischemic etiology
+2. Volume overload — 8 lb weight gain, crackles, edema, elevated JVP
+3. Coronary artery disease — stable post-stenting`,
+      plan: `1. Start furosemide 40mg daily
+2. Start carvedilol 3.125mg BID (uptitrate as tolerated)
+3. Continue aspirin, statin
+4. BNP, BMP, CBC today
+5. Cardiology follow-up 1 week with repeat weight check
+6. Daily weight monitoring — call if >2 lbs/day gain
+7. Sodium restriction <2g/day`
+    }
   },
   {
-    id: 'COD-004', patientName: 'Sarah Johnson', clientId: 'org-102', clientName: 'Irvine Family Practice',
-    source: 'upload', dos: '2026-03-01', provider: 'Dr. Martinez',
-    aiSuggestedCpt: [{ code: '99214', desc: 'Office visit, est. patient, moderate', confidence: 72 }, { code: '99213', desc: 'Office visit, est. patient, low', confidence: 68 }],
+    id: 'COD-004', patientName: 'Sarah Johnson', patientId: 'P-002', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    source: 'upload', dos: '2026-03-01', provider: 'Dr. Martinez', providerSpecialty: 'Family Medicine',
+    hasSuperbill: true, superbillCpt: ['99214'], priority: 'medium', receivedAt: '2026-03-01T17:00:00',
+    aiSuggestedCpt: [
+      { code: '99214', desc: 'Office visit, est. patient, moderate', confidence: 72, modifiers: [], reasoning: 'Borderline 99213/99214. Moderate MDM due to prescription management, but exam is limited. Superbill ticked 99214.' },
+      { code: '99213', desc: 'Office visit, est. patient, low', confidence: 68, modifiers: [], reasoning: 'Alternative: low complexity visit — only 1 chronic condition addressed with stable management.' }
+    ],
     aiSuggestedIcd: [{ code: 'M54.5', desc: 'Low back pain', confidence: 90 }],
-    superbillCpt: ['99214'], priority: 'medium', receivedAt: '2026-03-01T17:00:00',
-    hasSuperbill: true,
     visitNote: {
-      subjective: '29-year-old female presents with 6-week history of lower back pain, radiating to left buttock. No bowel/bladder changes. Pain worsens with prolonged sitting at desk job.',
-      objective: 'BP 118/74 mmHg, HR 76 bpm. Lumbar ROM restricted in flexion. Positive SLR on left at 45°. No focal neurological deficits.',
-      assessment: '1. Low back pain with left sciatic radiation (M54.5).',
-      plan: 'NSAIDs as directed. Physical therapy referral (6 sessions). Heat/ice alternating. Reassess in 4 weeks. MRI if no improvement.',
-    },
+      subjective: 'Patient complains of low back pain for 5 days after lifting heavy boxes during move. Pain is dull, constant, rated 6/10. Worse with bending and sitting. No radiation to legs. No numbness or tingling. No bowel/bladder issues. Taking ibuprofen with mild relief.',
+      objective: 'Vitals: BP 118/74, HR 72. Musculoskeletal: Tenderness over L4-L5 paraspinal muscles bilaterally. ROM limited in flexion. Negative straight leg raise. Normal strength and sensation in lower extremities. Gait normal.',
+      assessment: 'Acute mechanical low back pain — muscular strain, no red flags for radiculopathy or serious pathology.',
+      plan: `1. Continue ibuprofen 600mg TID with food × 7 days
+2. Muscle relaxant: cyclobenzaprine 10mg at bedtime × 5 days
+3. Ice/heat alternating
+4. Gentle stretching exercises handout provided
+5. Return if no improvement in 2 weeks or if symptoms worsen`
+    }
   },
   {
-    id: 'COD-005', patientName: 'Fatima Hassan', clientId: 'org-101', clientName: 'Gulf Medical Center',
-    source: 'upload', dos: '2026-03-02', provider: 'Dr. Al Zaabi',
-    aiSuggestedCpt: [{ code: '99203', desc: 'Office visit, new patient, low', confidence: 82 }],
-    aiSuggestedIcd: [{ code: 'R10.9', desc: 'Unspecified abdominal pain', confidence: 75 }],
-    priority: 'low', receivedAt: '2026-03-02T10:15:00',
-    hasSuperbill: false,
+    id: 'COD-005', patientName: 'Fatima Hassan', patientId: 'P-004', clientId: 'org-101', clientName: 'Gulf Medical Center',
+    source: 'upload', dos: '2026-03-02', provider: 'Dr. Al Zaabi', providerSpecialty: 'Internal Medicine',
+    hasSuperbill: false, priority: 'low', receivedAt: '2026-03-02T10:15:00',
+    aiSuggestedCpt: [{ code: '99203', desc: 'Office visit, new patient, low', confidence: 82, modifiers: [], reasoning: 'New patient, low complexity. Straightforward presentation with single acute complaint.' }],
+    aiSuggestedIcd: [{ code: 'R10.9', desc: 'Unspecified abdominal pain', confidence: 75, reasoning: 'Abdominal pain NOS — consider more specific code once workup complete (R10.31 RLQ, K30 dyspepsia, etc.)' }],
     visitNote: {
-      subjective: 'Patient presents with 3-day history of diffuse abdominal pain, predominantly periumbilical. No fever, nausea, or vomiting. Last bowel movement yesterday, normal.',
-      objective: 'BP 120/78 mmHg, HR 84 bpm, Temp 37.1°C. Abdomen soft, diffuse tenderness on palpation. No rebound or guarding. Bowel sounds present.',
-      assessment: '1. Unspecified abdominal pain (R10.9). Likely functional; other causes to be excluded.',
-      plan: 'Abdominal ultrasound ordered. CBC and CMP sent. Dietary modification advised. Follow-up 48h or sooner if symptoms worsen.',
-    },
+      subjective: 'New patient, walk-in. 46-year-old female with 2 days of diffuse abdominal pain. Pain is crampy, intermittent, mainly periumbilical. Associated with mild nausea, no vomiting. No fever, no diarrhea. Last meal was spicy food 2 days ago. No similar episodes before.',
+      objective: 'Vitals: BP 126/80, HR 76, Temp 98.6°F. Abdomen: Soft, mild tenderness periumbilical, no guarding or rebound. Bowel sounds active. No organomegaly.',
+      assessment: 'Acute abdominal pain — likely functional dyspepsia vs gastritis. Low suspicion for surgical abdomen.',
+      plan: `1. Omeprazole 20mg daily × 14 days
+2. Bland diet for 1 week
+3. Return if pain worsens, fever develops, or no improvement in 5 days
+4. Consider H. pylori testing if recurrent`
+    }
   },
   {
-    id: 'COD-006', patientName: 'Maria Garcia', clientId: 'org-102', clientName: 'Irvine Family Practice',
-    source: 'upload', dos: '2026-02-28', provider: 'Dr. Martinez',
-    aiSuggestedCpt: [{ code: '99213', desc: 'Office visit, est. patient, low', confidence: 91 }],
+    id: 'COD-006', patientName: 'Maria Garcia', patientId: 'P-006', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    source: 'upload', dos: '2026-02-28', provider: 'Dr. Martinez', providerSpecialty: 'Family Medicine',
+    hasSuperbill: true, superbillCpt: ['99213'], priority: 'low', receivedAt: '2026-02-28T15:30:00',
+    aiSuggestedCpt: [{ code: '99213', desc: 'Office visit, est. patient, low', confidence: 91, modifiers: [], reasoning: 'Low complexity: 1 acute problem, limited exam, straightforward decision making. Matches superbill.' }],
     aiSuggestedIcd: [{ code: 'J02.9', desc: 'Acute pharyngitis, unspecified', confidence: 88 }],
-    superbillCpt: ['99213'], priority: 'low', receivedAt: '2026-02-28T15:30:00',
-    hasSuperbill: true,
     visitNote: {
-      subjective: '21-year-old female presents with 2-day sore throat, odynophagia, no rhinorrhea or cough. Contact with ill person at school. Low-grade fever 100.8°F at home.',
-      objective: 'BP 110/70 mmHg, HR 90 bpm, Temp 100.6°F. Oropharynx erythematous, tonsillar exudates present bilaterally. Anterior cervical lymph nodes tender.',
-      assessment: '1. Acute pharyngitis, unspecified (J02.9). Likely bacterial (Strep).',
-      plan: 'Rapid strep test positive. Amoxicillin 500mg TID x 10 days. Encourage fluids. Return if no improvement in 48h. Counsel re: full antibiotic course completion.',
-    },
+      subjective: 'Patient presents with 3-day sore throat. Mild difficulty swallowing. Low-grade fever (100.2°F at home). No cough, congestion, or ear pain. No sick contacts. No strep exposure known.',
+      objective: 'Vitals: BP 112/68, HR 74, Temp 99.8°F. HEENT: Pharynx erythematous with mild tonsillar enlargement. No exudates. No cervical lymphadenopathy. Ears: TMs normal. Lungs: Clear.',
+      assessment: 'Acute pharyngitis — likely viral. Rapid strep negative.',
+      plan: `1. Symptomatic care: warm salt water gargles, lozenges
+2. Acetaminophen 500mg q6h PRN for pain/fever
+3. Increase fluid intake
+4. Return if symptoms worsen or persist > 7 days
+5. Throat culture sent — will call if positive`
+    }
   },
 ]
 
 export interface EOBLineItem {
-  id: string;
-  eraId: string;
-  claimId: string;
-  patientName: string;
-  clientName: string;
-  cptCode: string;
-  description: string;
-  billed: number;
-  allowed: number;
-  paid: number;
-  denied: number;
-  adjustmentCode: string;
-  adjustmentAmount: number;
-  patientBalance: number;
-  action: 'approve' | 'deny' | 'pend' | 'posted';
-  denialReason?: string;
+  id: string
+  eraId: string
+  claimId: string
+  patientName: string
+  patientId: string
+  cpt: string
+  cptDesc: string
+  dos: string
+  billed: number
+  allowed: number
+  paid: number
+  denied: number
+  adjCode: string
+  adjReason: string
+  patBalance: number
+  action: 'post' | 'deny_route' | 'patient_bill' | 'review' | 'posted'
+  notes?: string
 }
 
+export interface DemoERAFile {
+  id: string
+  file: string
+  payer: string
+  client: string
+  clientId: string
+  claims: number
+  total: number
+  status: 'new' | 'processing' | 'posted'
+  exceptions: number
+  receivedAt: string
+}
+
+export const demoERAFiles: DemoERAFile[] = [
+  { id: 'ERA-001', file: 'UHC_ERA_20260301.835', payer: 'UnitedHealthcare', client: 'Irvine Family Practice', clientId: 'org-102', claims: 5, total: 1842, status: 'processing', exceptions: 2, receivedAt: '2026-03-01T06:00:00' },
+  { id: 'ERA-002', file: 'AETNA_ERA_20260301.835', payer: 'Aetna', client: 'Irvine Family Practice', clientId: 'org-102', claims: 3, total: 680, status: 'new', exceptions: 1, receivedAt: '2026-03-01T06:15:00' },
+  { id: 'ERA-003', file: 'MEDICARE_ERA_20260228.835', payer: 'Medicare', client: 'Patel Cardiology', clientId: 'org-103', claims: 4, total: 2340, status: 'processing', exceptions: 1, receivedAt: '2026-02-28T18:00:00' },
+  { id: 'ERA-004', file: 'DAMAN_REM_20260301.csv', payer: 'Daman', client: 'Gulf Medical Center', clientId: 'org-101', claims: 3, total: 1260, status: 'new', exceptions: 0, receivedAt: '2026-03-01T07:00:00' },
+  { id: 'ERA-005', file: 'NAS_REM_20260228.csv', payer: 'NAS', client: 'Dubai Wellness Clinic', clientId: 'org-104', claims: 2, total: 640, status: 'posted', exceptions: 0, receivedAt: '2026-02-28T12:00:00' },
+]
+
 export const demoERALineItems: EOBLineItem[] = [
-  // ERA-001 — UnitedHealthcare / Irvine Family Practice
-  { id: 'ERA001-L01', eraId: 'ERA-001', claimId: 'CLM-4506', patientName: 'John Smith', clientName: 'Irvine Family Practice', cptCode: '99214', description: 'Office Visit – Est Patient, Moderate', billed: 250, allowed: 185, paid: 155.00, denied: 0, adjustmentCode: 'CO-45', adjustmentAmount: 65, patientBalance: 30, action: 'approve' },
-  { id: 'ERA001-L02', eraId: 'ERA-001', claimId: 'CLM-4501', patientName: 'John Smith', clientName: 'Irvine Family Practice', cptCode: '93000', description: 'Electrocardiogram, Routine ECG', billed: 120, allowed: 75, paid: 75, denied: 0, adjustmentCode: 'CO-45', adjustmentAmount: 45, patientBalance: 0, action: 'posted' },
-  { id: 'ERA001-L03', eraId: 'ERA-001', claimId: 'CLM-4504', patientName: 'Sarah Johnson', clientName: 'Irvine Family Practice', cptCode: '99215', description: 'Office Visit – Est Patient, High Complexity', billed: 350, allowed: 0, paid: 0, denied: 350, adjustmentCode: 'CO-197', adjustmentAmount: 350, patientBalance: 0, action: 'deny', denialReason: 'Prior authorization required' },
-  { id: 'ERA001-L04', eraId: 'ERA-001', claimId: 'CLM-4510', patientName: 'Sarah Johnson', clientName: 'Irvine Family Practice', cptCode: '99214', description: 'Office Visit – Est Patient, Moderate', billed: 280, allowed: 224, paid: 224, denied: 0, adjustmentCode: 'CO-45', adjustmentAmount: 56, patientBalance: 0, action: 'posted' },
-
-  // ERA-003 — Medicare / Patel Cardiology
-  { id: 'ERA003-L01', eraId: 'ERA-003', claimId: 'CLM-4503', patientName: 'Robert Chen', clientName: 'Patel Cardiology', cptCode: '93306', description: 'TTE with Doppler, Complete', billed: 890, allowed: 712, paid: 569.60, denied: 0, adjustmentCode: 'CO-45', adjustmentAmount: 178, patientBalance: 142.40, action: 'approve' },
-  { id: 'ERA003-L02', eraId: 'ERA-003', claimId: 'CLM-4503', patientName: 'Robert Chen', clientName: 'Patel Cardiology', cptCode: '93320', description: 'Doppler Echo, Complete', billed: 380, allowed: 290, paid: 232, denied: 0, adjustmentCode: 'CO-45', adjustmentAmount: 90, patientBalance: 58, action: 'approve' },
-  { id: 'ERA003-L03', eraId: 'ERA-003', claimId: 'CLM-4507', patientName: 'Robert Chen', clientName: 'Patel Cardiology', cptCode: '93350', description: 'Stress Echo, Complete', billed: 1200, allowed: 0, paid: 0, denied: 1200, adjustmentCode: 'CO-29', adjustmentAmount: 1200, patientBalance: 0, action: 'deny', denialReason: 'Timely filing limit exceeded' },
-  { id: 'ERA003-L04', eraId: 'ERA-003', claimId: 'CLM-4512', patientName: 'Emily Williams', clientName: 'Patel Cardiology', cptCode: '93005', description: 'Electrocardiogram, Tracing Only', billed: 150, allowed: 110, paid: 88, denied: 0, adjustmentCode: 'CO-45', adjustmentAmount: 40, patientBalance: 22, action: 'pend' },
-
-  // ERA-004 — Daman / Gulf Medical Center
-  { id: 'ERA004-L01', eraId: 'ERA-004', claimId: 'CLM-4502', patientName: 'Ahmed Al Mansouri', clientName: 'Gulf Medical Center', cptCode: '99213', description: 'Office Visit – Est Patient, Low Complexity', billed: 300, allowed: 250, paid: 250, denied: 0, adjustmentCode: 'CO-45', adjustmentAmount: 50, patientBalance: 0, action: 'approve' },
-  { id: 'ERA004-L02', eraId: 'ERA-004', claimId: 'CLM-4502', patientName: 'Ahmed Al Mansouri', clientName: 'Gulf Medical Center', cptCode: '93000', description: 'ECG Routine', billed: 120, allowed: 95, paid: 95, denied: 0, adjustmentCode: 'CO-45', adjustmentAmount: 25, patientBalance: 0, action: 'approve' },
-  { id: 'ERA004-L03', eraId: 'ERA-004', claimId: 'CLM-4509', patientName: 'Ahmed Al Mansouri', clientName: 'Gulf Medical Center', cptCode: '99214', description: 'Office Visit – Est Patient, Moderate', billed: 350, allowed: 280, paid: 280, denied: 0, adjustmentCode: 'CO-45', adjustmentAmount: 70, patientBalance: 0, action: 'posted' },
-  { id: 'ERA004-L04', eraId: 'ERA-004', claimId: 'CLM-X002', patientName: 'Fatima Hassan', clientName: 'Gulf Medical Center', cptCode: '99203', description: 'Office Visit – New Patient, Low Complexity', billed: 200, allowed: 0, paid: 0, denied: 200, adjustmentCode: 'CO-4', adjustmentAmount: 200, patientBalance: 0, action: 'deny', denialReason: 'Service code inconsistent with modifier' },
-
-  // ERA-005 — NAS / Dubai Wellness Clinic
-  { id: 'ERA005-L01', eraId: 'ERA-005', claimId: 'CLM-4505', patientName: 'Khalid Ibrahim', clientName: 'Dubai Wellness Clinic', cptCode: '99213', description: 'Office Visit – Est Patient, Low Complexity', billed: 180, allowed: 145, paid: 145, denied: 0, adjustmentCode: 'CO-45', adjustmentAmount: 35, patientBalance: 0, action: 'approve' },
-  { id: 'ERA005-L02', eraId: 'ERA-005', claimId: 'CLM-4511', patientName: 'Khalid Ibrahim', clientName: 'Dubai Wellness Clinic', cptCode: '99215', description: 'Office Visit – Est Patient, High Complexity', billed: 320, allowed: 0, paid: 0, denied: 320, adjustmentCode: 'CO-29', adjustmentAmount: 320, patientBalance: 0, action: 'deny', denialReason: 'Timely filing limit exceeded' },
+  { id: 'EOB-001', eraId: 'ERA-001', claimId: 'CLM-4501', patientName: 'John Smith', patientId: 'P-001', cpt: '99214', cptDesc: 'Office visit, est. moderate', dos: '2026-02-25', billed: 250, allowed: 218, paid: 218, denied: 0, adjCode: 'CO-45', adjReason: 'Contractual adjustment', patBalance: 30, action: 'post' },
+  { id: 'EOB-002', eraId: 'ERA-001', claimId: 'CLM-4501', patientName: 'John Smith', patientId: 'P-001', cpt: '93000', cptDesc: 'ECG, routine', dos: '2026-02-25', billed: 85, allowed: 62, paid: 62, denied: 0, adjCode: 'CO-45', adjReason: 'Contractual adjustment', patBalance: 0, action: 'post' },
+  { id: 'EOB-003', eraId: 'ERA-001', claimId: 'CLM-4510', patientName: 'Maria Garcia', patientId: 'P-006', cpt: '99213', cptDesc: 'Office visit, est. low', dos: '2026-02-28', billed: 175, allowed: 152, paid: 152, denied: 0, adjCode: 'CO-45', adjReason: 'Contractual adjustment', patBalance: 25, action: 'post' },
+  { id: 'EOB-004', eraId: 'ERA-001', claimId: 'CLM-4511', patientName: 'David Park', patientId: 'P-009', cpt: '99215', cptDesc: 'Office visit, est. high', dos: '2026-02-26', billed: 380, allowed: 0, paid: 0, denied: 380, adjCode: 'CO-197', adjReason: 'Prior auth required — not obtained', patBalance: 0, action: 'deny_route' },
+  { id: 'EOB-005', eraId: 'ERA-001', claimId: 'CLM-4512', patientName: 'Linda Torres', patientId: 'P-010', cpt: '99214', cptDesc: 'Office visit, est. moderate', dos: '2026-02-27', billed: 250, allowed: 218, paid: 175, denied: 0, adjCode: 'CO-45', adjReason: 'Contractual + underpaid by $43', patBalance: 30, action: 'review', notes: 'Paid $43 less than contracted rate' },
+  { id: 'EOB-006', eraId: 'ERA-002', claimId: 'CLM-4504', patientName: 'Sarah Johnson', patientId: 'P-002', cpt: '99214', cptDesc: 'Office visit, est. moderate', dos: '2026-02-20', billed: 250, allowed: 0, paid: 0, denied: 250, adjCode: 'CO-4', adjReason: 'Prior authorization required', patBalance: 0, action: 'deny_route' },
+  { id: 'EOB-007', eraId: 'ERA-002', claimId: 'CLM-4513', patientName: 'Sarah Johnson', patientId: 'P-002', cpt: '99213', cptDesc: 'Office visit, est. low', dos: '2026-02-22', billed: 175, allowed: 156, paid: 131, denied: 0, adjCode: 'PR-2', adjReason: 'Coinsurance', patBalance: 25, action: 'patient_bill' },
+  { id: 'EOB-008', eraId: 'ERA-002', claimId: 'CLM-4514', patientName: 'James Wilson', patientId: 'P-011', cpt: '99212', cptDesc: 'Office visit, est. straightforward', dos: '2026-02-24', billed: 110, allowed: 98, paid: 98, denied: 0, adjCode: 'CO-45', adjReason: 'Contractual adjustment', patBalance: 0, action: 'post' },
+  { id: 'EOB-009', eraId: 'ERA-003', claimId: 'CLM-4506', patientName: 'Robert Chen', patientId: 'P-005', cpt: '93306', cptDesc: 'TTE with Doppler, complete', dos: '2026-02-20', billed: 650, allowed: 480, paid: 384, denied: 0, adjCode: 'PR-2', adjReason: 'Coinsurance 20%', patBalance: 96, action: 'patient_bill' },
+  { id: 'EOB-010', eraId: 'ERA-003', claimId: 'CLM-4506', patientName: 'Robert Chen', patientId: 'P-005', cpt: '93320', cptDesc: 'Doppler echo, complete', dos: '2026-02-20', billed: 320, allowed: 240, paid: 192, denied: 0, adjCode: 'PR-2', adjReason: 'Coinsurance 20%', patBalance: 48, action: 'patient_bill' },
+  { id: 'EOB-011', eraId: 'ERA-003', claimId: 'CLM-4515', patientName: 'Emily Williams', patientId: 'P-008', cpt: '99214', cptDesc: 'Office visit, est. moderate', dos: '2026-02-18', billed: 250, allowed: 0, paid: 0, denied: 250, adjCode: 'CO-27', adjReason: 'Expenses not covered — inactive coverage', patBalance: 0, action: 'deny_route' },
+  { id: 'EOB-012', eraId: 'ERA-003', claimId: 'CLM-4516', patientName: 'William Davis', patientId: 'P-012', cpt: '93000', cptDesc: 'ECG, routine', dos: '2026-02-22', billed: 85, allowed: 68, paid: 54, denied: 0, adjCode: 'PR-2', adjReason: 'Coinsurance 20%', patBalance: 14, action: 'post' },
+  { id: 'EOB-013', eraId: 'ERA-004', claimId: 'CLM-4502', patientName: 'Ahmed Al Mansouri', patientId: 'P-003', cpt: '99213', cptDesc: 'Office visit, est. low', dos: '2026-02-24', billed: 280, allowed: 280, paid: 280, denied: 0, adjCode: '-', adjReason: '-', patBalance: 0, action: 'post' },
+  { id: 'EOB-014', eraId: 'ERA-004', claimId: 'CLM-4502', patientName: 'Ahmed Al Mansouri', patientId: 'P-003', cpt: '93000', cptDesc: 'ECG, routine', dos: '2026-02-24', billed: 140, allowed: 140, paid: 140, denied: 0, adjCode: '-', adjReason: '-', patBalance: 0, action: 'post' },
+  { id: 'EOB-015', eraId: 'ERA-004', claimId: 'CLM-4517', patientName: 'Fatima Hassan', patientId: 'P-004', cpt: '99203', cptDesc: 'Office visit, new patient', dos: '2026-02-26', billed: 300, allowed: 300, paid: 300, denied: 0, adjCode: '-', adjReason: '-', patBalance: 0, action: 'post' },
 ]
 
 export interface DemoMessage {
