@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
+import { useToast } from '@/components/shared/Toast'
 import { demoCodingQueue, getClientName } from '@/lib/demo-data'
 import { BrainCircuit, CheckCircle2, Activity, Clock, Check, MessageCircle, Mic, FileUp, ChevronDown, ChevronUp, Play, FileText, AlertTriangle } from 'lucide-react'
 
@@ -14,8 +15,22 @@ const priorityColor: Record<'urgent' | 'high' | 'medium' | 'low', string> = {
 }
 
 export default function CodingPage() {
-  const { selectedClient } = useApp()
-  const queue = demoCodingQueue.filter(item => !selectedClient || item.clientId === selectedClient.id)
+  const { selectedClient, currentUser } = useApp()
+  const [reassignTarget, setReassignTarget] = useState<string | null>(null)
+  const { toast } = useToast()
+
+  const coders = [
+    { id: 'demo-002', name: 'Sarah Kim' },
+    { id: 'demo-003', name: 'Amy Chen' },
+    { id: 'demo-004', name: 'James Wilson' },
+  ]
+
+  const queue = (() => {
+    const base = demoCodingQueue
+    if (currentUser.role === 'coder') return base.filter((_q, i) => i % 2 === 0)
+    if (currentUser.role === 'supervisor') return base
+    return base.filter(item => !selectedClient || item.clientId === selectedClient.id)
+  })()
   const [selected, setSelected] = useState(queue[0]?.id || '')
   const [tab, setTab] = useState<'note' | 'superbill'>('note')
   const [selectedCodes, setSelectedCodes] = useState<Record<string, boolean>>({})
@@ -60,10 +75,26 @@ export default function CodingPage() {
                     <span className={`w-2 h-2 rounded-full mt-1 ${priorityColor[q.priority]}`} />
                   </div>
                   <p className="text-[12px] text-content-secondary truncate">{getClientName(q.clientId)} · {q.provider} · {q.dos}</p>
-                  <span className={`mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[11px] ${q.source === 'ai_scribe' ? 'bg-brand/10 text-brand' : 'bg-purple-500/10 text-purple-600 dark:text-purple-400'}`}>
-                    {q.source === 'ai_scribe' ? <Mic size={12} /> : <FileUp size={12} />}
-                    {q.source === 'ai_scribe' ? 'Scribe' : 'Upload'}
-                  </span>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[11px] ${q.source === 'ai_scribe' ? 'bg-brand/10 text-brand' : 'bg-purple-500/10 text-purple-600 dark:text-purple-400'}`}>
+                      {q.source === 'ai_scribe' ? <Mic size={12} /> : <FileUp size={12} />}
+                      {q.source === 'ai_scribe' ? 'Scribe' : 'Upload'}
+                    </span>
+                    {currentUser.role === 'supervisor' && (
+                      <button onClick={e=>{e.stopPropagation();setReassignTarget(reassignTarget===q.id?null:q.id)}}
+                        className="text-[9px] text-content-tertiary hover:text-brand transition-colors">Reassign</button>
+                    )}
+                  </div>
+                  {currentUser.role === 'supervisor' && reassignTarget === q.id && (
+                    <div className="mt-1 space-y-1" onClick={e=>e.stopPropagation()}>
+                      {coders.map(c=>(
+                        <button key={c.id} onClick={()=>{toast.success(`Reassigned to ${c.name}`);setReassignTarget(null)}}
+                          className="block w-full text-left text-[10px] px-2 py-1 rounded bg-surface-elevated hover:bg-brand/10 hover:text-brand text-content-secondary transition-colors">
+                          {c.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </button>
               ))}
             </div>

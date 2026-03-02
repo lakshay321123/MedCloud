@@ -826,3 +826,328 @@ export const demoContracts: DemoContract[] = [
     underpayments: [],
   },
 ]
+
+// ─── Voice AI Data ──────────────────────────────────────────────────────────
+export interface DemoCall {
+  id: string
+  type: 'Payer Status Check' | 'Payer Appeal Follow-up' | 'Patient Balance Reminder' | 'Appointment Reminder'
+  target: string
+  targetId: string
+  client: string
+  clientId: string
+  duration: string
+  status: 'connected' | 'on_hold' | 'ivr' | 'queued' | 'completed' | 'failed'
+  holdTime?: string
+  stage?: string
+  claimRef?: string
+  outcome?: 'Got Status' | 'Voicemail' | 'Transferred' | 'Failed'
+  transcript?: { role: 'AI' | 'IVR' | 'REP'; text: string }[]
+  ivrSteps?: { label: string; done: boolean; current: boolean }[]
+}
+
+export const demoActiveCalls: DemoCall[] = [
+  {
+    id: 'CALL-A01', type: 'Payer Status Check', target: 'UHC — Claim #CLM-4502', targetId: 'CLM-4502',
+    client: 'Gulf Medical Center', clientId: 'org-101', duration: '2:14', status: 'connected',
+    stage: 'With Rep', claimRef: 'CLM-4502',
+    transcript: [
+      { role: 'AI', text: 'Thank you for calling. I am calling on behalf of Gulf Medical Center regarding claim CLM-4502.' },
+      { role: 'IVR', text: 'Thank you for calling UnitedHealthcare. For claim status, press 2.' },
+      { role: 'AI', text: 'Pressing 2.' },
+      { role: 'IVR', text: 'Please enter your NPI number followed by the pound sign.' },
+      { role: 'AI', text: 'Entering NPI: 1234567890.' },
+      { role: 'REP', text: 'Claims department, how can I help you today?' },
+      { role: 'AI', text: 'I am calling to check the status of claim CLM-4502 for patient Ahmed Al Mansouri, DOS February 24, 2026.' },
+      { role: 'REP', text: 'Let me pull that up. One moment please...' },
+    ],
+    ivrSteps: [
+      { label: 'Dial Payer', done: true, current: false },
+      { label: 'Press 2 Billing', done: true, current: false },
+      { label: 'Enter NPI', done: true, current: false },
+      { label: 'Wait for Rep', done: true, current: false },
+      { label: 'State Claim', done: false, current: true },
+      { label: 'Record Outcome', done: false, current: false },
+    ],
+  },
+  {
+    id: 'CALL-A02', type: 'Payer Appeal Follow-up', target: 'Aetna — Claim #CLM-4504', targetId: 'CLM-4504',
+    client: 'Irvine Family Practice', clientId: 'org-102', duration: '4:23', status: 'on_hold',
+    holdTime: '4:23', stage: 'On Hold', claimRef: 'CLM-4504',
+    transcript: [
+      { role: 'AI', text: 'Calling Aetna regarding appeal for claim CLM-4504.' },
+      { role: 'IVR', text: 'Please hold while we connect you to a representative.' },
+      { role: 'AI', text: 'Holding...' },
+    ],
+    ivrSteps: [
+      { label: 'Dial Payer', done: true, current: false },
+      { label: 'Navigate IVR', done: true, current: false },
+      { label: 'On Hold', done: false, current: true },
+      { label: 'Speak to Rep', done: false, current: false },
+      { label: 'Record Outcome', done: false, current: false },
+    ],
+  },
+  {
+    id: 'CALL-A03', type: 'Payer Status Check', target: 'NAS — Claim #CLM-4505', targetId: 'CLM-4505',
+    client: 'Dubai Wellness Clinic', clientId: 'org-104', duration: '1:07', status: 'ivr',
+    stage: 'IVR Navigation', claimRef: 'CLM-4505',
+    transcript: [
+      { role: 'AI', text: 'Dialing NAS Insurance claims line.' },
+      { role: 'IVR', text: 'Welcome to NAS Insurance. For claims, press 1.' },
+      { role: 'AI', text: 'Pressing 1.' },
+      { role: 'IVR', text: 'For claim status, press 2. For new submissions, press 3.' },
+      { role: 'AI', text: 'Pressing 2.' },
+    ],
+    ivrSteps: [
+      { label: 'Dial Payer', done: true, current: false },
+      { label: 'Press 1 Claims', done: true, current: false },
+      { label: 'Press 2 Status', done: false, current: true },
+      { label: 'Enter Claim ID', done: false, current: false },
+      { label: 'Record Outcome', done: false, current: false },
+    ],
+  },
+  {
+    id: 'CALL-A04', type: 'Patient Balance Reminder', target: 'John Smith — $85.00', targetId: 'P-001',
+    client: 'Irvine Family Practice', clientId: 'org-102', duration: '-', status: 'queued',
+    stage: 'Queued', claimRef: '',
+    transcript: [],
+    ivrSteps: [],
+  },
+  {
+    id: 'CALL-A05', type: 'Appointment Reminder', target: 'Maria Garcia — Appt Mar 5', targetId: 'P-006',
+    client: 'Irvine Family Practice', clientId: 'org-102', duration: '-', status: 'queued',
+    stage: 'Queued', claimRef: '',
+    transcript: [],
+    ivrSteps: [],
+  },
+]
+
+export const demoCallLog: DemoCall[] = [
+  { id: 'CALL-L01', type: 'Payer Status Check', target: 'UHC — Claim #CLM-4501', targetId: 'CLM-4501', client: 'Irvine Family Practice', clientId: 'org-102', duration: '4:32', status: 'completed', outcome: 'Got Status', claimRef: 'CLM-4501' },
+  { id: 'CALL-L02', type: 'Patient Balance Reminder', target: 'Robert Chen — $488', targetId: 'P-005', client: 'Patel Cardiology', clientId: 'org-103', duration: '2:15', status: 'completed', outcome: 'Got Status', claimRef: '' },
+  { id: 'CALL-L03', type: 'Payer Appeal Follow-up', target: 'Aetna — Claim #CLM-4504', targetId: 'CLM-4504', client: 'Irvine Family Practice', clientId: 'org-102', duration: '0:12', status: 'failed', outcome: 'Failed', claimRef: 'CLM-4504' },
+  { id: 'CALL-L04', type: 'Appointment Reminder', target: 'Maria Garcia — Appt Mar 3', targetId: 'P-006', client: 'Irvine Family Practice', clientId: 'org-102', duration: '0:45', status: 'completed', outcome: 'Voicemail', claimRef: '' },
+  { id: 'CALL-L05', type: 'Payer Status Check', target: 'NAS — Claim #CLM-4505', targetId: 'CLM-4505', client: 'Dubai Wellness Clinic', clientId: 'org-104', duration: '5:18', status: 'completed', outcome: 'Got Status', claimRef: 'CLM-4505' },
+  { id: 'CALL-L06', type: 'Patient Balance Reminder', target: 'Khalid Ibrahim — AED 1,175', targetId: 'P-007', client: 'Dubai Wellness Clinic', clientId: 'org-104', duration: '3:08', status: 'completed', outcome: 'Transferred', claimRef: '' },
+  { id: 'CALL-L07', type: 'Payer Status Check', target: 'Medicare — Claim #CLM-4503', targetId: 'CLM-4503', client: 'Patel Cardiology', clientId: 'org-103', duration: '6:22', status: 'completed', outcome: 'Got Status', claimRef: 'CLM-4503' },
+  { id: 'CALL-L08', type: 'Appointment Reminder', target: 'Robert Chen — Appt Mar 2', targetId: 'P-005', client: 'Patel Cardiology', clientId: 'org-103', duration: '0:38', status: 'completed', outcome: 'Got Status', claimRef: '' },
+  { id: 'CALL-L09', type: 'Payer Status Check', target: 'Daman — Claim #CLM-4502', targetId: 'CLM-4502', client: 'Gulf Medical Center', clientId: 'org-101', duration: '7:44', status: 'completed', outcome: 'Got Status', claimRef: 'CLM-4502' },
+  { id: 'CALL-L10', type: 'Payer Appeal Follow-up', target: 'UHC — Claim #CLM-4501', targetId: 'CLM-4501', client: 'Irvine Family Practice', clientId: 'org-102', duration: '4:01', status: 'completed', outcome: 'Transferred', claimRef: 'CLM-4501' },
+  { id: 'CALL-L11', type: 'Patient Balance Reminder', target: 'Sarah Johnson — $120', targetId: 'P-002', client: 'Irvine Family Practice', clientId: 'org-102', duration: '1:55', status: 'completed', outcome: 'Voicemail', claimRef: '' },
+  { id: 'CALL-L12', type: 'Appointment Reminder', target: 'Ahmed Al Mansouri — Appt Feb 28', targetId: 'P-003', client: 'Gulf Medical Center', clientId: 'org-101', duration: '0:52', status: 'completed', outcome: 'Got Status', claimRef: '' },
+]
+
+export interface DemoCampaign {
+  id: string; name: string; type: string; target: string; schedule: string
+  estimatedCalls: number; status: 'active' | 'paused' | 'draft'; lastRun?: string
+}
+
+export const demoCampaigns: DemoCampaign[] = [
+  { id: 'CMP-001', name: 'Weekly Payer Status', type: 'Payer Status Check', target: 'Claims > $200 aged > 14 days', schedule: 'Weekly Mon 9:00 AM', estimatedCalls: 18, status: 'active', lastRun: '2026-02-24' },
+  { id: 'CMP-002', name: 'Monthly Balance Reminders', type: 'Patient Balance Reminder', target: 'Patient balance > $50', schedule: 'Monthly 1st 10:00 AM', estimatedCalls: 34, status: 'active', lastRun: '2026-03-01' },
+  { id: 'CMP-003', name: 'Aetna Denial Appeals', type: 'Payer Appeal Follow-up', target: 'Aetna denied > 30 days', schedule: 'Daily 8:00 AM', estimatedCalls: 6, status: 'paused', lastRun: '2026-02-28' },
+  { id: 'CMP-004', name: 'Appointment Confirmations', type: 'Appointment Reminder', target: 'Appt in next 48h not confirmed', schedule: 'Daily 3:00 PM', estimatedCalls: 12, status: 'draft' },
+]
+
+export interface DemoScript {
+  id: string; payer: string; type: string; lastUpdated: string
+  steps: { type: 'DIAL' | 'DTMF' | 'SPEAK' | 'WAIT' | 'RECORD'; content: string }[]
+}
+
+export const demoScripts: DemoScript[] = [
+  {
+    id: 'SCR-001', payer: 'UnitedHealthcare', type: 'Payer Status Check', lastUpdated: '2026-02-15',
+    steps: [
+      { type: 'DIAL', content: 'UHC Claims: 1-800-842-3585' },
+      { type: 'DTMF', content: 'Press 2 for Billing' },
+      { type: 'DTMF', content: 'Enter NPI: {npi}' },
+      { type: 'WAIT', content: 'Wait for Rep (max 15 min)' },
+      { type: 'SPEAK', content: 'State Claim Info: {claim_id}, DOS {dos}, Patient {patient_name}' },
+      { type: 'RECORD', content: 'Record Outcome + Reference #' },
+    ],
+  },
+  {
+    id: 'SCR-002', payer: 'Aetna', type: 'Payer Appeal Follow-up', lastUpdated: '2026-02-20',
+    steps: [
+      { type: 'DIAL', content: 'Aetna Appeals: 1-800-238-6279' },
+      { type: 'DTMF', content: 'Press 3 for Appeals Department' },
+      { type: 'DTMF', content: 'Enter Member ID: {member_id}' },
+      { type: 'WAIT', content: 'Wait for Rep (max 20 min)' },
+      { type: 'SPEAK', content: 'Reference Appeal #{appeal_ref}, Claim {claim_id}' },
+      { type: 'RECORD', content: 'Record Outcome + Next Steps' },
+    ],
+  },
+  {
+    id: 'SCR-003', payer: 'Medicare', type: 'Payer Status Check', lastUpdated: '2026-01-30',
+    steps: [
+      { type: 'DIAL', content: 'Medicare: 1-800-633-4227' },
+      { type: 'DTMF', content: 'Press 1 for English' },
+      { type: 'DTMF', content: 'Press 2 for Claims' },
+      { type: 'DTMF', content: 'Enter Beneficiary ID: {beneficiary_id}' },
+      { type: 'WAIT', content: 'Wait for Rep' },
+      { type: 'RECORD', content: 'Record Status + Payment ETA' },
+    ],
+  },
+  {
+    id: 'SCR-004', payer: 'Daman (UAE)', type: 'Payer Status Check', lastUpdated: '2026-02-10',
+    steps: [
+      { type: 'DIAL', content: 'Daman: +971-2-614-9999' },
+      { type: 'DTMF', content: 'Press 2 for Providers' },
+      { type: 'SPEAK', content: 'Provider TRN: {trn}, Claim {eclaim_id}' },
+      { type: 'WAIT', content: 'Wait for Representative' },
+      { type: 'RECORD', content: 'Record Status' },
+    ],
+  },
+  {
+    id: 'SCR-005', payer: 'NAS (UAE)', type: 'Payer Appeal Follow-up', lastUpdated: '2026-02-25',
+    steps: [
+      { type: 'DIAL', content: 'NAS: +971-4-270-8888' },
+      { type: 'DTMF', content: 'Press 1 for Claims Department' },
+      { type: 'SPEAK', content: 'Policy: {policy_no}, Claim Ref: {claim_ref}' },
+      { type: 'WAIT', content: 'Wait for Adjudicator' },
+      { type: 'RECORD', content: 'Record Appeal Decision' },
+    ],
+  },
+]
+
+// ─── AI Scribe Demo Data ────────────────────────────────────────────────────
+export interface DemoVisit {
+  id: string; patientId: string; patientName: string; dos: string
+  status: 'pending_signoff' | 'signed' | 'draft'
+  provider: string; encounterType: string
+  soap: { s: string; o: string; a: string; p: string }
+  transcript: string
+  suggestedCodes: {
+    cpt?: string; icd?: string; description: string
+    confidence: number; reasoning?: string; modifiers?: string[]
+    kept?: boolean
+  }[]
+}
+
+export const demoVisits: DemoVisit[] = [
+  {
+    id: 'V-001', patientId: 'P-001', patientName: 'John Smith', dos: '2026-03-01',
+    status: 'pending_signoff', provider: 'Dr. Sarah Martinez', encounterType: 'Office Visit',
+    soap: {
+      s: 'Patient reports ongoing fatigue and occasional headaches over the past 2 weeks. Blood sugars running slightly high per home glucometer readings (145–175 fasting). Denies chest pain, shortness of breath, or lower extremity swelling.',
+      o: 'BP 148/92, HR 76, Weight 187 lbs, SpO2 98% on room air. Lungs clear. Heart RRR, no murmurs. Abdomen soft, non-tender. No peripheral edema. Fundoscopic exam deferred.',
+      a: 'T2DM with suboptimal glycemic control. Essential hypertension, not at goal. Fatigue likely multifactorial — poorly controlled HTN and DM.',
+      p: 'Increase metformin to 1000mg BID. Add amlodipine 5mg daily for BP control. Repeat fasting glucose and HbA1c in 6 weeks. Dietary counseling discussed. Follow up in 4–6 weeks.',
+    },
+    transcript: 'Dr. Martinez: Good morning John, how have you been feeling?\nJohn Smith: Not great, doctor. I\'ve been tired and getting headaches a lot lately.\nDr. Martinez: Let\'s check your vitals first. [pause] Your blood pressure is 148 over 92, that\'s still higher than we want. How are your blood sugars at home?\nJohn Smith: Running about 145 to 175 when I check in the morning.\nDr. Martinez: That\'s a bit high for fasting. Let\'s talk about your medications...',
+    suggestedCodes: [
+      { cpt: '99214', description: 'Office visit, moderate complexity', confidence: 94, reasoning: 'MDM moderate — 2 chronic conditions, Rx management, new prescription added', modifiers: ['25'], kept: true },
+      { icd: 'E11.9', description: 'Type 2 diabetes mellitus without complications', confidence: 91, kept: true },
+      { icd: 'I10', description: 'Essential (primary) hypertension', confidence: 88, kept: true },
+      { icd: 'R53.83', description: 'Other fatigue', confidence: 72, kept: false },
+    ],
+  },
+  {
+    id: 'V-002', patientId: 'P-005', patientName: 'Robert Chen', dos: '2026-03-01',
+    status: 'pending_signoff', provider: 'Dr. Patel', encounterType: 'Cardiology Follow-up',
+    soap: {
+      s: 'Patient reports increasing dyspnea on exertion over the past 2 weeks. Bilateral ankle swelling noted since last week. Denies chest pain or palpitations. Compliant with medications.',
+      o: 'BP 138/86, HR 78, Weight 192 lbs (up 4 lbs from last visit). SpO2 96% at rest. JVD present at 45°. Bilateral LE pitting edema 2+. Lung bases: crackles bilaterally.',
+      a: 'Heart failure with reduced EF, decompensating. NYHA Class II-III. Volume overloaded.',
+      p: 'Increase furosemide to 40mg daily. Add metolazone 2.5mg prn for refractory edema. Daily weights. Strict 2g sodium restriction. Repeat BMP in 3 days. Echocardiogram ordered. Return in 1 week.',
+    },
+    transcript: 'Dr. Patel: How are you feeling since your last visit, Robert?\nRobert Chen: Not so great, doctor. I\'m getting more winded going up the stairs, and my ankles have been swelling.\nDr. Patel: Let me examine you. [pause] Your weight is up 4 pounds from last week. I can see some extra fluid in your lungs. We need to adjust your water pill...',
+    suggestedCodes: [
+      { cpt: '99214', description: 'Office visit, moderate complexity', confidence: 91, reasoning: 'Established patient with worsening chronic condition requiring medication adjustment', kept: true },
+      { icd: 'I50.9', description: 'Heart failure, unspecified', confidence: 96, kept: true },
+      { icd: 'R60.0', description: 'Localized edema', confidence: 83, kept: true },
+    ],
+  },
+  {
+    id: 'V-003', patientId: 'P-002', patientName: 'Sarah Johnson', dos: '2026-02-28',
+    status: 'signed', provider: 'Dr. Sarah Martinez', encounterType: 'Follow-up',
+    soap: {
+      s: 'Follow-up visit for lower back pain. Patient reports improvement since physical therapy started. Pain now 3/10, previously 7/10. Able to perform ADLs without difficulty.',
+      o: 'BP 118/74, HR 68. Musculoskeletal: lumbar ROM improved. No radiculopathy. Straight leg raise negative bilaterally.',
+      a: 'Lumbar radiculopathy improving with conservative management.',
+      p: 'Continue PT for 4 more sessions. Naproxen PRN. Return if worsening. Imaging not indicated at this time.',
+    },
+    transcript: 'Dr. Martinez: Sarah, how has your back been doing?\nSarah Johnson: Much better actually! Physical therapy is really helping. Maybe a 3 out of 10 now.\nDr. Martinez: That\'s great progress. Let me check your range of motion...',
+    suggestedCodes: [
+      { cpt: '99213', description: 'Office visit, low complexity', confidence: 89, kept: true },
+      { icd: 'M54.5', description: 'Low back pain', confidence: 95, kept: true },
+    ],
+  },
+]
+
+// ─── Document Center Demo Data ──────────────────────────────────────────────
+export interface DemoDocRecord {
+  id: string; name: string
+  type: 'Superbill' | 'Clinical Note' | 'Insurance Card' | 'EOB' | 'Denial Letter' | 'Contract' | 'Credential' | 'Fax'
+  client: string; clientId: string; patient: string; patientId?: string
+  uploadDate: string; source: 'Portal Upload' | 'Email Ingest' | 'Fax' | 'Manual Upload' | 'Textract Scan'
+  status: 'Linked' | 'Unlinked' | 'Processing'
+  aiConfidence?: number
+}
+
+export const demoDocs: DemoDocRecord[] = [
+  { id: 'D-001', name: 'superbill_smith_20260302.pdf', type: 'Superbill', client: 'Irvine Family Practice', clientId: 'org-102', patient: 'John Smith', patientId: 'P-001', uploadDate: '2026-03-02', source: 'Portal Upload', status: 'Linked' },
+  { id: 'D-002', name: 'clinical_note_mansouri.pdf', type: 'Clinical Note', client: 'Gulf Medical Center', clientId: 'org-101', patient: 'Ahmed Al Mansouri', patientId: 'P-003', uploadDate: '2026-03-01', source: 'Manual Upload', status: 'Linked' },
+  { id: 'D-003', name: 'eob_uhc_20260301.pdf', type: 'EOB', client: 'Irvine Family Practice', clientId: 'org-102', patient: '—', uploadDate: '2026-03-01', source: 'Email Ingest', status: 'Linked' },
+  { id: 'D-004', name: 'denial_aetna_clm4504.pdf', type: 'Denial Letter', client: 'Irvine Family Practice', clientId: 'org-102', patient: 'Sarah Johnson', patientId: 'P-002', uploadDate: '2026-02-28', source: 'Email Ingest', status: 'Linked' },
+  { id: 'D-005', name: 'insurance_card_garcia.jpg', type: 'Insurance Card', client: 'Irvine Family Practice', clientId: 'org-102', patient: 'Maria Garcia', patientId: 'P-006', uploadDate: '2026-02-28', source: 'Portal Upload', status: 'Linked' },
+  { id: 'D-006', name: 'fax_inbound_20260301_1.pdf', type: 'Clinical Note', client: '—', clientId: '', patient: '—', uploadDate: '2026-03-01', source: 'Fax', status: 'Unlinked', aiConfidence: 72 },
+  { id: 'D-007', name: 'superbill_scan_03012026.jpg', type: 'Superbill', client: '—', clientId: '', patient: '—', uploadDate: '2026-03-01', source: 'Email Ingest', status: 'Unlinked', aiConfidence: 94 },
+  { id: 'D-008', name: 'email_superbill_20260228.pdf', type: 'Superbill', client: '—', clientId: '', patient: '—', uploadDate: '2026-02-28', source: 'Email Ingest', status: 'Unlinked', aiConfidence: 87 },
+  { id: 'D-009', name: 'echo_report_chen.pdf', type: 'Clinical Note', client: 'Patel Cardiology', clientId: 'org-103', patient: 'Robert Chen', patientId: 'P-005', uploadDate: '2026-02-10', source: 'Portal Upload', status: 'Linked' },
+  { id: 'D-010', name: 'credential_martinez.pdf', type: 'Credential', client: 'Irvine Family Practice', clientId: 'org-102', patient: '—', uploadDate: '2026-01-15', source: 'Manual Upload', status: 'Linked' },
+  { id: 'D-011', name: 'contract_uhc_2025.pdf', type: 'Contract', client: 'Irvine Family Practice', clientId: 'org-102', patient: '—', uploadDate: '2025-12-01', source: 'Manual Upload', status: 'Linked' },
+  { id: 'D-012', name: 'insurance_card_chen.jpg', type: 'Insurance Card', client: 'Patel Cardiology', clientId: 'org-103', patient: 'Robert Chen', patientId: 'P-005', uploadDate: '2026-02-01', source: 'Portal Upload', status: 'Linked' },
+  { id: 'D-013', name: 'eob_aetna_feb2026.pdf', type: 'EOB', client: 'Irvine Family Practice', clientId: 'org-102', patient: '—', uploadDate: '2026-02-25', source: 'Email Ingest', status: 'Linked' },
+  { id: 'D-014', name: 'fax_prior_auth_request.pdf', type: 'Fax', client: 'Irvine Family Practice', clientId: 'org-102', patient: 'Maria Garcia', patientId: 'P-006', uploadDate: '2026-02-20', source: 'Fax', status: 'Linked' },
+  { id: 'D-015', name: 'superbill_johnson_0218.pdf', type: 'Superbill', client: 'Irvine Family Practice', clientId: 'org-102', patient: 'Sarah Johnson', patientId: 'P-002', uploadDate: '2026-02-18', source: 'Portal Upload', status: 'Linked' },
+  { id: 'D-016', name: 'denial_medicare_chen.pdf', type: 'Denial Letter', client: 'Patel Cardiology', clientId: 'org-103', patient: 'Robert Chen', patientId: 'P-005', uploadDate: '2026-02-12', source: 'Email Ingest', status: 'Linked' },
+  { id: 'D-017', name: 'textract_scan_superbill.jpg', type: 'Superbill', client: '—', clientId: '', patient: '—', uploadDate: '2026-03-02', source: 'Textract Scan', status: 'Processing' },
+  { id: 'D-018', name: 'clinical_note_ibrahim.pdf', type: 'Clinical Note', client: 'Dubai Wellness Clinic', clientId: 'org-104', patient: 'Khalid Ibrahim', patientId: 'P-007', uploadDate: '2026-02-22', source: 'Manual Upload', status: 'Linked' },
+  { id: 'D-019', name: 'eob_nas_feb2026.pdf', type: 'EOB', client: 'Dubai Wellness Clinic', clientId: 'org-104', patient: '—', uploadDate: '2026-02-15', source: 'Email Ingest', status: 'Linked' },
+  { id: 'D-020', name: 'insurance_card_hassan.jpg', type: 'Insurance Card', client: 'Gulf Medical Center', clientId: 'org-101', patient: 'Fatima Hassan', patientId: 'P-004', uploadDate: '2026-02-05', source: 'Portal Upload', status: 'Linked' },
+]
+
+export interface DemoFax {
+  id: string; direction: 'Inbound' | 'Outbound'
+  fromTo: string; date: string; pages: number
+  status: 'Received' | 'Sent' | 'Failed' | 'Pending'
+  document?: string; client: string
+}
+
+export const demoFaxes: DemoFax[] = [
+  { id: 'FAX-001', direction: 'Inbound', fromTo: 'From: Aetna (1-800-238-6279)', date: '2026-03-02', pages: 3, status: 'Received', document: 'denial_aetna_clm4504.pdf', client: 'Irvine Family Practice' },
+  { id: 'FAX-002', direction: 'Outbound', fromTo: 'To: UHC Prior Auth (1-800-842-3585)', date: '2026-03-01', pages: 5, status: 'Sent', document: 'prior_auth_smith.pdf', client: 'Irvine Family Practice' },
+  { id: 'FAX-003', direction: 'Inbound', fromTo: 'From: Unknown (1-714-555-0001)', date: '2026-03-01', pages: 2, status: 'Received', document: 'fax_inbound_20260301_1.pdf', client: '—' },
+  { id: 'FAX-004', direction: 'Outbound', fromTo: 'To: Medicare DME (1-800-633-4227)', date: '2026-02-28', pages: 8, status: 'Failed', client: 'Patel Cardiology' },
+  { id: 'FAX-005', direction: 'Outbound', fromTo: 'To: Daman UAE (+971-2-614-9999)', date: '2026-03-02', pages: 4, status: 'Pending', document: 'appeal_daman_clm4502.pdf', client: 'Gulf Medical Center' },
+]
+
+// ─── Admin — Audit Log ──────────────────────────────────────────────────────
+export interface DemoAuditEntry {
+  id: string; timestamp: string; user: string; role: string
+  action: 'VIEW' | 'CREATE' | 'UPDATE' | 'DELETE' | 'EXPORT'
+  entity: string; entityId: string; ip: string
+}
+
+export const demoAuditLog: DemoAuditEntry[] = [
+  { id: 'AUD-001', timestamp: '2026-03-02 09:14:22', user: 'Admin User', role: 'admin', action: 'VIEW', entity: 'Patient', entityId: 'P-001', ip: '192.168.1.42' },
+  { id: 'AUD-002', timestamp: '2026-03-02 09:10:05', user: 'Sarah Kim', role: 'coder', action: 'UPDATE', entity: 'Claim', entityId: 'CLM-4502', ip: '192.168.1.55' },
+  { id: 'AUD-003', timestamp: '2026-03-02 09:07:31', user: 'Dr. Martinez', role: 'provider', action: 'CREATE', entity: 'Visit Note', entityId: 'V-001', ip: '192.168.1.88' },
+  { id: 'AUD-004', timestamp: '2026-03-02 08:55:17', user: 'Mike Rodriguez', role: 'ar_team', action: 'EXPORT', entity: 'AR Report', entityId: 'RPT-0302', ip: '192.168.1.60' },
+  { id: 'AUD-005', timestamp: '2026-03-02 08:48:03', user: 'Lisa Tran', role: 'posting_team', action: 'UPDATE', entity: 'ERA File', entityId: 'ERA-2024', ip: '192.168.1.71' },
+  { id: 'AUD-006', timestamp: '2026-03-02 08:40:55', user: 'Amy Chen', role: 'coder', action: 'VIEW', entity: 'Claim', entityId: 'CLM-4503', ip: '192.168.1.92' },
+  { id: 'AUD-007', timestamp: '2026-03-02 08:35:12', user: 'Tom Baker', role: 'supervisor', action: 'UPDATE', entity: 'User', entityId: 'USR-009', ip: '192.168.1.44' },
+  { id: 'AUD-008', timestamp: '2026-03-02 08:28:47', user: 'Sarah Kim', role: 'coder', action: 'CREATE', entity: 'Claim', entityId: 'CLM-4512', ip: '192.168.1.55' },
+  { id: 'AUD-009', timestamp: '2026-03-02 08:21:33', user: 'Admin User', role: 'admin', action: 'CREATE', entity: 'User', entityId: 'USR-011', ip: '192.168.1.42' },
+  { id: 'AUD-010', timestamp: '2026-03-01 17:55:06', user: 'Mike Rodriguez', role: 'ar_team', action: 'UPDATE', entity: 'Denial', entityId: 'DEN-088', ip: '192.168.1.60' },
+  { id: 'AUD-011', timestamp: '2026-03-01 17:41:22', user: 'Lisa Tran', role: 'posting_team', action: 'CREATE', entity: 'Payment', entityId: 'PAY-4501', ip: '192.168.1.71' },
+  { id: 'AUD-012', timestamp: '2026-03-01 17:30:19', user: 'Dr. Martinez', role: 'provider', action: 'UPDATE', entity: 'Visit Note', entityId: 'V-003', ip: '192.168.1.88' },
+  { id: 'AUD-013', timestamp: '2026-03-01 16:44:08', user: 'Tom Baker', role: 'supervisor', action: 'EXPORT', entity: 'Coding Report', entityId: 'RPT-0301', ip: '192.168.1.44' },
+  { id: 'AUD-014', timestamp: '2026-03-01 16:22:51', user: 'Amy Chen', role: 'coder', action: 'DELETE', entity: 'Draft Claim', entityId: 'CLM-DRAFT-07', ip: '192.168.1.92' },
+  { id: 'AUD-015', timestamp: '2026-03-01 15:58:37', user: 'Admin User', role: 'admin', action: 'VIEW', entity: 'Audit Log', entityId: 'AUD-*', ip: '192.168.1.42' },
+  { id: 'AUD-016', timestamp: '2026-03-01 15:30:14', user: 'Sarah Kim', role: 'coder', action: 'UPDATE', entity: 'Claim', entityId: 'CLM-4501', ip: '192.168.1.55' },
+  { id: 'AUD-017', timestamp: '2026-03-01 14:17:42', user: 'Mike Rodriguez', role: 'ar_team', action: 'VIEW', entity: 'Patient', entityId: 'P-005', ip: '192.168.1.60' },
+  { id: 'AUD-018', timestamp: '2026-03-01 13:55:09', user: 'Tom Baker', role: 'supervisor', action: 'UPDATE', entity: 'Campaign', entityId: 'CMP-003', ip: '192.168.1.44' },
+  { id: 'AUD-019', timestamp: '2026-03-01 11:22:30', user: 'Amy Chen', role: 'coder', action: 'VIEW', entity: 'Document', entityId: 'D-007', ip: '192.168.1.92' },
+  { id: 'AUD-020', timestamp: '2026-03-01 10:08:15', user: 'Admin User', role: 'admin', action: 'UPDATE', entity: 'Integration', entityId: 'INT-Availity', ip: '192.168.1.42' },
+]
