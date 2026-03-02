@@ -153,10 +153,14 @@ function UsersTab() {
 
 function OrgsTab() {
   const { toast } = useToast()
+  const [showAddOrg, setShowAddOrg] = useState(false)
+  const [orgData, setOrgData] = useState({
+    name: '', contact: '', email: '', region: 'us', pricing: '% Revenue'
+  })
   return (
     <div>
       <div className="flex justify-end mb-4">
-        <button onClick={()=>toast.info('Organization form opened')} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors">
+        <button onClick={()=>setShowAddOrg(true)} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors">
           <Plus size={14}/> Add Organization
         </button>
       </div>
@@ -168,7 +172,7 @@ function OrgsTab() {
             <th className="text-left px-4 py-3">Active Since</th><th className="text-left px-4 py-3">Status</th>
           </tr></thead>
           <tbody>{orgs.map(o=>(
-            <tr key={o.name} className="border-b border-separator last:border-0 table-row hover:bg-surface-elevated transition-colors">
+            <tr key={o.name} onClick={()=>toast.info(`Opening ${o.name} settings`)} className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
               <td className="px-4 py-3 font-medium">{o.name}</td>
               <td className="px-4 py-3 text-xs">{o.region}</td>
               <td className="px-4 py-3 text-xs text-content-secondary">{o.ehr}</td>
@@ -179,6 +183,77 @@ function OrgsTab() {
           ))}</tbody>
         </table>
       </div>
+      {showAddOrg&&(
+        <>
+          <div className="fixed inset-0 bg-black/40 z-40" onClick={()=>setShowAddOrg(false)}/>
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            <div className="bg-surface-secondary rounded-xl p-6 w-full max-w-md shadow-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold">Add Organization</h3>
+                <button onClick={()=>setShowAddOrg(false)}><X size={16} className="text-content-secondary"/></button>
+              </div>
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">Organization Name</label>
+                <input
+                  placeholder="e.g. City Medical Group"
+                  value={orgData.name}
+                  onChange={e => setOrgData(p => ({ ...p, name: e.target.value }))}
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">Primary Contact</label>
+                <input
+                  placeholder="Jane Smith"
+                  value={orgData.contact}
+                  onChange={e => setOrgData(p => ({ ...p, contact: e.target.value }))}
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">Contact Email</label>
+                <input
+                  placeholder="jane@org.com"
+                  value={orgData.email}
+                  onChange={e => setOrgData(p => ({ ...p, email: e.target.value }))}
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-content-secondary block mb-1">Region</label>
+                  <select
+                    value={orgData.region}
+                    onChange={e => setOrgData(p => ({ ...p, region: e.target.value }))}
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                    <option value="us">🇺🇸 US</option><option value="uae">🇦🇪 UAE</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-content-secondary block mb-1">Pricing Model</label>
+                  <select
+                    value={orgData.pricing}
+                    onChange={e => setOrgData(p => ({ ...p, pricing: e.target.value }))}
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                    {['% Revenue','Per-Claim','Flat Fee','Hybrid'].map(p=><option key={p}>{p}</option>)}
+                  </select>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  if (!orgData.name) {
+                    toast.error('Organization name is required')
+                    return
+                  }
+                  toast.success(`Organization '${orgData.name}' created. Onboarding email sent.`)
+                  setOrgData({ name: '', contact: '', email: '', region: 'us', pricing: '% Revenue' })
+                  setShowAddOrg(false)
+                }}
+                className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">Create Organization</button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

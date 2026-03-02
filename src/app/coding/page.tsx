@@ -116,7 +116,7 @@ export default function CodingPage() {
                 <div className="p-4 overflow-y-auto">
                   {tab === 'note' && (
                     <div className="space-y-3">
-                      {item.source === 'ai_scribe' && <button className="inline-flex items-center gap-2 text-[12px] rounded-btn px-3 py-1.5 bg-brand/10 text-brand"><Play size={13} /> <Mic size={13} /> Play Recording</button>}
+                      {item.source === 'ai_scribe' && <button onClick={() => toast.info('Audio playback — recording from AI Scribe session')} className="inline-flex items-center gap-2 text-[12px] rounded-btn px-3 py-1.5 bg-brand/10 text-brand"><Play size={13} /> <Mic size={13} /> Play Recording</button>}
                       {(['subjective', 'objective', 'assessment', 'plan'] as const).map(section => (
                         <div key={section} className="pb-2 border-b border-separator last:border-0">
                           <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-1">{section}</p>
@@ -192,8 +192,14 @@ export default function CodingPage() {
                 )}
 
                 <div className="flex gap-3">
-                  <button className="flex-1 bg-brand text-white rounded-btn px-3 py-2 text-[13px] font-medium inline-flex items-center justify-center gap-2"><CheckCircle2 size={14} />Approve & Send to Billing</button>
-                  <button className="flex-1 border border-separator rounded-btn px-3 py-2 text-[13px] text-content-secondary inline-flex items-center justify-center gap-2"><MessageCircle size={14} />Query Doctor</button>
+                  <button onClick={() => {
+                    if (!item) return
+                    toast.success(`Chart approved. Sent to billing queue as CLM-${Math.floor(Math.random() * 9000 + 1000)}`)
+                    setSelected(queue[0]?.id || '')
+                    setSelectedCodes({})
+                    setExpanded({})
+                  }} className="flex-1 bg-brand text-white rounded-btn px-3 py-2 text-[13px] font-medium inline-flex items-center justify-center gap-2"><CheckCircle2 size={14} />Approve & Send to Billing</button>
+                  <button onClick={() => toast.info('Message thread opened with Dr. Martinez')} className="flex-1 border border-separator rounded-btn px-3 py-2 text-[13px] text-content-secondary inline-flex items-center justify-center gap-2"><MessageCircle size={14} />Query Doctor</button>
                 </div>
               </>
             ) : <div className="h-full flex items-center justify-center text-content-tertiary text-[14px]"><FileText size={16} className="mr-2" />Select a chart from the queue</div>}

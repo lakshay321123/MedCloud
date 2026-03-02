@@ -4,6 +4,7 @@ import { useApp } from '@/lib/context'
 import { demoPatients, DemoPatient } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
+import { useToast } from '@/components/shared/Toast'
 import { Plus, Search, X, Upload, ChevronDown } from 'lucide-react'
 
 const completenessColor = (p: number) => p >= 100 ? 'bg-emerald-500' : p >= 75 ? 'bg-cyan-500' : p >= 50 ? 'bg-amber-500' : 'bg-red-500'
@@ -24,9 +25,18 @@ function SectionHeader({ title, badge, open, onToggle }: { title: string; badge?
 
 function AddPatientModal({ onClose }: { onClose: () => void }) {
   const { country } = useApp()
+  const { toast } = useToast()
   const isUAE = country === 'uae'
   const [sections, setSections] = useState({ address: false, id: false, insurance: false, secondary: false, emergency: false, employment: false, medical: false })
   const toggle = (k: keyof typeof sections) => setSections(p => ({ ...p, [k]: !p[k] }))
+  const [patientForm, setPatientForm] = useState({
+    firstName: '', lastName: '', dob: '', gender: '',
+    phone: '', email: '', address: '',
+    insuranceId: '', groupNumber: '', memberId: '',
+    emiratesId: '', ssn: '',
+  })
+  const updateField = (field: string, value: string) =>
+    setPatientForm(prev => ({ ...prev, [field]: value }))
 
   const usStates = ['AK','AL','AR','AZ','CA','CO','CT','DE','FL','GA','HI','IA','ID','IL','IN','KS','KY','LA','MA','MD','ME','MI','MN','MO','MS','MT','NC','ND','NE','NH','NJ','NM','NV','NY','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VA','VT','WA','WI','WV','WY']
   const uaeEmirates = ['Abu Dhabi','Dubai','Sharjah','Ajman','Fujairah','Ras Al Khaimah','Umm Al Quwain']
@@ -51,7 +61,7 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-1">
                 <label className="text-xs text-content-secondary block mb-1">First Name <span className="text-red-400">*</span></label>
-                <input className={ic} placeholder="First name" />
+                <input className={ic} placeholder="First name" value={patientForm.firstName} onChange={e => updateField('firstName', e.target.value)} />
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Middle</label>
@@ -59,7 +69,7 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Last Name <span className="text-red-400">*</span></label>
-                <input className={ic} placeholder="Last name" />
+                <input className={ic} placeholder="Last name" value={patientForm.lastName} onChange={e => updateField('lastName', e.target.value)} />
               </div>
             </div>
             <div>
@@ -69,11 +79,11 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Date of Birth</label>
-                <input type="date" className={ic} />
+                <input type="date" className={ic} value={patientForm.dob} onChange={e => updateField('dob', e.target.value)} />
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Gender</label>
-                <select className={ic}><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option><option>Prefer not to say</option></select>
+                <select className={ic} value={patientForm.gender} onChange={e => updateField('gender', e.target.value)}><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option><option>Prefer not to say</option></select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -89,7 +99,7 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Phone (Primary) <span className="text-red-400">*</span></label>
-                <input type="tel" className={ic} placeholder={isUAE ? '+971 50 xxx xxxx' : '(949) xxx-xxxx'} />
+                <input type="tel" className={ic} placeholder={isUAE ? '+971 50 xxx xxxx' : '(949) xxx-xxxx'} value={patientForm.phone} onChange={e => updateField('phone', e.target.value)} />
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Phone (Secondary/Cell)</label>
@@ -99,7 +109,7 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Email</label>
-                <input type="email" className={ic} placeholder="email@example.com" />
+                <input type="email" className={ic} placeholder="email@example.com" value={patientForm.email} onChange={e => updateField('email', e.target.value)} />
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Preferred Contact</label>
@@ -115,7 +125,7 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
             <SectionHeader title="Address" open={sections.address} onToggle={() => toggle('address')} />
             {sections.address && (
               <div className="space-y-3 pt-1">
-                <div><label className="text-xs text-content-secondary block mb-1">Address Line 1</label><input className={ic} placeholder="Street address" /></div>
+                <div><label className="text-xs text-content-secondary block mb-1">Address Line 1</label><input className={ic} placeholder="Street address" value={patientForm.address} onChange={e => updateField('address', e.target.value)} /></div>
                 <div><label className="text-xs text-content-secondary block mb-1">Address Line 2</label><input className={ic} placeholder="Apt, Suite, etc." /></div>
                 <div className="grid grid-cols-3 gap-3">
                   <div><label className="text-xs text-content-secondary block mb-1">City</label><input className={ic} /></div>
@@ -143,9 +153,9 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
             <SectionHeader title="Identification" open={sections.id} onToggle={() => toggle('id')} />
             {sections.id && (
               <div className="space-y-3 pt-1">
-                {!isUAE && <div><label className="text-xs text-content-secondary block mb-1">SSN (last 4 digits)</label><input className={ic} placeholder="****-**-XXXX" maxLength={4} /></div>}
+                {!isUAE && <div><label className="text-xs text-content-secondary block mb-1">SSN (last 4 digits)</label><input className={ic} placeholder="****-**-XXXX" maxLength={4} value={patientForm.ssn} onChange={e => updateField('ssn', e.target.value)} /></div>}
                 {!isUAE && <div><label className="text-xs text-content-secondary block mb-1">Driver&apos;s License #</label><input className={ic} placeholder="License number" /></div>}
-                {isUAE && <div><label className="text-xs text-content-secondary block mb-1">Emirates ID</label><input className={ic} placeholder="784-XXXX-XXXXXXX-X" /></div>}
+                {isUAE && <div><label className="text-xs text-content-secondary block mb-1">Emirates ID</label><input className={ic} placeholder="784-XXXX-XXXXXXX-X" value={patientForm.emiratesId} onChange={e => updateField('emiratesId', e.target.value)} /></div>}
                 <div><label className="text-xs text-content-secondary block mb-1">Passport #</label><input className={ic} placeholder="Passport number" /></div>
               </div>
             )}
@@ -160,11 +170,11 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
               <div className="space-y-3 pt-1">
                 <div><label className="text-xs text-content-secondary block mb-1">Insurance Payer</label><input className={ic} placeholder={isUAE ? 'e.g. Daman, NAS, ADNIC...' : 'e.g. Aetna, UHC, BCBS...'} /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-xs text-content-secondary block mb-1">Policy Number</label><input className={ic} /></div>
-                  {!isUAE && <div><label className="text-xs text-content-secondary block mb-1">Group Number</label><input className={ic} /></div>}
+                  <div><label className="text-xs text-content-secondary block mb-1">Policy Number</label><input className={ic} value={patientForm.insuranceId} onChange={e => updateField('insuranceId', e.target.value)} /></div>
+                  {!isUAE && <div><label className="text-xs text-content-secondary block mb-1">Group Number</label><input className={ic} value={patientForm.groupNumber} onChange={e => updateField('groupNumber', e.target.value)} /></div>}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-xs text-content-secondary block mb-1">Member ID</label><input className={ic} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Member ID</label><input className={ic} value={patientForm.memberId} onChange={e => updateField('memberId', e.target.value)} /></div>
                   <div><label className="text-xs text-content-secondary block mb-1">Copay Amount</label><input type="number" className={ic} placeholder="0.00" /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -175,7 +185,7 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
                   <div><label className="text-xs text-content-secondary block mb-1">Subscriber Name (if not self)</label><input className={ic} /></div>
                 </div>
                 <div><label className="text-xs text-content-secondary block mb-1">Subscriber DOB (if not self)</label><input type="date" className={ic} /></div>
-                <button type="button" className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-2.5 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2">
+                <button type="button" onClick={() => toast.info('Camera / file picker — attach front and back of insurance card')} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-2.5 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2">
                   <Upload size={14}/> Scan Insurance Card (Front & Back)
                 </button>
               </div>
@@ -258,13 +268,23 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
 
           {/* Scan ID + Buttons */}
           <div>
-            <button type="button" className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2 mb-4">
+            <button type="button" onClick={() => toast.info('Scanning ID to auto-fill demographics...')} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2 mb-4">
               <Upload size={14} className="text-brand" />
               <span>📷 {isUAE ? 'Scan Emirates ID' : 'Scan Driver\'s License'} to auto-fill demographics</span>
             </button>
             <div className="flex gap-2">
               <button type="button" onClick={onClose} className="flex-1 bg-surface-elevated border border-separator rounded-lg py-2.5 text-sm text-content-secondary hover:text-content-primary transition-colors">Cancel</button>
-              <button type="button" onClick={onClose} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">Save Patient</button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!patientForm.firstName || !patientForm.lastName) {
+                    toast.error('First name and last name are required')
+                    return
+                  }
+                  toast.success(`Patient ${patientForm.firstName} ${patientForm.lastName} saved successfully`)
+                  onClose()
+                }}
+                className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">Save Patient</button>
             </div>
           </div>
         </div>
@@ -277,6 +297,7 @@ type DetailTab = 'demographics' | 'address' | 'insurance' | 'emergency' | 'emplo
 
 function PatientDetail({ patient, onClose }: { patient: DemoPatient; onClose: () => void }) {
   const { country } = useApp()
+  const { toast } = useToast()
   const [tab, setTab] = useState<DetailTab>('demographics')
   // Use app-level country; fall back to patient data signal
   const isUAE = country === 'uae' || !!patient.emiratesId
@@ -369,7 +390,7 @@ function PatientDetail({ patient, onClose }: { patient: DemoPatient; onClose: ()
                     {patient.insurance.copay !== undefined && <div><span className="text-content-secondary">Copay:</span> {isUAE ? 'AED' : '$'}{patient.insurance.copay}</div>}
                   </div>
                 </div>
-              ) : <div className="text-center py-6 text-xs text-content-secondary">No insurance on file. <button className="text-brand underline">Upload insurance card</button></div>}
+              ) : <div className="text-center py-6 text-xs text-content-secondary">No insurance on file. <button onClick={() => toast.info('Upload insurance card to update coverage details')} className="text-brand underline">Upload insurance card</button></div>}
               {patient.secondaryInsurance && (
                 <div className="bg-surface-elevated border border-separator rounded-lg p-3">
                   <div className="text-xs text-content-secondary mb-2">Secondary Insurance</div>
@@ -380,7 +401,7 @@ function PatientDetail({ patient, onClose }: { patient: DemoPatient; onClose: ()
                   </div>
                 </div>
               )}
-              <button type="button" className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30">
+              <button type="button" onClick={() => toast.info('Camera/file picker — scan front and back of insurance card')} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30">
                 <Upload size={14} className="inline mr-1"/> Scan insurance card to auto-fill
               </button>
             </div>

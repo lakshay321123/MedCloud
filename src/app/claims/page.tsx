@@ -275,6 +275,7 @@ export default function ClaimsPage() {
   const [dosTo, setDosTo] = useState('')
   const [selectedRows, setSelectedRows] = useState<string[]>([])
   const [drawerClaim, setDrawerClaim] = useState<DemoClaim | null>(null)
+  const [menuOpen, setMenuOpen] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<'id' | 'age' | 'billed'>('id')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -471,7 +472,30 @@ export default function ClaimsPage() {
                     <td className="px-3 py-2.5"><ClaimStatusBadge status={c.status} /></td>
                     <td className="px-3 py-2.5 font-mono text-content-secondary">{c.dos}</td>
                     <td className="px-3 py-2.5 text-content-tertiary">{c.age}d</td>
-                    <td className="px-3 py-2.5 text-content-tertiary">⋯</td>
+                    <td className="px-3 py-2.5 relative" onClick={e => e.stopPropagation()}>
+                      <button onClick={() => setMenuOpen(menuOpen === c.id ? null : c.id)}
+                        className="text-content-tertiary hover:text-content-primary px-2 py-1 rounded hover:bg-surface-elevated transition-colors">
+                        ⋯
+                      </button>
+                      {menuOpen === c.id && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(null)} />
+                          <div className="absolute right-0 top-full mt-1 bg-surface-secondary border border-separator rounded-lg shadow-elevated z-50 w-40 overflow-hidden">
+                            {[
+                              { label: 'View Detail', action: () => { setDrawerClaim(c); setMenuOpen(null) } },
+                              { label: 'Correct Claim', action: () => { toast.info('Correction mode opened'); setMenuOpen(null) } },
+                              { label: 'Route to Denials', action: () => { toast.success('Routed to denial queue'); setMenuOpen(null) } },
+                              { label: 'Void Claim', action: () => { toast.warning('Void requires supervisor approval'); setMenuOpen(null) } },
+                            ].map(item => (
+                              <button key={item.label} onClick={item.action}
+                                className="w-full text-left px-3 py-2 text-xs text-content-primary hover:bg-surface-elevated transition-colors">
+                                {item.label}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -5,7 +5,8 @@ import { demoClaims } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
-import { ShieldAlert, FileText, AlertTriangle } from 'lucide-react'
+import { ShieldAlert, FileText, AlertTriangle, Send } from 'lucide-react'
+import { useToast } from '@/components/shared/Toast'
 
 const demoDenials = [
   (() => {
@@ -24,8 +25,13 @@ const demoDenials = [
 
 export default function DenialsPage() {
   const { selectedClient } = useApp()
+  const { toast } = useToast()
   const denials = demoDenials.filter(c => !selectedClient || c.clientId === selectedClient.id)
   const [selected, setSelected] = useState(denials[0]?.id || '')
+  const [appealLevel, setAppealLevel] = useState<'L1' | 'L2' | 'L3'>('L1')
+  const [appealTexts, setAppealTexts] = useState<Record<string, string>>({})
+  const getAppealText = (d: typeof denials[0]) =>
+    appealTexts[d.id] ?? `Dear ${d.payer} Appeals Department,\n\nWe are writing to appeal claim ${d.id} for ${d.patientName}...`
 
   return (
     <ModuleShell title="Denials & Appeals" subtitle="Manage denied claims and appeal workflows">
@@ -61,8 +67,32 @@ export default function DenialsPage() {
               <div className="bg-surface-elevated border border-separator rounded-lg p-2 mb-3 text-xs text-content-secondary inline-flex items-center gap-1"><AlertTriangle size={12} />Source: Routed from {d.source}</div>
               {d.source === 'payment_posting' && <div className="text-xs text-content-secondary mb-3">EOB Reference: ERA-001, Line EOB-004</div>}
               <div className="mb-3"><span className="text-xs text-content-secondary block mb-1">Related Documents</span><div className="flex gap-2">{['Original Claim', 'Clinical Note', 'Denial Letter'].map(doc => <div key={doc} className="bg-surface-elevated border border-separator rounded px-2 py-1 text-[10px] text-content-secondary flex items-center gap-1"><FileText size={10} />{doc}</div>)}</div></div>
-              <textarea className="w-full flex-1 min-h-[130px] bg-surface-elevated border border-separator rounded-lg p-2 text-xs" defaultValue={`Dear ${d.payer} Appeals Department,\n\nWe are writing to appeal claim ${d.id} for ${d.patientName}...`} />
-              <button className="mt-3 bg-brand text-white rounded-btn py-2 text-sm font-medium">Submit Appeal (L1)</button>
+              <div className="mb-2">
+                <span className="text-xs text-content-secondary block mb-1">Appeal Level</span>
+                <div className="flex gap-1">
+                  {(['L1','L2','L3'] as const).map(lvl=>(
+                    <button key={lvl} onClick={()=>setAppealLevel(lvl)}
+                      className={`px-3 py-1 rounded text-xs font-medium border transition-colors ${appealLevel===lvl?'bg-brand text-white border-brand':'border-separator text-content-secondary hover:border-brand/40 hover:text-brand'}`}>
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <textarea
+                className="w-full flex-1 min-h-[130px] bg-surface-elevated border border-separator rounded-lg p-2 text-xs"
+                value={getAppealText(d)}
+                onChange={e => setAppealTexts(prev => ({ ...prev, [d.id]: e.target.value }))}
+              />
+              <button
+                onClick={() => {
+                  const text = getAppealText(d)
+                  if (text.trim().length < 50) {
+                    toast.error('Appeal letter is too short')
+                    return
+                  }
+                  toast.success(`${appealLevel} appeal submitted for ${d.id}`)
+                }}
+                className="mt-3 bg-brand text-white rounded-btn py-2 text-sm font-medium flex items-center justify-center gap-2"><Send size={14}/>Submit Appeal ({appealLevel})</button>
             </>
           })() : (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 text-content-secondary">

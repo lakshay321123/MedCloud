@@ -39,6 +39,8 @@ export default function ContractsPage() {
   const [selected, setSelected] = useState<DemoContract | null>(demoContracts[0] ?? null)
   const [tab, setTab] = useState<'fee' | 'underpayments' | 'terms'>('fee')
   const [editingRow, setEditingRow] = useState<string | null>(null)
+  const [addingCpt, setAddingCpt] = useState(false)
+  const [newCpt, setNewCpt] = useState({ cpt: '', description: '', contractedRate: '' })
 
   const filtered = demoContracts.filter(c =>
     !search || c.payer.toLowerCase().includes(search.toLowerCase()) || c.client.toLowerCase().includes(search.toLowerCase())
@@ -157,9 +159,22 @@ export default function ContractsPage() {
                             </td>
                           </tr>
                         ))}
+                        {addingCpt && (
+                          <tr className="border-b border-separator bg-brand/5">
+                            <td className="py-2 pr-3"><input value={newCpt.cpt} onChange={e=>setNewCpt(p=>({...p,cpt:e.target.value}))} placeholder="99213" className="w-20 bg-surface-elevated border border-brand/40 rounded px-1.5 py-0.5 text-[12px] text-content-primary focus:outline-none font-mono"/></td>
+                            <td className="py-2 pr-3"><input value={newCpt.description} onChange={e=>setNewCpt(p=>({...p,description:e.target.value}))} placeholder="Description" className="w-full bg-surface-elevated border border-brand/40 rounded px-1.5 py-0.5 text-[12px] text-content-primary focus:outline-none"/></td>
+                            <td className="py-2 pr-3"><input value={newCpt.contractedRate} onChange={e=>setNewCpt(p=>({...p,contractedRate:e.target.value}))} placeholder="0.00" className="w-20 bg-surface-elevated border border-brand/40 rounded px-1.5 py-0.5 text-[12px] text-content-primary focus:outline-none"/></td>
+                            <td colSpan={3} className="py-2 pr-3">
+                              <div className="flex gap-2">
+                                <button onClick={()=>{toast.success(`CPT ${newCpt.cpt||'code'} added to fee schedule`);setAddingCpt(false);setNewCpt({cpt:'',description:'',contractedRate:''})}} className="text-[11px] bg-brand text-white px-2.5 py-1 rounded">Save</button>
+                                <button onClick={()=>{setAddingCpt(false);setNewCpt({cpt:'',description:'',contractedRate:''})}} className="text-[11px] border border-separator px-2.5 py-1 rounded text-content-secondary">Cancel</button>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
-                    <button onClick={() => toast.info('Add CPT — coming soon')}
+                    <button onClick={() => setAddingCpt(true)}
                       className="mt-4 flex items-center gap-1.5 text-[12px] text-brand hover:underline">
                       <Plus size={13} /> Add CPT
                     </button>

@@ -265,7 +265,7 @@ function FaxCenterTab() {
               <td className="px-4 py-3 text-xs text-brand">{f.document??'—'}</td>
               <td className="px-4 py-3 flex gap-1">
                 {f.document&&<button onClick={()=>toast.success('Download started')} className="text-[10px] text-content-secondary hover:text-content-primary border border-separator px-2 py-1 rounded transition-colors">View</button>}
-                {f.direction==='Inbound'&&<button className="text-[10px] text-brand hover:underline px-2 py-1">Link</button>}
+                {f.direction==='Inbound'&&<button onClick={()=>toast.success('Fax linked to patient record')} className="text-[10px] text-brand hover:underline px-2 py-1">Link</button>}
               </td>
             </tr>
           ))}</tbody>

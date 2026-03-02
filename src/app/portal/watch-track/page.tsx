@@ -1,14 +1,15 @@
 'use client'
 import React, { useState } from 'react'
-import { demoClaims, getClientName } from '@/lib/demo-data'
+import { demoClaims } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
-import { FileText, DollarSign, Clock, AlertTriangle } from 'lucide-react'
+import { FileText, DollarSign, Clock, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react'
 
 export default function WatchTrackPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [search, setSearch] = useState('')
+  const [expanded, setExpanded] = useState<string | null>(null)
 
   const myClaims = demoClaims.filter(c => c.clientId === 'org-102')
   const filtered = myClaims.filter(c => {
@@ -38,21 +39,57 @@ export default function WatchTrackPage() {
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead><tr className="border-b border-separator text-xs text-content-secondary">
+            <th className="w-8"></th>
             <th className="text-left px-4 py-3">Claim #</th><th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Payer</th>
             <th className="text-left px-4 py-3">DOS</th><th className="text-right px-4 py-3">Charges</th><th className="text-right px-4 py-3">Paid</th>
             <th className="text-left px-4 py-3">Status</th><th className="text-right px-4 py-3">Age</th>
           </tr></thead>
           <tbody>{filtered.map(c=>(
-            <tr key={c.id} className="border-b border-separator last:border-0 table-row cursor-pointer">
-              <td className="px-4 py-3 font-mono text-xs">{c.id}</td>
-              <td className="px-4 py-3">{c.patientName}</td>
-              <td className="px-4 py-3 text-content-secondary text-xs">{c.payer}</td>
-              <td className="px-4 py-3 text-content-secondary text-xs">{c.dos}</td>
-              <td className="px-4 py-3 text-right">${c.billed.toLocaleString()}</td>
-              <td className="px-4 py-3 text-right text-emerald-600 text-emerald-600 dark:text-emerald-400">{c.paid > 0 ? `$${c.paid.toLocaleString()}` : '—'}</td>
-              <td className="px-4 py-3"><StatusBadge status={c.status} small/></td>
-              <td className="px-4 py-3 text-right text-xs text-content-secondary">{c.age}d</td>
-            </tr>
+            <React.Fragment key={c.id}>
+              <tr onClick={()=>setExpanded(expanded===c.id?null:c.id)} className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
+                <td className="pl-3 text-content-tertiary">{expanded===c.id?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</td>
+                <td className="px-4 py-3 font-mono text-xs">{c.id}</td>
+                <td className="px-4 py-3">{c.patientName}</td>
+                <td className="px-4 py-3 text-content-secondary text-xs">{c.payer}</td>
+                <td className="px-4 py-3 text-content-secondary text-xs">{c.dos}</td>
+                <td className="px-4 py-3 text-right">${c.billed.toLocaleString()}</td>
+                <td className="px-4 py-3 text-right text-emerald-600 dark:text-emerald-400">{c.paid > 0 ? `$${c.paid.toLocaleString()}` : '—'}</td>
+                <td className="px-4 py-3"><StatusBadge status={c.status} small/></td>
+                <td className="px-4 py-3 text-right text-xs text-content-secondary">{c.age}d</td>
+              </tr>
+              {expanded===c.id&&(
+                <tr className="border-b border-separator bg-surface-elevated">
+                  <td colSpan={9} className="px-8 py-4">
+                    <div className="grid grid-cols-3 gap-6 text-xs">
+                      <div>
+                        <p className="text-content-tertiary uppercase tracking-wider mb-2 font-semibold">Claim Detail</p>
+                        <div className="space-y-1">
+                          <p><span className="text-content-secondary">CPT Codes:</span> <span className="font-mono">{(c.cptCodes??[]).join(', ')||'—'}</span></p>
+                          <p><span className="text-content-secondary">ICD Codes:</span> <span className="font-mono">{(c.icdCodes??[]).join(', ')||'—'}</span></p>
+                          <p><span className="text-content-secondary">Billed:</span> <span className="font-mono">${c.billed.toLocaleString()}</span></p>
+                          <p><span className="text-content-secondary">Paid:</span> <span className="font-mono text-emerald-600 dark:text-emerald-400">{c.paid>0?`$${c.paid.toLocaleString()}`:'—'}</span></p>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-content-tertiary uppercase tracking-wider mb-2 font-semibold">Payer Info</p>
+                        <div className="space-y-1">
+                          <p><span className="text-content-secondary">Payer:</span> {c.payer}</p>
+                          <p><span className="text-content-secondary">Age:</span> {c.age} days</p>
+                          <p><span className="text-content-secondary">DOS:</span> {c.dos}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-content-tertiary uppercase tracking-wider mb-2 font-semibold">Status</p>
+                        <div className="space-y-2">
+                          <StatusBadge status={c.status} small/>
+                          {c.status==='denied'&&<p className="text-red-600 dark:text-red-400 flex items-center gap-1"><AlertTriangle size={12}/>Denial — contact billing team</p>}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
           ))}</tbody>
         </table>
       </div>

@@ -4,6 +4,7 @@ import { useApp } from '@/lib/context'
 import { demoMessages, DemoMessage } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
+import { useToast } from '@/components/shared/Toast'
 import { MessageCircle, Send, Paperclip, User, FileText, Calendar, ClipboardList, Building2 } from 'lucide-react'
 
 const entityIcons: Record<string, React.ReactNode> = {
@@ -13,17 +14,38 @@ const entityIcons: Record<string, React.ReactNode> = {
 
 export default function MessagesPage() {
   const { currentUser, selectedClient } = useApp()
+  const { toast } = useToast()
+  const [localThreads, setLocalThreads] = useState(demoMessages)
   const [selected, setSelected] = useState<DemoMessage | null>(demoMessages[0])
   const [filter, setFilter] = useState('')
   const [reply, setReply] = useState('')
   const isStaff = !['client','provider'].includes(currentUser.role)
 
-  const messages = demoMessages.filter(m => {
+  const messages = localThreads.filter(m => {
     if (filter && m.entityType !== filter) return false
     if (!isStaff && m.clientId !== 'org-102') return false
     if (isStaff && selectedClient && m.clientId !== selectedClient.id) return false
     return true
   })
+
+  const handleSend = () => {
+    if (!reply.trim() || !selected) return
+    const newMsg = {
+      id: `msg-${Date.now()}`,
+      sender: 'You',
+      role: 'staff' as const,
+      text: reply.trim(),
+      time: new Date().toISOString(),
+    }
+    setLocalThreads(prev => prev.map(t =>
+      t.id === selected.id
+        ? { ...t, messages: [...t.messages, newMsg], lastMessage: reply.trim(), updatedAt: new Date().toISOString() }
+        : t
+    ))
+    setSelected(prev => prev ? { ...prev, messages: [...prev.messages, newMsg] } : prev)
+    setReply('')
+    toast.success('Message sent')
+  }
 
   return (
     <ModuleShell title="Messages" subtitle="Conversations about patients, claims, and submissions">
@@ -87,11 +109,11 @@ export default function MessagesPage() {
                 ))}
               </div>
               <div className="p-3 border-t border-separator flex gap-2">
-                <button className="text-content-secondary hover:text-content-primary p-2"><Paperclip size={16}/></button>
+                <button onClick={() => toast.info('File attachment — select document from library')} className="text-content-secondary hover:text-content-primary p-2"><Paperclip size={16}/></button>
                 <input value={reply} onChange={e=>setReply(e.target.value)} placeholder="Type a message..."
                   className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary"
-                  onKeyDown={e => { if (e.key === 'Enter' && reply.trim()) setReply('') }}/>
-                <button onClick={() => setReply('')} className="bg-brand text-white rounded-lg px-3 py-2 hover:bg-brand-deep"><Send size={16}/></button>
+                  onKeyDown={e => { if (e.key === 'Enter' && reply.trim()) handleSend() }}/>
+                <button onClick={handleSend} className="bg-brand text-white rounded-lg px-3 py-2 hover:bg-brand-deep"><Send size={16}/></button>
               </div>
             </>
           ) : (
