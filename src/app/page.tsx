@@ -20,17 +20,22 @@ export default function LoginPage() {
     if (!country) { setError('Please select your region'); return }
     setLoading(true)
     setError('')
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, country, portalType }),
-    })
-    if (res.ok) {
-      localStorage.setItem('cosentus_region', country)
-      localStorage.setItem('cosentus_portal_type', portalType)
-      router.push('/dashboard')
-    } else {
-      setError('Invalid username or password')
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, country, portalType }),
+      })
+      if (res.ok) {
+        localStorage.setItem('cosentus_region', country)
+        localStorage.setItem('cosentus_portal_type', portalType)
+        router.push('/dashboard')
+      } else {
+        setError('Invalid username or password')
+        setLoading(false)
+      }
+    } catch {
+      setError('Network error — please try again')
       setLoading(false)
     }
   }

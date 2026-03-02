@@ -7,18 +7,31 @@ import { X, ChevronDown } from 'lucide-react'
 type PatientMode = 'existing' | 'new'
 
 export default function NewAppointmentModal({ onClose }: { onClose: () => void }) {
-  const { selectedClient, currentUser } = useApp()
+  const { selectedClient } = useApp()
   const [mode, setMode] = useState<PatientMode>('existing')
   const [showInsurance, setShowInsurance] = useState(false)
   const [selectedPatient, setSelectedPatient] = useState('')
   const [search, setSearch] = useState('')
+  const [newPatient, setNewPatient] = useState({
+    firstName: '', lastName: '', phone: '', dob: '',
+    insuranceProvider: '', memberId: '', policyNo: '',
+  })
 
-  // Use selectedClient if set (staff context), otherwise fall back to currentUser.organization_id or org-102
-  const orgId = selectedClient?.id || (currentUser as { organization_id?: string }).organization_id || 'org-102'
-  const patients = demoPatients.filter(p => p.clientId === orgId)
+  // Staff with no client selected sees all patients; with client selected, filter by that client
+  const orgId = selectedClient?.id || null
+  const patients = orgId
+    ? demoPatients.filter(p => p.clientId === orgId)
+    : demoPatients
+
   const filteredPatients = search.length > 0
     ? patients.filter(p => `${p.firstName} ${p.lastName}`.toLowerCase().includes(search.toLowerCase()))
-    : patients
+    : []
+
+  function handleSubmit() {
+    // In production: POST to appointments API
+    // For demo: close modal (data would be persisted via API)
+    onClose()
+  }
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
@@ -81,33 +94,51 @@ export default function NewAppointmentModal({ onClose }: { onClose: () => void }
                   )}
                 </div>
               )}
-              {patients.length === 0 && search.length === 0 && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">No patients found for selected client.</p>
-              )}
             </div>
           )}
 
-          {/* NEW PATIENT — minimal fields */}
+          {/* NEW PATIENT — controlled inputs */}
           {mode === 'new' && (
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-content-secondary block mb-1">First Name <span className="text-red-400">*</span></label>
-                  <input className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" placeholder="First name" />
+                  <input
+                    value={newPatient.firstName}
+                    onChange={e => setNewPatient(prev => ({ ...prev, firstName: e.target.value }))}
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors"
+                    placeholder="First name"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-content-secondary block mb-1">Last Name <span className="text-red-400">*</span></label>
-                  <input className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" placeholder="Last name" />
+                  <input
+                    value={newPatient.lastName}
+                    onChange={e => setNewPatient(prev => ({ ...prev, lastName: e.target.value }))}
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors"
+                    placeholder="Last name"
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-content-secondary block mb-1">Phone <span className="text-red-400">*</span></label>
-                  <input type="tel" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" placeholder="+1 or +971..." />
+                  <input
+                    type="tel"
+                    value={newPatient.phone}
+                    onChange={e => setNewPatient(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors"
+                    placeholder="+1 or +971..."
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-content-secondary block mb-1">Date of Birth</label>
-                  <input type="date" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" />
+                  <input
+                    type="date"
+                    value={newPatient.dob}
+                    onChange={e => setNewPatient(prev => ({ ...prev, dob: e.target.value }))}
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors"
+                  />
                 </div>
               </div>
 
@@ -124,16 +155,29 @@ export default function NewAppointmentModal({ onClose }: { onClose: () => void }
                 <div className="space-y-2 pt-1">
                   <div>
                     <label className="text-xs text-content-secondary block mb-1">Insurance Provider</label>
-                    <input className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" placeholder="e.g. Daman, Aetna, ADNIC..." />
+                    <input
+                      value={newPatient.insuranceProvider}
+                      onChange={e => setNewPatient(prev => ({ ...prev, insuranceProvider: e.target.value }))}
+                      className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors"
+                      placeholder="e.g. Daman, Aetna, ADNIC..."
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-content-secondary block mb-1">Member ID</label>
-                      <input className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" />
+                      <input
+                        value={newPatient.memberId}
+                        onChange={e => setNewPatient(prev => ({ ...prev, memberId: e.target.value }))}
+                        className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors"
+                      />
                     </div>
                     <div>
                       <label className="text-xs text-content-secondary block mb-1">Policy Number</label>
-                      <input className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" />
+                      <input
+                        value={newPatient.policyNo}
+                        onChange={e => setNewPatient(prev => ({ ...prev, policyNo: e.target.value }))}
+                        className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors"
+                      />
                     </div>
                   </div>
                 </div>
@@ -174,7 +218,7 @@ export default function NewAppointmentModal({ onClose }: { onClose: () => void }
             <button onClick={onClose} className="flex-1 bg-surface-elevated border border-separator rounded-lg py-2 text-sm text-content-secondary">
               Cancel
             </button>
-            <button onClick={onClose} className="flex-1 bg-brand text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-mid transition-colors">
+            <button onClick={handleSubmit} className="flex-1 bg-brand text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-mid transition-colors">
               Book Appointment
             </button>
           </div>

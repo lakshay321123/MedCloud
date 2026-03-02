@@ -44,10 +44,10 @@
 }
 
 .dark .bg-brand {
-  background-color: #00A2BF !important;
+  background-color: #00A2BF;
 }
 .dark .bg-brand:hover {
-  background-color: #0091AB !important;
+  background-color: #0091AB;
 }
 
 /* ── BASE ─── */
