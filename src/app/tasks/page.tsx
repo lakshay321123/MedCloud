@@ -17,12 +17,22 @@ const initialTasks = [
   { id: 'TSK-008', type: 'Patient Contact', entity: 'Robert Chen — payment plan follow-up', client: 'Patel Cardiology', priority: 'low' as const, status: 'completed' as const, assigned: 'Voice AI', due: '2026-03-01', sla: 'green' },
 ]
 
-type Task = typeof initialTasks[0]
+type Task = {
+  id: string
+  type: string
+  entity: string
+  client: string
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  status: 'open' | 'in_progress' | 'blocked' | 'completed'
+  assigned: string
+  due: string
+  sla: string
+}
 
 export default function TasksPage() {
   const { toast } = useToast()
   const [selected, setSelected] = useState<Task | null>(null)
-  const [taskList, setTaskList] = useState(initialTasks)
+  const [taskList, setTaskList] = useState<Task[]>(initialTasks as Task[])
 
   const slaColor = (s: string) => s === 'green' ? 'bg-emerald-500' : s === 'yellow' ? 'bg-amber-500' : 'bg-red-500'
 
