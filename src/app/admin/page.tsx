@@ -1,82 +1,308 @@
 'use client'
 import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
-import StatusBadge from '@/components/shared/StatusBadge'
-import { Settings, Users, Building2, Activity } from 'lucide-react'
+import { useToast } from '@/components/shared/Toast'
+import { demoAuditLog } from '@/lib/demo-data'
+import { Users, Building2, Activity, Shield, X, Search, Plus } from 'lucide-react'
+
+const roleColors: Record<string,string> = {
+  admin: 'bg-red-500/10 text-red-500',
+  director: 'bg-purple-500/10 text-purple-500',
+  supervisor: 'bg-blue-500/10 text-blue-500',
+  manager: 'bg-brand/10 text-brand',
+  coder: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  biller: 'bg-amber-500/10 text-amber-500',
+  ar_team: 'bg-cyan-500/10 text-cyan-500',
+  posting_team: 'bg-orange-500/10 text-orange-500',
+  provider: 'bg-indigo-500/10 text-indigo-500',
+  client: 'bg-gray-500/10 text-gray-400',
+}
+
+const pricingColors: Record<string,string> = {
+  '% Revenue': 'bg-blue-500/10 text-blue-500',
+  'Per-Claim': 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  'Flat Fee': 'bg-amber-500/10 text-amber-500',
+  'Hybrid': 'bg-purple-500/10 text-purple-500',
+}
+
+const actionColors: Record<string,string> = {
+  VIEW: 'bg-gray-500/10 text-gray-400',
+  CREATE: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  UPDATE: 'bg-amber-500/10 text-amber-500',
+  DELETE: 'bg-red-500/10 text-red-500',
+  EXPORT: 'bg-blue-500/10 text-blue-500',
+}
 
 const users = [
-  { name: 'Admin User', email: 'admin@cosentus.ai', role: 'admin', clients: 'All', lastLogin: '2026-03-02', active: true },
-  { name: 'Sarah Kim', email: 'sarah@cosentus.ai', role: 'coder', clients: 'IFP, GMC', lastLogin: '2026-03-02', active: true },
-  { name: 'Mike Rodriguez', email: 'mike@cosentus.ai', role: 'ar_team', clients: 'All', lastLogin: '2026-03-01', active: true },
-  { name: 'Lisa Tran', email: 'lisa@cosentus.ai', role: 'posting_team', clients: 'IFP, PC', lastLogin: '2026-03-02', active: true },
-  { name: 'Tom Baker', email: 'tom@cosentus.ai', role: 'supervisor', clients: 'All', lastLogin: '2026-02-28', active: true },
-  { name: 'Amy Chen', email: 'amy@cosentus.ai', role: 'coder', clients: 'PC, DWC', lastLogin: '2026-03-02', active: true },
-  { name: 'Dr. Martinez', email: 'dr.m@irvinefp.com', role: 'provider', clients: 'IFP', lastLogin: '2026-03-02', active: true },
-  { name: 'Front Desk IFP', email: 'fd@irvinefp.com', role: 'client', clients: 'IFP', lastLogin: '2026-03-01', active: true },
+  { name:'Admin User', email:'admin@cosentus.ai', role:'admin', clients:'All', lastLogin:'2026-03-02', active:true },
+  { name:'Sarah Kim', email:'sarah@cosentus.ai', role:'coder', clients:'IFP, GMC', lastLogin:'2026-03-02', active:true },
+  { name:'Mike Rodriguez', email:'mike@cosentus.ai', role:'ar_team', clients:'All', lastLogin:'2026-03-01', active:true },
+  { name:'Lisa Tran', email:'lisa@cosentus.ai', role:'posting_team', clients:'IFP, PC', lastLogin:'2026-03-02', active:true },
+  { name:'Tom Baker', email:'tom@cosentus.ai', role:'supervisor', clients:'All', lastLogin:'2026-02-28', active:true },
+  { name:'Amy Chen', email:'amy@cosentus.ai', role:'coder', clients:'PC, DWC', lastLogin:'2026-03-02', active:true },
+  { name:'Dr. Martinez', email:'dr.m@irvinefp.com', role:'provider', clients:'IFP', lastLogin:'2026-03-02', active:true },
+  { name:'Front Desk IFP', email:'fd@irvinefp.com', role:'client', clients:'IFP', lastLogin:'2026-03-01', active:true },
 ]
 
-export default function AdminPage() {
-  const [tab, setTab] = useState<'users'|'orgs'|'health'>('users')
+const orgs = [
+  { name:'Gulf Medical Center', region:'🇦🇪 UAE', ehr:'MedCloud EHR', pricing:'% Revenue', since:'2024-01-01', active:true },
+  { name:'Irvine Family Practice', region:'🇺🇸 US', ehr:'External EHR', pricing:'Per-Claim', since:'2023-06-15', active:true },
+  { name:'Patel Cardiology', region:'🇺🇸 US', ehr:'MedCloud EHR', pricing:'Hybrid', since:'2023-09-01', active:true },
+  { name:'Dubai Wellness Clinic', region:'🇦🇪 UAE', ehr:'External EHR', pricing:'Flat Fee', since:'2024-03-01', active:true },
+]
+
+const services = [
+  { name:'API Gateway', status:'operational', lastCheck:'2 min', ms:142 },
+  { name:'Aurora US', status:'operational', lastCheck:'2 min', ms:18 },
+  { name:'Aurora UAE', status:'operational', lastCheck:'2 min', ms:24 },
+  { name:'Cognito', status:'operational', lastCheck:'2 min', ms:88 },
+  { name:'S3', status:'operational', lastCheck:'2 min', ms:32 },
+  { name:'Textract', status:'operational', lastCheck:'5 min', ms:210 },
+  { name:'Bedrock', status:'operational', lastCheck:'2 min', ms:340 },
+  { name:'AppSync', status:'operational', lastCheck:'2 min', ms:65 },
+  { name:'Twilio', status:'operational', lastCheck:'3 min', ms:188 },
+  { name:'Availity', status:'degraded', lastCheck:'2 min', ms:1840 },
+  { name:'DHA eClaim', status:'operational', lastCheck:'4 min', ms:290 },
+  { name:'Email Ingest', status:'operational', lastCheck:'2 min', ms:76 },
+]
+
+const queues = [
+  { name:'Coding Queue', items:47, processing:3, failed:0, flush:'2 min ago' },
+  { name:'ERA Processing', items:12, processing:1, failed:0, flush:'8 min ago' },
+  { name:'Fax Queue', items:2, processing:0, failed:1, flush:'15 min ago' },
+]
+
+function UsersTab() {
+  const { toast } = useToast()
+  const [showAdd, setShowAdd] = useState(false)
+  const [search, setSearch] = useState('')
+  const filtered = users.filter(u => !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()))
   return (
-    <ModuleShell title="Admin & Settings" subtitle="System administration">
-      <div className="flex gap-2 mb-4">
-        {(['users','orgs','health'] as const).map(t=>(
-          <button key={t} onClick={()=>setTab(t)} className={`px-4 py-1.5 rounded-lg text-xs font-medium ${tab===t?'bg-brand/10 text-brand':'bg-surface-elevated text-content-secondary border border-separator'}`}>
-            {t==='users'?'Users':t==='orgs'?'Organizations':'System Health'}
-          </button>
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary"/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search users..."
+            className="bg-surface-elevated border border-separator rounded-lg pl-8 pr-3 py-1.5 text-xs text-content-primary w-60"/>
+        </div>
+        <button onClick={()=>setShowAdd(true)} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors">
+          <Plus size={14}/> Add User
+        </button>
+      </div>
+      <div className="card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+            <th className="text-left px-4 py-3">Name</th><th className="text-left px-4 py-3">Email</th>
+            <th className="text-left px-4 py-3">Role</th><th className="text-left px-4 py-3">Clients</th>
+            <th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3">Last Login</th>
+            <th className="text-left px-4 py-3">Actions</th>
+          </tr></thead>
+          <tbody>{filtered.map(u=>(
+            <tr key={u.email} className="border-b border-separator last:border-0 table-row">
+              <td className="px-4 py-3 font-medium">{u.name}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{u.email}</td>
+              <td className="px-4 py-3"><span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${roleColors[u.role]??'bg-surface-elevated text-content-secondary'}`}>{u.role}</span></td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{u.clients}</td>
+              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${u.active?'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400':'bg-gray-500/10 text-gray-400'}`}>{u.active?'Active':'Disabled'}</span></td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{u.lastLogin}</td>
+              <td className="px-4 py-3 flex gap-1">
+                <button onClick={()=>toast.info(`Editing ${u.name}`)} className="text-[10px] text-brand hover:underline">Edit</button>
+                <span className="text-content-tertiary">·</span>
+                <button onClick={()=>toast.warning(`${u.name} disabled`)} className="text-[10px] text-red-500 hover:underline">Disable</button>
+              </td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+      {showAdd&&(
+        <>
+          <div className="fixed inset-0 bg-black/40 z-40" onClick={()=>setShowAdd(false)}/>
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            <div className="bg-surface-secondary rounded-xl p-6 w-full max-w-md shadow-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold">Add User</h3>
+                <button onClick={()=>setShowAdd(false)}><X size={16} className="text-content-secondary"/></button>
+              </div>
+              {[['Full Name','Jane Smith'],['Email','jane@cosentus.ai']].map(([l,p])=>(
+                <div key={l}>
+                  <label className="text-xs text-content-secondary block mb-1">{l}</label>
+                  <input placeholder={p} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"/>
+                </div>
+              ))}
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">Role</label>
+                <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                  {Object.keys(roleColors).map(r=><option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">Assign to Clients</label>
+                <select multiple className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary h-20">
+                  {orgs.map(o => <option key={o.name}>{o.name}</option>)}
+                </select>
+              </div>
+              <button onClick={()=>{toast.success('User created. Invite email sent.');setShowAdd(false)}}
+                className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">Create User</button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function OrgsTab() {
+  const { toast } = useToast()
+  return (
+    <div>
+      <div className="flex justify-end mb-4">
+        <button onClick={()=>toast.info('Organization form opened')} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors">
+          <Plus size={14}/> Add Organization
+        </button>
+      </div>
+      <div className="card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+            <th className="text-left px-4 py-3">Name</th><th className="text-left px-4 py-3">Region</th>
+            <th className="text-left px-4 py-3">EHR Mode</th><th className="text-left px-4 py-3">Pricing</th>
+            <th className="text-left px-4 py-3">Active Since</th><th className="text-left px-4 py-3">Status</th>
+          </tr></thead>
+          <tbody>{orgs.map(o=>(
+            <tr key={o.name} className="border-b border-separator last:border-0 table-row hover:bg-surface-elevated transition-colors">
+              <td className="px-4 py-3 font-medium">{o.name}</td>
+              <td className="px-4 py-3 text-xs">{o.region}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{o.ehr}</td>
+              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${pricingColors[o.pricing]??'bg-surface-elevated text-content-secondary'}`}>{o.pricing}</span></td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{o.since}</td>
+              <td className="px-4 py-3"><span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">Active</span></td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function SystemHealthTab() {
+  return (
+    <div>
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        {services.map(s=>(
+          <div key={s.name} className="card p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-content-primary">{s.name}</span>
+              <span className={`w-2.5 h-2.5 rounded-full ${s.status==='operational'?'bg-emerald-500':s.status==='degraded'?'bg-amber-500 animate-pulse':'bg-red-500 animate-pulse'}`}/>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className={`text-[11px] font-medium ${s.status==='operational'?'text-emerald-600 dark:text-emerald-400':s.status==='degraded'?'text-amber-500':'text-red-500'}`}>
+                {s.status==='operational'?'Operational':s.status==='degraded'?'Degraded':'Down'}
+              </span>
+              <span className="text-[10px] text-content-tertiary">{s.ms}ms</span>
+            </div>
+            <p className="text-[10px] text-content-tertiary mt-1">Last check: {s.lastCheck} ago</p>
+          </div>
         ))}
       </div>
-      {tab === 'users' && (
-        <div className="card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-separator text-xs text-content-secondary">
-              <th className="text-left px-4 py-3">Name</th><th className="text-left px-4 py-3">Email</th>
-              <th className="text-left px-4 py-3">Role</th><th className="text-left px-4 py-3">Clients</th>
-              <th className="text-left px-4 py-3">Last Login</th><th className="text-left px-4 py-3">Status</th>
-            </tr></thead>
-            <tbody>{users.map(u=>(
-              <tr key={u.email} className="border-b border-separator last:border-0 table-row cursor-pointer">
-                <td className="px-4 py-3 font-medium">{u.name}</td>
-                <td className="px-4 py-3 text-xs text-content-secondary">{u.email}</td>
-                <td className="px-4 py-3"><StatusBadge status={u.role === 'admin' ? 'urgent' : u.role === 'provider' ? 'in_progress' : 'active'} small/></td>
-                <td className="px-4 py-3 text-xs text-content-secondary">{u.clients}</td>
-                <td className="px-4 py-3 text-xs text-content-secondary">{u.lastLogin}</td>
-                <td className="px-4 py-3"><StatusBadge status={u.active ? 'active' : 'inactive'} small/></td>
-              </tr>
-            ))}</tbody>
-          </table>
+      <div className="card overflow-hidden">
+        <div className="px-4 py-3 border-b border-separator">
+          <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Queue Depths</h3>
         </div>
-      )}
-      {tab === 'orgs' && (
-        <div className="card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-separator text-xs text-content-secondary">
-              <th className="text-left px-4 py-3">Name</th><th className="text-left px-4 py-3">Region</th>
-              <th className="text-left px-4 py-3">EHR Mode</th><th className="text-left px-4 py-3">Status</th>
-            </tr></thead>
-            <tbody>{[
-              {n:'Gulf Medical Center',r:'🇦🇪 UAE',e:'MedCloud EHR'},{n:'Irvine Family Practice',r:'🇺🇸 US',e:'External EHR'},
-              {n:'Patel Cardiology',r:'🇺🇸 US',e:'MedCloud EHR'},{n:'Dubai Wellness Clinic',r:'🇦🇪 UAE',e:'External EHR'},
-            ].map(o=>(
-              <tr key={o.n} className="border-b border-separator last:border-0 table-row cursor-pointer">
-                <td className="px-4 py-3 font-medium">{o.n}</td><td className="px-4 py-3 text-xs">{o.r}</td>
-                <td className="px-4 py-3 text-xs text-content-secondary">{o.e}</td><td className="px-4 py-3"><StatusBadge status="active" small/></td>
-              </tr>
-            ))}</tbody>
-          </table>
+        <table className="w-full text-sm">
+          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+            <th className="text-left px-4 py-3">Queue</th><th className="text-left px-4 py-3">Items</th>
+            <th className="text-left px-4 py-3">Processing</th><th className="text-left px-4 py-3">Failed</th>
+            <th className="text-left px-4 py-3">Last Flush</th>
+          </tr></thead>
+          <tbody>{queues.map(q=>(
+            <tr key={q.name} className="border-b border-separator last:border-0">
+              <td className="px-4 py-3 font-medium">{q.name}</td>
+              <td className="px-4 py-3 text-xs font-mono">{q.items}</td>
+              <td className="px-4 py-3 text-xs text-brand">{q.processing}</td>
+              <td className="px-4 py-3 text-xs"><span className={q.failed>0?'text-red-500':'text-content-secondary'}>{q.failed}</span></td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{q.flush}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function AuditLogTab() {
+  const { toast } = useToast()
+  const [search, setSearch] = useState('')
+  const [actionFilter, setActionFilter] = useState('')
+  const filtered = demoAuditLog.filter(e => {
+    if (search && !e.user.toLowerCase().includes(search.toLowerCase())) return false
+    if (actionFilter && e.action !== actionFilter) return false
+    return true
+  })
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary"/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by user..."
+            className="bg-surface-elevated border border-separator rounded-lg pl-8 pr-3 py-1.5 text-xs text-content-primary w-48"/>
         </div>
-      )}
-      {tab === 'health' && (
-        <div className="grid grid-cols-2 gap-4">{[
-          {s:'API Gateway',st:'healthy'},{s:'Database (Aurora)',st:'healthy'},{s:'AI Services (Bedrock)',st:'healthy'},
-          {s:'Voice AI (Twilio)',st:'healthy'},{s:'Textract OCR',st:'healthy'},{s:'Email Ingest',st:'warning'},
-        ].map(sv=>(
-          <div key={sv.s} className="card p-4 flex items-center justify-between">
-            <div className="flex items-center gap-2"><Activity size={16} className="text-content-secondary"/><span className="text-sm">{sv.s}</span></div>
-            <span className={`text-xs px-2 py-0.5 rounded-full ${sv.st==='healthy'?'bg-emerald-500/10 text-emerald-600 text-emerald-600 dark:text-emerald-400':'bg-amber-500/10 text-amber-600 text-amber-600 dark:text-amber-400'}`}>{sv.st}</span>
-          </div>
-        ))}</div>
-      )}
+        <select value={actionFilter} onChange={e=>setActionFilter(e.target.value)}
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
+          <option value="">All Actions</option>
+          {['VIEW','CREATE','UPDATE','DELETE','EXPORT'].map(a=><option key={a}>{a}</option>)}
+        </select>
+        <button onClick={()=>toast.info('Audit export queued. You will receive an email.')} className="ml-auto text-xs border border-separator text-content-secondary px-3 py-1.5 rounded-lg hover:text-content-primary transition-colors">
+          Export
+        </button>
+      </div>
+      <div className="card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+            <th className="text-left px-4 py-3">Timestamp</th><th className="text-left px-4 py-3">User</th>
+            <th className="text-left px-4 py-3">Role</th><th className="text-left px-4 py-3">Action</th>
+            <th className="text-left px-4 py-3">Entity</th><th className="text-left px-4 py-3">Entity ID</th>
+            <th className="text-left px-4 py-3">IP</th>
+          </tr></thead>
+          <tbody>{filtered.map(e=>(
+            <tr key={e.id} className="border-b border-separator last:border-0">
+              <td className="px-4 py-3 font-mono text-[10px] text-content-secondary">{e.timestamp}</td>
+              <td className="px-4 py-3 text-xs font-medium">{e.user}</td>
+              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${roleColors[e.role]??'bg-surface-elevated text-content-secondary'}`}>{e.role}</span></td>
+              <td className="px-4 py-3"><span className={`text-[10px] font-bold px-2 py-0.5 rounded ${actionColors[e.action]??'bg-surface-elevated text-content-secondary'}`}>{e.action}</span></td>
+              <td className="px-4 py-3 text-xs">{e.entity}</td>
+              <td className="px-4 py-3 font-mono text-[10px] text-brand">{e.entityId}</td>
+              <td className="px-4 py-3 font-mono text-[10px] text-content-tertiary">{e.ip}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+const TABS = [
+  { id:'users', label:'Users', icon:Users },
+  { id:'orgs', label:'Organizations', icon:Building2 },
+  { id:'health', label:'System Health', icon:Activity },
+  { id:'audit', label:'Audit Log', icon:Shield },
+] as const
+type TabId = typeof TABS[number]['id']
+
+export default function AdminPage() {
+  const [tab, setTab] = useState<TabId>('users')
+  return (
+    <ModuleShell title="Admin & Settings" subtitle="System administration">
+      <div className="flex gap-1 mb-5 border-b border-separator">
+        {TABS.map(t=>{const Icon=t.icon;return(
+          <button key={t.id} onClick={()=>setTab(t.id)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${tab===t.id?'border-brand text-brand':'border-transparent text-content-secondary hover:text-content-primary'}`}>
+            <Icon size={14}/>{t.label}
+          </button>
+        )})}
+      </div>
+      {tab==='users'&&<UsersTab/>}
+      {tab==='orgs'&&<OrgsTab/>}
+      {tab==='health'&&<SystemHealthTab/>}
+      {tab==='audit'&&<AuditLogTab/>}
     </ModuleShell>
   )
 }
