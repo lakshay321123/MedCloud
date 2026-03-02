@@ -31,7 +31,7 @@ const config: Config = {
         separator: 'var(--separator)',
       },
       fontFamily: {
-        sans: ['var(--font-reddit-sans)', 'Reddit Sans', 'sans-serif'],
+        sans: ['"Reddit Sans"', 'sans-serif'],
         mono: ['SF Mono', 'JetBrains Mono', 'monospace'],
       },
       borderRadius: {
