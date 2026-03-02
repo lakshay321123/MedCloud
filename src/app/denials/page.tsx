@@ -29,6 +29,9 @@ export default function DenialsPage() {
   const denials = demoDenials.filter(c => !selectedClient || c.clientId === selectedClient.id)
   const [selected, setSelected] = useState(denials[0]?.id || '')
   const [appealLevel, setAppealLevel] = useState<'L1' | 'L2' | 'L3'>('L1')
+  const [appealTexts, setAppealTexts] = useState<Record<string, string>>({})
+  const getAppealText = (d: typeof denials[0]) =>
+    appealTexts[d.id] ?? `Dear ${d.payer} Appeals Department,\n\nWe are writing to appeal claim ${d.id} for ${d.patientName}...`
 
   return (
     <ModuleShell title="Denials & Appeals" subtitle="Manage denied claims and appeal workflows">
@@ -75,8 +78,21 @@ export default function DenialsPage() {
                   ))}
                 </div>
               </div>
-              <textarea className="w-full flex-1 min-h-[130px] bg-surface-elevated border border-separator rounded-lg p-2 text-xs" defaultValue={`Dear ${d.payer} Appeals Department,\n\nWe are writing to appeal claim ${d.id} for ${d.patientName}...`} />
-              <button onClick={()=>toast.success(`${appealLevel} appeal submitted for ${d.id}`)} className="mt-3 bg-brand text-white rounded-btn py-2 text-sm font-medium flex items-center justify-center gap-2"><Send size={14}/>Submit Appeal ({appealLevel})</button>
+              <textarea
+                className="w-full flex-1 min-h-[130px] bg-surface-elevated border border-separator rounded-lg p-2 text-xs"
+                value={getAppealText(d)}
+                onChange={e => setAppealTexts(prev => ({ ...prev, [d.id]: e.target.value }))}
+              />
+              <button
+                onClick={() => {
+                  const text = getAppealText(d)
+                  if (text.trim().length < 50) {
+                    toast.error('Appeal letter is too short')
+                    return
+                  }
+                  toast.success(`${appealLevel} appeal submitted for ${d.id}`)
+                }}
+                className="mt-3 bg-brand text-white rounded-btn py-2 text-sm font-medium flex items-center justify-center gap-2"><Send size={14}/>Submit Appeal ({appealLevel})</button>
             </>
           })() : (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 text-content-secondary">

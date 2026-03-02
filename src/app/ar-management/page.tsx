@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 import ModuleShell from '@/components/shared/ModuleShell'
@@ -30,6 +30,16 @@ export default function ARManagementPage() {
   const { selectedClient } = useApp()
   const { toast } = useToast()
   const [selected, setSelected] = useState<typeof accounts[0] | null>(null)
+  const [followUpDate, setFollowUpDate] = useState('')
+  const [followUpNote, setFollowUpNote] = useState('')
+
+  useEffect(() => {
+    if (selected) {
+      setFollowUpDate(selected.nextFollowup !== '-' ? selected.nextFollowup : '')
+      setFollowUpNote('')
+    }
+  }, [selected])
+
   const filtered = accounts.filter(a => !selectedClient || a.client.includes(selectedClient.name.split(' ')[0]))
 
   return (
@@ -122,13 +132,20 @@ export default function ARManagementPage() {
 
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Next Follow-up Date</label>
-                <input type="date" defaultValue={selected.nextFollowup !== '-' ? selected.nextFollowup : ''}
+                <input
+                  type="date"
+                  value={followUpDate}
+                  onChange={e => setFollowUpDate(e.target.value)}
                   className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm" />
               </div>
 
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Add Note</label>
-                <textarea rows={3} placeholder="Log follow-up notes..."
+                <textarea
+                  rows={3}
+                  placeholder="Log follow-up notes..."
+                  value={followUpNote}
+                  onChange={e => setFollowUpNote(e.target.value)}
                   className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm resize-none" />
               </div>
 
@@ -137,7 +154,14 @@ export default function ARManagementPage() {
                   className="bg-brand/10 text-brand rounded-lg py-2.5 text-xs font-medium hover:bg-brand/20 transition-colors flex items-center justify-center gap-2">
                   <Phone size={13} /> Queue AI Call
                 </button>
-                <button onClick={() => { toast.success('Follow-up saved'); setSelected(null) }}
+                <button onClick={() => {
+                  if (!followUpDate) {
+                    toast.error('Please select a follow-up date')
+                    return
+                  }
+                  toast.success(`Follow-up saved for ${followUpDate}${followUpNote ? ' — note logged' : ''}`)
+                  setSelected(null)
+                }}
                   className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-xs font-medium hover:text-content-primary transition-colors">
                   Save Follow-up
                 </button>

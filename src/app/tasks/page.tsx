@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -33,6 +33,11 @@ export default function TasksPage() {
   const { toast } = useToast()
   const [selected, setSelected] = useState<Task | null>(null)
   const [taskList, setTaskList] = useState<Task[]>(initialTasks as Task[])
+  const [pendingStatus, setPendingStatus] = useState<Task['status'] | null>(null)
+
+  useEffect(() => {
+    setPendingStatus(null)
+  }, [selected])
 
   const slaColor = (s: string) => s === 'green' ? 'bg-emerald-500' : s === 'yellow' ? 'bg-amber-500' : 'bg-red-500'
 
@@ -95,8 +100,9 @@ export default function TasksPage() {
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Update Status</label>
                 <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm"
-                  defaultValue={selected.status}
-                  onChange={e => setTaskList(prev => prev.map(t => t.id === selected.id ? {...t, status: e.target.value as Task['status']} : t))}>
+                  value={pendingStatus ?? selected.status}
+                  onChange={e => setPendingStatus(e.target.value as Task['status'])}>
+
                   <option value="open">Open</option>
                   <option value="in_progress">In Progress</option>
                   <option value="blocked">Blocked</option>
@@ -106,7 +112,17 @@ export default function TasksPage() {
 
               <textarea rows={3} placeholder="Add a note..." className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm resize-none" />
 
-              <button onClick={() => { toast.success('Task updated'); setSelected(null) }}
+              <button
+                onClick={() => {
+                  if (pendingStatus) {
+                    setTaskList(prev => prev.map(t =>
+                      t.id === selected.id ? { ...t, status: pendingStatus } : t
+                    ))
+                  }
+                  toast.success('Task updated')
+                  setSelected(null)
+                  setPendingStatus(null)
+                }}
                 className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium">Save Changes</button>
             </div>
           </div>

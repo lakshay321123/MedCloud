@@ -423,10 +423,12 @@ function ScriptBuilderTab() {
   const [selected, setSelected] = useState<DemoScript>(demoScripts[0])
   const [scriptSteps, setScriptSteps] = useState(demoScripts[0].steps)
   const [editingStep, setEditingStep] = useState<number | null>(null)
+  const [editingContent, setEditingContent] = useState('')
 
   useEffect(() => {
     setScriptSteps(selected.steps)
     setEditingStep(null)
+    setEditingContent('')
   }, [selected.id])
 
   return (
@@ -474,18 +476,55 @@ function ScriptBuilderTab() {
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded mr-2 ${stepBadge[step.type] ?? 'bg-surface-elevated'}`}>{step.type}</span>
                     <span className="text-xs text-content-primary">{step.content}</span>
                   </div>
-                  <button onClick={() => setEditingStep(editingStep === i ? null : i)}
+                  <button onClick={() => {
+                    if (editingStep === i) {
+                      setEditingStep(null)
+                      setEditingContent('')
+                    } else {
+                      setEditingStep(i)
+                      setEditingContent(step.content)
+                    }
+                  }}
                     className="shrink-0 p-1 hover:bg-surface-elevated rounded text-content-tertiary hover:text-content-secondary transition-colors">
                     <Edit2 size={12} />
                   </button>
                 </div>
                 {editingStep === i && (
                   <div className="flex gap-2">
-                    <input defaultValue={step.content}
+                    <input
+                      value={editingContent}
+                      onChange={e => setEditingContent(e.target.value)}
                       className="flex-1 bg-surface-elevated border border-separator rounded px-2 py-1 text-xs"
-                      onKeyDown={e => { if (e.key === 'Enter') { toast.success('Step updated'); setEditingStep(null) }}} />
-                    <button onClick={() => { toast.success('Step updated'); setEditingStep(null) }}
-                      className="text-[10px] bg-brand text-white px-2 py-1 rounded">Save</button>
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          const updated = [...scriptSteps]
+                          updated[i] = { ...updated[i], content: editingContent }
+                          setScriptSteps(updated)
+                          toast.success('Step updated')
+                          setEditingStep(null)
+                          setEditingContent('')
+                        }
+                        if (e.key === 'Escape') {
+                          setEditingStep(null)
+                          setEditingContent('')
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={() => {
+                        const updated = [...scriptSteps]
+                        updated[i] = { ...updated[i], content: editingContent }
+                        setScriptSteps(updated)
+                        toast.success('Step updated')
+                        setEditingStep(null)
+                        setEditingContent('')
+                      }}
+                      className="text-[10px] bg-brand text-white px-2 py-1 rounded"
+                    >Save</button>
+                    <button
+                      onClick={() => { setEditingStep(null); setEditingContent('') }}
+                      className="text-[10px] border border-separator px-2 py-1 rounded text-content-secondary"
+                    >Cancel</button>
                   </div>
                 )}
               </div>

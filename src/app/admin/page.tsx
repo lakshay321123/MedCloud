@@ -154,6 +154,9 @@ function UsersTab() {
 function OrgsTab() {
   const { toast } = useToast()
   const [showAddOrg, setShowAddOrg] = useState(false)
+  const [orgData, setOrgData] = useState({
+    name: '', contact: '', email: '', region: 'us', pricing: '% Revenue'
+  })
   return (
     <div>
       <div className="flex justify-end mb-4">
@@ -189,27 +192,63 @@ function OrgsTab() {
                 <h3 className="text-base font-semibold">Add Organization</h3>
                 <button onClick={()=>setShowAddOrg(false)}><X size={16} className="text-content-secondary"/></button>
               </div>
-              {[['Organization Name','e.g. City Medical Group'],['Primary Contact','Jane Smith'],['Contact Email','jane@org.com']].map(([l,p])=>(
-                <div key={l}>
-                  <label className="text-xs text-content-secondary block mb-1">{l}</label>
-                  <input placeholder={p} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"/>
-                </div>
-              ))}
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">Organization Name</label>
+                <input
+                  placeholder="e.g. City Medical Group"
+                  value={orgData.name}
+                  onChange={e => setOrgData(p => ({ ...p, name: e.target.value }))}
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">Primary Contact</label>
+                <input
+                  placeholder="Jane Smith"
+                  value={orgData.contact}
+                  onChange={e => setOrgData(p => ({ ...p, contact: e.target.value }))}
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">Contact Email</label>
+                <input
+                  placeholder="jane@org.com"
+                  value={orgData.email}
+                  onChange={e => setOrgData(p => ({ ...p, email: e.target.value }))}
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"
+                />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-content-secondary block mb-1">Region</label>
-                  <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
-                    <option>🇺🇸 US</option><option>🇦🇪 UAE</option>
+                  <select
+                    value={orgData.region}
+                    onChange={e => setOrgData(p => ({ ...p, region: e.target.value }))}
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                    <option value="us">🇺🇸 US</option><option value="uae">🇦🇪 UAE</option>
                   </select>
                 </div>
                 <div>
                   <label className="text-xs text-content-secondary block mb-1">Pricing Model</label>
-                  <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                  <select
+                    value={orgData.pricing}
+                    onChange={e => setOrgData(p => ({ ...p, pricing: e.target.value }))}
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
                     {['% Revenue','Per-Claim','Flat Fee','Hybrid'].map(p=><option key={p}>{p}</option>)}
                   </select>
                 </div>
               </div>
-              <button onClick={()=>{toast.success('Organization created. Onboarding email sent.');setShowAddOrg(false)}}
+              <button
+                onClick={() => {
+                  if (!orgData.name) {
+                    toast.error('Organization name is required')
+                    return
+                  }
+                  toast.success(`Organization '${orgData.name}' created. Onboarding email sent.`)
+                  setOrgData({ name: '', contact: '', email: '', region: 'us', pricing: '% Revenue' })
+                  setShowAddOrg(false)
+                }}
                 className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">Create Organization</button>
             </div>
           </div>
