@@ -1,5 +1,14 @@
 import { ClientOrg, AppointmentStatus, ClaimStatus, Priority } from '@/types'
 
+// ─── Document types (used by DocViewer) ────────────────────────────────────
+export interface DemoDocument {
+  id: string
+  name: string
+  type: 'superbill' | 'clinical_note' | 'insurance_card' | 'eob' | 'denial_letter' | 'prior_auth'
+  content?: Record<string, string>
+  url?: string
+}
+
 export const demoClients: ClientOrg[] = [
   { id: 'org-101', name: 'Gulf Medical Center', region: 'uae', ehr_mode: 'medcloud_ehr' },
   { id: 'org-102', name: 'Irvine Family Practice', region: 'us', ehr_mode: 'external_ehr' },
@@ -47,6 +56,7 @@ export interface DemoPatient {
   status: 'active' | 'inactive'
   profileComplete: number
   noShowCount?: number
+  documents?: DemoDocument[]
 }
 
 export const demoPatients: DemoPatient[] = [
@@ -63,6 +73,18 @@ export const demoPatients: DemoPatient[] = [
     allergies: ['Penicillin'], medications: ['Metformin 500mg', 'Lisinopril 10mg'],
     referringPhysician: 'Dr. James Wilson', primaryCarePhysician: 'Dr. Martinez',
     clientId: 'org-102', status: 'active', profileComplete: 100,
+    documents: [
+      { id: 'DOC-P001-1', name: 'Superbill_2026-02-15.pdf', type: 'superbill', content: {
+        'Patient': 'John Smith', 'DOS': '02/15/2026', 'Provider': 'Dr. Sarah Martinez',
+        'CPT Codes': '99214, 93000', 'ICD Codes': 'E11.9, I10', 'Charges': '$485.00'
+      }},
+      { id: 'DOC-P001-2', name: 'Clinical_Note_2026-02-15.pdf', type: 'clinical_note', content: {
+        'S': 'Patient presents with fatigue and elevated BP readings at home',
+        'O': 'BP 148/92, HR 78, weight 185 lbs. EKG performed.',
+        'A': 'Type 2 DM uncontrolled. Essential hypertension.',
+        'P': 'Increase metformin to 1000mg BID. Recheck in 6 weeks.'
+      }},
+    ],
   },
   {
     id: 'P-002', firstName: 'Sarah', lastName: 'Johnson',
@@ -72,6 +94,12 @@ export const demoPatients: DemoPatient[] = [
     insurance: { payer: 'Aetna', policyNo: 'AET-334201', memberId: 'AET334201', relationship: 'Self' },
     address: { line1: '789 Campus Dr', city: 'Irvine', state: 'CA', zip: '92617', country: 'United States' },
     clientId: 'org-102', status: 'active', profileComplete: 75,
+    documents: [
+      { id: 'DOC-P002-1', name: 'Superbill_2026-02-18.pdf', type: 'superbill', content: {
+        'Patient': 'Sarah Johnson', 'DOS': '02/18/2026', 'Provider': 'Dr. Sarah Martinez',
+        'CPT Codes': '99215', 'ICD Codes': 'M54.5', 'Charges': '$350.00'
+      }},
+    ],
   },
   {
     id: 'P-003', firstName: 'Ahmed', lastName: 'Al Mansouri',
@@ -86,6 +114,18 @@ export const demoPatients: DemoPatient[] = [
     allergies: [], medications: ['Aspirin 81mg'],
     primaryCarePhysician: 'Dr. Al Zaabi',
     clientId: 'org-101', status: 'active', profileComplete: 100,
+    documents: [
+      { id: 'DOC-P003-1', name: 'Superbill_2026-02-24.pdf', type: 'superbill', content: {
+        'Patient': 'Ahmed Al Mansouri', 'DOS': '02/24/2026', 'Provider': 'Dr. Al Zaabi',
+        'CPT Codes': '99213, 93000', 'ICD Codes': 'I25.10', 'Charges': '$420.00'
+      }},
+      { id: 'DOC-P003-2', name: 'Clinical_Note_2026-02-24.pdf', type: 'clinical_note', content: {
+        'S': 'Stable on current medications. No chest pain or dyspnea.',
+        'O': 'BP 124/78, HR 64, SpO2 98%. RRR, no murmurs.',
+        'A': 'Stable CAD on optimal medical therapy.',
+        'P': 'Continue current meds. Lipid panel in 3 months. Follow-up 6 months.'
+      }},
+    ],
   },
   {
     id: 'P-004', firstName: 'Fatima', lastName: 'Hassan',
@@ -152,25 +192,239 @@ export const demoAppointments: DemoAppointment[] = [
   { id: 'APT-012', patientId: 'P-002', patientName: 'Sarah Johnson', provider: 'Dr. Martinez', date: '2026-03-02', time: '15:00', type: 'Lab Review', status: 'booked', duration: 20, clientId: 'org-102' },
 ]
 
-export interface DemoClaim {
-  id: string; patientId: string; patientName: string; clientId: string; clientName: string;
-  payer: string; dos: string; cptCodes: string[]; icdCodes: string[]; charges: number;
-  paid: number; status: ClaimStatus; age: number; assignedTo?: string; denialReason?: string;
+export interface ClaimScrubError {
+  ruleId: number
+  severity: 'error' | 'warning'
+  name: string
+  description: string
+  fix: string
 }
 
+export interface ClaimTimelineEvent {
+  status: ClaimStatus
+  timestamp: string
+  by: string
+}
+
+export interface DemoClaim {
+  id: string; patientId: string; patientName: string; clientId: string; clientName: string;
+  payer: string; payerId: string; dos: string; cptCodes: string[]; icdCodes: string[];
+  billed: number; allowed: number; paid: number;
+  status: ClaimStatus; age: number; assignedTo?: string; denialReason?: string;
+  submittedDate?: string; paymentDate?: string; daysTilDeadline?: number;
+  scrubErrors: ClaimScrubError[];
+  timeline: ClaimTimelineEvent[];
+  documents: DemoDocument[];
+}
+
+const claimDocs: DemoDocument[] = [
+  { id: 'DOC-CLM-1', name: 'Superbill_2026-02-15.pdf', type: 'superbill', content: {
+    'Patient': 'John Smith', 'DOS': '02/15/2026', 'Provider': 'Dr. Sarah Martinez',
+    'CPT Codes': '99214, 93000', 'ICD Codes': 'E11.9, I10', 'Charges': '$485.00'
+  }},
+  { id: 'DOC-CLM-2', name: 'Clinical_Note_2026-02-15.pdf', type: 'clinical_note', content: {
+    'S': 'Patient presents with fatigue and elevated BP readings at home',
+    'O': 'BP 148/92, HR 78, weight 185 lbs. EKG performed.',
+    'A': 'Type 2 DM uncontrolled. Essential hypertension.',
+    'P': 'Increase metformin to 1000mg BID. Recheck in 6 weeks.'
+  }},
+]
+
 export const demoClaims: DemoClaim[] = [
-  { id: 'CLM-4501', patientId: 'P-001', patientName: 'John Smith', clientId: 'org-102', clientName: 'Irvine Family Practice', payer: 'UnitedHealthcare', dos: '2026-02-25', cptCodes: ['99214'], icdCodes: ['E11.9', 'I10'], charges: 250, paid: 250, status: 'paid', age: 5 },
-  { id: 'CLM-4502', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', clientId: 'org-101', clientName: 'Gulf Medical Center', payer: 'Daman', dos: '2026-02-24', cptCodes: ['99213', '93000'], icdCodes: ['I25.10'], charges: 420, paid: 0, status: 'submitted', age: 6 },
-  { id: 'CLM-4503', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'org-103', clientName: 'Patel Cardiology', payer: 'Medicare', dos: '2026-02-20', cptCodes: ['93306', '93320'], icdCodes: ['I50.9'], charges: 890, paid: 712, status: 'partial_pay', age: 10 },
-  { id: 'CLM-4504', patientId: 'P-002', patientName: 'Sarah Johnson', clientId: 'org-102', clientName: 'Irvine Family Practice', payer: 'Aetna', dos: '2026-02-18', cptCodes: ['99215'], icdCodes: ['M54.5'], charges: 350, paid: 0, status: 'denied', age: 12, denialReason: 'Prior authorization required' },
-  { id: 'CLM-4505', patientId: 'P-007', patientName: 'Khalid Ibrahim', clientId: 'org-104', clientName: 'Dubai Wellness Clinic', payer: 'NAS', dos: '2026-02-22', cptCodes: ['99213'], icdCodes: ['J06.9'], charges: 180, paid: 0, status: 'in_process', age: 8 },
-  { id: 'CLM-4506', patientId: 'P-001', patientName: 'John Smith', clientId: 'org-102', clientName: 'Irvine Family Practice', payer: 'UnitedHealthcare', dos: '2026-03-02', cptCodes: ['99214'], icdCodes: ['E11.9'], charges: 250, paid: 0, status: 'draft', age: 0 },
-  { id: 'CLM-4507', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'org-103', clientName: 'Patel Cardiology', payer: 'Medicare', dos: '2026-02-10', cptCodes: ['93350'], icdCodes: ['I50.9', 'I25.10'], charges: 1200, paid: 0, status: 'appealed', age: 20, denialReason: 'Not medically necessary' },
-  { id: 'CLM-4508', patientId: 'P-006', patientName: 'Maria Garcia', clientId: 'org-102', clientName: 'Irvine Family Practice', payer: 'Self-Pay', dos: '2026-02-15', cptCodes: ['99213'], icdCodes: ['J02.9'], charges: 180, paid: 0, status: 'ready', age: 15 },
-  { id: 'CLM-4509', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', clientId: 'org-101', clientName: 'Gulf Medical Center', payer: 'Daman', dos: '2026-01-30', cptCodes: ['99214', '93000'], icdCodes: ['I25.10', 'I10'], charges: 480, paid: 480, status: 'paid', age: 31 },
-  { id: 'CLM-4510', patientId: 'P-002', patientName: 'Sarah Johnson', clientId: 'org-102', clientName: 'Irvine Family Practice', payer: 'Aetna', dos: '2026-02-05', cptCodes: ['99214'], icdCodes: ['M54.5'], charges: 280, paid: 224, status: 'paid', age: 25 },
-  { id: 'CLM-4511', patientId: 'P-007', patientName: 'Khalid Ibrahim', clientId: 'org-104', clientName: 'Dubai Wellness Clinic', payer: 'NAS', dos: '2026-01-15', cptCodes: ['99215'], icdCodes: ['E11.65'], charges: 320, paid: 0, status: 'denied', age: 46, denialReason: 'Timely filing exceeded' },
-  { id: 'CLM-4512', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'org-103', clientName: 'Patel Cardiology', payer: 'BCBS', dos: '2026-02-28', cptCodes: ['93005'], icdCodes: ['R00.0'], charges: 150, paid: 0, status: 'scrubbing', age: 2 },
+  {
+    id: 'CLM-4501', patientId: 'P-001', patientName: 'John Smith', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    payer: 'UnitedHealthcare', payerId: 'UHC', dos: '2026-02-25', cptCodes: ['99214', '93000'], icdCodes: ['E11.9', 'I10'],
+    billed: 485, allowed: 320, paid: 320, status: 'paid', age: 5,
+    submittedDate: '2026-02-26', paymentDate: '2026-03-01', daysTilDeadline: 85, scrubErrors: [],
+    timeline: [
+      { status: 'draft', timestamp: '2026-02-25 14:30', by: 'Maria Rodriguez' },
+      { status: 'scrubbing', timestamp: '2026-02-25 14:31', by: 'System' },
+      { status: 'ready', timestamp: '2026-02-25 14:31', by: 'System' },
+      { status: 'submitted', timestamp: '2026-02-26 09:00', by: 'James Wilson' },
+      { status: 'accepted', timestamp: '2026-02-26 12:00', by: 'System (Clearinghouse)' },
+      { status: 'paid', timestamp: '2026-03-01 11:00', by: 'System (ERA)' },
+    ],
+    documents: claimDocs,
+  },
+  {
+    id: 'CLM-4502', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', clientId: 'org-101', clientName: 'Gulf Medical Center',
+    payer: 'Daman', payerId: 'DAMAN', dos: '2026-02-24', cptCodes: ['99213', '93000'], icdCodes: ['I25.10'],
+    billed: 420, allowed: 380, paid: 0, status: 'submitted', age: 6,
+    submittedDate: '2026-02-25', daysTilDeadline: 84, scrubErrors: [],
+    timeline: [
+      { status: 'draft', timestamp: '2026-02-24 15:00', by: 'Maria Rodriguez' },
+      { status: 'scrubbing', timestamp: '2026-02-24 15:01', by: 'System' },
+      { status: 'ready', timestamp: '2026-02-24 15:01', by: 'System' },
+      { status: 'submitted', timestamp: '2026-02-25 08:30', by: 'James Wilson' },
+    ],
+    documents: claimDocs,
+  },
+  {
+    id: 'CLM-4503', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'org-103', clientName: 'Patel Cardiology',
+    payer: 'Medicare', payerId: 'MEDICARE', dos: '2026-02-20', cptCodes: ['93306', '93320'], icdCodes: ['I50.9'],
+    billed: 890, allowed: 712, paid: 712, status: 'partial_pay', age: 10,
+    submittedDate: '2026-02-21', paymentDate: '2026-03-01', daysTilDeadline: 80, scrubErrors: [],
+    timeline: [
+      { status: 'draft', timestamp: '2026-02-20 11:00', by: 'Maria Rodriguez' },
+      { status: 'scrubbing', timestamp: '2026-02-20 11:01', by: 'System' },
+      { status: 'ready', timestamp: '2026-02-20 11:02', by: 'System' },
+      { status: 'submitted', timestamp: '2026-02-21 08:00', by: 'James Wilson' },
+      { status: 'accepted', timestamp: '2026-02-21 14:00', by: 'System (Clearinghouse)' },
+      { status: 'partial_pay', timestamp: '2026-03-01 10:00', by: 'System (ERA)' },
+    ],
+    documents: claimDocs,
+  },
+  {
+    id: 'CLM-4504', patientId: 'P-002', patientName: 'Sarah Johnson', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    payer: 'Aetna', payerId: 'AETNA', dos: '2026-02-18', cptCodes: ['99215'], icdCodes: ['M54.5'],
+    billed: 350, allowed: 0, paid: 0, status: 'denied', age: 12,
+    denialReason: 'Prior authorization required', submittedDate: '2026-02-19', daysTilDeadline: 78, scrubErrors: [],
+    timeline: [
+      { status: 'draft', timestamp: '2026-02-18 16:00', by: 'Maria Rodriguez' },
+      { status: 'scrubbing', timestamp: '2026-02-18 16:01', by: 'System' },
+      { status: 'ready', timestamp: '2026-02-18 16:01', by: 'System' },
+      { status: 'submitted', timestamp: '2026-02-19 09:00', by: 'James Wilson' },
+      { status: 'accepted', timestamp: '2026-02-19 15:00', by: 'System (Clearinghouse)' },
+      { status: 'denied', timestamp: '2026-02-22 10:00', by: 'System (ERA)' },
+    ],
+    documents: claimDocs,
+  },
+  {
+    id: 'CLM-4505', patientId: 'P-007', patientName: 'Khalid Ibrahim', clientId: 'org-104', clientName: 'Dubai Wellness Clinic',
+    payer: 'NAS', payerId: 'NAS', dos: '2026-02-22', cptCodes: ['99213'], icdCodes: ['J06.9'],
+    billed: 180, allowed: 160, paid: 0, status: 'in_process', age: 8,
+    submittedDate: '2026-02-23', daysTilDeadline: 82, scrubErrors: [],
+    timeline: [
+      { status: 'draft', timestamp: '2026-02-22 10:00', by: 'Maria Rodriguez' },
+      { status: 'ready', timestamp: '2026-02-22 10:30', by: 'System' },
+      { status: 'submitted', timestamp: '2026-02-23 08:00', by: 'James Wilson' },
+      { status: 'accepted', timestamp: '2026-02-23 12:00', by: 'System' },
+      { status: 'in_process', timestamp: '2026-02-24 09:00', by: 'System (Payer)' },
+    ],
+    documents: claimDocs,
+  },
+  {
+    id: 'CLM-4506', patientId: 'P-001', patientName: 'John Smith', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    payer: 'UnitedHealthcare', payerId: 'UHC', dos: '2026-03-02', cptCodes: ['99214'], icdCodes: ['E11.9'],
+    billed: 250, allowed: 0, paid: 0, status: 'draft', age: 0, daysTilDeadline: 90, scrubErrors: [],
+    timeline: [
+      { status: 'draft', timestamp: '2026-03-02 09:00', by: 'Maria Rodriguez' },
+    ],
+    documents: claimDocs,
+  },
+  {
+    id: 'CLM-4507', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'org-103', clientName: 'Patel Cardiology',
+    payer: 'Medicare', payerId: 'MEDICARE', dos: '2026-02-10', cptCodes: ['93350'], icdCodes: ['I50.9', 'I25.10'],
+    billed: 1200, allowed: 0, paid: 0, status: 'appealed', age: 20,
+    denialReason: 'Not medically necessary', submittedDate: '2026-02-11', daysTilDeadline: 40, scrubErrors: [],
+    timeline: [
+      { status: 'draft', timestamp: '2026-02-10 14:00', by: 'Maria Rodriguez' },
+      { status: 'ready', timestamp: '2026-02-10 14:30', by: 'System' },
+      { status: 'submitted', timestamp: '2026-02-11 08:00', by: 'James Wilson' },
+      { status: 'denied', timestamp: '2026-02-17 10:00', by: 'System (ERA)' },
+      { status: 'appealed', timestamp: '2026-02-20 15:00', by: 'AR Team' },
+    ],
+    documents: claimDocs,
+  },
+  {
+    id: 'CLM-4508', patientId: 'P-006', patientName: 'Maria Garcia', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    payer: 'Self-Pay', payerId: 'SELF', dos: '2026-02-15', cptCodes: ['99213'], icdCodes: ['J02.9'],
+    billed: 180, allowed: 180, paid: 0, status: 'ready', age: 15, daysTilDeadline: 75, scrubErrors: [],
+    timeline: [
+      { status: 'draft', timestamp: '2026-02-15 13:00', by: 'Maria Rodriguez' },
+      { status: 'scrubbing', timestamp: '2026-02-15 13:01', by: 'System' },
+      { status: 'ready', timestamp: '2026-02-15 13:02', by: 'System' },
+    ],
+    documents: claimDocs,
+  },
+  {
+    id: 'CLM-4509', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', clientId: 'org-101', clientName: 'Gulf Medical Center',
+    payer: 'Daman', payerId: 'DAMAN', dos: '2026-01-30', cptCodes: ['99214', '93000'], icdCodes: ['I25.10', 'I10'],
+    billed: 480, allowed: 480, paid: 480, status: 'paid', age: 31,
+    submittedDate: '2026-01-31', paymentDate: '2026-02-15', daysTilDeadline: 59, scrubErrors: [],
+    timeline: [
+      { status: 'draft', timestamp: '2026-01-30 14:00', by: 'Maria Rodriguez' },
+      { status: 'ready', timestamp: '2026-01-30 14:30', by: 'System' },
+      { status: 'submitted', timestamp: '2026-01-31 09:00', by: 'James Wilson' },
+      { status: 'paid', timestamp: '2026-02-15 11:00', by: 'System (ERA)' },
+    ],
+    documents: claimDocs,
+  },
+  {
+    id: 'CLM-4510', patientId: 'P-002', patientName: 'Sarah Johnson', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    payer: 'Aetna', payerId: 'AETNA', dos: '2026-02-05', cptCodes: ['99214'], icdCodes: ['M54.5'],
+    billed: 280, allowed: 230, paid: 224, status: 'paid', age: 25,
+    submittedDate: '2026-02-06', paymentDate: '2026-02-20', daysTilDeadline: 65, scrubErrors: [],
+    timeline: [
+      { status: 'draft', timestamp: '2026-02-05 10:00', by: 'Maria Rodriguez' },
+      { status: 'ready', timestamp: '2026-02-05 10:30', by: 'System' },
+      { status: 'submitted', timestamp: '2026-02-06 08:00', by: 'James Wilson' },
+      { status: 'paid', timestamp: '2026-02-20 11:00', by: 'System (ERA)' },
+    ],
+    documents: claimDocs,
+  },
+  {
+    id: 'CLM-4511', patientId: 'P-007', patientName: 'Khalid Ibrahim', clientId: 'org-104', clientName: 'Dubai Wellness Clinic',
+    payer: 'NAS', payerId: 'NAS', dos: '2026-01-15', cptCodes: ['99215'], icdCodes: ['E11.65'],
+    billed: 320, allowed: 0, paid: 0, status: 'denied', age: 46,
+    denialReason: 'Timely filing exceeded', submittedDate: '2026-02-20', daysTilDeadline: 10, scrubErrors: [],
+    timeline: [
+      { status: 'draft', timestamp: '2026-01-15 14:00', by: 'Maria Rodriguez' },
+      { status: 'submitted', timestamp: '2026-02-20 09:00', by: 'James Wilson' },
+      { status: 'denied', timestamp: '2026-02-24 10:00', by: 'System (ERA)' },
+    ],
+    documents: claimDocs,
+  },
+  {
+    id: 'CLM-4512', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'org-103', clientName: 'Patel Cardiology',
+    payer: 'BCBS', payerId: 'BCBS', dos: '2026-02-28', cptCodes: ['93005'], icdCodes: ['R00.0'],
+    billed: 150, allowed: 0, paid: 0, status: 'scrubbing', age: 2, daysTilDeadline: 88, scrubErrors: [],
+    timeline: [
+      { status: 'draft', timestamp: '2026-02-28 11:00', by: 'Maria Rodriguez' },
+      { status: 'scrubbing', timestamp: '2026-02-28 11:01', by: 'System' },
+    ],
+    documents: claimDocs,
+  },
+  {
+    id: 'CLM-4513', patientId: 'P-001', patientName: 'John Smith', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    payer: 'UnitedHealthcare', payerId: 'UHC', dos: '2026-02-10', cptCodes: ['99214', '99214-25'], icdCodes: ['E11.9', 'I10'],
+    billed: 485, allowed: 0, paid: 0, status: 'scrub_failed', age: 20, daysTilDeadline: 70,
+    scrubErrors: [
+      { ruleId: 23, severity: 'error', name: 'Missing Modifier 25', description: 'CPT 99214 billed with procedure on same date', fix: 'Add modifier 25 to CPT 99214' }
+    ],
+    timeline: [
+      { status: 'draft', timestamp: '2026-02-10 14:00', by: 'Maria Rodriguez' },
+      { status: 'scrubbing', timestamp: '2026-02-10 14:01', by: 'System' },
+      { status: 'scrub_failed', timestamp: '2026-02-10 14:01', by: 'System (Rules Engine)' },
+    ],
+    documents: claimDocs,
+  },
+  {
+    id: 'CLM-4514', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', clientId: 'org-101', clientName: 'Gulf Medical Center',
+    payer: 'Daman', payerId: 'DAMAN', dos: '2026-02-20', cptCodes: ['99213'], icdCodes: ['I25.10'],
+    billed: 280, allowed: 280, paid: 280, status: 'paid', age: 10,
+    submittedDate: '2026-02-21', paymentDate: '2026-03-02', daysTilDeadline: 80, scrubErrors: [],
+    timeline: [
+      { status: 'draft', timestamp: '2026-02-20 10:00', by: 'Maria Rodriguez' },
+      { status: 'ready', timestamp: '2026-02-20 10:30', by: 'System' },
+      { status: 'submitted', timestamp: '2026-02-21 08:00', by: 'James Wilson' },
+      { status: 'paid', timestamp: '2026-03-02 11:00', by: 'System (ERA)' },
+    ],
+    documents: claimDocs,
+  },
+  {
+    id: 'CLM-4515', patientId: 'P-008', patientName: 'Emily Williams', clientId: 'org-103', clientName: 'Patel Cardiology',
+    payer: 'Medicare', payerId: 'MEDICARE', dos: '2026-02-18', cptCodes: ['99214'], icdCodes: ['I50.9'],
+    billed: 250, allowed: 0, paid: 0, status: 'denied', age: 12,
+    denialReason: 'Expenses not covered — inactive coverage', submittedDate: '2026-02-19', daysTilDeadline: 28, scrubErrors: [],
+    timeline: [
+      { status: 'draft', timestamp: '2026-02-18 10:00', by: 'Maria Rodriguez' },
+      { status: 'ready', timestamp: '2026-02-18 10:30', by: 'System' },
+      { status: 'submitted', timestamp: '2026-02-19 08:00', by: 'James Wilson' },
+      { status: 'denied', timestamp: '2026-02-25 10:00', by: 'System (ERA)' },
+    ],
+    documents: claimDocs,
+  },
 ]
 
 export interface AISuggestedCode {
@@ -442,3 +696,133 @@ export function getClientName(clientId: string): string {
 export function getClientRegion(clientId: string) {
   return demoClients.find(c => c.id === clientId)?.region || 'us'
 }
+
+// ─── Contracts ──────────────────────────────────────────────────────────────
+export interface ContractFeeRow {
+  cpt: string
+  description: string
+  contractedRate: number
+  medicarePercent: number
+  effectiveDate: string
+}
+
+export interface ContractUnderpayment {
+  claimId: string
+  patientName: string
+  dos: string
+  cpt: string
+  contracted: number
+  paid: number
+  variance: number
+}
+
+export interface DemoContract {
+  id: string
+  payer: string
+  payerId: string
+  client: string
+  clientId: string
+  effective: string
+  expiry: string | null
+  status: 'active' | 'expiring_soon' | 'expired' | 'negotiating'
+  paymentTerms: string
+  timelyFiling: number
+  appealDeadline: number
+  feeScheduleFrequency: string
+  feeSchedule: ContractFeeRow[]
+  underpayments: ContractUnderpayment[]
+}
+
+export const demoContracts: DemoContract[] = [
+  {
+    id: 'CTR-001', payer: 'UnitedHealthcare', payerId: 'UHC',
+    client: 'Irvine Family Practice', clientId: 'org-102',
+    effective: '2025-01-01', expiry: '2026-12-31', status: 'active',
+    paymentTerms: 'Net 30', timelyFiling: 90, appealDeadline: 180, feeScheduleFrequency: 'Annual',
+    feeSchedule: [
+      { cpt: '99213', description: 'Office visit, est. low', contractedRate: 115, medicarePercent: 118, effectiveDate: '2025-01-01' },
+      { cpt: '99214', description: 'Office visit, est. moderate', contractedRate: 155, medicarePercent: 120, effectiveDate: '2025-01-01' },
+      { cpt: '99215', description: 'Office visit, est. high', contractedRate: 210, medicarePercent: 122, effectiveDate: '2025-01-01' },
+      { cpt: '93000', description: 'ECG, routine', contractedRate: 42, medicarePercent: 105, effectiveDate: '2025-01-01' },
+      { cpt: '99203', description: 'Office visit, new patient low', contractedRate: 148, medicarePercent: 115, effectiveDate: '2025-01-01' },
+    ],
+    underpayments: [
+      { claimId: 'CLM-4501', patientName: 'John Smith', dos: '2026-02-25', cpt: '99214', contracted: 155, paid: 112, variance: -43 },
+      { claimId: 'CLM-4510', patientName: 'Sarah Johnson', dos: '2026-02-05', cpt: '99214', contracted: 155, paid: 130, variance: -25 },
+      { claimId: 'CLM-4508', patientName: 'Maria Garcia', dos: '2026-02-15', cpt: '99213', contracted: 115, paid: 95, variance: -20 },
+    ],
+  },
+  {
+    id: 'CTR-002', payer: 'Aetna', payerId: 'AETNA',
+    client: 'Irvine Family Practice', clientId: 'org-102',
+    effective: '2025-06-01', expiry: '2026-04-30', status: 'expiring_soon',
+    paymentTerms: 'Net 30', timelyFiling: 120, appealDeadline: 180, feeScheduleFrequency: 'Annual',
+    feeSchedule: [
+      { cpt: '99213', description: 'Office visit, est. low', contractedRate: 110, medicarePercent: 113, effectiveDate: '2025-06-01' },
+      { cpt: '99214', description: 'Office visit, est. moderate', contractedRate: 148, medicarePercent: 115, effectiveDate: '2025-06-01' },
+      { cpt: '99215', description: 'Office visit, est. high', contractedRate: 200, medicarePercent: 117, effectiveDate: '2025-06-01' },
+      { cpt: '93000', description: 'ECG, routine', contractedRate: 38, medicarePercent: 100, effectiveDate: '2025-06-01' },
+      { cpt: '99396', description: 'Preventive visit, 40-64 yr', contractedRate: 225, medicarePercent: 125, effectiveDate: '2025-06-01' },
+    ],
+    underpayments: [],
+  },
+  {
+    id: 'CTR-003', payer: 'Medicare', payerId: 'MEDICARE',
+    client: 'Patel Cardiology', clientId: 'org-103',
+    effective: '2025-01-01', expiry: null, status: 'active',
+    paymentTerms: 'Net 14', timelyFiling: 365, appealDeadline: 120, feeScheduleFrequency: 'Annual (CMS update)',
+    feeSchedule: [
+      { cpt: '93306', description: 'TTE with Doppler, complete', contractedRate: 480, medicarePercent: 100, effectiveDate: '2025-01-01' },
+      { cpt: '93320', description: 'Doppler echo, complete', contractedRate: 240, medicarePercent: 100, effectiveDate: '2025-01-01' },
+      { cpt: '93350', description: 'Stress echo', contractedRate: 580, medicarePercent: 100, effectiveDate: '2025-01-01' },
+      { cpt: '93005', description: 'ECG, routine', contractedRate: 68, medicarePercent: 100, effectiveDate: '2025-01-01' },
+      { cpt: '99214', description: 'Office visit, est. moderate', contractedRate: 135, medicarePercent: 100, effectiveDate: '2025-01-01' },
+      { cpt: '99215', description: 'Office visit, est. high', contractedRate: 185, medicarePercent: 100, effectiveDate: '2025-01-01' },
+    ],
+    underpayments: [
+      { claimId: 'CLM-4503', patientName: 'Robert Chen', dos: '2026-02-20', cpt: '93306', contracted: 480, paid: 384, variance: -96 },
+    ],
+  },
+  {
+    id: 'CTR-004', payer: 'Daman', payerId: 'DAMAN',
+    client: 'Gulf Medical Center', clientId: 'org-101',
+    effective: '2025-03-01', expiry: '2027-02-28', status: 'active',
+    paymentTerms: 'Net 45', timelyFiling: 90, appealDeadline: 90, feeScheduleFrequency: 'Biennial',
+    feeSchedule: [
+      { cpt: '99213', description: 'Office visit, est. low', contractedRate: 280, medicarePercent: 130, effectiveDate: '2025-03-01' },
+      { cpt: '99214', description: 'Office visit, est. moderate', contractedRate: 380, medicarePercent: 132, effectiveDate: '2025-03-01' },
+      { cpt: '93000', description: 'ECG, routine', contractedRate: 140, medicarePercent: 120, effectiveDate: '2025-03-01' },
+      { cpt: '99203', description: 'Office visit, new patient low', contractedRate: 300, medicarePercent: 128, effectiveDate: '2025-03-01' },
+      { cpt: '99215', description: 'Office visit, est. high', contractedRate: 480, medicarePercent: 135, effectiveDate: '2025-03-01' },
+    ],
+    underpayments: [],
+  },
+  {
+    id: 'CTR-005', payer: 'NAS', payerId: 'NAS',
+    client: 'Dubai Wellness Clinic', clientId: 'org-104',
+    effective: '2025-07-01', expiry: '2026-06-30', status: 'negotiating',
+    paymentTerms: 'Net 45', timelyFiling: 60, appealDeadline: 60, feeScheduleFrequency: 'Annual',
+    feeSchedule: [
+      { cpt: '99213', description: 'Office visit, est. low', contractedRate: 250, medicarePercent: 125, effectiveDate: '2025-07-01' },
+      { cpt: '99214', description: 'Office visit, est. moderate', contractedRate: 340, medicarePercent: 128, effectiveDate: '2025-07-01' },
+      { cpt: '99215', description: 'Office visit, est. high', contractedRate: 420, medicarePercent: 130, effectiveDate: '2025-07-01' },
+      { cpt: '93000', description: 'ECG, routine', contractedRate: 120, medicarePercent: 115, effectiveDate: '2025-07-01' },
+    ],
+    underpayments: [
+      { claimId: 'CLM-4505', patientName: 'Khalid Ibrahim', dos: '2026-02-22', cpt: '99213', contracted: 250, paid: 212, variance: -38 },
+      { claimId: 'CLM-4511', patientName: 'Khalid Ibrahim', dos: '2026-01-15', cpt: '99215', contracted: 420, paid: 380, variance: -40 },
+    ],
+  },
+  {
+    id: 'CTR-006', payer: 'BCBS', payerId: 'BCBS',
+    client: 'Irvine Family Practice', clientId: 'org-102',
+    effective: '2024-01-01', expiry: '2026-01-31', status: 'expired',
+    paymentTerms: 'Net 30', timelyFiling: 90, appealDeadline: 180, feeScheduleFrequency: 'Annual',
+    feeSchedule: [
+      { cpt: '99213', description: 'Office visit, est. low', contractedRate: 112, medicarePercent: 115, effectiveDate: '2024-01-01' },
+      { cpt: '99214', description: 'Office visit, est. moderate', contractedRate: 150, medicarePercent: 116, effectiveDate: '2024-01-01' },
+      { cpt: '93000', description: 'ECG, routine', contractedRate: 40, medicarePercent: 102, effectiveDate: '2024-01-01' },
+    ],
+    underpayments: [],
+  },
+]

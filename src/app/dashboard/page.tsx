@@ -260,7 +260,7 @@ export default function DashboardPage() {
         <h1 className="text-[28px] font-bold tracking-tight text-content-primary">Dashboard</h1>
         <p className="text-[15px] text-content-secondary mt-1">{selectedClient?.name || 'All Clients'} · {today}</p>
       </div>
-      <Dash />
+      <Dash key={currentUser.role} />
     </div>
   )
 }
