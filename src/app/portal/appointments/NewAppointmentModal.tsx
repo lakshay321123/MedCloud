@@ -7,18 +7,18 @@ import { X, ChevronDown } from 'lucide-react'
 type PatientMode = 'existing' | 'new'
 
 export default function NewAppointmentModal({ onClose }: { onClose: () => void }) {
-  const { currentUser } = useApp()
+  const { selectedClient, currentUser } = useApp()
   const [mode, setMode] = useState<PatientMode>('existing')
   const [showInsurance, setShowInsurance] = useState(false)
   const [selectedPatient, setSelectedPatient] = useState('')
   const [search, setSearch] = useState('')
 
-  // Use current org — in real app derive from currentUser.organization_id
-  const orgId = currentUser.organization_id || 'org-102'
+  // Use selectedClient if set (staff context), otherwise fall back to currentUser.organization_id or org-102
+  const orgId = selectedClient?.id || (currentUser as { organization_id?: string }).organization_id || 'org-102'
   const patients = demoPatients.filter(p => p.clientId === orgId)
-  const filteredPatients = patients.filter(p =>
-    `${p.firstName} ${p.lastName}`.toLowerCase().includes(search.toLowerCase())
-  )
+  const filteredPatients = search.length > 0
+    ? patients.filter(p => `${p.firstName} ${p.lastName}`.toLowerCase().includes(search.toLowerCase()))
+    : patients
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
@@ -60,10 +60,10 @@ export default function NewAppointmentModal({ onClose }: { onClose: () => void }
                 type="text"
                 placeholder="Type name to search..."
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={e => { setSearch(e.target.value); setSelectedPatient('') }}
                 className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors"
               />
-              {search.length > 0 && (
+              {search.length > 0 && !selectedPatient && (
                 <div className="mt-1 bg-surface-elevated border border-separator rounded-lg overflow-hidden max-h-40 overflow-y-auto">
                   {filteredPatients.length === 0 ? (
                     <div className="px-3 py-2 text-xs text-content-secondary">No patients found</div>
@@ -80,6 +80,9 @@ export default function NewAppointmentModal({ onClose }: { onClose: () => void }
                     ))
                   )}
                 </div>
+              )}
+              {patients.length === 0 && search.length === 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">No patients found for selected client.</p>
               )}
             </div>
           )}
@@ -150,12 +153,12 @@ export default function NewAppointmentModal({ onClose }: { onClose: () => void }
             </div>
           </div>
 
-          {/* Visit Type — Provider removed (redundant with client context) */}
+          {/* Visit Type */}
           <div>
             <label className="text-xs text-content-secondary block mb-1">Visit Type</label>
             <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors">
               <option>Follow-up</option>
-              <option>New Patient</option>
+              <option>Initial Visit</option>
               <option>Consultation</option>
               <option>Procedure</option>
               <option>Telehealth</option>
