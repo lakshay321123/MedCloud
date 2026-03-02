@@ -78,7 +78,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
       })
     }, step)
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [remaining, onDismiss, toast.id])
 
   return (
     <div className={`flex flex-col rounded-lg shadow-lg min-w-[300px] max-w-[420px] overflow-hidden ${style.bg} ${style.border}`}>

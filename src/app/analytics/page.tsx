@@ -201,9 +201,7 @@ export default function AnalyticsPage() {
 
   // ─── Denial heatmap data ─────────────────────────────────────────────────
   const heatData = useMemo(() => {
-    const payerSet: string[] = []
-    claims.forEach(c => { if (!payerSet.includes(c.payer)) payerSet.push(c.payer) })
-    const payers = payerSet
+    const payers = Array.from(new Set(claims.map(c => c.payer)))
     const seedRng = (str: string) => {
       let h = 0
       for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0

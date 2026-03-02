@@ -209,7 +209,7 @@ export interface ClaimTimelineEvent {
 export interface DemoClaim {
   id: string; patientId: string; patientName: string; clientId: string; clientName: string;
   payer: string; payerId: string; dos: string; cptCodes: string[]; icdCodes: string[];
-  charges: number; billed: number; allowed: number; paid: number;
+  billed: number; allowed: number; paid: number;
   status: ClaimStatus; age: number; assignedTo?: string; denialReason?: string;
   submittedDate?: string; paymentDate?: string; daysTilDeadline?: number;
   scrubErrors: ClaimScrubError[];
@@ -234,7 +234,7 @@ export const demoClaims: DemoClaim[] = [
   {
     id: 'CLM-4501', patientId: 'P-001', patientName: 'John Smith', clientId: 'org-102', clientName: 'Irvine Family Practice',
     payer: 'UnitedHealthcare', payerId: 'UHC', dos: '2026-02-25', cptCodes: ['99214', '93000'], icdCodes: ['E11.9', 'I10'],
-    charges: 485, billed: 485, allowed: 320, paid: 320, status: 'paid', age: 5,
+    billed: 485, allowed: 320, paid: 320, status: 'paid', age: 5,
     submittedDate: '2026-02-26', paymentDate: '2026-03-01', daysTilDeadline: 85, scrubErrors: [],
     timeline: [
       { status: 'draft', timestamp: '2026-02-25 14:30', by: 'Maria Rodriguez' },
@@ -249,7 +249,7 @@ export const demoClaims: DemoClaim[] = [
   {
     id: 'CLM-4502', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', clientId: 'org-101', clientName: 'Gulf Medical Center',
     payer: 'Daman', payerId: 'DAMAN', dos: '2026-02-24', cptCodes: ['99213', '93000'], icdCodes: ['I25.10'],
-    charges: 420, billed: 420, allowed: 380, paid: 0, status: 'submitted', age: 6,
+    billed: 420, allowed: 380, paid: 0, status: 'submitted', age: 6,
     submittedDate: '2026-02-25', daysTilDeadline: 84, scrubErrors: [],
     timeline: [
       { status: 'draft', timestamp: '2026-02-24 15:00', by: 'Maria Rodriguez' },
@@ -262,7 +262,7 @@ export const demoClaims: DemoClaim[] = [
   {
     id: 'CLM-4503', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'org-103', clientName: 'Patel Cardiology',
     payer: 'Medicare', payerId: 'MEDICARE', dos: '2026-02-20', cptCodes: ['93306', '93320'], icdCodes: ['I50.9'],
-    charges: 890, billed: 890, allowed: 712, paid: 712, status: 'partial_pay', age: 10,
+    billed: 890, allowed: 712, paid: 712, status: 'partial_pay', age: 10,
     submittedDate: '2026-02-21', paymentDate: '2026-03-01', daysTilDeadline: 80, scrubErrors: [],
     timeline: [
       { status: 'draft', timestamp: '2026-02-20 11:00', by: 'Maria Rodriguez' },
@@ -277,7 +277,7 @@ export const demoClaims: DemoClaim[] = [
   {
     id: 'CLM-4504', patientId: 'P-002', patientName: 'Sarah Johnson', clientId: 'org-102', clientName: 'Irvine Family Practice',
     payer: 'Aetna', payerId: 'AETNA', dos: '2026-02-18', cptCodes: ['99215'], icdCodes: ['M54.5'],
-    charges: 350, billed: 350, allowed: 0, paid: 0, status: 'denied', age: 12,
+    billed: 350, allowed: 0, paid: 0, status: 'denied', age: 12,
     denialReason: 'Prior authorization required', submittedDate: '2026-02-19', daysTilDeadline: 78, scrubErrors: [],
     timeline: [
       { status: 'draft', timestamp: '2026-02-18 16:00', by: 'Maria Rodriguez' },
@@ -292,7 +292,7 @@ export const demoClaims: DemoClaim[] = [
   {
     id: 'CLM-4505', patientId: 'P-007', patientName: 'Khalid Ibrahim', clientId: 'org-104', clientName: 'Dubai Wellness Clinic',
     payer: 'NAS', payerId: 'NAS', dos: '2026-02-22', cptCodes: ['99213'], icdCodes: ['J06.9'],
-    charges: 180, billed: 180, allowed: 160, paid: 0, status: 'in_process', age: 8,
+    billed: 180, allowed: 160, paid: 0, status: 'in_process', age: 8,
     submittedDate: '2026-02-23', daysTilDeadline: 82, scrubErrors: [],
     timeline: [
       { status: 'draft', timestamp: '2026-02-22 10:00', by: 'Maria Rodriguez' },
@@ -306,7 +306,7 @@ export const demoClaims: DemoClaim[] = [
   {
     id: 'CLM-4506', patientId: 'P-001', patientName: 'John Smith', clientId: 'org-102', clientName: 'Irvine Family Practice',
     payer: 'UnitedHealthcare', payerId: 'UHC', dos: '2026-03-02', cptCodes: ['99214'], icdCodes: ['E11.9'],
-    charges: 250, billed: 250, allowed: 0, paid: 0, status: 'draft', age: 0, daysTilDeadline: 90, scrubErrors: [],
+    billed: 250, allowed: 0, paid: 0, status: 'draft', age: 0, daysTilDeadline: 90, scrubErrors: [],
     timeline: [
       { status: 'draft', timestamp: '2026-03-02 09:00', by: 'Maria Rodriguez' },
     ],
@@ -315,7 +315,7 @@ export const demoClaims: DemoClaim[] = [
   {
     id: 'CLM-4507', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'org-103', clientName: 'Patel Cardiology',
     payer: 'Medicare', payerId: 'MEDICARE', dos: '2026-02-10', cptCodes: ['93350'], icdCodes: ['I50.9', 'I25.10'],
-    charges: 1200, billed: 1200, allowed: 0, paid: 0, status: 'appealed', age: 20,
+    billed: 1200, allowed: 0, paid: 0, status: 'appealed', age: 20,
     denialReason: 'Not medically necessary', submittedDate: '2026-02-11', daysTilDeadline: 40, scrubErrors: [],
     timeline: [
       { status: 'draft', timestamp: '2026-02-10 14:00', by: 'Maria Rodriguez' },
@@ -329,7 +329,7 @@ export const demoClaims: DemoClaim[] = [
   {
     id: 'CLM-4508', patientId: 'P-006', patientName: 'Maria Garcia', clientId: 'org-102', clientName: 'Irvine Family Practice',
     payer: 'Self-Pay', payerId: 'SELF', dos: '2026-02-15', cptCodes: ['99213'], icdCodes: ['J02.9'],
-    charges: 180, billed: 180, allowed: 180, paid: 0, status: 'ready', age: 15, daysTilDeadline: 75, scrubErrors: [],
+    billed: 180, allowed: 180, paid: 0, status: 'ready', age: 15, daysTilDeadline: 75, scrubErrors: [],
     timeline: [
       { status: 'draft', timestamp: '2026-02-15 13:00', by: 'Maria Rodriguez' },
       { status: 'scrubbing', timestamp: '2026-02-15 13:01', by: 'System' },
@@ -340,7 +340,7 @@ export const demoClaims: DemoClaim[] = [
   {
     id: 'CLM-4509', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', clientId: 'org-101', clientName: 'Gulf Medical Center',
     payer: 'Daman', payerId: 'DAMAN', dos: '2026-01-30', cptCodes: ['99214', '93000'], icdCodes: ['I25.10', 'I10'],
-    charges: 480, billed: 480, allowed: 480, paid: 480, status: 'paid', age: 31,
+    billed: 480, allowed: 480, paid: 480, status: 'paid', age: 31,
     submittedDate: '2026-01-31', paymentDate: '2026-02-15', daysTilDeadline: 59, scrubErrors: [],
     timeline: [
       { status: 'draft', timestamp: '2026-01-30 14:00', by: 'Maria Rodriguez' },
@@ -353,7 +353,7 @@ export const demoClaims: DemoClaim[] = [
   {
     id: 'CLM-4510', patientId: 'P-002', patientName: 'Sarah Johnson', clientId: 'org-102', clientName: 'Irvine Family Practice',
     payer: 'Aetna', payerId: 'AETNA', dos: '2026-02-05', cptCodes: ['99214'], icdCodes: ['M54.5'],
-    charges: 280, billed: 280, allowed: 230, paid: 224, status: 'paid', age: 25,
+    billed: 280, allowed: 230, paid: 224, status: 'paid', age: 25,
     submittedDate: '2026-02-06', paymentDate: '2026-02-20', daysTilDeadline: 65, scrubErrors: [],
     timeline: [
       { status: 'draft', timestamp: '2026-02-05 10:00', by: 'Maria Rodriguez' },
@@ -366,7 +366,7 @@ export const demoClaims: DemoClaim[] = [
   {
     id: 'CLM-4511', patientId: 'P-007', patientName: 'Khalid Ibrahim', clientId: 'org-104', clientName: 'Dubai Wellness Clinic',
     payer: 'NAS', payerId: 'NAS', dos: '2026-01-15', cptCodes: ['99215'], icdCodes: ['E11.65'],
-    charges: 320, billed: 320, allowed: 0, paid: 0, status: 'denied', age: 46,
+    billed: 320, allowed: 0, paid: 0, status: 'denied', age: 46,
     denialReason: 'Timely filing exceeded', submittedDate: '2026-02-20', daysTilDeadline: 10, scrubErrors: [],
     timeline: [
       { status: 'draft', timestamp: '2026-01-15 14:00', by: 'Maria Rodriguez' },
@@ -378,7 +378,7 @@ export const demoClaims: DemoClaim[] = [
   {
     id: 'CLM-4512', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'org-103', clientName: 'Patel Cardiology',
     payer: 'BCBS', payerId: 'BCBS', dos: '2026-02-28', cptCodes: ['93005'], icdCodes: ['R00.0'],
-    charges: 150, billed: 150, allowed: 0, paid: 0, status: 'scrubbing', age: 2, daysTilDeadline: 88, scrubErrors: [],
+    billed: 150, allowed: 0, paid: 0, status: 'scrubbing', age: 2, daysTilDeadline: 88, scrubErrors: [],
     timeline: [
       { status: 'draft', timestamp: '2026-02-28 11:00', by: 'Maria Rodriguez' },
       { status: 'scrubbing', timestamp: '2026-02-28 11:01', by: 'System' },
@@ -388,7 +388,7 @@ export const demoClaims: DemoClaim[] = [
   {
     id: 'CLM-4513', patientId: 'P-001', patientName: 'John Smith', clientId: 'org-102', clientName: 'Irvine Family Practice',
     payer: 'UnitedHealthcare', payerId: 'UHC', dos: '2026-02-10', cptCodes: ['99214', '99214-25'], icdCodes: ['E11.9', 'I10'],
-    charges: 485, billed: 485, allowed: 0, paid: 0, status: 'scrub_failed', age: 20, daysTilDeadline: 70,
+    billed: 485, allowed: 0, paid: 0, status: 'scrub_failed', age: 20, daysTilDeadline: 70,
     scrubErrors: [
       { ruleId: 23, severity: 'error', name: 'Missing Modifier 25', description: 'CPT 99214 billed with procedure on same date', fix: 'Add modifier 25 to CPT 99214' }
     ],
@@ -402,7 +402,7 @@ export const demoClaims: DemoClaim[] = [
   {
     id: 'CLM-4514', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', clientId: 'org-101', clientName: 'Gulf Medical Center',
     payer: 'Daman', payerId: 'DAMAN', dos: '2026-02-20', cptCodes: ['99213'], icdCodes: ['I25.10'],
-    charges: 280, billed: 280, allowed: 280, paid: 280, status: 'paid', age: 10,
+    billed: 280, allowed: 280, paid: 280, status: 'paid', age: 10,
     submittedDate: '2026-02-21', paymentDate: '2026-03-02', daysTilDeadline: 80, scrubErrors: [],
     timeline: [
       { status: 'draft', timestamp: '2026-02-20 10:00', by: 'Maria Rodriguez' },
@@ -415,7 +415,7 @@ export const demoClaims: DemoClaim[] = [
   {
     id: 'CLM-4515', patientId: 'P-008', patientName: 'Emily Williams', clientId: 'org-103', clientName: 'Patel Cardiology',
     payer: 'Medicare', payerId: 'MEDICARE', dos: '2026-02-18', cptCodes: ['99214'], icdCodes: ['I50.9'],
-    charges: 250, billed: 250, allowed: 0, paid: 0, status: 'denied', age: 12,
+    billed: 250, allowed: 0, paid: 0, status: 'denied', age: 12,
     denialReason: 'Expenses not covered — inactive coverage', submittedDate: '2026-02-19', daysTilDeadline: 28, scrubErrors: [],
     timeline: [
       { status: 'draft', timestamp: '2026-02-18 10:00', by: 'Maria Rodriguez' },

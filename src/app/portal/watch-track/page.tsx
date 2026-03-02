@@ -17,7 +17,7 @@ export default function WatchTrackPage() {
     return true
   })
 
-  const totalCharges = myClaims.reduce((s,c) => s + c.charges, 0)
+  const totalCharges = myClaims.reduce((s,c) => s + c.billed, 0)
   const totalPaid = myClaims.reduce((s,c) => s + c.paid, 0)
 
   return (
@@ -48,7 +48,7 @@ export default function WatchTrackPage() {
               <td className="px-4 py-3">{c.patientName}</td>
               <td className="px-4 py-3 text-content-secondary text-xs">{c.payer}</td>
               <td className="px-4 py-3 text-content-secondary text-xs">{c.dos}</td>
-              <td className="px-4 py-3 text-right">${c.charges.toLocaleString()}</td>
+              <td className="px-4 py-3 text-right">${c.billed.toLocaleString()}</td>
               <td className="px-4 py-3 text-right text-emerald-600 text-emerald-600 dark:text-emerald-400">{c.paid > 0 ? `$${c.paid.toLocaleString()}` : '—'}</td>
               <td className="px-4 py-3"><StatusBadge status={c.status} small/></td>
               <td className="px-4 py-3 text-right text-xs text-content-secondary">{c.age}d</td>

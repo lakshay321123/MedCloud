@@ -36,7 +36,7 @@ function ContractStatusBadge({ status }: { status: DemoContract['status'] }) {
 export default function ContractsPage() {
   const { toast } = useToast()
   const [search, setSearch] = useState('')
-  const [selected, setSelected] = useState<DemoContract>(demoContracts[0])
+  const [selected, setSelected] = useState<DemoContract | null>(demoContracts[0] ?? null)
   const [tab, setTab] = useState<'fee' | 'underpayments' | 'terms'>('fee')
   const [editingRow, setEditingRow] = useState<string | null>(null)
 
@@ -47,7 +47,6 @@ export default function ContractsPage() {
   const activeCount = demoContracts.filter(c => c.status === 'active').length
   const expiringSoon = demoContracts.filter(c => c.status === 'expiring_soon').length
   const totalUnderpayments = demoContracts.reduce((s, c) => s + c.underpayments.length, 0)
-  const underpaymentTotal = demoContracts.reduce((s, c) => s + c.underpayments.reduce((ss, u) => ss + Math.abs(u.variance), 0), 0)
 
   const TABS = [
     { id: 'fee', label: 'Fee Schedule' },
@@ -81,7 +80,7 @@ export default function ContractsPage() {
           <div className="flex-1 overflow-y-auto space-y-2">
             {filtered.map(c => (
               <button key={c.id} onClick={() => setSelected(c)}
-                className={`w-full text-left p-3 rounded-lg border transition-colors ${selected.id === c.id ? 'bg-brand/5 border-brand/20' : 'bg-surface-secondary border-separator hover:bg-surface-elevated'}`}>
+                className={`w-full text-left p-3 rounded-lg border transition-colors ${selected?.id === c.id ? 'bg-brand/5 border-brand/20' : 'bg-surface-secondary border-separator hover:bg-surface-elevated'}`}>
                 <div className="flex items-center gap-3">
                   <div className={`w-9 h-9 rounded-full ${payerColors[c.payerId] || 'bg-gray-500'} flex items-center justify-center text-white text-[11px] font-bold shrink-0`}>
                     {c.payer.slice(0, 2)}
@@ -104,127 +103,135 @@ export default function ContractsPage() {
 
         {/* Right panel — detail */}
         <div className="flex-1 card flex flex-col overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-separator shrink-0">
-            <div className={`w-10 h-10 rounded-full ${payerColors[selected.payerId] || 'bg-gray-500'} flex items-center justify-center text-white text-[12px] font-bold`}>
-              {selected.payer.slice(0, 2)}
-            </div>
-            <div>
-              <p className="text-[15px] font-bold text-content-primary">{selected.payer}</p>
-              <p className="text-[12px] text-content-secondary">{selected.client}</p>
-            </div>
-            <ContractStatusBadge status={selected.status} />
-          </div>
-          {/* Tabs */}
-          <div className="flex border-b border-separator px-4 shrink-0">
-            {TABS.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)}
-                className={`px-4 py-2.5 text-[12px] font-medium transition-colors ${tab === t.id ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-          {/* Tab content */}
-          <div className="flex-1 overflow-y-auto p-5">
-            {tab === 'fee' && (
-              <div>
-                <table className="w-full text-[12px]">
-                  <thead><tr className="border-b border-separator text-[11px] text-content-tertiary uppercase tracking-wider">
-                    {['CPT Code', 'Description', 'Contracted Rate', 'Medicare %', 'Effective Date', ''].map(h => (
-                      <th key={h} className="text-left py-2 pr-3">{h}</th>
-                    ))}
-                  </tr></thead>
-                  <tbody>
-                    {selected.feeSchedule.map(row => (
-                      <tr key={row.cpt} className="border-b border-separator last:border-0 group hover:bg-surface-elevated">
-                        <td className="py-2.5 pr-3 font-mono font-medium text-content-primary">{row.cpt}</td>
-                        <td className="py-2.5 pr-3 text-content-secondary">{row.description}</td>
-                        <td className="py-2.5 pr-3">
-                          {editingRow === row.cpt ? (
-                            <input defaultValue={row.contractedRate} autoFocus onBlur={() => setEditingRow(null)}
-                              className="w-20 bg-surface-elevated border border-brand/40 rounded px-1.5 py-0.5 text-[12px] text-content-primary focus:outline-none" />
-                          ) : (
-                            <span className="text-content-primary font-medium">${row.contractedRate}</span>
-                          )}
-                        </td>
-                        <td className="py-2.5 pr-3 text-content-secondary">{row.medicarePercent}%</td>
-                        <td className="py-2.5 pr-3 font-mono text-content-tertiary">{row.effectiveDate}</td>
-                        <td className="py-2.5">
-                          <button onClick={() => setEditingRow(row.cpt)} className="opacity-0 group-hover:opacity-100 text-content-tertiary hover:text-brand transition-opacity">
-                            <Edit2 size={12} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <button onClick={() => toast.info('Add CPT — coming soon')}
-                  className="mt-4 flex items-center gap-1.5 text-[12px] text-brand hover:underline">
-                  <Plus size={13} /> Add CPT
-                </button>
+          {selected ? (
+            <>
+              {/* Header */}
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-separator shrink-0">
+                <div className={`w-10 h-10 rounded-full ${payerColors[selected.payerId] || 'bg-gray-500'} flex items-center justify-center text-white text-[12px] font-bold`}>
+                  {selected.payer.slice(0, 2)}
+                </div>
+                <div>
+                  <p className="text-[15px] font-bold text-content-primary">{selected.payer}</p>
+                  <p className="text-[12px] text-content-secondary">{selected.client}</p>
+                </div>
+                <ContractStatusBadge status={selected.status} />
               </div>
-            )}
-
-            {tab === 'underpayments' && (
-              <div>
-                {selected.underpayments.length > 0 && (
-                  <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 mb-4 text-[12px] text-amber-400">
-                    {selected.underpayments.length} underpayment{selected.underpayments.length !== 1 ? 's' : ''} this month
-                    &nbsp;—&nbsp;${selected.underpayments.reduce((s, u) => s + Math.abs(u.variance), 0)} total at risk
-                  </div>
-                )}
-                {selected.underpayments.length === 0 ? (
-                  <p className="text-[13px] text-content-tertiary text-center py-12">No underpayments detected for this contract</p>
-                ) : (
-                  <table className="w-full text-[12px]">
-                    <thead><tr className="border-b border-separator text-[11px] text-content-tertiary uppercase tracking-wider">
-                      {['Claim ID','Patient','DOS','CPT','Contracted','Paid','Variance','Action'].map(h => (
-                        <th key={h} className="text-left py-2 pr-3">{h}</th>
-                      ))}
-                    </tr></thead>
-                    <tbody>
-                      {selected.underpayments.map(u => (
-                        <tr key={u.claimId} className="border-b border-separator last:border-0 hover:bg-surface-elevated">
-                          <td className="py-2.5 pr-3 font-mono text-content-primary">{u.claimId}</td>
-                          <td className="py-2.5 pr-3 text-content-secondary">{u.patientName}</td>
-                          <td className="py-2.5 pr-3 font-mono text-content-tertiary">{u.dos}</td>
-                          <td className="py-2.5 pr-3 font-mono">{u.cpt}</td>
-                          <td className="py-2.5 pr-3 text-content-primary">${u.contracted}</td>
-                          <td className="py-2.5 pr-3 text-content-primary">${u.paid}</td>
-                          <td className="py-2.5 pr-3 text-red-400 font-medium">−${Math.abs(u.variance)}</td>
-                          <td className="py-2.5">
-                            <button onClick={() => toast.success(`Task created — dispute with ${selected.payer}`)}
-                              className="text-[11px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded hover:bg-amber-500/20 transition-colors">
-                              Dispute
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            )}
-
-            {tab === 'terms' && (
-              <div className="space-y-3">
-                {[
-                  { label: 'Payment Terms', value: selected.paymentTerms },
-                  { label: 'Timely Filing Limit', value: `${selected.timelyFiling} days` },
-                  { label: 'Appeal Deadline', value: `${selected.appealDeadline} days` },
-                  { label: 'Fee Schedule Update Frequency', value: selected.feeScheduleFrequency },
-                  { label: 'Effective Date', value: selected.effective },
-                  { label: 'Expiry Date', value: selected.expiry || 'No expiry' },
-                  { label: 'Status', value: statusStyles[selected.status].label },
-                ].map(row => (
-                  <div key={row.label} className="flex justify-between py-2.5 border-b border-separator last:border-0">
-                    <span className="text-[13px] text-content-secondary">{row.label}</span>
-                    <span className="text-[13px] text-content-primary font-medium">{row.value}</span>
-                  </div>
+              {/* Tabs */}
+              <div className="flex border-b border-separator px-4 shrink-0">
+                {TABS.map(t => (
+                  <button key={t.id} onClick={() => setTab(t.id)}
+                    className={`px-4 py-2.5 text-[12px] font-medium transition-colors ${tab === t.id ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>
+                    {t.label}
+                  </button>
                 ))}
               </div>
-            )}
-          </div>
+              {/* Tab content */}
+              <div className="flex-1 overflow-y-auto p-5">
+                {tab === 'fee' && (
+                  <div>
+                    <table className="w-full text-[12px]">
+                      <thead><tr className="border-b border-separator text-[11px] text-content-tertiary uppercase tracking-wider">
+                        {['CPT Code', 'Description', 'Contracted Rate', 'Medicare %', 'Effective Date', ''].map(h => (
+                          <th key={h} className="text-left py-2 pr-3">{h}</th>
+                        ))}
+                      </tr></thead>
+                      <tbody>
+                        {selected.feeSchedule.map(row => (
+                          <tr key={row.cpt} className="border-b border-separator last:border-0 group hover:bg-surface-elevated">
+                            <td className="py-2.5 pr-3 font-mono font-medium text-content-primary">{row.cpt}</td>
+                            <td className="py-2.5 pr-3 text-content-secondary">{row.description}</td>
+                            <td className="py-2.5 pr-3">
+                              {editingRow === row.cpt ? (
+                                <input defaultValue={row.contractedRate} autoFocus onBlur={() => setEditingRow(null)}
+                                  className="w-20 bg-surface-elevated border border-brand/40 rounded px-1.5 py-0.5 text-[12px] text-content-primary focus:outline-none" />
+                              ) : (
+                                <span className="text-content-primary font-medium">${row.contractedRate}</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 pr-3 text-content-secondary">{row.medicarePercent}%</td>
+                            <td className="py-2.5 pr-3 font-mono text-content-tertiary">{row.effectiveDate}</td>
+                            <td className="py-2.5">
+                              <button onClick={() => setEditingRow(row.cpt)} className="opacity-0 group-hover:opacity-100 text-content-tertiary hover:text-brand transition-opacity">
+                                <Edit2 size={12} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <button onClick={() => toast.info('Add CPT — coming soon')}
+                      className="mt-4 flex items-center gap-1.5 text-[12px] text-brand hover:underline">
+                      <Plus size={13} /> Add CPT
+                    </button>
+                  </div>
+                )}
+
+                {tab === 'underpayments' && (
+                  <div>
+                    {selected.underpayments.length > 0 && (
+                      <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 mb-4 text-[12px] text-amber-400">
+                        {selected.underpayments.length} underpayment{selected.underpayments.length !== 1 ? 's' : ''} this month
+                        &nbsp;—&nbsp;${selected.underpayments.reduce((s, u) => s + Math.abs(u.variance), 0)} total at risk
+                      </div>
+                    )}
+                    {selected.underpayments.length === 0 ? (
+                      <p className="text-[13px] text-content-tertiary text-center py-12">No underpayments detected for this contract</p>
+                    ) : (
+                      <table className="w-full text-[12px]">
+                        <thead><tr className="border-b border-separator text-[11px] text-content-tertiary uppercase tracking-wider">
+                          {['Claim ID','Patient','DOS','CPT','Contracted','Paid','Variance','Action'].map(h => (
+                            <th key={h} className="text-left py-2 pr-3">{h}</th>
+                          ))}
+                        </tr></thead>
+                        <tbody>
+                          {selected.underpayments.map(u => (
+                            <tr key={u.claimId} className="border-b border-separator last:border-0 hover:bg-surface-elevated">
+                              <td className="py-2.5 pr-3 font-mono text-content-primary">{u.claimId}</td>
+                              <td className="py-2.5 pr-3 text-content-secondary">{u.patientName}</td>
+                              <td className="py-2.5 pr-3 font-mono text-content-tertiary">{u.dos}</td>
+                              <td className="py-2.5 pr-3 font-mono">{u.cpt}</td>
+                              <td className="py-2.5 pr-3 text-content-primary">${u.contracted}</td>
+                              <td className="py-2.5 pr-3 text-content-primary">${u.paid}</td>
+                              <td className="py-2.5 pr-3 text-red-400 font-medium">−${Math.abs(u.variance)}</td>
+                              <td className="py-2.5">
+                                <button onClick={() => toast.success(`Task created — dispute with ${selected.payer}`)}
+                                  className="text-[11px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded hover:bg-amber-500/20 transition-colors">
+                                  Dispute
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+
+                {tab === 'terms' && (
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Payment Terms', value: selected.paymentTerms },
+                      { label: 'Timely Filing Limit', value: `${selected.timelyFiling} days` },
+                      { label: 'Appeal Deadline', value: `${selected.appealDeadline} days` },
+                      { label: 'Fee Schedule Update Frequency', value: selected.feeScheduleFrequency },
+                      { label: 'Effective Date', value: selected.effective },
+                      { label: 'Expiry Date', value: selected.expiry || 'No expiry' },
+                      { label: 'Status', value: statusStyles[selected.status].label },
+                    ].map(row => (
+                      <div key={row.label} className="flex justify-between py-2.5 border-b border-separator last:border-0">
+                        <span className="text-[13px] text-content-secondary">{row.label}</span>
+                        <span className="text-[13px] text-content-primary font-medium">{row.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-content-secondary text-sm">
+              Select a contract to view details
+            </div>
+          )}
         </div>
       </div>
     </ModuleShell>

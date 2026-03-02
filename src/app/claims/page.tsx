@@ -217,7 +217,7 @@ function ClaimDrawer({ claim, onClose }: { claim: DemoClaim; onClose: () => void
                   <p className="text-[13px] text-content-tertiary text-center py-8">No messages for this claim</p>
                 )}
                 {localMessages.flatMap(m => m.messages).map((msg, i) => (
-                  <div key={i} className={`flex gap-2 ${msg.role === 'staff' ? 'flex-row-reverse' : ''}`}>
+                  <div key={`${msg.sender}-${i}-${msg.text.slice(0, 10)}`} className={`flex gap-2 ${msg.role === 'staff' ? 'flex-row-reverse' : ''}`}>
                     <div className={`max-w-[80%] px-3 py-2 rounded-lg text-[13px] ${msg.role === 'staff' ? 'bg-brand/10 text-content-primary' : 'bg-surface-elevated text-content-primary'}`}>
                       <p className="text-[11px] text-content-tertiary mb-1">{msg.sender}</p>
                       {msg.text}
@@ -275,7 +275,7 @@ export default function ClaimsPage() {
   const [dosTo, setDosTo] = useState('')
   const [selectedRows, setSelectedRows] = useState<string[]>([])
   const [drawerClaim, setDrawerClaim] = useState<DemoClaim | null>(null)
-  const [sortKey, setSortKey] = useState<'id' | 'age' | 'charges'>('id')
+  const [sortKey, setSortKey] = useState<'id' | 'age' | 'billed'>('id')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [page, setPage] = useState(1)
@@ -290,8 +290,8 @@ export default function ClaimsPage() {
       if (dosTo && c.dos > dosTo) return false
       return true
     }).sort((a, b) => {
-      let av = sortKey === 'id' ? a.id : sortKey === 'age' ? a.age : a.charges
-      let bv = sortKey === 'id' ? b.id : sortKey === 'age' ? b.age : b.charges
+      let av = sortKey === 'id' ? a.id : sortKey === 'age' ? a.age : a.billed
+      let bv = sortKey === 'id' ? b.id : sortKey === 'age' ? b.age : b.billed
       if (typeof av === 'string' && typeof bv === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
       return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number)
     })
@@ -303,15 +303,14 @@ export default function ClaimsPage() {
   // KPIs
   const today = new Date().toISOString().split('T')[0]
   const submittedToday = demoClaims.filter(c => c.submittedDate === today).length
-  const paidClaims = demoClaims.filter(c => c.status === 'paid')
   const cleanClaims = demoClaims.filter(c => !['scrub_failed'].includes(c.status))
   const cleanRate = Math.round((cleanClaims.length / demoClaims.length) * 100)
-  const avgDays = paidClaims.length
-    ? Math.round(paidClaims.reduce((s, c) => {
-        if (!c.submittedDate || !c.paymentDate) return s
-        const diff = (new Date(c.paymentDate).getTime() - new Date(c.submittedDate).getTime()) / 86400000
+  const paidClaimsWithDates = demoClaims.filter(c => c.status === 'paid' && c.submittedDate && c.paymentDate)
+  const avgDays = paidClaimsWithDates.length
+    ? Math.round(paidClaimsWithDates.reduce((s, c) => {
+        const diff = (new Date(c.paymentDate!).getTime() - new Date(c.submittedDate!).getTime()) / 86400000
         return s + diff
-      }, 0) / paidClaims.length)
+      }, 0) / paidClaimsWithDates.length)
     : 24
 
   const toggleStatus = (s: string) =>
@@ -322,7 +321,7 @@ export default function ClaimsPage() {
 
   const allReady = selectedRows.every(id => allClaims.find(c => c.id === id)?.status === 'ready')
 
-  const handleSort = (key: 'id' | 'age' | 'charges') => {
+  const handleSort = (key: 'id' | 'age' | 'billed') => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortKey(key); setSortDir('desc') }
   }
@@ -427,7 +426,7 @@ export default function ClaimsPage() {
                     { label: 'Client', key: null },
                     { label: 'Payer', key: null },
                     { label: 'CPT', key: null },
-                    { label: 'Billed', key: 'charges' as const },
+                    { label: 'Billed', key: 'billed' as const },
                     { label: 'Status', key: null },
                     { label: 'DOS', key: null },
                     { label: 'Days', key: 'age' as const },
