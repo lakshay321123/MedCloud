@@ -1,11 +1,11 @@
-import { ModuleConfig, UserRole } from '@/types'
+import { ModuleConfig, UserRole, PortalType } from '@/types'
 
 const staffRoles: UserRole[] = ['admin', 'director', 'supervisor', 'manager', 'coder', 'biller', 'ar_team', 'posting_team']
 const leaderRoles: UserRole[] = ['admin', 'director', 'supervisor', 'manager']
 const allRoles: UserRole[] = [...staffRoles, 'client', 'provider']
 
 export const modules: ModuleConfig[] = [
-  // OPERATIONS (staff only)
+  // OPERATIONS
   { id: 'dashboard', label: 'Dashboard', icon: 'LayoutDashboard', path: '/dashboard', section: 'operations', roles: allRoles },
   { id: 'claims', label: 'Claims Center', icon: 'FileText', path: '/claims', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
   { id: 'coding', label: 'AI Coding', icon: 'BrainCircuit', path: '/coding', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'coder'] },
@@ -20,14 +20,14 @@ export const modules: ModuleConfig[] = [
   { id: 'scribe', label: 'AI Scribe', icon: 'Mic', path: '/ai-scribe', section: 'ai', roles: ['admin', 'director', 'supervisor', 'manager', 'coder', 'provider'] },
   { id: 'tasks', label: 'Tasks & Workflows', icon: 'ListChecks', path: '/tasks', section: 'ai', roles: staffRoles },
 
-  // MANAGEMENT
-  { id: 'documents', label: 'Documents', icon: 'FolderOpen', path: '/documents', section: 'management', roles: [...staffRoles, 'provider'] },
+  // MANAGEMENT — 'client' added so front-office (facility) can see Documents
+  { id: 'documents', label: 'Documents', icon: 'FolderOpen', path: '/documents', section: 'management', roles: [...staffRoles, 'provider', 'client'] },
   { id: 'credentialing', label: 'Credentialing', icon: 'BadgeCheck', path: '/credentialing', section: 'management', roles: leaderRoles },
   { id: 'analytics', label: 'Analytics', icon: 'BarChart3', path: '/analytics', section: 'management', roles: leaderRoles },
   { id: 'admin', label: 'Admin & Settings', icon: 'Settings', path: '/admin', section: 'system', roles: ['admin'] },
   { id: 'integrations', label: 'Integration Hub', icon: 'Plug', path: '/integrations', section: 'system', roles: ['admin', 'director'] },
 
-  // PORTAL — client gets full portal, provider gets limited
+  // CLIENT PORTAL
   { id: 'appointments', label: 'Appointments', icon: 'CalendarDays', path: '/portal/appointments', section: 'portal', roles: [...staffRoles, 'client', 'provider'] },
   { id: 'scan', label: 'Scan & Submit', icon: 'ScanLine', path: '/portal/scan-submit', section: 'portal', roles: ['client'] },
   { id: 'watch', label: 'Watch & Track', icon: 'Eye', path: '/portal/watch-track', section: 'portal', roles: ['client'] },
@@ -35,14 +35,21 @@ export const modules: ModuleConfig[] = [
   { id: 'portal-patients', label: 'Patients', icon: 'Users', path: '/portal/patients', section: 'portal', roles: ['client', 'provider'] },
 ]
 
+// Facility portal shows this curated module set (role-filtered on top)
+const facilityModuleIds = ['dashboard', 'scribe', 'documents', 'appointments', 'messages', 'portal-patients', 'scan']
+
 export const sectionLabels: Record<string, Record<string, string>> = {
+  facility: { operations: 'OVERVIEW', ai: 'AI TOOLS', management: 'FILES', portal: 'CLINICAL' },
   provider: { operations: 'OVERVIEW', ai: 'AI TOOLS', management: 'FILES', portal: 'CLINICAL' },
   client: { portal: 'MY PRACTICE' },
   default: { operations: 'OPERATIONS', ai: 'AI & AUTOMATION', management: 'MANAGEMENT', portal: 'CLIENT PORTAL', system: 'SYSTEM' },
 }
 
-export function getSectionLabel(role: UserRole, section: string): string {
-  const roleLabels = sectionLabels[role] || sectionLabels.default
+export function getSectionLabel(role: UserRole, section: string, portalType?: PortalType | null): string {
+  if (portalType === 'facility') {
+    return sectionLabels.facility[section] || sectionLabels.default[section] || section.toUpperCase()
+  }
+  const roleLabels = sectionLabels[role] || {}
   return roleLabels[section] || sectionLabels.default[section] || section.toUpperCase()
 }
 
@@ -50,8 +57,15 @@ export function getModulesForRole(role: UserRole): ModuleConfig[] {
   return modules.filter(m => m.roles.includes(role))
 }
 
-export function getModulesBySection(role: UserRole) {
-  const available = getModulesForRole(role)
+export function getModulesForPortal(role: UserRole, portalType: PortalType | null): ModuleConfig[] {
+  if (portalType === 'facility') {
+    return modules.filter(m => facilityModuleIds.includes(m.id) && m.roles.includes(role))
+  }
+  return getModulesForRole(role)
+}
+
+export function getModulesBySection(role: UserRole, portalType?: PortalType | null) {
+  const available = portalType ? getModulesForPortal(role, portalType) : getModulesForRole(role)
   const sections: Record<string, ModuleConfig[]> = {}
   available.forEach(m => {
     if (!sections[m.section]) sections[m.section] = []

@@ -1,4 +1,5 @@
 export type Theme = 'dark' | 'light'
+export type PortalType = 'facility' | 'backoffice'
 export type Language = 'en' | 'ar' | 'es'
 export type Direction = 'ltr' | 'rtl'
 export type Region = 'us' | 'uae'

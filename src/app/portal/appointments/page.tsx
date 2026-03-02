@@ -1,10 +1,11 @@
 'use client'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
-import { demoAppointments, demoPatients, getClientName } from '@/lib/demo-data'
+import { demoAppointments, getClientName } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
-import { Plus, Calendar, AlertTriangle } from 'lucide-react'
+import { Plus, AlertTriangle } from 'lucide-react'
+import NewAppointmentModal from './NewAppointmentModal'
 
 const staffRoles = ['admin','director','supervisor','manager','coder','biller','ar_team','posting_team']
 
@@ -82,7 +83,7 @@ export default function AppointmentsPage() {
             <th className="text-left px-4 py-3">Time</th>
             <th className="text-left px-4 py-3">Patient</th>
             {isStaff && <th className="text-left px-4 py-3">Client</th>}
-            <th className="text-left px-4 py-3">Provider</th>
+            {!isClinic && <th className="text-left px-4 py-3">Provider</th>}
             <th className="text-left px-4 py-3">Type</th>
             <th className="text-left px-4 py-3">Duration</th>
             <th className="text-left px-4 py-3">Status</th>
@@ -93,7 +94,7 @@ export default function AppointmentsPage() {
               <td className="px-4 py-3 font-mono text-xs">{a.date === '2026-03-02' ? a.time : <span className="text-content-secondary">{a.date} {a.time}</span>}</td>
               <td className="px-4 py-3 font-medium">{a.patientName}</td>
               {isStaff && <td className="px-4 py-3 text-xs text-content-secondary">{getClientName(a.clientId)}</td>}
-              <td className="px-4 py-3 text-content-secondary">{a.provider}</td>
+              {!isClinic && <td className="px-4 py-3 text-content-secondary">{a.provider}</td>}
               <td className="px-4 py-3 text-xs text-content-secondary">{a.type}</td>
               <td className="px-4 py-3 text-xs text-content-secondary">{a.duration}m</td>
               <td className="px-4 py-3"><StatusBadge status={a.status} small/></td>
@@ -111,34 +112,7 @@ export default function AppointmentsPage() {
       </div>
 
       {showAdd && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={()=>setShowAdd(false)}>
-          <div className="card w-[440px] p-4" onClick={e=>e.stopPropagation()}>
-            <h2 className="font-semibold mb-4">Book Appointment</h2>
-            <div className="space-y-3">
-              <div><label className="text-xs text-content-secondary block mb-1">Patient *</label>
-                <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
-                  <option value="">Search patient...</option>
-                  {demoPatients.filter(p=>p.clientId==='org-102').map(p=><option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>)}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs text-content-secondary block mb-1">Date *</label><input type="date" defaultValue="2026-03-03" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"/></div>
-                <div><label className="text-xs text-content-secondary block mb-1">Time *</label><input type="time" defaultValue="09:00" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"/></div>
-              </div>
-              <div><label className="text-xs text-content-secondary block mb-1">Provider</label><input className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" defaultValue="Dr. Martinez"/></div>
-              <div><label className="text-xs text-content-secondary block mb-1">Visit Type</label>
-                <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
-                  <option>Follow-up</option><option>New Patient</option><option>Consultation</option><option>Procedure</option><option>Telehealth</option>
-                </select>
-              </div>
-              <div><label className="text-xs text-content-secondary block mb-1">Notes</label><input className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" placeholder="Optional notes..."/></div>
-              <div className="flex gap-2">
-                <button onClick={()=>setShowAdd(false)} className="flex-1 bg-surface-elevated border border-separator rounded-lg py-2 text-sm text-content-secondary">Cancel</button>
-                <button onClick={()=>setShowAdd(false)} className="flex-1 bg-brand text-white rounded-lg py-2 text-sm font-medium">Book</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <NewAppointmentModal onClose={() => setShowAdd(false)} />
       )}
     </ModuleShell>
   )

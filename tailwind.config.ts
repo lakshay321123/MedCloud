@@ -31,7 +31,7 @@ const config: Config = {
         separator: 'var(--separator)',
       },
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Reddit Sans"', 'sans-serif'],
         mono: ['SF Mono', 'JetBrains Mono', 'monospace'],
       },
       borderRadius: {
