@@ -5,6 +5,7 @@ import KPICard from '@/components/shared/KPICard'
 import { DollarSign, FileText, AlertTriangle, Clock, TrendingUp, Users, Phone, BrainCircuit, CalendarDays, ListChecks, Mic, Activity, ArrowRight, Upload, Eye, MessageCircle } from 'lucide-react'
 import StatusBadge from '@/components/shared/StatusBadge'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 function ProgressRing({ percent, size = 48, stroke = 4, color = '#00B5D6' }: { percent: number; size?: number; stroke?: number; color?: string }) {
   const r = (size - stroke) / 2
@@ -28,6 +29,7 @@ function MiniBar({ values, colors }: { values: number[]; colors: string[] }) {
 }
 
 function ExecutiveDashboard() {
+  const router = useRouter()
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-4 gap-5">
@@ -59,18 +61,19 @@ function ExecutiveDashboard() {
         </div>
         <div className="col-span-2 card p-6">
           <h3 className="text-[15px] font-semibold text-content-primary mb-4">Recent Activity</h3>
-          <div className="space-y-4">
+          <div className="space-y-1">
             {[
-              { t: 'Claim #CLM-4501 paid — $250', c: 'text-emerald-600 dark:text-emerald-400', ago: '2h' },
-              { t: 'ERA posted — 23 claims from UHC', c: 'text-brand', ago: '3h' },
-              { t: 'Denial pattern alert: Aetna no-auth', c: 'text-amber-600 dark:text-amber-400', ago: '4h' },
-              { t: 'Voice AI completed 12 calls', c: 'text-brand', ago: '5h' },
-              { t: 'New provider credentialing started', c: 'text-blue-600 dark:text-blue-400', ago: '6h' },
+              { t: 'Claim #CLM-4501 paid — $250', c: 'text-emerald-600 dark:text-emerald-400', ago: '2h', href: '/claims' },
+              { t: 'ERA posted — 23 claims from UHC', c: 'text-brand', ago: '3h', href: '/payment-posting' },
+              { t: 'Denial pattern alert: Aetna no-auth', c: 'text-amber-600 dark:text-amber-400', ago: '4h', href: '/denials' },
+              { t: 'Voice AI completed 12 calls', c: 'text-brand', ago: '5h', href: '/voice-ai' },
+              { t: 'New provider credentialing started', c: 'text-blue-600 dark:text-blue-400', ago: '6h', href: '/credentialing' },
             ].map((a, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <span className={`text-[13px] font-medium ${a.c}`}>{a.t}</span>
-                <span className="text-[12px] text-content-tertiary">{a.ago} ago</span>
-              </div>
+              <button key={i} onClick={() => router.push(a.href)}
+                className="w-full flex items-center justify-between hover:bg-surface-elevated rounded-lg px-2 py-1.5 -mx-2 transition-colors group">
+                <span className={`text-[13px] font-medium ${a.c} group-hover:underline text-left`}>{a.t}</span>
+                <span className="text-[12px] text-content-tertiary shrink-0 ml-2">{a.ago} ago</span>
+              </button>
             ))}
           </div>
         </div>
@@ -80,6 +83,7 @@ function ExecutiveDashboard() {
 }
 
 function ProviderDashboard() {
+  const router = useRouter()
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-4 gap-5">
@@ -103,6 +107,12 @@ function ProviderDashboard() {
                 <span className="text-[14px] font-medium text-content-primary flex-1">{a.patient}</span>
                 <span className="text-[13px] text-content-secondary">{a.type}</span>
                 <StatusBadge status={a.status} small />
+                {a.status === 'checked_in' && (
+                  <button onClick={() => router.push('/ai-scribe')}
+                    className="text-[11px] bg-brand text-white px-2.5 py-1 rounded-btn hover:bg-brand-deep transition-colors">
+                    Start
+                  </button>
+                )}
               </div>
             ))}
           </div>

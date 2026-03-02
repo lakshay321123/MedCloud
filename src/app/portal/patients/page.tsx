@@ -4,6 +4,7 @@ import { useApp } from '@/lib/context'
 import { demoPatients, DemoPatient } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
+import { useToast } from '@/components/shared/Toast'
 import { Plus, Search, X, Upload, ChevronDown } from 'lucide-react'
 
 const completenessColor = (p: number) => p >= 100 ? 'bg-emerald-500' : p >= 75 ? 'bg-cyan-500' : p >= 50 ? 'bg-amber-500' : 'bg-red-500'
@@ -24,6 +25,7 @@ function SectionHeader({ title, badge, open, onToggle }: { title: string; badge?
 
 function AddPatientModal({ onClose }: { onClose: () => void }) {
   const { country } = useApp()
+  const { toast } = useToast()
   const isUAE = country === 'uae'
   const [sections, setSections] = useState({ address: false, id: false, insurance: false, secondary: false, emergency: false, employment: false, medical: false })
   const toggle = (k: keyof typeof sections) => setSections(p => ({ ...p, [k]: !p[k] }))
@@ -175,7 +177,7 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
                   <div><label className="text-xs text-content-secondary block mb-1">Subscriber Name (if not self)</label><input className={ic} /></div>
                 </div>
                 <div><label className="text-xs text-content-secondary block mb-1">Subscriber DOB (if not self)</label><input type="date" className={ic} /></div>
-                <button type="button" className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-2.5 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2">
+                <button type="button" onClick={() => toast.info('Camera / file picker — attach front and back of insurance card')} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-2.5 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2">
                   <Upload size={14}/> Scan Insurance Card (Front & Back)
                 </button>
               </div>
@@ -258,13 +260,13 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
 
           {/* Scan ID + Buttons */}
           <div>
-            <button type="button" className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2 mb-4">
+            <button type="button" onClick={() => toast.info('Scanning ID to auto-fill demographics...')} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2 mb-4">
               <Upload size={14} className="text-brand" />
               <span>📷 {isUAE ? 'Scan Emirates ID' : 'Scan Driver\'s License'} to auto-fill demographics</span>
             </button>
             <div className="flex gap-2">
               <button type="button" onClick={onClose} className="flex-1 bg-surface-elevated border border-separator rounded-lg py-2.5 text-sm text-content-secondary hover:text-content-primary transition-colors">Cancel</button>
-              <button type="button" onClick={onClose} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">Save Patient</button>
+              <button type="button" onClick={() => { toast.success('Patient saved successfully'); onClose() }} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">Save Patient</button>
             </div>
           </div>
         </div>
@@ -277,6 +279,7 @@ type DetailTab = 'demographics' | 'address' | 'insurance' | 'emergency' | 'emplo
 
 function PatientDetail({ patient, onClose }: { patient: DemoPatient; onClose: () => void }) {
   const { country } = useApp()
+  const { toast } = useToast()
   const [tab, setTab] = useState<DetailTab>('demographics')
   // Use app-level country; fall back to patient data signal
   const isUAE = country === 'uae' || !!patient.emiratesId
@@ -369,7 +372,7 @@ function PatientDetail({ patient, onClose }: { patient: DemoPatient; onClose: ()
                     {patient.insurance.copay !== undefined && <div><span className="text-content-secondary">Copay:</span> {isUAE ? 'AED' : '$'}{patient.insurance.copay}</div>}
                   </div>
                 </div>
-              ) : <div className="text-center py-6 text-xs text-content-secondary">No insurance on file. <button className="text-brand underline">Upload insurance card</button></div>}
+              ) : <div className="text-center py-6 text-xs text-content-secondary">No insurance on file. <button onClick={() => toast.info('Upload insurance card to update coverage details')} className="text-brand underline">Upload insurance card</button></div>}
               {patient.secondaryInsurance && (
                 <div className="bg-surface-elevated border border-separator rounded-lg p-3">
                   <div className="text-xs text-content-secondary mb-2">Secondary Insurance</div>
@@ -380,7 +383,7 @@ function PatientDetail({ patient, onClose }: { patient: DemoPatient; onClose: ()
                   </div>
                 </div>
               )}
-              <button type="button" className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30">
+              <button type="button" onClick={() => toast.info('Camera/file picker — scan front and back of insurance card')} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30">
                 <Upload size={14} className="inline mr-1"/> Scan insurance card to auto-fill
               </button>
             </div>

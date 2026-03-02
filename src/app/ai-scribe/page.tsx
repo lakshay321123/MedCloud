@@ -1,5 +1,6 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -224,6 +225,7 @@ function ProviderView() {
 function CoderView() {
   const [selectedVisit, setSelectedVisit] = useState<DemoVisit>(demoVisits[0])
   const { toast } = useToast()
+  const router = useRouter()
   return (
     <div className="grid grid-cols-3 gap-5 h-[calc(100vh-280px)]">
       <div className="card overflow-auto">
@@ -275,7 +277,7 @@ function CoderView() {
           </div>
         </div>
         <div className="p-3 border-t border-separator">
-          <button onClick={()=>toast.info('Returning to coding queue')} className="text-sm text-brand hover:underline flex items-center gap-1">
+          <button onClick={()=>router.push('/coding')} className="text-sm text-brand hover:underline flex items-center gap-1">
             <ChevronLeft size={14}/> Back to Coding Queue
           </button>
         </div>

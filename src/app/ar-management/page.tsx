@@ -1,10 +1,11 @@
 'use client'
-import React from 'react'
+import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
+import { useToast } from '@/components/shared/Toast'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
-import { TrendingUp } from 'lucide-react'
+import { TrendingUp, X, Phone } from 'lucide-react'
 
 const buckets = [{ l: '0-30', v: 145000, c: 'bg-emerald-500' }, { l: '31-60', v: 98000, c: 'bg-cyan-500' }, { l: '61-90', v: 52000, c: 'bg-amber-500' }, { l: '91-120', v: 28000, c: 'bg-orange-500' }, { l: '120+', v: 12000, c: 'bg-red-500' }]
 const max = Math.max(...buckets.map(b => b.v))
@@ -27,6 +28,8 @@ const sourceInfo: Record<string, { color: string; label: string }> = {
 
 export default function ARManagementPage() {
   const { selectedClient } = useApp()
+  const { toast } = useToast()
+  const [selected, setSelected] = useState<typeof accounts[0] | null>(null)
   const filtered = accounts.filter(a => !selectedClient || a.client.includes(selectedClient.name.split(' ')[0]))
 
   return (
@@ -61,12 +64,14 @@ export default function ARManagementPage() {
             <th className="text-left px-4 py-3">Priority</th>
           </tr></thead>
           <tbody>{filtered.map(a => (
-            <tr key={a.id} className="border-b border-separator last:border-0 table-row cursor-pointer">
+            <tr key={a.id}
+              onClick={() => setSelected(a)}
+              className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
               <td className="px-4 py-3 font-medium">{a.patient}</td>
               <td className="px-4 py-3 text-xs text-content-secondary">{a.client}</td>
               <td className="px-4 py-3 text-xs text-content-secondary">{a.payer}</td>
               <td className="px-4 py-3">
-                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-pill ${sourceInfo[a.source]?.color || 'bg-surface-elevated text-content-secondary'}`}>
+                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${sourceInfo[a.source]?.color || 'bg-surface-elevated text-content-secondary'}`}>
                   {sourceInfo[a.source]?.label || a.source}
                 </span>
               </td>
@@ -79,6 +84,76 @@ export default function ARManagementPage() {
           ))}</tbody>
         </table>
       </div>
+
+      {selected && (
+        <>
+          <div className="fixed inset-0 bg-black/20 z-30" onClick={() => setSelected(null)} />
+          <div className="fixed right-0 top-0 h-full w-[420px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between p-4 border-b border-separator">
+              <div>
+                <h3 className="font-semibold text-content-primary">{selected.patient}</h3>
+                <p className="text-xs text-content-secondary">{selected.client} · {selected.payer}</p>
+              </div>
+              <button onClick={() => setSelected(null)} className="p-1 hover:bg-surface-elevated rounded-btn">
+                <X size={16} className="text-content-secondary" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4 flex-1 overflow-y-auto">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-surface-elevated rounded-lg p-3 text-center">
+                  <div className="text-lg font-bold text-content-primary">${selected.original}</div>
+                  <div className="text-[10px] text-content-secondary">Original</div>
+                </div>
+                <div className="bg-surface-elevated rounded-lg p-3 text-center">
+                  <div className={`text-lg font-bold ${selected.balance > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>${selected.balance}</div>
+                  <div className="text-[10px] text-content-secondary">Balance</div>
+                </div>
+                <div className="bg-surface-elevated rounded-lg p-3 text-center">
+                  <div className="text-lg font-bold text-content-primary">{selected.age}d</div>
+                  <div className="text-[10px] text-content-secondary">Age</div>
+                </div>
+              </div>
+
+              <div className="bg-surface-elevated rounded-lg p-3 text-xs">
+                <div className="text-content-secondary mb-1">Last Action</div>
+                <div className="text-content-primary">{selected.lastAction}</div>
+              </div>
+
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">Next Follow-up Date</label>
+                <input type="date" defaultValue={selected.nextFollowup !== '-' ? selected.nextFollowup : ''}
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm" />
+              </div>
+
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">Add Note</label>
+                <textarea rows={3} placeholder="Log follow-up notes..."
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm resize-none" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => { toast.success('Voice AI call queued'); setSelected(null) }}
+                  className="bg-brand/10 text-brand rounded-lg py-2.5 text-xs font-medium hover:bg-brand/20 transition-colors flex items-center justify-center gap-2">
+                  <Phone size={13} /> Queue AI Call
+                </button>
+                <button onClick={() => { toast.success('Follow-up saved'); setSelected(null) }}
+                  className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-xs font-medium hover:text-content-primary transition-colors">
+                  Save Follow-up
+                </button>
+                <button onClick={() => { toast.success('Routed to appeals'); setSelected(null) }}
+                  className="bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg py-2.5 text-xs font-medium hover:bg-amber-500/20 transition-colors">
+                  Route to Appeals
+                </button>
+                <button onClick={() => { toast.warning('Write-off requires supervisor approval') }}
+                  className="bg-red-500/10 text-red-500 rounded-lg py-2.5 text-xs font-medium hover:bg-red-500/20 transition-colors">
+                  Write-off
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </ModuleShell>
   )
 }

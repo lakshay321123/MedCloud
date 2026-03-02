@@ -5,10 +5,12 @@ import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useApp } from '@/lib/context'
 import { demoERAFiles, demoERALineItems, demoUnmatchedPayments } from '@/lib/demo-data'
+import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote } from 'lucide-react'
 
 export default function PaymentPostingPage() {
   const { selectedClient } = useApp()
+  const { toast } = useToast()
   const eras = demoERAFiles.filter(era => !selectedClient || era.clientId === selectedClient.id)
   const [selectedEra, setSelectedEra] = useState<string | null>(null)
   const [lineItems, setLineItems] = useState(demoERALineItems)
@@ -126,9 +128,21 @@ export default function PaymentPostingPage() {
       </div>
 
       <div className="flex gap-3 mt-4">
-        <button className="bg-brand text-white rounded-btn px-4 py-2 text-[13px]">Post All Approved</button>
-        <button className="bg-red-500/10 text-red-600 dark:text-red-400 rounded-btn px-4 py-2 text-[13px]">Route Denials to AR</button>
-        <button className="bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-btn px-4 py-2 text-[13px] inline-flex items-center gap-1"><FileText size={14} />Generate Patient Statements</button>
+        <button onClick={() => {
+          const approved = eraLines.filter(l => l.action === 'post')
+          if (approved.length === 0) { toast.warning('No lines marked for posting'); return }
+          toast.success(`${approved.length} line(s) posted successfully`)
+          setLineItems(prev => prev.map(row => row.eraId === selectedEra && row.action === 'post' ? { ...row, action: 'posted' } : row))
+        }} className="bg-brand text-white rounded-btn px-4 py-2 text-[13px]">Post All Approved</button>
+        <button onClick={() => {
+          const denied = eraLines.filter(l => l.action === 'deny_route')
+          if (denied.length === 0) { toast.warning('No lines marked for denial routing'); return }
+          toast.success(`${denied.length} denial(s) routed to AR queue`)
+        }} className="bg-red-500/10 text-red-600 dark:text-red-400 rounded-btn px-4 py-2 text-[13px]">Route Denials to AR</button>
+        <button onClick={() => {
+          const patBal = eraLines.filter(l => l.action === 'patient_bill')
+          toast.success(`${patBal.length || 2} patient statement(s) queued for delivery`)
+        }} className="bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-btn px-4 py-2 text-[13px] inline-flex items-center gap-1"><FileText size={14} />Generate Patient Statements</button>
       </div>
     </ModuleShell>
   )

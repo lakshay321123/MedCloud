@@ -225,6 +225,7 @@ function ActiveCallsTab() {
 
 // ─── Tab 2: Call Log ──────────────────────────────────────────────────────
 function CallLogTab() {
+  const { toast } = useToast()
   const [typeFilter, setTypeFilter] = useState('')
   const [outcomeFilter, setOutcomeFilter] = useState('')
   const [selectedCall, setSelectedCall] = useState<DemoCall | null>(null)
@@ -285,7 +286,10 @@ function CallLogTab() {
                 </td>
                 <td className="px-4 py-3 text-xs text-brand">{call.claimRef || '—'}</td>
                 <td className="px-4 py-3">
-                  <button className="p-1.5 rounded hover:bg-surface-elevated text-content-secondary hover:text-content-primary transition-colors">
+                  <button onClick={e => {
+                    e.stopPropagation()
+                    toast.info(`Playing recording — ${call.duration}`)
+                  }} className="p-1.5 rounded hover:bg-surface-elevated text-content-secondary hover:text-content-primary transition-colors">
                     <Play size={12} />
                   </button>
                 </td>
@@ -310,6 +314,7 @@ function CampaignLauncherTab() {
   const [name, setName] = useState('')
   const [type, setType] = useState('Payer Status Check')
   const [schedule, setSchedule] = useState<'now' | 'daily' | 'weekly'>('now')
+  const [selectedDays, setSelectedDays] = useState<string[]>(['Mon', 'Wed', 'Fri'])
   const estCalls = type === 'Payer Status Check' ? 12 : type === 'Patient Balance Reminder' ? 27 : type === 'Payer Appeal Follow-up' ? 6 : 18
 
   return (
@@ -381,7 +386,15 @@ function CampaignLauncherTab() {
           {schedule === 'weekly' && (
             <div className="mt-2 flex gap-1">
               {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(d => (
-                <button key={d} className="px-2.5 py-1 text-[10px] font-medium rounded border border-separator hover:bg-brand/10 hover:text-brand hover:border-brand/30 transition-all">{d}</button>
+                <button key={d}
+                  onClick={() => setSelectedDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])}
+                  className={`px-2.5 py-1 text-[10px] font-medium rounded border transition-all ${
+                    selectedDays.includes(d)
+                      ? 'bg-brand/10 text-brand border-brand/30'
+                      : 'border-separator hover:bg-brand/10 hover:text-brand hover:border-brand/30'
+                  }`}>
+                  {d}
+                </button>
               ))}
             </div>
           )}
@@ -408,6 +421,13 @@ const stepBadge: Record<string, string> = {
 function ScriptBuilderTab() {
   const { toast } = useToast()
   const [selected, setSelected] = useState<DemoScript>(demoScripts[0])
+  const [scriptSteps, setScriptSteps] = useState(demoScripts[0].steps)
+  const [editingStep, setEditingStep] = useState<number | null>(null)
+
+  useEffect(() => {
+    setScriptSteps(selected.steps)
+    setEditingStep(null)
+  }, [selected.id])
 
   return (
     <div className="grid grid-cols-5 gap-5">
@@ -440,28 +460,44 @@ function ScriptBuilderTab() {
         </div>
 
         <div className="space-y-2">
-          {selected.steps.map((step, i) => (
+          {scriptSteps.map((step, i) => (
             <div key={i} className="flex gap-3 items-start">
               <div className="flex flex-col items-center shrink-0">
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold mt-1 ${stepBadge[step.type] ?? 'bg-surface-elevated text-content-secondary'}`}>
                   {i + 1}
                 </div>
-                {i < selected.steps.length - 1 && <div className="w-px flex-1 bg-separator min-h-[12px] mt-1" />}
+                {i < scriptSteps.length - 1 && <div className="w-px flex-1 bg-separator min-h-[12px] mt-1" />}
               </div>
-              <div className="flex-1 card p-3 flex items-start justify-between gap-2 mb-1.5">
-                <div className="flex-1">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded mr-2 ${stepBadge[step.type] ?? 'bg-surface-elevated'}`}>{step.type}</span>
-                  <span className="text-xs text-content-primary">{step.content}</span>
+              <div className="flex-1 card p-3 flex flex-col gap-2 mb-1.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded mr-2 ${stepBadge[step.type] ?? 'bg-surface-elevated'}`}>{step.type}</span>
+                    <span className="text-xs text-content-primary">{step.content}</span>
+                  </div>
+                  <button onClick={() => setEditingStep(editingStep === i ? null : i)}
+                    className="shrink-0 p-1 hover:bg-surface-elevated rounded text-content-tertiary hover:text-content-secondary transition-colors">
+                    <Edit2 size={12} />
+                  </button>
                 </div>
-                <button className="shrink-0 p-1 hover:bg-surface-elevated rounded text-content-tertiary hover:text-content-secondary transition-colors">
-                  <Edit2 size={12} />
-                </button>
+                {editingStep === i && (
+                  <div className="flex gap-2">
+                    <input defaultValue={step.content}
+                      className="flex-1 bg-surface-elevated border border-separator rounded px-2 py-1 text-xs"
+                      onKeyDown={e => { if (e.key === 'Enter') { toast.success('Step updated'); setEditingStep(null) }}} />
+                    <button onClick={() => { toast.success('Step updated'); setEditingStep(null) }}
+                      className="text-[10px] bg-brand text-white px-2 py-1 rounded">Save</button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
 
-        <button onClick={() => toast.success('New step added')}
+        <button onClick={() => {
+          const newStep = { type: 'SPEAK' as const, content: 'New step — click edit to update' }
+          setScriptSteps(prev => [...prev, newStep])
+          toast.success('New step added — click ✏ to edit')
+        }}
           className="mt-3 w-full border border-dashed border-brand/30 text-brand text-xs py-2 rounded-lg hover:bg-brand/5 transition-colors">
           <Plus size={12} className="inline mr-1" />
           Add Step

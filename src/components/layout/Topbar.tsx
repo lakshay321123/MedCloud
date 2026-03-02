@@ -2,8 +2,9 @@
 import React from 'react'
 import { useApp } from '@/lib/context'
 import { UserRole } from '@/types'
-import { Search, Sun, Moon, Bell } from 'lucide-react'
+import { Search, Sun, Moon, Bell, LogOut } from 'lucide-react'
 import Dropdown, { DropdownOption } from '@/components/shared/Dropdown'
+import { useRouter } from 'next/navigation'
 
 const roleDisplayLabels: Record<UserRole, string> = {
   admin: 'Admin',
@@ -24,6 +25,7 @@ const backofficeRoles: UserRole[] = ['admin', 'director', 'supervisor', 'manager
 export default function Topbar() {
   const { theme, setTheme, language, setLanguage, currentUser, setRole, selectedClient, setSelectedClient, clients, country, portalType } = useApp()
   const isStaff = backofficeRoles.includes(currentUser.role)
+  const router = useRouter()
 
   const availableRoles = portalType === 'facility' ? facilityRoles : portalType === 'backoffice' ? backofficeRoles : [...backofficeRoles, ...facilityRoles]
   const roleOptions: DropdownOption[] = availableRoles.map(r => ({ value: r, label: roleDisplayLabels[r] }))
@@ -32,6 +34,13 @@ export default function Topbar() {
     { value: '', label: 'All Clients' },
     ...clients.map(c => ({ value: c.id, label: `${c.region === 'uae' ? '🇦🇪' : '🇺🇸'} ${c.name}` })),
   ]
+
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    localStorage.removeItem('cosentus_region')
+    localStorage.removeItem('cosentus_portal_type')
+    router.push('/')
+  }
 
   return (
     <header className="h-16 bg-surface-secondary border-b border-separator flex items-center px-6 gap-4 shrink-0">
@@ -93,6 +102,15 @@ export default function Topbar() {
           onChange={v => setRole(v as UserRole)}
           buttonClassName="bg-brand/10 text-brand hover:bg-brand/20"
         />
+
+        <div className="w-px h-5 bg-separator mx-1" />
+        <button
+          onClick={handleLogout}
+          className="p-2 rounded-btn hover:bg-red-500/10 text-content-secondary hover:text-red-500 transition-colors"
+          title="Logout"
+        >
+          <LogOut size={16} />
+        </button>
       </div>
     </header>
   )
