@@ -62,3 +62,7 @@ export type ClaimStatus = 'draft' | 'scrubbing' | 'scrub_failed' | 'ready' | 'su
 export type MessageEntityType = 'patient' | 'claim' | 'submission' | 'appointment' | 'general'
 export type TaskStatus = 'open' | 'in_progress' | 'blocked' | 'completed'
 export type Priority = 'low' | 'medium' | 'high' | 'urgent'
+
+export type DenialSource = 'payment_posting' | 'claim_rejection' | 'payer_audit'
+export type AppealLevel = 'L1' | 'L2' | 'L3'
+export type ARSource = 'denied_claim' | 'underpayment' | 'patient_balance' | 'timely_filing_risk'

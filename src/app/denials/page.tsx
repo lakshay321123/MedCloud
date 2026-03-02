@@ -1,21 +1,30 @@
 'use client'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
-import { demoClaims, demoERALineItems } from '@/lib/demo-data'
+import { demoClaims } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
-import { ShieldAlert, FileText } from 'lucide-react'
+import { ShieldAlert, FileText, AlertTriangle } from 'lucide-react'
 
-const denialSources: Record<string, string> = {
-  'CLM-4504': 'Payment Posting',
-  'CLM-4507': 'Payment Posting',
-  'CLM-4511': 'Claim Rejection',
-}
+const demoDenials = [
+  (() => {
+    const base = demoClaims.find(c => c.id === 'CLM-4504')
+    if (!base) throw new Error('Demo data missing CLM-4504 — check demo-data.ts')
+    return { ...base, source: 'claim_rejection' as const, appealLevel: 'L1' as const, denialCategory: 'Authorization' }
+  })(),
+  (() => {
+    const base = demoClaims.find(c => c.id === 'CLM-4507')
+    if (!base) throw new Error('Demo data missing CLM-4507 — check demo-data.ts')
+    return { ...base, source: 'payment_posting' as const, appealLevel: null, denialCategory: 'Eligibility' }
+  })(),
+  { id: 'CLM-4511', patientId: 'P-009', patientName: 'David Park', clientId: 'org-102', clientName: 'Irvine Family Practice', payer: 'UnitedHealthcare', dos: '2026-02-26', cptCodes: ['99215'], icdCodes: ['M54.5'], charges: 380, paid: 0, status: 'denied' as const, age: 4, denialReason: 'Prior auth required — not obtained', source: 'payment_posting' as const, appealLevel: null, denialCategory: 'Authorization' },
+  { id: 'CLM-4515', patientId: 'P-008', patientName: 'Emily Williams', clientId: 'org-103', clientName: 'Patel Cardiology', payer: 'Medicare', dos: '2026-02-18', cptCodes: ['99214'], icdCodes: ['I50.9'], charges: 250, paid: 0, status: 'denied' as const, age: 12, denialReason: 'Expenses not covered — inactive coverage', source: 'payment_posting' as const, appealLevel: null, denialCategory: 'Eligibility' },
+]
 
 export default function DenialsPage() {
   const { selectedClient } = useApp()
-  const denials = demoClaims.filter(c => ['denied', 'appealed'].includes(c.status)).filter(c => !selectedClient || c.clientId === selectedClient.id)
+  const denials = demoDenials.filter(c => !selectedClient || c.clientId === selectedClient.id)
   const [selected, setSelected] = useState(denials[0]?.id || '')
 
   return (
@@ -26,84 +35,41 @@ export default function DenialsPage() {
         <KPICard label="Appeal Success Rate" value="68%" trend="up" sub="+4%" />
         <KPICard label="Avg Resolution" value="18 days" />
       </div>
-      <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-4 text-xs text-amber-600 dark:text-amber-400">
-        ⚠ Pattern detected: 3 claims denied by Aetna for &quot;Prior auth required&quot; this month — review prior auth workflow
-      </div>
       <div className="grid grid-cols-2 gap-4 h-[calc(100vh-380px)]">
-        {/* Denial List */}
         <div className="card overflow-auto">
           <table className="w-full text-sm">
-            <thead><tr className="border-b border-separator text-xs text-content-secondary sticky top-0 bg-surface-secondary">
-              <th className="text-left px-4 py-3">Claim</th>
-              <th className="text-left px-4 py-3">Patient</th>
-              <th className="text-left px-4 py-3">Payer</th>
-              <th className="text-left px-4 py-3">Source</th>
-              <th className="text-left px-4 py-3">Reason</th>
-              <th className="text-left px-4 py-3">Status</th>
-            </tr></thead>
+            <thead><tr className="border-b border-separator text-xs text-content-secondary sticky top-0 bg-surface-secondary"><th className="text-left px-4 py-3">Claim</th><th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Payer</th><th className="text-left px-4 py-3">Reason</th><th className="text-left px-4 py-3">Source</th><th className="text-left px-4 py-3">Appeal</th><th className="text-left px-4 py-3">Status</th></tr></thead>
             <tbody>{denials.map(d => (
-              <tr key={d.id} onClick={() => setSelected(d.id)} className={`border-b border-separator last:border-0 cursor-pointer table-row ${selected === d.id ? 'bg-brand/5' : ''}`}>
-                <td className="px-4 py-3 font-mono text-xs">{d.id}</td>
-                <td className="px-4 py-3">{d.patientName}</td>
-                <td className="px-4 py-3 text-xs text-content-secondary">{d.payer}</td>
-                <td className="px-4 py-3">
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-pill ${denialSources[d.id] === 'Payment Posting' ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400' : 'bg-orange-500/10 text-orange-600 dark:text-orange-400'}`}>
-                    {denialSources[d.id] || 'Claim Rejection'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-xs text-red-600 dark:text-red-400">{d.denialReason}</td>
+              <tr key={d.id} onClick={() => setSelected(d.id)} className={`border-b border-separator table-row cursor-pointer ${selected === d.id ? 'bg-brand/5' : ''}`}>
+                <td className="px-4 py-3 font-mono text-xs">{d.id}</td><td className="px-4 py-3">{d.patientName}</td><td className="px-4 py-3 text-xs text-content-secondary">{d.payer}</td><td className="px-4 py-3 text-xs text-red-600 dark:text-red-400">{d.denialReason}</td>
+                <td className="px-4 py-3"><span className={`text-[10px] px-1.5 py-0.5 rounded-pill ${d.source === 'payment_posting' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : d.source === 'claim_rejection' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-red-500/10 text-red-600 dark:text-red-400'}`}>{d.source === 'payment_posting' ? 'Payment Posting' : d.source === 'claim_rejection' ? 'Claim Rejection' : 'Payer Audit'}</span></td>
+                <td className={`px-4 py-3 text-xs font-semibold ${d.appealLevel === 'L1' ? 'text-brand' : d.appealLevel === 'L2' ? 'text-amber-600 dark:text-amber-400' : d.appealLevel === 'L3' ? 'text-red-600 dark:text-red-400' : 'text-content-tertiary'}`}>{d.appealLevel || '—'}</td>
                 <td className="px-4 py-3"><StatusBadge status={d.status} small /></td>
               </tr>
             ))}</tbody>
           </table>
         </div>
 
-        {/* Appeal Builder */}
         <div className="card p-4 flex flex-col">
           {selected ? (() => {
             const d = denials.find(x => x.id === selected)
             if (!d) return null
-            const eobLine = demoERALineItems.find(l => l.claimId === d.id)
-            const source = denialSources[d.id] || 'Claim Rejection'
-            return (
-              <>
-                <h3 className="text-sm font-semibold mb-1">{d.id} — {d.patientName}</h3>
-                <p className="text-xs text-content-secondary mb-3">{d.clientName} · {d.payer} · DOS: {d.dos}</p>
-                <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-2 mb-3 text-xs text-red-600 dark:text-red-400">Denial: {d.denialReason}</div>
-
-                {/* EOB Context block — shown if we have ERA data */}
-                {eobLine && (
-                  <div className="bg-surface-elevated border border-separator rounded-lg p-3 mb-3 text-xs">
-                    <div className="text-[10px] font-bold text-content-tertiary uppercase tracking-wider mb-2">EOB Context</div>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                      <div className="flex justify-between"><span className="text-content-tertiary">ERA File:</span><span className="font-mono text-[10px]">{eobLine.eraId}</span></div>
-                      <div className="flex justify-between"><span className="text-content-tertiary">Source:</span><span className={`font-medium ${source === 'Payment Posting' ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'}`}>{source}</span></div>
-                      <div className="flex justify-between"><span className="text-content-tertiary">CPT:</span><span className="font-mono">{eobLine.cptCode}</span></div>
-                      <div className="flex justify-between"><span className="text-content-tertiary">Adj Code:</span><span className="font-mono text-red-600 dark:text-red-400">{eobLine.adjustmentCode}</span></div>
-                      <div className="flex justify-between"><span className="text-content-tertiary">Billed:</span><span className="font-mono">${eobLine.billed.toFixed(2)}</span></div>
-                      <div className="flex justify-between"><span className="text-content-tertiary">Allowed:</span><span className="font-mono">${eobLine.allowed.toFixed(2)}</span></div>
-                      <div className="flex justify-between"><span className="text-content-tertiary">Paid:</span><span className="font-mono text-emerald-600 dark:text-emerald-400">${eobLine.paid.toFixed(2)}</span></div>
-                      <div className="flex justify-between"><span className="text-content-tertiary">Denied:</span><span className="font-mono text-red-600 dark:text-red-400">${eobLine.denied.toFixed(2)}</span></div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="mb-3">
-                  <span className="text-xs text-content-secondary block mb-1">Related Documents</span>
-                  <div className="flex gap-2">
-                    {['Original Claim', 'Clinical Note', 'Denial Letter'].map(doc => (
-                      <div key={doc} className="bg-surface-elevated border border-separator rounded px-2 py-1 text-[10px] text-content-secondary flex items-center gap-1"><FileText size={10} />{doc}</div>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <span className="text-xs text-content-secondary block mb-1">AI-Generated Appeal Letter</span>
-                  <textarea className="w-full h-full min-h-[100px] bg-surface-elevated border border-separator rounded-lg p-2 text-xs text-content-primary resize-none" defaultValue={`Dear ${d.payer} Appeals Department,\n\nWe are writing to appeal the denial of claim ${d.id} for patient ${d.patientName}, date of service ${d.dos}.\n\nThe denial reason cited was "${d.denialReason}". We respectfully disagree with this determination and have attached supporting documentation demonstrating medical necessity...\n\n[AI-drafted content — review before sending]`} />
-                </div>
-                <button className="mt-3 bg-brand text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-deep transition-colors">Submit Appeal (L1)</button>
-              </>
-            )
-          })() : <div className="flex-1 flex items-center justify-center text-content-secondary text-sm">Select a denial to review</div>}
+            return <>
+              <h3 className="text-sm font-semibold mb-1">{d.id} — {d.patientName}</h3>
+              <p className="text-xs text-content-secondary mb-3">{d.clientName} · {d.payer} · DOS: {d.dos}</p>
+              <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-2 mb-2 text-xs text-red-600 dark:text-red-400">Denial: {d.denialReason}</div>
+              <div className="bg-surface-elevated border border-separator rounded-lg p-2 mb-3 text-xs text-content-secondary inline-flex items-center gap-1"><AlertTriangle size={12} />Source: Routed from {d.source}</div>
+              {d.source === 'payment_posting' && <div className="text-xs text-content-secondary mb-3">EOB Reference: ERA-001, Line EOB-004</div>}
+              <div className="mb-3"><span className="text-xs text-content-secondary block mb-1">Related Documents</span><div className="flex gap-2">{['Original Claim', 'Clinical Note', 'Denial Letter'].map(doc => <div key={doc} className="bg-surface-elevated border border-separator rounded px-2 py-1 text-[10px] text-content-secondary flex items-center gap-1"><FileText size={10} />{doc}</div>)}</div></div>
+              <textarea className="w-full flex-1 min-h-[130px] bg-surface-elevated border border-separator rounded-lg p-2 text-xs" defaultValue={`Dear ${d.payer} Appeals Department,\n\nWe are writing to appeal claim ${d.id} for ${d.patientName}...`} />
+              <button className="mt-3 bg-brand text-white rounded-btn py-2 text-sm font-medium">Submit Appeal (L1)</button>
+            </>
+          })() : (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-content-secondary">
+              <ShieldAlert size={40} className="opacity-20" />
+              <p className="text-sm">Select a denial to review</p>
+            </div>
+          )}
         </div>
       </div>
     </ModuleShell>
