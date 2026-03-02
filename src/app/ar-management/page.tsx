@@ -18,18 +18,11 @@ const accounts = [
   { id: 'AR-006', patient: 'Emily Williams', client: 'Patel Cardiology', payer: 'BCBS', original: 890, balance: 890, age: 120, lastAction: 'Appeal L1 submitted', nextFollowup: '2026-03-02', priority: 'urgent' as const, source: 'timely_filing_risk' as const },
 ]
 
-const sourceColors: Record<string, string> = {
-  denied_claim: 'bg-red-500/10 text-red-600 dark:text-red-400',
-  underpayment: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  patient_balance: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  timely_filing_risk: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
-}
-
-const sourceLabel: Record<string, string> = {
-  denied_claim: 'Denied Claim',
-  underpayment: 'Underpayment',
-  patient_balance: 'Patient Balance',
-  timely_filing_risk: 'Timely Filing Risk',
+const sourceInfo: Record<string, { color: string; label: string }> = {
+  denied_claim: { color: 'bg-red-500/10 text-red-600 dark:text-red-400', label: 'Denied Claim' },
+  underpayment: { color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', label: 'Underpayment' },
+  patient_balance: { color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400', label: 'Patient Balance' },
+  timely_filing_risk: { color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400', label: 'Timely Filing Risk' },
 }
 
 export default function ARManagementPage() {
@@ -73,8 +66,8 @@ export default function ARManagementPage() {
               <td className="px-4 py-3 text-xs text-content-secondary">{a.client}</td>
               <td className="px-4 py-3 text-xs text-content-secondary">{a.payer}</td>
               <td className="px-4 py-3">
-                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-pill ${sourceColors[a.source] || 'bg-surface-elevated text-content-secondary'}`}>
-                  {sourceLabel[a.source]}
+                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-pill ${sourceInfo[a.source]?.color || 'bg-surface-elevated text-content-secondary'}`}>
+                  {sourceInfo[a.source]?.label || a.source}
                 </span>
               </td>
               <td className="px-4 py-3 text-right font-mono">{a.balance > 0 ? `$${a.balance}` : <span className="text-emerald-600 dark:text-emerald-400">Paid</span>}</td>

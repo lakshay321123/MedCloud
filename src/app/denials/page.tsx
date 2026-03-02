@@ -8,8 +8,16 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import { ShieldAlert, FileText, AlertTriangle } from 'lucide-react'
 
 const demoDenials = [
-  { ...demoClaims.find(c => c.id === 'CLM-4504')!, source: 'claim_rejection' as const, appealLevel: 'L1' as const, denialCategory: 'Authorization' },
-  { ...demoClaims.find(c => c.id === 'CLM-4507')!, source: 'payment_posting' as const, appealLevel: null, denialCategory: 'Eligibility' },
+  (() => {
+    const base = demoClaims.find(c => c.id === 'CLM-4504')
+    if (!base) throw new Error('Demo data missing CLM-4504 — check demo-data.ts')
+    return { ...base, source: 'claim_rejection' as const, appealLevel: 'L1' as const, denialCategory: 'Authorization' }
+  })(),
+  (() => {
+    const base = demoClaims.find(c => c.id === 'CLM-4507')
+    if (!base) throw new Error('Demo data missing CLM-4507 — check demo-data.ts')
+    return { ...base, source: 'payment_posting' as const, appealLevel: null, denialCategory: 'Eligibility' }
+  })(),
   { id: 'CLM-4511', patientId: 'P-009', patientName: 'David Park', clientId: 'org-102', clientName: 'Irvine Family Practice', payer: 'UnitedHealthcare', dos: '2026-02-26', cptCodes: ['99215'], icdCodes: ['M54.5'], charges: 380, paid: 0, status: 'denied' as const, age: 4, denialReason: 'Prior auth required — not obtained', source: 'payment_posting' as const, appealLevel: null, denialCategory: 'Authorization' },
   { id: 'CLM-4515', patientId: 'P-008', patientName: 'Emily Williams', clientId: 'org-103', clientName: 'Patel Cardiology', payer: 'Medicare', dos: '2026-02-18', cptCodes: ['99214'], icdCodes: ['I50.9'], charges: 250, paid: 0, status: 'denied' as const, age: 12, denialReason: 'Expenses not covered — inactive coverage', source: 'payment_posting' as const, appealLevel: null, denialCategory: 'Eligibility' },
 ]
@@ -56,7 +64,12 @@ export default function DenialsPage() {
               <textarea className="w-full flex-1 min-h-[130px] bg-surface-elevated border border-separator rounded-lg p-2 text-xs" defaultValue={`Dear ${d.payer} Appeals Department,\n\nWe are writing to appeal claim ${d.id} for ${d.patientName}...`} />
               <button className="mt-3 bg-brand text-white rounded-btn py-2 text-sm font-medium">Submit Appeal (L1)</button>
             </>
-          })() : null}
+          })() : (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-content-secondary">
+              <ShieldAlert size={40} className="opacity-20" />
+              <p className="text-sm">Select a denial to review</p>
+            </div>
+          )}
         </div>
       </div>
     </ModuleShell>

@@ -369,6 +369,12 @@ export const demoERAFiles: DemoERAFile[] = [
   { id: 'ERA-005', file: 'NAS_REM_20260228.csv', payer: 'NAS', client: 'Dubai Wellness Clinic', clientId: 'org-104', claims: 2, total: 640, status: 'posted', exceptions: 0, receivedAt: '2026-02-28T12:00:00' },
 ]
 
+
+export const demoUnmatchedPayments = [
+  { id: 'UNM-001', payer: 'BCBS', amount: 340, reason: 'Claim # not found in system', client: 'Patel Cardiology' },
+  { id: 'UNM-002', payer: 'UHC', amount: 125, reason: 'Patient ID mismatch', client: 'Irvine Family Practice' },
+]
+
 export const demoERALineItems: EOBLineItem[] = [
   { id: 'EOB-001', eraId: 'ERA-001', claimId: 'CLM-4501', patientName: 'John Smith', patientId: 'P-001', cpt: '99214', cptDesc: 'Office visit, est. moderate', dos: '2026-02-25', billed: 250, allowed: 218, paid: 218, denied: 0, adjCode: 'CO-45', adjReason: 'Contractual adjustment', patBalance: 30, action: 'post' },
   { id: 'EOB-002', eraId: 'ERA-001', claimId: 'CLM-4501', patientName: 'John Smith', patientId: 'P-001', cpt: '93000', cptDesc: 'ECG, routine', dos: '2026-02-25', billed: 85, allowed: 62, paid: 62, denied: 0, adjCode: 'CO-45', adjReason: 'Contractual adjustment', patBalance: 0, action: 'post' },

@@ -1,11 +1,17 @@
 'use client'
-import React, { useMemo, useState } from 'react'
+import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
-import StatusBadge from '@/components/shared/StatusBadge'
 import { useApp } from '@/lib/context'
 import { demoCodingQueue, getClientName } from '@/lib/demo-data'
 import { BrainCircuit, CheckCircle2, Activity, Clock, Check, MessageCircle, Mic, FileUp, ChevronDown, ChevronUp, Play, FileText, AlertTriangle } from 'lucide-react'
+
+const priorityColor: Record<'urgent' | 'high' | 'medium' | 'low', string> = {
+  urgent: 'bg-red-500',
+  high: 'bg-amber-500',
+  medium: 'bg-brand',
+  low: 'bg-gray-400',
+}
 
 export default function CodingPage() {
   const { selectedClient } = useApp()
@@ -21,13 +27,6 @@ export default function CodingPage() {
   const superbillOnly = item?.superbillCpt?.filter(c => !aiCptCodes.includes(c)) ?? []
   const aiOnly = aiCptCodes.filter(c => !(item?.superbillCpt ?? []).includes(c))
   const allMatch = aiOnly.length === 0 && superbillOnly.length === 0
-
-  const priorityColor = useMemo(() => ({
-    urgent: 'bg-red-500',
-    high: 'bg-amber-500',
-    medium: 'bg-brand',
-    low: 'bg-gray-400',
-  }), [])
 
   const toggleCode = (key: string) => setSelectedCodes(prev => ({ ...prev, [key]: !prev[key] }))
 
@@ -48,7 +47,12 @@ export default function CodingPage() {
               {queue.map(q => (
                 <button
                   key={q.id}
-                  onClick={() => { setSelected(q.id); setTab('note') }}
+                  onClick={() => {
+                    setSelected(q.id)
+                    setTab('note')
+                    setSelectedCodes({})
+                    setExpanded({})
+                  }}
                   className={`w-full text-left p-2 rounded-btn border transition-colors ${selected === q.id ? 'bg-brand/10 border-brand/20' : 'border-transparent hover:bg-surface-elevated'}`}
                 >
                   <div className="flex items-start justify-between gap-2">
