@@ -138,7 +138,7 @@ function UsersTab() {
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Assign to Clients</label>
                 <select multiple className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary h-20">
-                  {['Gulf Medical Center','Irvine Family Practice','Patel Cardiology','Dubai Wellness Clinic'].map(c=><option key={c}>{c}</option>)}
+                  {orgs.map(o => <option key={o.name}>{o.name}</option>)}
                 </select>
               </div>
               <button onClick={()=>{toast.success('User created. Invite email sent.');setShowAdd(false)}}
@@ -168,7 +168,7 @@ function OrgsTab() {
             <th className="text-left px-4 py-3">Active Since</th><th className="text-left px-4 py-3">Status</th>
           </tr></thead>
           <tbody>{orgs.map(o=>(
-            <tr key={o.name} className="border-b border-separator last:border-0 table-row cursor-pointer">
+            <tr key={o.name} className="border-b border-separator last:border-0 table-row hover:bg-surface-elevated transition-colors">
               <td className="px-4 py-3 font-medium">{o.name}</td>
               <td className="px-4 py-3 text-xs">{o.region}</td>
               <td className="px-4 py-3 text-xs text-content-secondary">{o.ehr}</td>

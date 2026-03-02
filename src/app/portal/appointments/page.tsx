@@ -90,7 +90,11 @@ export default function AppointmentsPage() {
     noShows: demoAppointments.filter(a => a.date === '2026-03-02' && a.status === 'no_show' && (!clientFilter || a.clientId === clientFilter)).length,
   }
 
-  const missingDocs = isStaff ? demoAppointments.filter(a => a.status === 'completed' && a.date < '2026-03-01') : []
+  const missingDocs = isStaff ? demoAppointments.filter(a =>
+    a.status === 'completed' &&
+    a.date < '2026-03-01' &&
+    (!clientFilter || a.clientId === clientFilter)
+  ) : []
 
   // Assign fake eligibility for demo
   const eligMap: Record<string, keyof typeof eligibilityConfig> = {
