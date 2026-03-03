@@ -8,11 +8,26 @@ import { demoERAFiles, demoERALineItems, demoUnmatchedPayments } from '@/lib/dem
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
+import { useERAFiles } from '@/lib/hooks'
 
 export default function PaymentPostingPage() {
   const { selectedClient } = useApp()
   const { toast } = useToast()
-  const eras = demoERAFiles.filter(era => !selectedClient || era.clientId === selectedClient.id)
+  const { data: apiERAResult } = useERAFiles({ limit: 50 })
+  const demoEras = demoERAFiles.filter(era => !selectedClient || era.clientId === selectedClient.id)
+  // Map API ERA files to DemoERAFile shape for display compatibility
+  const eras = apiERAResult?.data?.map(e => ({
+    id: e.id,
+    clientId: e.client_id,
+    file: e.file_name || e.id,
+    payer: e.payer_name || '',
+    client: '',
+    claims: Number(e.claim_count) || 0,
+    total: Number(e.total_amount) || 0,
+    status: (e.status as 'new' | 'processing' | 'posted') || 'new',
+    exceptions: 0,
+    receivedAt: e.created_at || '',
+  })) || demoEras
   const [selectedEra, setSelectedEra] = useState<string | null>(null)
   const [lineItems, setLineItems] = useState(demoERALineItems)
   const [editingCell, setEditingCell] = useState<{ rowId: string; field: string } | null>(null)

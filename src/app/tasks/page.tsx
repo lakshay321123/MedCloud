@@ -5,6 +5,7 @@ import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
 import { ListChecks, X } from 'lucide-react'
+import { useTasks } from '@/lib/hooks'
 
 const initialTasks = [
   { id: 'TSK-001', type: 'Missing Docs', entity: 'John Smith — visit Feb 25', client: 'Irvine Family Practice', priority: 'medium' as const, status: 'open' as const, assigned: 'Sarah K.', due: '2026-03-03', sla: 'green' },
@@ -32,6 +33,21 @@ type Task = {
 export default function TasksPage() {
   const { toast } = useToast()
   const [selected, setSelected] = useState<Task | null>(null)
+
+  const { data: apiTaskResult } = useTasks({ limit: 50 })
+
+  const apiTasks: Task[] = apiTaskResult?.data?.map(t => ({
+    id: t.id,
+    type: t.task_type || 'Task',
+    entity: t.title || t.description || '',
+    client: '',
+    priority: (t.priority as Task['priority']) || 'medium',
+    status: (t.status as Task['status']) || 'open',
+    assigned: t.assigned_to || '',
+    due: t.due_date || '',
+    sla: 'green',
+  })) || []
+
   const [taskList, setTaskList] = useState<Task[]>(initialTasks as Task[])
   const [pendingStatus, setPendingStatus] = useState<Task['status'] | null>(null)
 
@@ -41,13 +57,15 @@ export default function TasksPage() {
 
   const slaColor = (s: string) => s === 'green' ? 'bg-emerald-500' : s === 'yellow' ? 'bg-amber-500' : 'bg-red-500'
 
+  const displayTasks = apiTasks.length > 0 ? apiTasks : taskList
+
   return (
     <ModuleShell title="Tasks & Workflows" subtitle="Track and manage work across all departments">
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Open Tasks" value={taskList.filter(t=>t.status!=='completed').length} icon={<ListChecks size={20}/>}/>
-        <KPICard label="In Progress" value={taskList.filter(t=>t.status==='in_progress').length}/>
-        <KPICard label="Blocked" value={taskList.filter(t=>t.status==='blocked').length} trend="down"/>
-        <KPICard label="SLA Breached" value={taskList.filter(t=>t.sla==='red').length} trend="down"/>
+        <KPICard label="Open Tasks" value={apiTaskResult ? (apiTaskResult.meta?.total ?? displayTasks.filter(t=>t.status!=='completed').length) : taskList.filter(t=>t.status!=='completed').length} icon={<ListChecks size={20}/>}/>
+        <KPICard label="In Progress" value={displayTasks.filter(t=>t.status==='in_progress').length}/>
+        <KPICard label="Blocked" value={displayTasks.filter(t=>t.status==='blocked').length} trend="down"/>
+        <KPICard label="SLA Breached" value={displayTasks.filter(t=>t.sla==='red').length} trend="down"/>
       </div>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
@@ -56,7 +74,7 @@ export default function TasksPage() {
             <th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">Assigned</th>
             <th className="text-left px-4 py-3">Due</th><th className="text-left px-4 py-3">Priority</th><th className="text-left px-4 py-3">Status</th>
           </tr></thead>
-          <tbody>{taskList.map(t=>(
+          <tbody>{displayTasks.map(t=>(
             <tr key={t.id}
               onClick={() => setSelected(t)}
               className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">

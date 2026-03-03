@@ -6,6 +6,24 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
 import { Plus, Search, X, Upload, ChevronDown } from 'lucide-react'
+import { usePatients } from '@/lib/hooks'
+import type { ApiPatient } from '@/lib/hooks'
+import { ErrorBanner } from '@/components/shared/ApiStates'
+
+function apiPatientToDemoPatient(p: ApiPatient): DemoPatient {
+  return {
+    id: p.id,
+    firstName: p.first_name,
+    lastName: p.last_name,
+    dob: p.dob,
+    phone: p.phone || '',
+    email: p.email,
+    insurance: p.insurance_payer ? { payer: p.insurance_payer, policyNo: '', memberId: p.insurance_member_id || '' } : undefined,
+    clientId: p.client_id,
+    status: (p.status as 'active' | 'inactive') || 'active',
+    profileComplete: p.profile_complete || 0,
+  }
+}
 
 const completenessColor = (p: number) => p >= 100 ? 'bg-emerald-500' : p >= 75 ? 'bg-cyan-500' : p >= 50 ? 'bg-amber-500' : 'bg-red-500'
 const ic = 'w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors'
@@ -447,19 +465,31 @@ export default function PatientsPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [selected, setSelected] = useState<DemoPatient | null>(null)
 
+  const { data: apiResult, loading: apiLoading, error: apiError, refetch } = usePatients(
+    search ? { search, limit: 50 } : { limit: 50 }
+  )
+
   const clientFilter = currentUser.role === 'client' || currentUser.role === 'provider' ? 'org-102' : selectedClient?.id
-  const patients = demoPatients.filter(p => {
-    if (clientFilter && p.clientId !== clientFilter) return false
-    if (search) {
-      const s = search.toLowerCase()
-      return `${p.firstName} ${p.lastName}`.toLowerCase().includes(s) || p.phone.includes(s) || p.id.toLowerCase().includes(s)
-    }
-    return true
-  })
+
+  const apiPatients = apiResult?.data
+    ? apiResult.data.map(apiPatientToDemoPatient)
+    : null
+
+  const patients: DemoPatient[] = apiPatients
+    ? (clientFilter ? apiPatients.filter(p => p.clientId === clientFilter) : apiPatients)
+    : demoPatients.filter(p => {
+        if (clientFilter && p.clientId !== clientFilter) return false
+        if (search) {
+          const s = search.toLowerCase()
+          return `${p.firstName} ${p.lastName}`.toLowerCase().includes(s) || p.phone.includes(s) || p.id.toLowerCase().includes(s)
+        }
+        return true
+      })
 
   return (
     <ModuleShell title="Patients" subtitle="Manage patient records"
       actions={<button onClick={() => setShowAdd(true)} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep"><Plus size={16}/>Add Patient</button>}>
+      {apiError && <ErrorBanner error={apiError} onRetry={refetch} />}
       <div className="mb-4 relative max-w-sm">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary"/>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, phone, ID..."
@@ -468,14 +498,16 @@ export default function PatientsPage() {
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead><tr className="border-b border-separator text-xs text-content-secondary">
-            <th className="text-left px-4 py-3">Patient</th>
+            <th className="text-left px-4 py-3">Patient {apiResult ? <span className="text-brand font-normal">(live)</span> : null}</th>
             <th className="text-left px-4 py-3">DOB</th>
             <th className="text-left px-4 py-3">Phone</th>
             <th className="text-left px-4 py-3">Insurance</th>
             <th className="text-left px-4 py-3">Profile</th>
             <th className="text-left px-4 py-3">Status</th>
           </tr></thead>
-          <tbody>{patients.map(p => (
+          <tbody>{apiLoading ? (
+            <tr><td colSpan={6} className="px-4 py-8 text-center text-xs text-content-tertiary">Loading patients…</td></tr>
+          ) : patients.map(p => (
             <tr key={p.id} onClick={() => setSelected(p)} className="border-b border-separator last:border-0 table-row cursor-pointer transition-all">
               <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full bg-brand/10 flex items-center justify-center text-brand text-[10px] font-bold">{p.firstName[0]}{p.lastName[0]}</div><div><div className="font-medium">{p.firstName} {p.lastName}</div><div className="text-[10px] text-content-secondary">{p.id}</div></div></div></td>
               <td className="px-4 py-3 text-content-secondary">{p.dob || '—'}</td>
@@ -484,7 +516,8 @@ export default function PatientsPage() {
               <td className="px-4 py-3"><div className="flex items-center gap-1.5"><div className="w-12 h-1.5 rounded-full bg-surface-elevated"><div className={`h-full rounded-full ${completenessColor(p.profileComplete)}`} style={{ width: `${p.profileComplete}%` }}/></div><span className="text-[10px] text-content-secondary">{p.profileComplete}%</span></div></td>
               <td className="px-4 py-3"><StatusBadge status={p.status} small/></td>
             </tr>
-          ))}</tbody>
+          ))
+          }</tbody>
         </table>
       </div>
       {showAdd && <AddPatientModal onClose={() => setShowAdd(false)}/>}

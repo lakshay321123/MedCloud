@@ -6,6 +6,7 @@ import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 import { demoClients, demoPatients } from '@/lib/demo-data'
 import { ShieldCheck, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { useEligibilityChecks } from '@/lib/hooks'
 
 const demoChecks = [
   { id: 'ELG-001', patient: 'John Smith', client: 'Irvine Family Practice', payer: 'UnitedHealthcare', status: 'active', network: 'In-Network', copay: '$30', deductible: '$450 remaining', priorAuth: 'No', dos: '2026-03-02' },
@@ -19,6 +20,7 @@ const demoChecks = [
 export default function EligibilityPage() {
   const { country } = useApp()
   const { toast } = useToast()
+  const { data: apiEligResult } = useEligibilityChecks({ limit: 20 })
   const [tab, setTab] = useState<'single' | 'batch'>('single')
   const [selectedClientId, setSelectedClientId] = useState(demoClients[0].id)
   const [selectedPatientId, setSelectedPatientId] = useState('')
@@ -53,13 +55,34 @@ export default function EligibilityPage() {
     }, 2200)
   }
 
+  const eligChecks = apiEligResult?.data
+    ? apiEligResult.data.map(e => ({
+        id: e.id,
+        patientName: e.patient_name || '',
+        status: e.status || '',
+        priorAuthRequired: e.prior_auth_required || false,
+      }))
+    : demoChecks.map(c => ({
+        id: c.id,
+        patientName: c.patient,
+        status: c.status,
+        priorAuthRequired: c.priorAuth.startsWith('Yes'),
+      }))
+
+  const eligStats = {
+    total: apiEligResult?.meta?.total ?? demoChecks.length,
+    active: eligChecks.filter(e => e.status === 'active').length,
+    issues: eligChecks.filter(e => e.status !== 'active').length,
+    priorAuth: eligChecks.filter(e => e.priorAuthRequired).length,
+  }
+
   return (
     <ModuleShell title="Eligibility Verification" subtitle="Check insurance coverage and benefits">
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Checks Today" value="34" icon={<ShieldCheck size={20} />} />
-        <KPICard label="Active" value="31" sub="91%" trend="up" />
-        <KPICard label="Inactive/Issues" value="3" trend="down" />
-        <KPICard label="Prior Auth Required" value="5" />
+        <KPICard label="Checks Today" value={eligStats.total} icon={<ShieldCheck size={20} />} />
+        <KPICard label="Active" value={eligStats.active} sub={`${eligStats.total > 0 ? Math.round(eligStats.active / eligStats.total * 100) : 0}%`} trend="up" />
+        <KPICard label="Inactive/Issues" value={eligStats.issues} trend="down" />
+        <KPICard label="Prior Auth Required" value={eligStats.priorAuth} />
       </div>
 
       <div className="flex gap-2 mb-4">

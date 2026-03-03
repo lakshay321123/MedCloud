@@ -6,6 +6,7 @@ import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 import { demoCodingQueue, demoPriorVisitHistory, getClientName } from '@/lib/demo-data'
 import { getSLAStatus } from '@/lib/utils/time'
+import { useCodingQueue } from '@/lib/hooks'
 import {
   BrainCircuit, CheckCircle2, Activity, Clock, MessageCircle, Mic, FileUp,
   ChevronDown, ChevronUp, Play, FileText, AlertTriangle, Plus, PauseCircle
@@ -149,6 +150,7 @@ export default function CodingPage() {
   const { selectedClient, currentUser, country } = useApp()
   const [reassignTarget, setReassignTarget] = useState<string | null>(null)
   const { toast } = useToast()
+  const { data: apiQueueResult } = useCodingQueue({ status: 'pending', limit: 100 })
 
   const coders = [
     { id: 'demo-002', name: 'Sarah Kim' },
@@ -259,7 +261,7 @@ export default function CodingPage() {
   return (
     <ModuleShell title="AI Coding" subtitle="Review and approve AI-suggested codes">
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="My Queue" value={queue.length} icon={<BrainCircuit size={20} />} />
+        <KPICard label="My Queue" value={apiQueueResult?.meta?.total ?? queue.length} icon={<BrainCircuit size={20} />} />
         <KPICard label="Coded Today" value="4" icon={<CheckCircle2 size={20} />} />
         <KPICard label="AI Acceptance" value="89%" icon={<Activity size={20} />} />
         <KPICard label="Avg Time/Chart" value="6.2m" icon={<Clock size={20} />} />
