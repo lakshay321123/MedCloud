@@ -17,18 +17,18 @@ export const modules: ModuleConfig[] = [
 
   // AI & AUTOMATION
   { id: 'voice', label: 'Voice AI', icon: 'Phone', path: '/voice-ai', section: 'ai', roles: ['admin', 'director', 'supervisor', 'manager', 'ar_team'] },
-  { id: 'scribe', label: 'AI Scribe', icon: 'Mic', path: '/ai-scribe', section: 'ai', roles: ['admin', 'director', 'supervisor', 'manager', 'coder', 'provider'] },
+  { id: 'scribe', label: 'AI Scribe', icon: 'Mic', path: '/ai-scribe', section: 'ai', roles: ['admin', 'director', 'supervisor', 'manager', 'provider'] },
   { id: 'tasks', label: 'Tasks & Workflows', icon: 'ListChecks', path: '/tasks', section: 'ai', roles: staffRoles },
 
   // MANAGEMENT — 'client' added so front-office (facility) can see Documents
   { id: 'documents', label: 'Documents', icon: 'FolderOpen', path: '/documents', section: 'management', roles: [...staffRoles, 'provider', 'client'] },
   { id: 'credentialing', label: 'Credentialing', icon: 'BadgeCheck', path: '/credentialing', section: 'management', roles: leaderRoles },
   { id: 'analytics', label: 'Analytics', icon: 'BarChart3', path: '/analytics', section: 'management', roles: leaderRoles },
-  { id: 'admin', label: 'Admin & Settings', icon: 'Settings', path: '/admin', section: 'system', roles: ['admin'] },
+  { id: 'admin', label: 'Admin & Settings', icon: 'Settings', path: '/admin', section: 'system', roles: ['admin', 'director'] },
   { id: 'integrations', label: 'Integration Hub', icon: 'Plug', path: '/integrations', section: 'system', roles: ['admin', 'director'] },
 
   // CLIENT PORTAL
-  { id: 'appointments', label: 'Appointments', icon: 'CalendarDays', path: '/portal/appointments', section: 'portal', roles: [...staffRoles, 'client', 'provider'] },
+  { id: 'appointments', label: 'Appointments', icon: 'CalendarDays', path: '/portal/appointments', section: 'portal', roles: ['admin', 'director', 'supervisor', 'manager', 'biller', 'client', 'provider'] },
   { id: 'scan', label: 'Scan & Submit', icon: 'ScanLine', path: '/portal/scan-submit', section: 'portal', roles: ['client'] },
   { id: 'watch', label: 'Watch & Track', icon: 'Eye', path: '/portal/watch-track', section: 'portal', roles: ['client'] },
   { id: 'messages', label: 'Messages', icon: 'MessageCircle', path: '/portal/messages', section: 'portal', roles: allRoles },

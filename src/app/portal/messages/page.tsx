@@ -6,6 +6,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
 import { MessageCircle, Send, Paperclip, User, FileText, Calendar, ClipboardList, Building2 } from 'lucide-react'
+import { useAbuseFilter, handleAbuseViolation } from '@/lib/utils/abuse-filter'
 
 const entityIcons: Record<string, React.ReactNode> = {
   patient: <User size={14}/>, claim: <FileText size={14}/>, submission: <ClipboardList size={14}/>,
@@ -15,6 +16,7 @@ const entityIcons: Record<string, React.ReactNode> = {
 export default function MessagesPage() {
   const { currentUser, selectedClient } = useApp()
   const { toast } = useToast()
+  const { getError } = useAbuseFilter()
   const [localThreads, setLocalThreads] = useState(demoMessages)
   const [selected, setSelected] = useState<DemoMessage | null>(demoMessages[0])
   const [filter, setFilter] = useState('')
@@ -30,6 +32,12 @@ export default function MessagesPage() {
 
   const handleSend = () => {
     if (!reply.trim() || !selected) return
+    const abuseError = getError(reply)
+    if (abuseError) {
+      toast.error(abuseError)
+      handleAbuseViolation(currentUser.username || 'unknown')
+      return
+    }
     const newMsg = {
       id: `msg-${Date.now()}`,
       sender: 'You',

@@ -2,59 +2,63 @@
 import React from 'react'
 import { useApp } from '@/lib/context'
 import KPICard from '@/components/shared/KPICard'
-import { DollarSign, FileText, AlertTriangle, Clock, TrendingUp, Users, Phone, BrainCircuit, CalendarDays, ListChecks, Mic, Activity, ArrowRight, Upload, Eye, MessageCircle } from 'lucide-react'
 import StatusBadge from '@/components/shared/StatusBadge'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import {
+  DollarSign, FileText, AlertTriangle, Clock, TrendingUp, Users, Phone,
+  BrainCircuit, CalendarDays, Mic, Activity, Eye, MessageCircle,
+  CheckCircle2, ShieldAlert, Receipt, ScanLine, Send, ShieldCheck, XCircle
+} from 'lucide-react'
+import {
+  demoCodingQueue, demoClaims, demoARAccounts, demoDenialsData, demoAppointments
+} from '@/lib/demo-data'
 
-function ProgressRing({ percent, size = 48, stroke = 4, color = '#00B5D6' }: { percent: number; size?: number; stroke?: number; color?: string }) {
-  const r = (size - stroke) / 2
-  const circ = 2 * Math.PI * r
-  const offset = circ - (percent / 100) * circ
+// ── Shared helpers ────────────────────────────────────────────────────────────
+function QuickLinkCard({ title, subtitle, href, icon }: { title: string; subtitle: string; href: string; icon: React.ReactNode }) {
   return (
-    <svg width={size} height={size} className="rotate-[-90deg]">
-      <circle cx={size/2} cy={size/2} r={r} fill="none" strokeWidth={stroke} className="ring-track" />
-      <circle cx={size/2} cy={size/2} r={r} fill="none" strokeWidth={stroke} stroke={color} strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" className="transition-all duration-700" />
-    </svg>
+    <a href={href} className="block bg-surface-elevated border border-separator rounded-xl p-4 hover:border-brand/40 hover:bg-brand/5 transition-all group">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-lg bg-brand/10 flex items-center justify-center text-brand group-hover:bg-brand group-hover:text-white transition-colors">
+          {icon}
+        </div>
+        <div>
+          <p className="text-[13px] font-semibold text-content-primary">{title}</p>
+          <p className="text-[12px] text-content-secondary">{subtitle}</p>
+        </div>
+      </div>
+    </a>
   )
 }
 
-function MiniBar({ values, colors }: { values: number[]; colors: string[] }) {
-  const max = Math.max(...values)
-  return (
-    <div className="flex items-end gap-1.5 h-16">{values.map((v, i) => (
-      <div key={i} className="flex-1 rounded-t-sm transition-all duration-500" style={{ height: `${(v / max) * 100}%`, background: colors[i] || '#00B5D6' }} />
-    ))}</div>
-  )
-}
-
+// ── Executive (Admin/Director/Manager) Dashboard ──────────────────────────────
 function ExecutiveDashboard() {
   const router = useRouter()
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-4 gap-5">
-        <KPICard label="Total Revenue (MTD)" value="$2.4M" sub="+8.2% vs last month" trend="up" icon={<DollarSign size={20}/>} />
-        <KPICard label="Claims Submitted" value="3,847" sub="+124 today" trend="up" icon={<FileText size={20}/>} />
-        <KPICard label="Denial Rate" value="4.2%" sub="-0.3% vs last month" trend="down" icon={<AlertTriangle size={20}/>} />
-        <KPICard label="Avg Days in A/R" value="28.5" sub="-2.1 days" trend="down" icon={<Clock size={20}/>} />
+        <KPICard label="Total Revenue (MTD)" value="$2.4M" sub="+8.2% vs last month" trend="up" icon={<DollarSign size={20} />} />
+        <KPICard label="Claims Submitted" value="3,847" sub="+124 today" trend="up" icon={<FileText size={20} />} />
+        <KPICard label="Denial Rate" value="4.2%" sub="-0.3% vs last month" trend="down" icon={<AlertTriangle size={20} />} />
+        <KPICard label="Avg Days in A/R" value="28.5" sub="-2.1 days" trend="down" icon={<Clock size={20} />} />
       </div>
       <div className="grid grid-cols-4 gap-5">
-        <KPICard label="Collection Rate" value="96.8%" sub="+0.4%" trend="up" icon={<TrendingUp size={20}/>} />
-        <KPICard label="Active Patients" value="12,450" icon={<Users size={20}/>} />
-        <KPICard label="AI Calls Today" value="127" icon={<Phone size={20}/>} />
-        <KPICard label="AI Coding Accuracy" value="94.2%" icon={<BrainCircuit size={20}/>} />
+        <KPICard label="Collection Rate" value="96.8%" sub="+0.4%" trend="up" icon={<TrendingUp size={20} />} />
+        <KPICard label="Active Patients" value="12,450" icon={<Users size={20} />} />
+        <KPICard label="AI Calls Today" value="127" icon={<Phone size={20} />} />
+        <KPICard label="AI Coding Accuracy" value="94.2%" icon={<BrainCircuit size={20} />} />
       </div>
       <div className="grid grid-cols-5 gap-5">
         <div className="col-span-3 card p-6">
           <h3 className="text-[15px] font-semibold text-content-primary mb-4">Revenue Trend</h3>
           <div className="flex items-end gap-3 h-40 px-2">
-            {[1.8,2.0,2.1,2.2,2.3,2.4].map((v,i) => (
+            {[1.8, 2.0, 2.1, 2.2, 2.3, 2.4].map((v, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-2">
                 <span className="text-[11px] font-medium text-content-secondary">${v}M</span>
-                <div className="w-full rounded-lg relative overflow-hidden" style={{height:`${(v/2.5)*140}px`}}>
+                <div className="w-full rounded-lg relative overflow-hidden" style={{ height: `${(v / 2.5) * 140}px` }}>
                   <div className="absolute inset-0 bg-gradient-to-t from-brand-dark to-brand rounded-lg" />
                 </div>
-                <span className="text-[11px] text-content-tertiary">{['Oct','Nov','Dec','Jan','Feb','Mar'][i]}</span>
+                <span className="text-[11px] text-content-tertiary">{['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'][i]}</span>
               </div>
             ))}
           </div>
@@ -82,182 +86,327 @@ function ExecutiveDashboard() {
   )
 }
 
-function ProviderDashboard() {
-  const router = useRouter()
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-4 gap-5">
-        <KPICard label="Today's Patients" value="14" icon={<Users size={20}/>} />
-        <KPICard label="Pending Sign-offs" value="3" icon={<Mic size={20}/>} />
-        <KPICard label="Seen Today" value="5" icon={<CalendarDays size={20}/>} />
-        <KPICard label="Clinical Alerts" value="1" sub="drug interaction" icon={<AlertTriangle size={20}/>} />
-      </div>
-      <div className="grid grid-cols-5 gap-5">
-        <div className="col-span-3 card p-6">
-          <h3 className="text-[15px] font-semibold text-content-primary mb-4">Today's Schedule</h3>
-          <div className="space-y-3">
-            {[
-              { time: '9:00', patient: 'John Smith', type: 'Follow-up', status: 'completed' },
-              { time: '9:30', patient: 'Sarah Johnson', type: 'Consultation', status: 'checked_in' },
-              { time: '10:00', patient: 'Ahmed Al Mansouri', type: 'Follow-up', status: 'confirmed' },
-              { time: '10:30', patient: 'Maria Garcia', type: 'New Patient', status: 'booked' },
-            ].map((a, i) => (
-              <div key={i} className="flex items-center gap-4 py-2.5 border-b border-separator last:border-0">
-                <span className="text-[14px] font-mono text-content-secondary w-12">{a.time}</span>
-                <span className="text-[14px] font-medium text-content-primary flex-1">{a.patient}</span>
-                <span className="text-[13px] text-content-secondary">{a.type}</span>
-                <StatusBadge status={a.status} small />
-                {a.status === 'checked_in' && (
-                  <button onClick={() => router.push('/ai-scribe')}
-                    className="text-[11px] bg-brand text-white px-2.5 py-1 rounded-btn hover:bg-brand-deep transition-colors">
-                    Start
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="col-span-2 card p-6">
-          <h3 className="text-[15px] font-semibold text-content-primary mb-4">Pending Sign-offs</h3>
-          <div className="space-y-3">
-            {[
-              { patient: 'Robert Chen', date: '2026-03-01', type: 'Follow-up' },
-              { patient: 'Ahmed Al Mansouri', date: '2026-03-01', type: 'Follow-up' },
-              { patient: 'John Smith', date: '2026-03-02', type: 'Post-op' },
-            ].map((n, i) => (
-              <div key={i} className="flex items-center justify-between py-2.5 border-b border-separator last:border-0">
-                <div>
-                  <div className="text-[14px] font-medium text-content-primary">{n.patient}</div>
-                  <div className="text-[12px] text-content-tertiary">{n.date} · {n.type}</div>
-                </div>
-                <StatusBadge status="pending_signoff" small />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ClientDashboard() {
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-4 gap-5">
-        <KPICard label="Claims This Month" value="342" icon={<FileText size={20}/>} />
-        <KPICard label="Pending Claims" value="28" icon={<Clock size={20}/>} />
-        <KPICard label="Denial Rate" value="3.8%" sub="-0.5%" trend="down" icon={<AlertTriangle size={20}/>} />
-        <KPICard label="Avg Days to Payment" value="22" sub="-3 days" trend="down" icon={<DollarSign size={20}/>} />
-      </div>
-      <div className="grid grid-cols-5 gap-5">
-        <div className="col-span-3 card p-6">
-          <h3 className="text-[15px] font-semibold text-content-primary mb-4">Today's Appointments</h3>
-          <div className="space-y-3">
-            {[
-              { time: '9:00', patient: 'John Smith', status: 'completed' },
-              { time: '9:30', patient: 'Sarah Johnson', status: 'checked_in' },
-              { time: '10:30', patient: 'Maria Garcia', status: 'booked' },
-            ].map((a, i) => (
-              <div key={i} className="flex items-center gap-4 py-2.5 border-b border-separator last:border-0">
-                <span className="text-[14px] font-mono text-content-secondary w-12">{a.time}</span>
-                <span className="text-[14px] font-medium text-content-primary flex-1">{a.patient}</span>
-                <StatusBadge status={a.status} small />
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="col-span-2 card p-6">
-          <h3 className="text-[15px] font-semibold text-content-primary mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: 'Upload Documents', icon: Upload, href: '/portal/scan-submit' },
-              { label: 'Track Claims', icon: Eye, href: '/portal/watch-track' },
-              { label: 'View Schedule', icon: CalendarDays, href: '/portal/appointments' },
-              { label: 'Messages', icon: MessageCircle, href: '/portal/messages' },
-            ].map(a => (
-              <Link key={a.label} href={a.href} className="card flex flex-col items-center justify-center py-4 gap-2 hover:bg-surface-elevated transition-colors">
-                <a.icon size={20} className="text-brand" />
-                <span className="text-[12px] font-medium text-content-secondary">{a.label}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function SupervisorDashboard() {
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-4 gap-5">
-        <KPICard label="Team Productivity" value="94%" sub="+2%" trend="up" icon={<TrendingUp size={20}/>} />
-        <KPICard label="Open Tasks" value="247" icon={<ListChecks size={20}/>} />
-        <KPICard label="Claims in Queue" value="182" icon={<FileText size={20}/>} />
-        <KPICard label="Escalations" value="8" sub="3 urgent" icon={<AlertTriangle size={20}/>} />
-      </div>
-      <div className="grid grid-cols-2 gap-5">
-        <div className="card p-6">
-          <h3 className="text-[15px] font-semibold text-content-primary mb-4">Team Workload</h3>
-          <div className="space-y-4">{[
-            { team: 'Coding', pct: 85, color: '#00B5D6' }, { team: 'Billing', pct: 72, color: '#069DB8' },
-            { team: 'A/R', pct: 91, color: '#047285' }, { team: 'Posting', pct: 65, color: '#36C2DE' },
-          ].map(t => (
-            <div key={t.team}>
-              <div className="flex justify-between text-[13px] mb-1.5"><span className="font-medium text-content-primary">{t.team}</span><span className="text-content-secondary">{t.pct}%</span></div>
-              <div className="h-2 bg-surface-elevated rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-700" style={{ width: `${t.pct}%`, background: t.color }} /></div>
-            </div>
-          ))}</div>
-        </div>
-        <div className="card p-6">
-          <h3 className="text-[15px] font-semibold text-content-primary mb-4">Pending Escalations</h3>
-          <div className="space-y-3">{[
-            { issue: 'Aetna denial pattern — 3 claims same reason', pri: 'urgent' },
-            { issue: 'ERA mismatch — UHC file #2301', pri: 'high' },
-            { issue: 'Patient complaint — billing dispute', pri: 'medium' },
-          ].map((e, i) => (
-            <div key={i} className="flex items-center gap-3 py-2.5 border-b border-separator last:border-0">
-              <StatusBadge status={e.pri} small />
-              <span className="text-[13px] text-content-primary">{e.issue}</span>
-            </div>
-          ))}</div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
+// ── Coder Dashboard ───────────────────────────────────────────────────────────
 function CoderDashboard() {
+  const pendingCharts = demoCodingQueue.filter(q => q.status === 'pending').length
+  const pastSLA = demoCodingQueue.filter(q => {
+    const hours = (Date.now() - new Date(q.receivedAt).getTime()) / (1000 * 60 * 60)
+    return hours > 24
+  }).length
+  const queryPending = demoCodingQueue.filter(q => q.status === 'query_sent').length
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-4 gap-5">
-        <KPICard label="My Queue" value="23" icon={<FileText size={20}/>} />
-        <KPICard label="Coded Today" value="47" sub="+12" trend="up" icon={<BrainCircuit size={20}/>} />
-        <KPICard label="AI Suggestions Used" value="89%" icon={<Activity size={20}/>} />
-        <KPICard label="Accuracy Rate" value="97.1%" icon={<TrendingUp size={20}/>} />
+      <div>
+        <h1 className="text-xl font-bold text-content-primary">My Coding Queue</h1>
+        <p className="text-sm text-content-secondary">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
       </div>
-      <div className="card p-6">
-        <h3 className="text-[15px] font-semibold text-content-primary mb-4">My Stats</h3>
-        <div className="grid grid-cols-4 gap-6">{[
-          { label: 'Charts Coded MTD', value: '234' }, { label: 'Avg Time/Chart', value: '6.2 min' },
-          { label: 'AI Override Rate', value: '11%' }, { label: 'Auditor Returns', value: '2' },
-        ].map(s => (
-          <div key={s.label} className="text-center">
-            <div className="text-[28px] font-bold text-content-primary">{s.value}</div>
-            <div className="text-[12px] text-content-secondary mt-1">{s.label}</div>
+      <div className="grid grid-cols-4 gap-4">
+        <KPICard label="Charts Waiting" value={pendingCharts} icon={<BrainCircuit size={20} />} />
+        <KPICard label="Past 24h SLA" value={pastSLA} icon={<Clock size={20} />} />
+        <KPICard label="Queries Pending" value={queryPending} icon={<MessageCircle size={20} />} />
+        <KPICard label="Coded Today" value={4} icon={<CheckCircle2 size={20} />} trend="up" />
+      </div>
+      {pastSLA > 0 && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-red-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-[13px] font-semibold text-red-600">{pastSLA} chart{pastSLA > 1 ? 's' : ''} past 24-hour SLA</p>
+            <p className="text-[12px] text-content-secondary mt-0.5">These charts were received more than 24 hours ago and must be coded immediately.</p>
           </div>
-        ))}</div>
+          <a href="/coding" className="ml-auto text-[12px] text-brand font-medium shrink-0">Go to Queue →</a>
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-4">
+        <QuickLinkCard title="Open Coding Queue" subtitle={`${pendingCharts} charts waiting`} href="/coding" icon={<BrainCircuit size={18} />} />
+        <QuickLinkCard title="Doctor Queries" subtitle={`${queryPending} awaiting response`} href="/portal/messages" icon={<MessageCircle size={18} />} />
       </div>
     </div>
   )
 }
 
+// ── Biller Dashboard ──────────────────────────────────────────────────────────
+function BillerDashboard() {
+  const scrubFailed = demoClaims.filter(c => c.status === 'scrub_failed').length
+  const pendingSubmit = demoClaims.filter(c => c.status === 'ready').length
+  const rejectedYesterday = demoClaims.filter(c => c.status === 'rejected' || c.status === 'denied').length
+  const chargeLagCount = 3
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-bold text-content-primary">Claims Dashboard</h1>
+        <p className="text-sm text-content-secondary">Your daily billing summary</p>
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        <KPICard label="Scrub Errors" value={scrubFailed} icon={<AlertTriangle size={20} />} />
+        <KPICard label="Ready to Submit" value={pendingSubmit} icon={<Send size={20} />} />
+        <KPICard label="Denied" value={rejectedYesterday} icon={<XCircle size={20} />} />
+        <KPICard label="Charge Lag Alerts" value={chargeLagCount} icon={<Clock size={20} />} />
+      </div>
+      {scrubFailed > 0 && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={16} className="text-red-500 mt-0.5" />
+            <div>
+              <p className="text-[13px] font-semibold text-red-600">{scrubFailed} claims need scrub error resolution</p>
+              <p className="text-[12px] text-content-secondary mt-0.5">Fix scrub errors before these claims can be submitted to the clearinghouse.</p>
+            </div>
+          </div>
+          <a href="/claims" className="text-[12px] text-brand font-medium shrink-0">Fix Now →</a>
+        </div>
+      )}
+      {chargeLagCount > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p className="text-[13px] font-semibold text-amber-600">{chargeLagCount} appointments completed 48h+ with no claim</p>
+            <p className="text-[12px] text-content-secondary">Mar 1 — Dr. Martinez × 2, Dr. Patel × 1</p>
+          </div>
+          <a href="/portal/appointments" className="text-[12px] text-brand font-medium shrink-0">Review →</a>
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-4">
+        <QuickLinkCard title="Claims Center" subtitle={`${pendingSubmit} ready to submit`} href="/claims" icon={<FileText size={18} />} />
+        <QuickLinkCard title="Check Eligibility" subtitle="Verify before submission" href="/eligibility" icon={<ShieldCheck size={18} />} />
+      </div>
+    </div>
+  )
+}
+
+// ── AR Team Dashboard ─────────────────────────────────────────────────────────
+function ARDashboard() {
+  const overdueAccounts = demoARAccounts.filter(a => a.age > 60).length
+  const denialsPending = demoDenialsData.filter(d => d.status === 'denied' && !d.appealLevel).length
+  const appealsNearDeadline = 2
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-bold text-content-primary">A/R Dashboard</h1>
+        <p className="text-sm text-content-secondary">Your accounts receivable summary</p>
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        <KPICard label="Overdue (60+ days)" value={overdueAccounts} icon={<TrendingUp size={20} />} />
+        <KPICard label="Unworked Denials" value={denialsPending} icon={<ShieldAlert size={20} />} />
+        <KPICard label="Appeals Near Deadline" value={appealsNearDeadline} icon={<Clock size={20} />} />
+        <KPICard label="Accounts Worked Today" value={12} icon={<CheckCircle2 size={20} />} />
+      </div>
+      {appealsNearDeadline > 0 && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={16} className="text-red-500 mt-0.5" />
+            <div>
+              <p className="text-[13px] font-semibold text-red-600">{appealsNearDeadline} appeal response windows closing in &lt; 5 days</p>
+              <p className="text-[12px] text-content-secondary">Follow up now or escalate to Level 2 before the window closes.</p>
+            </div>
+          </div>
+          <a href="/denials" className="text-[12px] text-brand font-medium">Review Appeals →</a>
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-4">
+        <QuickLinkCard title="A/R Management" subtitle={`${overdueAccounts} accounts overdue`} href="/ar-management" icon={<TrendingUp size={18} />} />
+        <QuickLinkCard title="Denials & Appeals" subtitle={`${denialsPending} need attention`} href="/denials" icon={<ShieldAlert size={18} />} />
+      </div>
+    </div>
+  )
+}
+
+// ── Posting Team Dashboard ────────────────────────────────────────────────────
+function PostingDashboard() {
+  const unpostedERAs = 2
+  const manualReviewLines = 8
+  const pastSLAERAs = 1
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-bold text-content-primary">Payment Posting</h1>
+        <p className="text-sm text-content-secondary">Today&apos;s posting summary</p>
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        <KPICard label="ERAs to Post" value={unpostedERAs} icon={<Receipt size={20} />} />
+        <KPICard label="Manual Review Lines" value={manualReviewLines} icon={<AlertTriangle size={20} />} />
+        <KPICard label="Past 48h SLA" value={pastSLAERAs} icon={<Clock size={20} />} />
+        <KPICard label="Posted Today" value={24} icon={<CheckCircle2 size={20} />} />
+      </div>
+      {pastSLAERAs > 0 && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between">
+          <p className="text-[13px] font-semibold text-red-600">{pastSLAERAs} ERA past 48-hour posting SLA — requires immediate action</p>
+          <a href="/payment-posting" className="text-[12px] text-brand font-medium">Post Now →</a>
+        </div>
+      )}
+      <QuickLinkCard title="Payment Posting" subtitle={`${unpostedERAs} ERAs waiting`} href="/payment-posting" icon={<Receipt size={18} />} />
+    </div>
+  )
+}
+
+// ── Provider Dashboard ────────────────────────────────────────────────────────
+function ProviderDashboard() {
+  const todayDate = new Date().toISOString().split('T')[0]
+  const todayAppointments = demoAppointments.filter(a => a.date === todayDate)
+  const pendingSignOffs = demoCodingQueue.filter(q => q.status === 'pending' && q.source === 'ai_scribe').length
+  const unsignedNotes = demoCodingQueue.filter(q => {
+    const hours = (Date.now() - new Date(q.receivedAt).getTime()) / (1000 * 60 * 60)
+    return hours > 24 && q.source === 'ai_scribe'
+  }).length
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-bold text-content-primary">Good morning, Dr.</h1>
+        <p className="text-sm text-content-secondary">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <KPICard label="Today&apos;s Appointments" value={todayAppointments.length} icon={<CalendarDays size={20} />} />
+        <KPICard label="Pending Sign-Offs" value={pendingSignOffs} icon={<FileText size={20} />} />
+        <KPICard label="Unsigned > 24h" value={unsignedNotes} icon={<Clock size={20} />} />
+      </div>
+      {unsignedNotes > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center justify-between">
+          <p className="text-[13px] font-semibold text-amber-600">{unsignedNotes} note{unsignedNotes > 1 ? 's' : ''} unsigned for more than 24 hours</p>
+          <a href="/ai-scribe" className="text-[12px] text-brand font-medium">Sign Now →</a>
+        </div>
+      )}
+      <div>
+        <h2 className="text-[13px] font-semibold text-content-primary mb-2">Today&apos;s Schedule</h2>
+        <div className="space-y-2">
+          {todayAppointments.slice(0, 4).map(apt => (
+            <div key={apt.id} className="flex items-center justify-between p-3 bg-surface-elevated rounded-lg border border-separator">
+              <div>
+                <p className="text-[13px] font-medium text-content-primary">{apt.patientName}</p>
+                <p className="text-[12px] text-content-secondary">{apt.time} · {apt.type} · {apt.duration} min</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <StatusBadge status={apt.status} small />
+                <a href="/ai-scribe" className="text-[12px] text-brand font-medium">Start Visit →</a>
+              </div>
+            </div>
+          ))}
+          {todayAppointments.length === 0 && (
+            <p className="text-[13px] text-content-tertiary text-center py-4">No appointments scheduled for today</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Client Dashboard ──────────────────────────────────────────────────────────
+function ClientDashboard() {
+  const { selectedClient } = useApp()
+  const mtdCollections = 84200
+  const denialRate = 8.3
+  const actionNeeded = demoClaims.filter(c => c.status === 'denied' || c.status === 'scrub_failed').length
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-content-primary">{selectedClient?.name || 'My Practice'}</h1>
+          <p className="text-sm text-content-secondary">Revenue cycle summary · March 2026</p>
+        </div>
+        {actionNeeded > 0 && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 flex items-center gap-2">
+            <AlertTriangle size={14} className="text-red-500" />
+            <span className="text-[13px] text-red-600 font-semibold">{actionNeeded} items need your attention</span>
+          </div>
+        )}
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-surface-elevated rounded-xl p-5 border border-separator">
+          <p className="text-[12px] text-content-secondary mb-1">MTD Collections</p>
+          <p className="text-3xl font-bold text-content-primary">${mtdCollections.toLocaleString()}</p>
+          <p className="text-[12px] text-emerald-500 mt-1">↑ 12% vs last month</p>
+        </div>
+        <KPICard label="Denial Rate" value={`${denialRate}%`} icon={<ShieldAlert size={20} />} />
+        <KPICard label="Days in A/R" value={28} icon={<TrendingUp size={20} />} />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <QuickLinkCard title="My Claims" subtitle="View all claim statuses" href="/portal/watch-track" icon={<Eye size={18} />} />
+        <QuickLinkCard title="Submit Documents" subtitle="Upload records & superbills" href="/portal/scan-submit" icon={<ScanLine size={18} />} />
+      </div>
+    </div>
+  )
+}
+
+// ── Supervisor Exception Dashboard ────────────────────────────────────────────
+function SupervisorDashboard() {
+  const chartsPastSLA = demoCodingQueue.filter(q => {
+    const hours = (Date.now() - new Date(q.receivedAt).getTime()) / (1000 * 60 * 60)
+    return hours > 24
+  }).length
+  const scrubErrors = demoClaims.filter(c => c.status === 'scrub_failed').length
+  const unassignedDenials = demoDenialsData.filter(d => d.status === 'denied' && !d.appealLevel).length
+  const unpostedERAs = 2
+
+  const exceptions = [
+    { count: chartsPastSLA, label: 'Charts past 24h coding SLA', href: '/coding', color: 'red' },
+    { count: scrubErrors, label: 'Claims with unresolved scrub errors', href: '/claims', color: 'red' },
+    { count: unassignedDenials, label: 'Denials received — unassigned', href: '/denials', color: 'amber' },
+    { count: unpostedERAs, label: 'ERAs unposted > 36h', href: '/payment-posting', color: 'amber' },
+    { count: 2, label: 'Appeal response windows closing < 5 days', href: '/denials', color: 'amber' },
+  ].filter(e => e.count > 0)
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-bold text-content-primary">Exception Queue</h1>
+        <p className="text-sm text-content-secondary">Everything that needs your attention right now</p>
+      </div>
+      {exceptions.length === 0 ? (
+        <div className="text-center py-12 text-content-tertiary">
+          <CheckCircle2 size={32} className="mx-auto mb-3 text-emerald-500" />
+          <p className="text-[15px] font-medium text-content-primary">No exceptions</p>
+          <p className="text-[13px]">All queues are within SLA. Operations are running smoothly.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {exceptions.map((exc, i) => (
+            <div key={i} className={`rounded-xl p-4 border flex items-center justify-between ${exc.color === 'red' ? 'bg-red-500/10 border-red-500/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
+              <div className="flex items-center gap-3">
+                <span className={`text-2xl font-bold ${exc.color === 'red' ? 'text-red-500' : 'text-amber-500'}`}>{exc.count}</span>
+                <p className={`text-[13px] font-medium ${exc.color === 'red' ? 'text-red-600' : 'text-amber-600'}`}>{exc.label}</p>
+              </div>
+              <a href={exc.href} className="text-[12px] text-brand font-medium shrink-0">Resolve →</a>
+            </div>
+          ))}
+        </div>
+      )}
+      <div>
+        <h2 className="text-[13px] font-semibold text-content-primary mb-3">Team Productivity Today</h2>
+        <div className="grid grid-cols-4 gap-3">
+          {[
+            { role: 'Coders', metric: '18 / 22 charts', pct: 82 },
+            { role: 'Billers', metric: '31 / 35 claims', pct: 89 },
+            { role: 'AR Team', metric: '47 accounts', pct: 94 },
+            { role: 'Posting', metric: '3 ERAs posted', pct: 100 },
+          ].map(t => (
+            <div key={t.role} className="bg-surface-elevated rounded-lg p-3 border border-separator">
+              <p className="text-[11px] text-content-tertiary">{t.role}</p>
+              <p className="text-[13px] font-semibold text-content-primary">{t.metric}</p>
+              <div className="w-full h-1.5 bg-separator rounded-full mt-2">
+                <div className="h-full bg-brand rounded-full" style={{ width: `${t.pct}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Dashboard Router ──────────────────────────────────────────────────────────
 const dashMap: Record<string, React.FC> = {
-  admin: ExecutiveDashboard, director: ExecutiveDashboard,
-  supervisor: SupervisorDashboard, manager: SupervisorDashboard,
-  coder: CoderDashboard, biller: CoderDashboard,
-  ar_team: CoderDashboard, posting_team: CoderDashboard,
-  provider: ProviderDashboard, client: ClientDashboard,
+  admin: ExecutiveDashboard,
+  director: ExecutiveDashboard,
+  manager: ExecutiveDashboard,
+  supervisor: SupervisorDashboard,
+  coder: CoderDashboard,
+  biller: BillerDashboard,
+  ar_team: ARDashboard,
+  posting_team: PostingDashboard,
+  provider: ProviderDashboard,
+  client: ClientDashboard,
 }
 
 export default function DashboardPage() {
