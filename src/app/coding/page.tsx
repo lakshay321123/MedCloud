@@ -220,6 +220,52 @@ export default function CodingPage() {
   const [manualCodes, setManualCodes] = useState<ManualCode[]>([])
   const [aiUnavailable, setAiUnavailable] = useState(false)
   const [showQueryModal, setShowQueryModal] = useState(false)
+  const [queryGenerating, setQueryGenerating] = useState(false)
+
+  async function generateCDIQuery() {
+    if (!item) return
+    setQueryGenerating(true)
+    const lowConfidenceCodes = [
+      ...item.aiSuggestedIcd.filter(c => (c.confidence ?? 100) < 75).map(c => `ICD: ${c.code} — ${c.desc}`),
+      ...item.aiSuggestedCpt.filter(c => (c.confidence ?? 100) < 75).map(c => `CPT: ${c.code} — ${c.desc}`),
+    ]
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 500,
+          messages: [{
+            role: 'user',
+            content: `You are a Clinical Documentation Improvement (CDI) specialist. Write a concise, professional physician query.
+
+Patient: ${item.patientName}
+Provider: ${item.provider}
+Date of Service: ${item.dos}
+Specialty: ${item.providerSpecialty || 'General'}
+
+SOAP Note Summary:
+Subjective: ${item.visitNote.subjective}
+Assessment: ${item.visitNote.assessment}
+Plan: ${item.visitNote.plan}
+
+${lowConfidenceCodes.length > 0 ? `Low-confidence codes requiring clarification:\n${lowConfidenceCodes.join('\n')}` : 'Request clarification on the specificity of diagnoses documented.'}
+
+Write a brief, respectful CDI query asking the provider for additional documentation specificity. Be specific about what information is needed and why it matters for accurate coding. 2-3 sentences max.`
+          }]
+        })
+      })
+      const data = await response.json()
+      const text = data.content?.[0]?.text
+      if (text) setQueryText(text)
+      toast.success('AI query generated')
+    } catch {
+      toast.error('AI generation failed')
+    } finally {
+      setQueryGenerating(false)
+    }
+  }
   const [showHoldModal, setShowHoldModal] = useState(false)
   const [docOpen, setDocOpen] = useState<'note' | 'superbill' | null>(null)
   const [queryText, setQueryText] = useState('')
@@ -931,6 +977,16 @@ export default function CodingPage() {
           <div className="bg-surface-secondary rounded-2xl p-5 w-full max-w-md mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-content-primary mb-3">Query Doctor — {item.provider}</h3>
             <p className="text-[12px] text-content-secondary mb-2">Re: {item.patientName} · DOS: {item.dos}</p>
+            <button
+              onClick={generateCDIQuery}
+              disabled={queryGenerating}
+              className="w-full mb-2 bg-purple-600/10 border border-purple-500/30 text-purple-600 dark:text-purple-400 rounded-btn py-1.5 text-[12px] font-medium flex items-center justify-center gap-2 hover:bg-purple-600/20 disabled:opacity-50 transition-colors">
+              {queryGenerating ? (
+                <><span className="animate-spin inline-block w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full"/><span>Generating...</span></>
+              ) : (
+                <><span>✦</span><span>Generate CDI Query with AI</span></>
+              )}
+            </button>
             <textarea
               rows={4}
               placeholder="Describe your question about this note's documentation..."

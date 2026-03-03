@@ -80,6 +80,55 @@ export default function DenialsPage() {
   const [selected, setSelected] = useState(denials[0]?.id || '')
   const [appealLevel, setAppealLevel] = useState<'L1' | 'L2' | 'L3'>('L1')
   const [appealTexts, setAppealTexts] = useState<Record<string, string>>({})
+  const [aiGenerating, setAiGenerating] = useState(false)
+
+  async function generateAppealWithAI(denial: DenialRow) {
+    const key = `${denial.id}-${appealLevel}`
+    setAiGenerating(true)
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: `You are an expert medical billing appeals specialist. Write a professional ${appealLevel === 'L1' ? 'First Level' : appealLevel === 'L2' ? 'Second Level' : 'External Review'} appeal letter.
+
+Claim details:
+- Claim ID: ${denial.id}
+- Patient: ${denial.patientName}
+- Payer: ${denial.payer}
+- Provider/Client: ${denial.clientName}
+- Date of Service: ${denial.dos}
+- Denial Reason: ${denial.denialReason}
+- CARC: ${denial.carc_description || 'N/A'}
+- RARC: ${denial.rarc_description || 'N/A'}
+- Appeal Level: ${appealLevel}
+
+Write a compelling, professional appeal letter that:
+1. References all claim details accurately
+2. Addresses the specific denial reason with appropriate counterarguments
+3. Cites medical necessity where applicable
+4. Uses proper medical billing appeal language
+5. Is formatted as a formal business letter
+
+Output only the letter text, no preamble.`
+          }]
+        })
+      })
+      const data = await response.json()
+      const text = data.content?.[0]?.text || buildAppealLetter(denial, appealLevel)
+      setAppealTexts(prev => ({ ...prev, [key]: text }))
+      toast.success('AI appeal letter generated')
+    } catch {
+      toast.error('AI generation failed — using template')
+      setAppealTexts(prev => ({ ...prev, [key]: buildAppealLetter(denial, appealLevel) }))
+    } finally {
+      setAiGenerating(false)
+    }
+  }
 
   useEffect(() => {
     if (!selected && denials.length > 0) setSelected(denials[0].id)
@@ -206,6 +255,17 @@ export default function DenialsPage() {
                   setAppealTexts(prev => ({ ...prev, [key]: e.target.value }))
                 }}
               />
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => generateAppealWithAI(selectedDenial)}
+                  disabled={aiGenerating}
+                  className="flex-1 bg-purple-600/10 border border-purple-500/30 text-purple-600 dark:text-purple-400 rounded-btn py-2 text-sm font-medium flex items-center justify-center gap-2 hover:bg-purple-600/20 disabled:opacity-50 transition-colors">
+                  {aiGenerating ? (
+                    <><span className="animate-spin inline-block w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full"/><span>Generating...</span></>
+                  ) : (
+                    <><span>✦</span><span>Generate with AI</span></>
+                  )}
+                </button>
               <button
                 onClick={() => {
                   const text = getAppealText(selectedDenial)
@@ -215,9 +275,10 @@ export default function DenialsPage() {
                   }
                   toast.success(`${appealLevel} appeal submitted for ${selectedDenial.id}`)
                 }}
-                className="mt-3 bg-brand text-white rounded-btn py-2 text-sm font-medium flex items-center justify-center gap-2">
+                className="flex-1 bg-brand text-white rounded-btn py-2 text-sm font-medium flex items-center justify-center gap-2">
                 <Send size={14}/>Submit Appeal ({appealLevel})
               </button>
+              </div>
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 text-content-secondary">
