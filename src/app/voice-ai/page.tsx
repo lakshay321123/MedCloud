@@ -5,7 +5,7 @@ import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import {
   Phone, PhoneCall, PhoneMissed, Clock, Play, X, ChevronRight,
-  Plus, Edit2, Zap, BarChart2, Settings2, Radio
+  Plus, Edit2, Zap, BarChart2, Settings2, Radio, AlertTriangle
 } from 'lucide-react'
 import {
   demoActiveCalls, demoCallLog, demoCampaigns, demoScripts,

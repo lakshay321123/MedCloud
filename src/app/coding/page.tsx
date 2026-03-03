@@ -163,7 +163,7 @@ export default function CodingPage() {
     provider: c.provider_name || '',
     providerNpi: '',
     providerSpecialty: '',
-    status: (c.status || 'pending') as 'pending' | 'in_progress' | 'completed' | 'on_hold',
+    status: (c.status || 'pending') as 'pending' | 'in_progress' | 'completed' | 'on_hold' | 'query_sent' | 'audit_hold',
     receivedAt: c.received_at || c.created_at || new Date().toISOString(),
     priority: (c.priority ?? 'medium') as 'low' | 'medium' | 'high' | 'urgent',
     visitNote: {
@@ -172,8 +172,8 @@ export default function CodingPage() {
       assessment: '',
       plan: '',
     },
-    aiSuggestedIcd: [] as { code: string; description: string; confidence?: number }[],
-    aiSuggestedCpt: [] as { code: string; description: string; confidence?: number }[],
+    aiSuggestedIcd: [] as import('@/lib/demo-data').AISuggestedCode[],
+    aiSuggestedCpt: [] as import('@/lib/demo-data').AISuggestedCode[],
     hasSuperbill: false,
     superbillCpt: undefined as string[] | undefined,
     priorAuthStatus: 'not_required' as string,
@@ -531,7 +531,7 @@ export default function CodingPage() {
                         const key = `icd-${code.code}`
                         const isRemoved = codeOverrides[key]?.action === 'removed'
                         const isEdited = codeOverrides[key]?.action === 'edited'
-                        const isLowConfidence = code.confidence < 70
+                        const isLowConfidence = (code.confidence ?? 0) < 70
                         const isForcedReview = forcedReviewCodes.has(key)
 
                         if (isRemoved) return (
@@ -559,7 +559,7 @@ export default function CodingPage() {
                                 {isEdited ? codeOverrides[key].newCode : code.code}
                               </span>
                               <span className="text-[12px] text-content-secondary flex-1">{code.desc}</span>
-                              <span className={`text-[12px] font-semibold ${code.confidence >= 90 ? 'text-emerald-500' : code.confidence >= 70 ? 'text-amber-500' : 'text-red-500'}`}>{code.confidence}%</span>
+                              <span className={`text-[12px] font-semibold ${(code.confidence ?? 0) >= 90 ? 'text-emerald-500' : (code.confidence ?? 0) >= 70 ? 'text-amber-500' : 'text-red-500'}`}>{code.confidence ?? 0}%</span>
                               {code.reasoning && <button onClick={() => setExpanded(p => ({ ...p, [key]: !p[key] }))} className="text-content-tertiary">{expanded[key] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button>}
                               <button onClick={() => { setEditingCode(editingCode === key ? null : key); setEditSearch('') }} className="text-[10px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-brand/40 hover:text-brand transition-colors">Edit</button>
                               <button onClick={() => setRemovingCode(removingCode === key ? null : key)} className="text-[10px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-red-500/40 hover:text-red-500 transition-colors">Remove</button>
@@ -628,7 +628,7 @@ export default function CodingPage() {
                         const key = `cpt-${code.code}`
                         const isRemoved = codeOverrides[key]?.action === 'removed'
                         const isEdited = codeOverrides[key]?.action === 'edited'
-                        const isLowConfidence = code.confidence < 70
+                        const isLowConfidence = (code.confidence ?? 0) < 70
                         const isForcedReview = forcedReviewCodes.has(key)
 
                         if (isRemoved) return (
@@ -657,7 +657,7 @@ export default function CodingPage() {
                               </span>
                               {code.modifiers?.map(mod => <span key={mod} className="text-[11px] px-1.5 py-0.5 rounded-pill bg-brand/10 text-brand">Mod {mod}</span>)}
                               <span className="text-[12px] text-content-secondary flex-1">{code.desc}</span>
-                              <span className={`text-[12px] font-semibold ${code.confidence >= 90 ? 'text-emerald-500' : code.confidence >= 70 ? 'text-amber-500' : 'text-red-500'}`}>{code.confidence}%</span>
+                              <span className={`text-[12px] font-semibold ${(code.confidence ?? 0) >= 90 ? 'text-emerald-500' : (code.confidence ?? 0) >= 70 ? 'text-amber-500' : 'text-red-500'}`}>{code.confidence ?? 0}%</span>
                               {code.reasoning && <button onClick={() => setExpanded(p => ({ ...p, [key]: !p[key] }))} className="text-content-tertiary">{expanded[key] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button>}
                               <button onClick={() => { setEditingCode(editingCode === key ? null : key); setEditSearch('') }} className="text-[10px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-brand/40 hover:text-brand transition-colors">Edit</button>
                               <button onClick={() => setRemovingCode(removingCode === key ? null : key)} className="text-[10px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-red-500/40 hover:text-red-500 transition-colors">Remove</button>

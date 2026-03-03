@@ -23,9 +23,9 @@ export default function EligibilityPage() {
   const [batchRunning, setBatchRunning] = useState(false)
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
 
-  const patients = useMemo(() => [], [selectedClientId])
+  const patients = useMemo(() => [] as Array<{ id: string; firstName: string; lastName: string; insurance?: { payer?: string; memberId?: string; policyNo?: string; copay?: number }; emiratesId?: string; ssn?: string }>, [selectedClientId])
   // Sprint 2: replace with usePatients({ client_id: selectedClientId })
-  const selectedPatient = undefined
+  const selectedPatient = undefined as undefined | { id: string; firstName: string; lastName: string; insurance?: { payer?: string; memberId?: string; policyNo?: string; copay?: number }; emiratesId?: string; ssn?: string }
   const isUAEPatient = country === 'uae'
 
   function handleVerify() {

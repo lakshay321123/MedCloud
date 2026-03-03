@@ -101,7 +101,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
   const isProvider = currentUserRole === 'provider'
   const isFrontDesk = currentUserRole === 'client'
 
-  const patient = null // Sprint 2: load from patient API by appt.patientId
+  const patient = null as null | { dob?: string; gender?: string; phone?: string; insurance?: { payer?: string; memberId?: string; policyNo?: string; copay?: number }; allergies?: string[]; medications?: string[]; emiratesId?: string; ssn?: string } // Sprint 2: load from patient API by appt.patientId
 
   const eligMap: Record<string, keyof typeof eligibilityConfig> = {
     'APT-001': 'verified', 'APT-002': 'verified', 'APT-003': 'inactive', 'APT-004': 'not_checked',
