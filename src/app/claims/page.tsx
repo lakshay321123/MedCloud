@@ -30,9 +30,9 @@ function apiClaimToDemoClaim(c: ApiClaim): DemoClaim {
     dos: c.dos_from || '',
     cptCodes: [],
     icdCodes: [],
-    billed: c.total_charges || 0,
-    allowed: c.allowed_amount || 0,
-    paid: c.paid_amount || 0,
+    billed: Number(c.total_charges) || 0,
+    allowed: Number(c.allowed_amount) || 0,
+    paid: Number(c.paid_amount) || 0,
     status: c.status as ClaimStatus,
     age: c.dos_from
       ? Math.floor((Date.now() - new Date(c.dos_from).getTime()) / 86400000)

@@ -47,15 +47,15 @@ function ExecutiveDashboard() {
   const router = useRouter()
   const { data: metrics, loading } = useDashboardMetrics()
 
-  const totalClaims = metrics?.total_claims ?? 3847
-  const totalPatients = metrics?.total_patients ?? 12450
-  const openDenials = metrics?.open_denials ?? 0
-  const totalCollectionsMtd = metrics?.total_collections_mtd ?? 2400000
+  const totalClaims = Number(metrics?.total_claims) || 3847
+  const totalPatients = Number(metrics?.total_patients) || 12450
+  const openDenials = Number(metrics?.open_denials) || 0
+  const totalCollectionsMtd = Number(metrics?.total_collections_mtd) || 2400000
   const denialRate = totalClaims > 0 ? ((openDenials / totalClaims) * 100).toFixed(1) : '4.2'
   const agingData = metrics?.ar_aging
 
   const recentClaimsActivity = metrics?.recent_claims?.slice(0, 5).map(c => ({
-    t: `Claim #${c.claim_number} — ${c.first_name} ${c.last_name} ($${c.total_charges?.toLocaleString()})`,
+    t: `Claim #${c.claim_number} — ${c.first_name} ${c.last_name} ($${Number(c.total_charges || 0).toLocaleString()})`,
     c: c.status === 'paid' ? 'text-emerald-600 dark:text-emerald-400' : c.status === 'denied' ? 'text-red-500' : 'text-brand',
     ago: timeAgo(c.dos_from),
     href: '/claims',
