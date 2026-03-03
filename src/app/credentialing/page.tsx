@@ -25,25 +25,26 @@ export default function CredentialingPage() {
   const [selected, setSelected] = useState<Provider | null>(null)
   const { data: apiCredResult } = useCredentialing({ limit: 50 })
 
-  const rawProviders = apiCredResult?.data
+  const filteredProviders = (apiCredResult?.data?.length
     ? apiCredResult.data.map(p => ({
         id: p.id,
         name: p.provider_name || '',
         status: p.status || '',
         payers: p.payer_enrollment_count || 0,
-        client: p.client || '',
+        client: (p as Record<string, any>).client_name
+             || (p as Record<string, any>).org_name
+             || '',
+        license: '—',
+        malpractice: '—',
+        dea: '—',
+        caqh: '—',
         npi: '',
-        license: '',
-        malpractice: '',
-        dea: '',
-        caqh: '',
       }))
     : providers
-
-  const filteredProviders = rawProviders.filter(p => {
+  ).filter(p => {
     if (selectedClient) return p.client === selectedClient.name
-    if (country === 'uae') return UAE_CLIENT_NAMES.includes(p.client)
-    if (country === 'usa') return US_CLIENT_NAMES.includes(p.client)
+    if (country === 'uae') return UAE_CLIENT_NAMES.includes(p.client as typeof UAE_CLIENT_NAMES[number])
+    if (country === 'usa') return US_CLIENT_NAMES.includes(p.client as typeof US_CLIENT_NAMES[number])
     return true
   })
 
