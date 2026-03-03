@@ -180,6 +180,11 @@ export default function CodingPage() {
       superbillCpt: demoMatch?.superbillCpt,
       priorAuthStatus: demoMatch?.priorAuthStatus || 'not_required',
       priorAuthNumber: demoMatch?.priorAuthNumber,
+      patientDob: demoMatch?.patientDob,
+      patientGender: demoMatch?.patientGender,
+      patientPayer: demoMatch?.patientPayer,
+      visitType: demoMatch?.visitType,
+      placeOfService: demoMatch?.placeOfService,
     }
   }) || []
 
