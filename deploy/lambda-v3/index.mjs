@@ -460,11 +460,27 @@ export const handler = async (event) => {
     const body = event.body ? JSON.parse(event.body) : {};
     const qs = event.queryStringParameters || {};
 
-    // Extract org/user/client from headers or query
+    // ── UUID format validation ──────────────────────────────────────────
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    function validateUUID(val, label) {
+      if (val && !UUID_RE.test(val)) {
+        throw new Error(`Invalid ${label}: must be UUID format`);
+      }
+      return val;
+    }
+
+    // TODO: PRODUCTION — Replace header-based auth with Cognito JWT validation.
+    // API Gateway authorizer should decode the JWT, extract org_id/user_id/client_id
+    // from token claims, and pass them via event.requestContext.authorizer.
+    // Until then, validate UUID format to prevent injection via spoofed headers.
     const headers = event.headers || {};
-    const effectiveOrgId = headers['x-org-id'] || qs.org_id || 'a0000000-0000-0000-0000-000000000001';
-    const userId = headers['x-user-id'] || qs.user_id || null;
-    const clientId = headers['x-client-id'] || qs.client_id || null;
+    const rawOrgId = headers['x-org-id'] || qs.org_id || 'a0000000-0000-0000-0000-000000000001';
+    const rawUserId = headers['x-user-id'] || qs.user_id || null;
+    const rawClientId = headers['x-client-id'] || qs.client_id || null;
+
+    const effectiveOrgId = validateUUID(rawOrgId, 'org_id');
+    const userId = rawUserId ? validateUUID(rawUserId, 'user_id') : null;
+    const clientId = rawClientId ? validateUUID(rawClientId, 'client_id') : null;
 
     // Extract entity ID from path
     const segments = path.replace('/api/v1/', '').replace(/^\//, '').split('/').filter(Boolean);
@@ -951,13 +967,15 @@ export const handler = async (event) => {
     }
 
     if (path.includes('/dashboard')) {
-      const clientWhere = clientId ? `AND c.client_id = '${clientId}'` : '';
+      const params = [effectiveOrgId];
+      let clientWhere = '';
+      if (clientId) { params.push(clientId); clientWhere = ` AND c.client_id = $${params.length}`; }
       const [claims, denials, payments, tasks, coding] = await Promise.all([
-        pool.query(`SELECT status, COUNT(*)::int as count, COALESCE(SUM(total_charge),0)::numeric as total FROM claims c WHERE c.org_id = $1 ${clientWhere} GROUP BY status`, [effectiveOrgId]),
-        pool.query(`SELECT status, COUNT(*)::int as count FROM denials d JOIN claims c ON d.claim_id = c.id WHERE d.org_id = $1 ${clientWhere} GROUP BY d.status`, [effectiveOrgId]),
-        pool.query(`SELECT action, COUNT(*)::int as count, COALESCE(SUM(paid),0)::numeric as total FROM payments pm JOIN claims c ON pm.claim_id = c.id WHERE pm.org_id = $1 ${clientWhere} GROUP BY pm.action`, [effectiveOrgId]),
-        pool.query(`SELECT status, COUNT(*)::int as count FROM tasks WHERE org_id = $1 GROUP BY status`, [effectiveOrgId]),
-        pool.query(`SELECT status, COUNT(*)::int as count FROM coding_queue cq WHERE cq.org_id = $1 GROUP BY status`, [effectiveOrgId]),
+        pool.query(`SELECT status, COUNT(*)::int as count, COALESCE(SUM(total_charge),0)::numeric as total FROM claims c WHERE c.org_id = $1 ${clientWhere} GROUP BY status`, params),
+        pool.query(`SELECT status, COUNT(*)::int as count FROM denials d JOIN claims c ON d.claim_id = c.id WHERE d.org_id = $1 ${clientWhere} GROUP BY d.status`, params),
+        pool.query(`SELECT action, COUNT(*)::int as count, COALESCE(SUM(paid),0)::numeric as total FROM payments pm JOIN claims c ON pm.claim_id = c.id WHERE pm.org_id = $1 ${clientWhere} GROUP BY pm.action`, params),
+        pool.query(`SELECT status, COUNT(*)::int as count FROM tasks WHERE org_id = $1${clientWhere ? clientWhere.replace('c.client_id', 'client_id') : ''} GROUP BY status`, params),
+        pool.query(`SELECT status, COUNT(*)::int as count FROM coding_queue cq WHERE cq.org_id = $1${clientWhere ? clientWhere.replace('c.client_id', 'cq.client_id') : ''} GROUP BY status`, params),
       ]);
 
       const claimsTotal = claims.rows.reduce((s, r) => s + Number(r.total), 0);

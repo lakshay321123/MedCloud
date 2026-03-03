@@ -66,6 +66,7 @@ try {
 } catch { console.log('Bedrock SDK not available — AI coding will return mock suggestions'); }
 
 const S3_BUCKET = process.env.S3_BUCKET || 'medcloud-documents-us';
+// Bedrock model — override via BEDROCK_MODEL env var. Verify model availability in your region.
 const BEDROCK_MODEL = process.env.BEDROCK_MODEL || 'anthropic.claude-sonnet-4-5-20250929-v1:0';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -436,31 +437,37 @@ async function generateDHAeClaim(claimId) {
   const now = new Date();
   const dateStr = now.toISOString().slice(0, 10);
 
+  // Escape XML special characters to prevent XML injection
+  function escXml(val) {
+    if (val == null) return '';
+    return String(val).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+  }
+
   // DHA eClaim XML format
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Claim.Request xmlns="http://www.haad.ae/DataDictionary/eClaim">
   <Header>
     <SenderID>COSENTUS</SenderID>
     <ReceiverID>DHA</ReceiverID>
-    <TransactionDate>${dateStr}</TransactionDate>
+    <TransactionDate>${escXml(dateStr)}</TransactionDate>
     <RecordCount>1</RecordCount>
     <DispositionFlag>PRODUCTION</DispositionFlag>
   </Header>
   <Claim>
-    <ID>${claim.claim_number || claimId.slice(0, 12)}</ID>
-    <MemberID>${patient?.member_id || ''}</MemberID>
-    <PayerID>${claim.payer_id || ''}</PayerID>
-    <ProviderID>${provider?.npi || ''}</ProviderID>
-    <EmiratesIDNumber>${patient?.emirates_id || ''}</EmiratesIDNumber>
-    <Gross>${claim.total_charge || 0}</Gross>
+    <ID>${escXml(claim.claim_number || claimId.slice(0, 12))}</ID>
+    <MemberID>${escXml(patient?.member_id)}</MemberID>
+    <PayerID>${escXml(claim.payer_id)}</PayerID>
+    <ProviderID>${escXml(provider?.npi)}</ProviderID>
+    <EmiratesIDNumber>${escXml(patient?.emirates_id)}</EmiratesIDNumber>
+    <Gross>${escXml(claim.total_charge || 0)}</Gross>
     <PatientShare>0</PatientShare>
-    <Net>${claim.total_charge || 0}</Net>
+    <Net>${escXml(claim.total_charge || 0)}</Net>
     <Encounter>
       <FacilityID>COSENTUS-UAE</FacilityID>
       <Type>${claim.claim_type === '837I' ? 'INPATIENT' : 'OUTPATIENT'}</Type>
-      <PatientID>${patient?.id || ''}</PatientID>
-      <Start>${claim.dos_from || dateStr}</Start>
-      <End>${claim.dos_to || claim.dos_from || dateStr}</End>
+      <PatientID>${escXml(patient?.id)}</PatientID>
+      <Start>${escXml(claim.dos_from || dateStr)}</Start>
+      <End>${escXml(claim.dos_to || claim.dos_from || dateStr)}</End>
       <StartType>ELECTIVE</StartType>`;
 
   // Diagnoses
@@ -468,7 +475,7 @@ async function generateDHAeClaim(claimId) {
     xml += `
       <Diagnosis>
         <Type>${dx.sequence === 1 ? 'PRINCIPAL' : 'SECONDARY'}</Type>
-        <Code>${dx.icd_code}</Code>
+        <Code>${escXml(dx.icd_code)}</Code>
       </Diagnosis>`;
   }
 
@@ -476,14 +483,14 @@ async function generateDHAeClaim(claimId) {
   for (const line of linesR.rows) {
     xml += `
       <Activity>
-        <ID>${line.id.slice(0, 12)}</ID>
-        <Start>${line.dos || claim.dos_from || dateStr}</Start>
+        <ID>${escXml(line.id.slice(0, 12))}</ID>
+        <Start>${escXml(line.dos || claim.dos_from || dateStr)}</Start>
         <Type>CPT</Type>
-        <Code>${line.cpt_code}</Code>
-        <Quantity>${line.units || 1}</Quantity>
-        <Net>${line.charge}</Net>
-        <Clinician>${provider?.npi || ''}</Clinician>
-        ${line.prior_auth_number ? `<PriorAuthorizationID>${line.prior_auth_number}</PriorAuthorizationID>` : ''}
+        <Code>${escXml(line.cpt_code)}</Code>
+        <Quantity>${escXml(line.units || 1)}</Quantity>
+        <Net>${escXml(line.charge)}</Net>
+        <Clinician>${escXml(provider?.npi)}</Clinician>
+        ${line.prior_auth_number ? `<PriorAuthorizationID>${escXml(line.prior_auth_number)}</PriorAuthorizationID>` : ''}
       </Activity>`;
   }
 
@@ -1026,10 +1033,26 @@ export const handler = async (event) => {
     const qs = event.queryStringParameters || {};
     const headers = event.headers || {};
 
-    // Extract org/user/client from headers or query
-    const effectiveOrgId = headers['x-org-id'] || qs.org_id || body.org_id || 'a0000000-0000-0000-0000-000000000001';
-    const userId = headers['x-user-id'] || qs.user_id || body.user_id || null;
-    const clientId = headers['x-client-id'] || qs.client_id || body.client_id || null;
+    // ── UUID format validation ──────────────────────────────────────────
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    function validateUUID(val, label) {
+      if (val && !UUID_RE.test(val)) {
+        throw new Error(`Invalid ${label}: must be UUID format`);
+      }
+      return val;
+    }
+
+    // TODO: PRODUCTION — Replace header-based auth with Cognito JWT validation.
+    // API Gateway authorizer should decode the JWT, extract org_id/user_id/client_id
+    // from token claims, and pass them via event.requestContext.authorizer.
+    // Until then, validate UUID format to prevent injection via spoofed headers.
+    const rawOrgId = headers['x-org-id'] || qs.org_id || body.org_id || 'a0000000-0000-0000-0000-000000000001';
+    const rawUserId = headers['x-user-id'] || qs.user_id || body.user_id || null;
+    const rawClientId = headers['x-client-id'] || qs.client_id || body.client_id || null;
+
+    const effectiveOrgId = validateUUID(rawOrgId, 'org_id');
+    const userId = rawUserId ? validateUUID(rawUserId, 'user_id') : null;
+    const clientId = rawClientId ? validateUUID(rawClientId, 'client_id') : null;
 
     // Parse path params (for /:id patterns)
     const pathParts = path.replace(/^\/+|\/+$/g, '').split('/');

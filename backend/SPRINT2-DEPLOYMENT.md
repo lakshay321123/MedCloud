@@ -116,13 +116,17 @@ aws lambda update-function-configuration \
     DB_HOST=medcloud-db.ck54k4qcenu4.us-east-1.rds.amazonaws.com,
     DB_NAME=medcloud,
     DB_USER=medcloud_admin,
-    DB_PASS=<password>,
+    DB_PASS=<RETRIEVE_FROM_SECRETS_MANAGER>,
     S3_BUCKET=medcloud-documents-us-prod,
     AWS_REGION=us-east-1,
-    BEDROCK_MODEL=anthropic.claude-sonnet-4-5-20250929-v1:0
+    BEDROCK_MODEL=anthropic.claude-3-sonnet-20240229-v1:0
   }" \
   --region us-east-1
 ```
+
+> **Security Note:** Never store `DB_PASS` in plaintext. Retrieve it from
+> AWS Secrets Manager: `aws secretsmanager get-secret-value --secret-id medcloud/db-password`.
+> For production, use Lambda's Secrets Manager integration to inject at runtime.
 
 ### Step 5: Verify
 ```bash

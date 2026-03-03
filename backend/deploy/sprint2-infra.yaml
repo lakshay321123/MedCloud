@@ -36,7 +36,7 @@ Resources:
         RestrictPublicBuckets: true
       CorsConfiguration:
         CorsRules:
-          - AllowedHeaders: ['*']
+          - AllowedHeaders: ['Content-Type', 'Authorization', 'X-Org-Id', 'X-User-Id', 'X-Client-Id', 'X-Amz-Date', 'X-Amz-Security-Token']
             AllowedMethods: [GET, PUT, POST]
             AllowedOrigins:
               - 'https://*.vercel.app'
@@ -161,7 +161,7 @@ Resources:
               - 'logs:CreateLogGroup'
               - 'logs:CreateLogStream'
               - 'logs:PutLogEvents'
-            Resource: '*'
+            Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/medcloud-api*'
 
   # ═══════════════════════════════════════════════════════════════════════════
   # S3 EVENT → LAMBDA TRIGGER (for Textract auto-processing)

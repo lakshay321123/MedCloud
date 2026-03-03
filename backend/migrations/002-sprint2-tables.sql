@@ -150,7 +150,7 @@ DO $$ BEGIN
     CHECK (textract_status IN ('none','processing','completed','failed'));
   ALTER TABLE documents ADD COLUMN IF NOT EXISTS textract_result JSONB;
   ALTER TABLE documents ADD COLUMN IF NOT EXISTS classification TEXT;  -- superbill, insurance_card, eob, clinical_note, etc
-EXCEPTION WHEN others THEN NULL;
+EXCEPTION WHEN duplicate_object THEN NULL; -- only suppress duplicate constraint errors
 END $$;
 
 -- ── Claims — add EDI tracking columns ──────────────────────────────────────────
@@ -160,7 +160,7 @@ DO $$ BEGIN
   ALTER TABLE claims ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ;
   ALTER TABLE claims ADD COLUMN IF NOT EXISTS payer_claim_number TEXT;    -- assigned by payer
   ALTER TABLE claims ADD COLUMN IF NOT EXISTS last_status_check TIMESTAMPTZ;
-EXCEPTION WHEN others THEN NULL;
+EXCEPTION WHEN duplicate_object THEN NULL; -- only suppress duplicate constraint errors
 END $$;
 
 -- ── Coding Queue — add AI fields ───────────────────────────────────────────────
@@ -172,7 +172,7 @@ DO $$ BEGIN
     CHECK (coding_method IN ('manual','ai_assisted','ai_auto'));
   ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'manual'
     CHECK (source IN ('manual','scan_submit','ai_scribe','encounter'));
-EXCEPTION WHEN others THEN NULL;
+EXCEPTION WHEN duplicate_object THEN NULL; -- only suppress duplicate constraint errors
 END $$;
 
 -- ── Eligibility — add real 270/271 fields ──────────────────────────────────────
@@ -187,7 +187,7 @@ DO $$ BEGIN
   ALTER TABLE eligibility_checks ADD COLUMN IF NOT EXISTS out_of_pocket_max DECIMAL(12,2);
   ALTER TABLE eligibility_checks ADD COLUMN IF NOT EXISTS deductible_met DECIMAL(12,2);
   ALTER TABLE eligibility_checks ADD COLUMN IF NOT EXISTS benefits_json JSONB;   -- full 271 response
-EXCEPTION WHEN others THEN NULL;
+EXCEPTION WHEN duplicate_object THEN NULL; -- only suppress duplicate constraint errors
 END $$;
 
 -- ── Payments — add ERA line detail fields ──────────────────────────────────────
@@ -204,7 +204,7 @@ DO $$ BEGIN
     CHECK (action IN ('pending','posted','review','denied','appealed'));
   ALTER TABLE payments ADD COLUMN IF NOT EXISTS posted_at TIMESTAMPTZ;
   ALTER TABLE payments ADD COLUMN IF NOT EXISTS posted_by UUID REFERENCES users(id);
-EXCEPTION WHEN others THEN NULL;
+EXCEPTION WHEN duplicate_object THEN NULL; -- only suppress duplicate constraint errors
 END $$;
 
 COMMIT;
