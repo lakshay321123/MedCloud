@@ -180,6 +180,8 @@ export interface ApiEligibilityCheck {
   copay?: number
   deductible?: number
   prior_auth_required?: boolean
+  // enriched — present when Lambda JOINs patients table
+  patient_name?: string
   created_at?: string
 }
 
