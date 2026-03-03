@@ -355,7 +355,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
   })
   const [editEmergency, setEditEmergency] = useState({
     name: localPatient.emergencyContact?.name || '',
-    relation: localPatient.emergencyContact?.relation || localPatient.emergencyContact?.relationship || '',
+    relationship: localPatient.emergencyContact?.relationship || '',
     phone: localPatient.emergencyContact?.phone || '',
   })
 
@@ -382,8 +382,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
       } : prev.address,
       emergencyContact: editEmergency.name ? {
         name: editEmergency.name,
-        relationship: editEmergency.relation,
-        relation: editEmergency.relation,
+        relationship: editEmergency.relationship,
         phone: editEmergency.phone,
       } : prev.emergencyContact,
     }))
@@ -567,7 +566,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
                   <div><label className="text-xs text-content-secondary block mb-1">Contact Name</label>
                     <input className={ic} value={editEmergency.name} onChange={e => setEditEmergency(p => ({...p, name: e.target.value}))} /></div>
                   <div><label className="text-xs text-content-secondary block mb-1">Relationship</label>
-                    <input className={ic} value={editEmergency.relation} onChange={e => setEditEmergency(p => ({...p, relation: e.target.value}))} /></div>
+                    <input className={ic} value={editEmergency.relationship} onChange={e => setEditEmergency(p => ({...p, relationship: e.target.value}))} /></div>
                   <div><label className="text-xs text-content-secondary block mb-1">Phone</label>
                     <input className={ic} value={editEmergency.phone} onChange={e => setEditEmergency(p => ({...p, phone: e.target.value}))} /></div>
                 </>
