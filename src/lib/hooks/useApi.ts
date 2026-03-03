@@ -99,7 +99,7 @@ export function useMutation<TData, TInput>(
     setLoading(true)
     setError(null)
     try {
-      const result = await api[method]<TData>(path, input as unknown)
+      const result = await (api[method] as (path: string, body?: unknown) => Promise<TData>)(path, input)
       if (mountedRef.current) {
         setData(result)
         setLoading(false)
