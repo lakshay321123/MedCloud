@@ -25,7 +25,7 @@ export default function MessagesPage() {
 
   const messages = localThreads.filter(m => {
     if (filter && m.entityType !== filter) return false
-    if (!isStaff && m.clientId !== 'org-102') return false
+    if (!isStaff && m.clientId !== currentUser.organization_id) return false
     if (isStaff && selectedClient && m.clientId !== selectedClient.id) return false
     return true
   })

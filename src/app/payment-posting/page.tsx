@@ -31,6 +31,7 @@ export default function PaymentPostingPage() {
   const [selectedEra, setSelectedEra] = useState<string | null>(null)
   const [lineItems, setLineItems] = useState(demoERALineItems)
   const [editingCell, setEditingCell] = useState<{ rowId: string; field: string } | null>(null)
+  const [editValue, setEditValue] = useState<string>('')
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -211,13 +212,40 @@ export default function PaymentPostingPage() {
       <button onClick={() => setSelectedEra(null)} className="inline-flex items-center gap-2 text-[13px] text-content-secondary hover:text-content-primary mb-3"><ArrowLeft size={14} />Back to ERA Files</button>
       <div className="card p-3 mb-3 text-[13px] text-content-secondary">{era?.file} · {era?.payer} · {era?.client} · Received: <span className="font-mono">{era?.receivedAt?.slice(0, 10)}</span></div>
 
+      {/* ERA / EOB Document Viewer */}
+      <div className="card mb-3 overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-separator bg-surface-secondary">
+          <span className="text-[12px] font-semibold text-content-secondary uppercase tracking-wider">ERA / EOB Document</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-content-tertiary">{era?.file}</span>
+            <button onClick={() => toast.success('Download started')}
+              className="text-[11px] text-brand border border-brand/20 rounded px-2 py-1 hover:bg-brand/10 transition-colors">
+              Download 835
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-8 gap-3 text-content-tertiary">
+          <FileText size={24} className="opacity-30" />
+          <div className="text-xs">
+            <p className="font-medium text-content-secondary">{era?.file}</p>
+            <p className="text-[11px]">Upload the .835 file to see inline viewer</p>
+          </div>
+        </div>
+      </div>
+
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-[12px]">
             <thead><tr className="border-b border-separator text-content-secondary bg-surface-secondary">
               <th className="text-left px-3 py-2">Patient</th><th className="text-left px-3 py-2">CPT</th><th className="text-left px-3 py-2">DOS</th><th className="text-right px-3 py-2">Billed</th><th className="text-right px-3 py-2">Allowed</th><th className="text-right px-3 py-2">Paid</th><th className="text-right px-3 py-2">Denied</th><th className="text-left px-3 py-2">Adj Code</th><th className="text-left px-3 py-2">Adj Reason</th><th className="text-right px-3 py-2">Pat Bal</th><th className="text-left px-3 py-2">Notes</th><th className="text-left px-3 py-2">Action</th>
             </tr></thead>
-            <tbody>{eraLines.map(row => {
+            <tbody>{eraLines.length === 0 ? (
+              <tr>
+                <td colSpan={12} className="px-4 py-8 text-center text-sm text-content-tertiary">
+                  No line items loaded — upload the .835 file to parse line items automatically
+                </td>
+              </tr>
+            ) : eraLines.map(row => {
               const bg = row.denied > 0 ? 'bg-red-500/5' : row.action === 'review' ? 'bg-amber-500/5' : row.action === 'patient_bill' ? 'bg-blue-500/5' : ''
               return <tr key={row.id} className={`border-b border-separator ${bg}`}>
                 <td className="px-3 py-2 text-[13px]">{row.patientName}</td>
@@ -229,12 +257,13 @@ export default function PaymentPostingPage() {
                       <input
                         type="number"
                         autoFocus
-                        defaultValue={row[field]}
+                        value={editValue}
+                        onChange={e => setEditValue(e.target.value)}
                         className="w-20 bg-transparent border-b border-brand text-right font-mono"
-                        onBlur={e => { setValue(row.id, field, Number(e.target.value) || 0); setEditingCell(null) }}
+                        onBlur={() => { setValue(row.id, field, Number(editValue) || 0); setEditingCell(null) }}
                         onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
                       />
-                    ) : <button onClick={() => setEditingCell({ rowId: row.id, field })}>${row[field].toFixed(2)}</button>}
+                    ) : <button onClick={() => { setEditingCell({ rowId: row.id, field }); setEditValue(String(row[field])) }}>${row[field].toFixed(2)}</button>}
                   </td>
                 ))}
                 <td className="px-3 py-2 font-mono text-[11px]">{row.adjCode}</td>

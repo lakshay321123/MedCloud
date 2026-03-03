@@ -5,20 +5,29 @@ import { demoPatients, DemoPatient } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
-import { Plus, Search, X, Upload, ChevronDown } from 'lucide-react'
+import { Plus, Search, X, Upload, ChevronDown, Pencil, Check } from 'lucide-react'
 import { usePatients } from '@/lib/hooks'
 import type { ApiPatient } from '@/lib/hooks'
 import { ErrorBanner } from '@/components/shared/ApiStates'
+import { formatDOB, toMRN, computeProfileComplete } from '@/lib/utils/region'
 
 function apiPatientToDemoPatient(p: ApiPatient): DemoPatient {
   return {
     id: p.id,
     firstName: p.first_name,
     lastName: p.last_name,
-    dob: p.dob,
+    dob: p.dob ? p.dob.split('T')[0] : '',
     phone: p.phone || '',
     email: p.email,
     insurance: p.insurance_payer ? { payer: p.insurance_payer, policyNo: '', memberId: p.insurance_member_id || '' } : undefined,
+    address: p.address ? {
+      line1: p.address,
+      line2: '',
+      city: p.city || '',
+      state: p.state || '',
+      zip: p.zip || '',
+      country: '',
+    } : undefined,
     clientId: p.client_id,
     status: (p.status as 'active' | 'inactive') || 'active',
     profileComplete: p.profile_complete || 0,
@@ -47,14 +56,20 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
   const isUAE = country === 'uae'
   const [sections, setSections] = useState({ address: false, id: false, insurance: false, secondary: false, emergency: false, employment: false, medical: false })
   const toggle = (k: keyof typeof sections) => setSections(p => ({ ...p, [k]: !p[k] }))
-  const [patientForm, setPatientForm] = useState({
-    firstName: '', lastName: '', dob: '', gender: '',
-    phone: '', email: '', address: '',
-    insuranceId: '', groupNumber: '', memberId: '',
-    emiratesId: '', ssn: '',
+  const [form, setForm] = useState({
+    firstName: '', lastName: '', middleName: '', preferredName: '',
+    dob: '', gender: '', maritalStatus: '', preferredLanguage: '',
+    phone: '', secondaryPhone: '', email: '', preferredContact: '',
+    addressLine1: '', addressLine2: '', city: '', stateEmirate: '', zip: '',
+    ssn: '', driversLicense: '', emiratesId: '', passport: '',
+    insurancePayer: '', policyNo: '', groupNo: '', memberId: '', copay: '', relationship: '', subscriberName: '', subscriberDob: '',
+    insuranceCardFront: '', insuranceCardBack: '',
+    secPayer: '', secPolicyNo: '', secMemberId: '',
+    ecName: '', ecRelationship: '', ecPhone: '',
+    empStatus: '', employer: '', occupation: '', workPhone: '',
+    allergies: '', medications: '', referringPhysician: '', pcp: '',
   })
-  const updateField = (field: string, value: string) =>
-    setPatientForm(prev => ({ ...prev, [field]: value }))
+  const upd = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }))
 
   const usStates = ['AK','AL','AR','AZ','CA','CO','CT','DE','FL','GA','HI','IA','ID','IL','IN','KS','KY','LA','MA','MD','ME','MI','MN','MO','MS','MT','NC','ND','NE','NH','NJ','NM','NV','NY','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VA','VT','WA','WI','WV','WY']
   const uaeEmirates = ['Abu Dhabi','Dubai','Sharjah','Ajman','Fujairah','Ras Al Khaimah','Umm Al Quwain']
@@ -62,7 +77,6 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
       <div className="card w-[680px] max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        {/* Sticky header */}
         <div className="sticky top-0 bg-surface-secondary z-10 flex items-center justify-between px-5 py-4 border-b border-separator">
           <h2 className="font-semibold text-content-primary">Add Patient</h2>
           <button onClick={onClose} className="text-content-secondary hover:text-content-primary"><X size={18}/></button>
@@ -77,62 +91,38 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
           <div className="space-y-3">
             <div className="text-xs font-semibold text-content-secondary uppercase tracking-wide">Demographics</div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-1">
-                <label className="text-xs text-content-secondary block mb-1">First Name <span className="text-red-400">*</span></label>
-                <input className={ic} placeholder="First name" value={patientForm.firstName} onChange={e => updateField('firstName', e.target.value)} />
-              </div>
-              <div>
-                <label className="text-xs text-content-secondary block mb-1">Middle</label>
-                <input className={ic} placeholder="M.I." />
-              </div>
-              <div>
-                <label className="text-xs text-content-secondary block mb-1">Last Name <span className="text-red-400">*</span></label>
-                <input className={ic} placeholder="Last name" value={patientForm.lastName} onChange={e => updateField('lastName', e.target.value)} />
-              </div>
+              <div><label className="text-xs text-content-secondary block mb-1">First Name <span className="text-red-400">*</span></label>
+                <input className={ic} placeholder="First name" value={form.firstName} onChange={e => upd('firstName', e.target.value)} /></div>
+              <div><label className="text-xs text-content-secondary block mb-1">Middle</label>
+                <input className={ic} placeholder="M.I." value={form.middleName} onChange={e => upd('middleName', e.target.value)} /></div>
+              <div><label className="text-xs text-content-secondary block mb-1">Last Name <span className="text-red-400">*</span></label>
+                <input className={ic} placeholder="Last name" value={form.lastName} onChange={e => upd('lastName', e.target.value)} /></div>
             </div>
-            <div>
-              <label className="text-xs text-content-secondary block mb-1">Preferred Name / Nickname</label>
-              <input className={ic} placeholder="Goes by..." />
+            <div><label className="text-xs text-content-secondary block mb-1">Preferred Name / Nickname</label>
+              <input className={ic} placeholder="Goes by..." value={form.preferredName} onChange={e => upd('preferredName', e.target.value)} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-xs text-content-secondary block mb-1">Date of Birth</label>
+                <input type="date" className={ic} value={form.dob} onChange={e => upd('dob', e.target.value)} /></div>
+              <div><label className="text-xs text-content-secondary block mb-1">Gender</label>
+                <select className={ic} value={form.gender} onChange={e => upd('gender', e.target.value)}><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option><option>Prefer not to say</option></select></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-content-secondary block mb-1">Date of Birth</label>
-                <input type="date" className={ic} value={patientForm.dob} onChange={e => updateField('dob', e.target.value)} />
-              </div>
-              <div>
-                <label className="text-xs text-content-secondary block mb-1">Gender</label>
-                <select className={ic} value={patientForm.gender} onChange={e => updateField('gender', e.target.value)}><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option><option>Prefer not to say</option></select>
-              </div>
+              <div><label className="text-xs text-content-secondary block mb-1">Marital Status</label>
+                <select className={ic} value={form.maritalStatus} onChange={e => upd('maritalStatus', e.target.value)}><option value="">Select</option><option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option><option>Separated</option></select></div>
+              <div><label className="text-xs text-content-secondary block mb-1">Preferred Language</label>
+                <select className={ic} value={form.preferredLanguage} onChange={e => upd('preferredLanguage', e.target.value)}><option>English</option><option>Arabic</option><option>Spanish</option><option>Other</option></select></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-content-secondary block mb-1">Marital Status</label>
-                <select className={ic}><option value="">Select</option><option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option><option>Separated</option></select>
-              </div>
-              <div>
-                <label className="text-xs text-content-secondary block mb-1">Preferred Language</label>
-                <select className={ic}><option>English</option><option>Arabic</option><option>Spanish</option><option>Other</option></select>
-              </div>
+              <div><label className="text-xs text-content-secondary block mb-1">Phone (Primary) <span className="text-red-400">*</span></label>
+                <input type="tel" className={ic} placeholder={isUAE ? '+971 50 xxx xxxx' : '(949) xxx-xxxx'} value={form.phone} onChange={e => upd('phone', e.target.value)} /></div>
+              <div><label className="text-xs text-content-secondary block mb-1">Phone (Secondary/Cell)</label>
+                <input type="tel" className={ic} placeholder="Optional" value={form.secondaryPhone} onChange={e => upd('secondaryPhone', e.target.value)} /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-content-secondary block mb-1">Phone (Primary) <span className="text-red-400">*</span></label>
-                <input type="tel" className={ic} placeholder={isUAE ? '+971 50 xxx xxxx' : '(949) xxx-xxxx'} value={patientForm.phone} onChange={e => updateField('phone', e.target.value)} />
-              </div>
-              <div>
-                <label className="text-xs text-content-secondary block mb-1">Phone (Secondary/Cell)</label>
-                <input type="tel" className={ic} placeholder="Optional" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-content-secondary block mb-1">Email</label>
-                <input type="email" className={ic} placeholder="email@example.com" value={patientForm.email} onChange={e => updateField('email', e.target.value)} />
-              </div>
-              <div>
-                <label className="text-xs text-content-secondary block mb-1">Preferred Contact</label>
-                <select className={ic}><option>Phone</option><option>Email</option><option>SMS</option><option>Portal</option></select>
-              </div>
+              <div><label className="text-xs text-content-secondary block mb-1">Email</label>
+                <input type="email" className={ic} placeholder="email@example.com" value={form.email} onChange={e => upd('email', e.target.value)} /></div>
+              <div><label className="text-xs text-content-secondary block mb-1">Preferred Contact</label>
+                <select className={ic} value={form.preferredContact} onChange={e => upd('preferredContact', e.target.value)}><option>Phone</option><option>Email</option><option>SMS</option><option>Portal</option></select></div>
             </div>
           </div>
 
@@ -143,23 +133,21 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
             <SectionHeader title="Address" open={sections.address} onToggle={() => toggle('address')} />
             {sections.address && (
               <div className="space-y-3 pt-1">
-                <div><label className="text-xs text-content-secondary block mb-1">Address Line 1</label><input className={ic} placeholder="Street address" value={patientForm.address} onChange={e => updateField('address', e.target.value)} /></div>
-                <div><label className="text-xs text-content-secondary block mb-1">Address Line 2</label><input className={ic} placeholder="Apt, Suite, etc." /></div>
+                <div><label className="text-xs text-content-secondary block mb-1">Address Line 1</label><input className={ic} placeholder="Street address" value={form.addressLine1} onChange={e => upd('addressLine1', e.target.value)} /></div>
+                <div><label className="text-xs text-content-secondary block mb-1">Address Line 2</label><input className={ic} placeholder="Apt, Suite, etc." value={form.addressLine2} onChange={e => upd('addressLine2', e.target.value)} /></div>
                 <div className="grid grid-cols-3 gap-3">
-                  <div><label className="text-xs text-content-secondary block mb-1">City</label><input className={ic} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">City</label><input className={ic} value={form.city} onChange={e => upd('city', e.target.value)} /></div>
                   <div>
                     <label className="text-xs text-content-secondary block mb-1">{isUAE ? 'Emirate' : 'State'}</label>
-                    <select className={ic}>
+                    <select className={ic} value={form.stateEmirate} onChange={e => upd('stateEmirate', e.target.value)}>
                       <option value="">Select</option>
                       {(isUAE ? uaeEmirates : usStates).map(s => <option key={s}>{s}</option>)}
                     </select>
                   </div>
-                  <div><label className="text-xs text-content-secondary block mb-1">{isUAE ? 'Postal Code' : 'ZIP Code'}</label><input className={ic} placeholder={isUAE ? 'Optional' : '00000'} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">{isUAE ? 'Postal Code' : 'ZIP Code'}</label><input className={ic} placeholder={isUAE ? 'Optional' : '00000'} value={form.zip} onChange={e => upd('zip', e.target.value)} /></div>
                 </div>
-                <div>
-                  <label className="text-xs text-content-secondary block mb-1">Country</label>
-                  <input className={`${ic} bg-surface-primary`} value={isUAE ? 'United Arab Emirates' : 'United States'} readOnly />
-                </div>
+                <div><label className="text-xs text-content-secondary block mb-1">Country</label>
+                  <input className={`${ic} bg-surface-primary`} value={isUAE ? 'United Arab Emirates' : 'United States'} readOnly /></div>
               </div>
             )}
           </div>
@@ -171,10 +159,10 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
             <SectionHeader title="Identification" open={sections.id} onToggle={() => toggle('id')} />
             {sections.id && (
               <div className="space-y-3 pt-1">
-                {!isUAE && <div><label className="text-xs text-content-secondary block mb-1">SSN (last 4 digits)</label><input className={ic} placeholder="****-**-XXXX" maxLength={4} value={patientForm.ssn} onChange={e => updateField('ssn', e.target.value)} /></div>}
-                {!isUAE && <div><label className="text-xs text-content-secondary block mb-1">Driver&apos;s License #</label><input className={ic} placeholder="License number" /></div>}
-                {isUAE && <div><label className="text-xs text-content-secondary block mb-1">Emirates ID</label><input className={ic} placeholder="784-XXXX-XXXXXXX-X" value={patientForm.emiratesId} onChange={e => updateField('emiratesId', e.target.value)} /></div>}
-                <div><label className="text-xs text-content-secondary block mb-1">Passport #</label><input className={ic} placeholder="Passport number" /></div>
+                {!isUAE && <div><label className="text-xs text-content-secondary block mb-1">SSN (last 4 digits)</label><input className={ic} placeholder="****-**-XXXX" maxLength={4} value={form.ssn} onChange={e => upd('ssn', e.target.value)} /></div>}
+                {!isUAE && <div><label className="text-xs text-content-secondary block mb-1">Driver&apos;s License #</label><input className={ic} placeholder="License number" value={form.driversLicense} onChange={e => upd('driversLicense', e.target.value)} /></div>}
+                {isUAE && <div><label className="text-xs text-content-secondary block mb-1">Emirates ID</label><input className={ic} placeholder="784-XXXX-XXXXXXX-X" value={form.emiratesId} onChange={e => upd('emiratesId', e.target.value)} /></div>}
+                <div><label className="text-xs text-content-secondary block mb-1">Passport #</label><input className={ic} placeholder="Passport number" value={form.passport} onChange={e => upd('passport', e.target.value)} /></div>
               </div>
             )}
           </div>
@@ -186,26 +174,54 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
             <SectionHeader title="Primary Insurance" open={sections.insurance} onToggle={() => toggle('insurance')} />
             {sections.insurance && (
               <div className="space-y-3 pt-1">
-                <div><label className="text-xs text-content-secondary block mb-1">Insurance Payer</label><input className={ic} placeholder={isUAE ? 'e.g. Daman, NAS, ADNIC...' : 'e.g. Aetna, UHC, BCBS...'} /></div>
+                <div><label className="text-xs text-content-secondary block mb-1">Insurance Payer</label><input className={ic} placeholder={isUAE ? 'e.g. Daman, NAS, ADNIC...' : 'e.g. Aetna, UHC, BCBS...'} value={form.insurancePayer} onChange={e => upd('insurancePayer', e.target.value)} /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-xs text-content-secondary block mb-1">Policy Number</label><input className={ic} value={patientForm.insuranceId} onChange={e => updateField('insuranceId', e.target.value)} /></div>
-                  {!isUAE && <div><label className="text-xs text-content-secondary block mb-1">Group Number</label><input className={ic} value={patientForm.groupNumber} onChange={e => updateField('groupNumber', e.target.value)} /></div>}
+                  <div><label className="text-xs text-content-secondary block mb-1">Policy Number</label><input className={ic} value={form.policyNo} onChange={e => upd('policyNo', e.target.value)} /></div>
+                  {!isUAE && <div><label className="text-xs text-content-secondary block mb-1">Group Number</label><input className={ic} value={form.groupNo} onChange={e => upd('groupNo', e.target.value)} /></div>}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-xs text-content-secondary block mb-1">Member ID</label><input className={ic} value={patientForm.memberId} onChange={e => updateField('memberId', e.target.value)} /></div>
-                  <div><label className="text-xs text-content-secondary block mb-1">Copay Amount</label><input type="number" className={ic} placeholder="0.00" /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Member ID</label><input className={ic} value={form.memberId} onChange={e => upd('memberId', e.target.value)} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Copay Amount</label><input type="number" className={ic} placeholder="0.00" value={form.copay} onChange={e => upd('copay', e.target.value)} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-content-secondary block mb-1">Relationship to Subscriber</label>
-                    <select className={ic}><option>Self</option><option>Spouse</option><option>Child</option><option>Other</option></select>
-                  </div>
-                  <div><label className="text-xs text-content-secondary block mb-1">Subscriber Name (if not self)</label><input className={ic} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Relationship to Subscriber</label>
+                    <select className={ic} value={form.relationship} onChange={e => upd('relationship', e.target.value)}><option>Self</option><option>Spouse</option><option>Child</option><option>Other</option></select></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Subscriber Name (if not self)</label><input className={ic} value={form.subscriberName} onChange={e => upd('subscriberName', e.target.value)} /></div>
                 </div>
-                <div><label className="text-xs text-content-secondary block mb-1">Subscriber DOB (if not self)</label><input type="date" className={ic} /></div>
-                <button type="button" onClick={() => toast.info('Camera / file picker — attach front and back of insurance card')} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-2.5 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2">
-                  <Upload size={14}/> Scan Insurance Card (Front & Back)
-                </button>
+                <div><label className="text-xs text-content-secondary block mb-1">Subscriber DOB (if not self)</label><input type="date" className={ic} value={form.subscriberDob} onChange={e => upd('subscriberDob', e.target.value)} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  {(['Front', 'Back'] as const).map(side => {
+                    const key = `insuranceCard${side}` as 'insuranceCardFront' | 'insuranceCardBack'
+                    const preview = form[key] as string | undefined
+                    return (
+                      <div key={side}>
+                        <label className="text-[11px] text-content-tertiary block mb-1">Card {side}</label>
+                        {preview ? (
+                          <div className="relative w-full h-24 rounded-lg overflow-hidden border border-separator">
+                            <img src={preview} alt={`Card ${side}`} className="w-full h-full object-cover" />
+                            <button type="button" onClick={() => upd(key, '')}
+                              className="absolute top-1 right-1 bg-black/60 text-white rounded px-1.5 py-0.5 text-[10px] hover:bg-red-500/80">
+                              Remove
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="block w-full border border-dashed border-separator rounded-lg py-3 text-center text-xs text-content-secondary cursor-pointer hover:border-brand/30 hover:text-brand transition-all">
+                            <Upload size={14} className="mx-auto mb-1" />
+                            Upload {side}
+                            <input type="file" accept="image/*,application/pdf" className="hidden"
+                              onChange={e => {
+                                const file = e.target.files?.[0]
+                                if (!file) return
+                                const reader = new FileReader()
+                                reader.onload = ev => upd(key, ev.target?.result as string)
+                                reader.readAsDataURL(file)
+                              }} />
+                          </label>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -217,10 +233,10 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
             <SectionHeader title="Secondary Insurance" badge="(optional)" open={sections.secondary} onToggle={() => toggle('secondary')} />
             {sections.secondary && (
               <div className="space-y-3 pt-1">
-                <div><label className="text-xs text-content-secondary block mb-1">Insurance Payer</label><input className={ic} placeholder={isUAE ? 'e.g. Daman, NAS...' : 'e.g. Aetna, UHC...'} /></div>
+                <div><label className="text-xs text-content-secondary block mb-1">Insurance Payer</label><input className={ic} placeholder={isUAE ? 'e.g. Daman, NAS...' : 'e.g. Aetna, UHC...'} value={form.secPayer} onChange={e => upd('secPayer', e.target.value)} /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-xs text-content-secondary block mb-1">Policy Number</label><input className={ic} /></div>
-                  <div><label className="text-xs text-content-secondary block mb-1">Member ID</label><input className={ic} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Policy Number</label><input className={ic} value={form.secPolicyNo} onChange={e => upd('secPolicyNo', e.target.value)} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Member ID</label><input className={ic} value={form.secMemberId} onChange={e => upd('secMemberId', e.target.value)} /></div>
                 </div>
               </div>
             )}
@@ -234,13 +250,11 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
             {sections.emergency && (
               <div className="space-y-3 pt-1">
                 <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-xs text-content-secondary block mb-1">Name</label><input className={ic} /></div>
-                  <div>
-                    <label className="text-xs text-content-secondary block mb-1">Relationship</label>
-                    <select className={ic}><option value="">Select</option><option>Spouse</option><option>Parent</option><option>Sibling</option><option>Child</option><option>Friend</option><option>Other</option></select>
-                  </div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Name</label><input className={ic} value={form.ecName} onChange={e => upd('ecName', e.target.value)} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Relationship</label>
+                    <select className={ic} value={form.ecRelationship} onChange={e => upd('ecRelationship', e.target.value)}><option value="">Select</option><option>Spouse</option><option>Parent</option><option>Sibling</option><option>Child</option><option>Friend</option><option>Other</option></select></div>
                 </div>
-                <div><label className="text-xs text-content-secondary block mb-1">Phone</label><input type="tel" className={ic} /></div>
+                <div><label className="text-xs text-content-secondary block mb-1">Phone</label><input type="tel" className={ic} value={form.ecPhone} onChange={e => upd('ecPhone', e.target.value)} /></div>
               </div>
             )}
           </div>
@@ -252,15 +266,13 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
             <SectionHeader title="Employment" badge="(optional)" open={sections.employment} onToggle={() => toggle('employment')} />
             {sections.employment && (
               <div className="space-y-3 pt-1">
-                <div>
-                  <label className="text-xs text-content-secondary block mb-1">Employment Status</label>
-                  <select className={ic}><option>Employed</option><option>Self-Employed</option><option>Unemployed</option><option>Retired</option><option>Student</option></select>
-                </div>
+                <div><label className="text-xs text-content-secondary block mb-1">Employment Status</label>
+                  <select className={ic} value={form.empStatus} onChange={e => upd('empStatus', e.target.value)}><option>Employed</option><option>Self-Employed</option><option>Unemployed</option><option>Retired</option><option>Student</option></select></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-xs text-content-secondary block mb-1">Employer Name</label><input className={ic} /></div>
-                  <div><label className="text-xs text-content-secondary block mb-1">Occupation</label><input className={ic} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Employer Name</label><input className={ic} value={form.employer} onChange={e => upd('employer', e.target.value)} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Occupation</label><input className={ic} value={form.occupation} onChange={e => upd('occupation', e.target.value)} /></div>
                 </div>
-                <div><label className="text-xs text-content-secondary block mb-1">Work Phone</label><input type="tel" className={ic} /></div>
+                <div><label className="text-xs text-content-secondary block mb-1">Work Phone</label><input type="tel" className={ic} value={form.workPhone} onChange={e => upd('workPhone', e.target.value)} /></div>
               </div>
             )}
           </div>
@@ -272,11 +284,11 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
             <SectionHeader title="Medical Quick Info" badge="(optional)" open={sections.medical} onToggle={() => toggle('medical')} />
             {sections.medical && (
               <div className="space-y-3 pt-1">
-                <div><label className="text-xs text-content-secondary block mb-1">Known Allergies</label><textarea className={`${ic} resize-none`} rows={2} placeholder="e.g. Penicillin, Sulfa drugs..." /></div>
-                <div><label className="text-xs text-content-secondary block mb-1">Current Medications</label><textarea className={`${ic} resize-none`} rows={2} placeholder="List current medications..." /></div>
+                <div><label className="text-xs text-content-secondary block mb-1">Known Allergies</label><textarea className={`${ic} resize-none`} rows={2} placeholder="e.g. Penicillin, Sulfa drugs..." value={form.allergies} onChange={e => upd('allergies', e.target.value)} /></div>
+                <div><label className="text-xs text-content-secondary block mb-1">Current Medications</label><textarea className={`${ic} resize-none`} rows={2} placeholder="List current medications..." value={form.medications} onChange={e => upd('medications', e.target.value)} /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-xs text-content-secondary block mb-1">Referring Physician</label><input className={ic} /></div>
-                  <div><label className="text-xs text-content-secondary block mb-1">Primary Care Physician</label><input className={ic} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Referring Physician</label><input className={ic} value={form.referringPhysician} onChange={e => upd('referringPhysician', e.target.value)} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Primary Care Physician</label><input className={ic} value={form.pcp} onChange={e => upd('pcp', e.target.value)} /></div>
                 </div>
               </div>
             )}
@@ -288,18 +300,18 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
           <div>
             <button type="button" onClick={() => toast.info('Scanning ID to auto-fill demographics...')} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2 mb-4">
               <Upload size={14} className="text-brand" />
-              <span>📷 {isUAE ? 'Scan Emirates ID' : 'Scan Driver\'s License'} to auto-fill demographics</span>
+              <span>📷 {isUAE ? 'Scan Emirates ID' : "Scan Driver's License"} to auto-fill demographics</span>
             </button>
             <div className="flex gap-2">
               <button type="button" onClick={onClose} className="flex-1 bg-surface-elevated border border-separator rounded-lg py-2.5 text-sm text-content-secondary hover:text-content-primary transition-colors">Cancel</button>
               <button
                 type="button"
                 onClick={() => {
-                  if (!patientForm.firstName || !patientForm.lastName) {
+                  if (!form.firstName || !form.lastName) {
                     toast.error('First name and last name are required')
                     return
                   }
-                  toast.success(`Patient ${patientForm.firstName} ${patientForm.lastName} saved successfully`)
+                  toast.success(`Patient ${form.firstName} ${form.lastName} saved successfully`)
                   onClose()
                 }}
                 className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">Save Patient</button>
@@ -313,37 +325,107 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
 
 type DetailTab = 'demographics' | 'address' | 'insurance' | 'emergency' | 'employment' | 'documents' | 'visits' | 'messages'
 
-function PatientDetail({ patient, onClose }: { patient: DemoPatient; onClose: () => void }) {
+function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClose: () => void }) {
   const { country } = useApp()
   const { toast } = useToast()
   const [tab, setTab] = useState<DetailTab>('demographics')
-  // Use app-level country; fall back to patient data signal
-  const isUAE = country === 'uae' || !!patient.emiratesId
+  const [editMode, setEditMode] = useState(false)
+  const [localPatient, setLocalPatient] = useState(patient)
+  const isUAE = country === 'uae' || !!localPatient.emiratesId
+  const profileComplete = computeProfileComplete(patient)
+
+  const [editForm, setEditForm] = useState({
+    firstName: patient.firstName,
+    lastName: patient.lastName,
+    dob: patient.dob || '',
+    gender: patient.gender || '',
+    phone: patient.phone,
+    email: patient.email || '',
+    emiratesId: patient.emiratesId || '',
+    ssn: patient.ssn || '',
+  })
+  const upd = (k: keyof typeof editForm, v: string) => setEditForm(p => ({ ...p, [k]: v }))
+
+  const [editAddress, setEditAddress] = useState({
+    line1: localPatient.address?.line1 || '',
+    line2: localPatient.address?.line2 || '',
+    city: localPatient.address?.city || '',
+    state: localPatient.address?.state || '',
+    zip: localPatient.address?.zip || '',
+  })
+  const [editEmergency, setEditEmergency] = useState({
+    name: localPatient.emergencyContact?.name || '',
+    relationship: localPatient.emergencyContact?.relationship || '',
+    phone: localPatient.emergencyContact?.phone || '',
+  })
 
   const tabs: DetailTab[] = ['demographics', 'address', 'insurance', 'emergency', 'employment', 'documents', 'visits', 'messages']
 
+  function handleSave() {
+    setLocalPatient(prev => ({
+      ...prev,
+      firstName: editForm.firstName,
+      lastName: editForm.lastName,
+      dob: editForm.dob,
+      gender: editForm.gender,
+      phone: editForm.phone,
+      email: editForm.email,
+      emiratesId: editForm.emiratesId,
+      ssn: editForm.ssn,
+      address: editAddress.line1 ? {
+        line1: editAddress.line1,
+        line2: editAddress.line2,
+        city: editAddress.city,
+        state: editAddress.state,
+        zip: editAddress.zip,
+        country: '',
+      } : prev.address,
+      emergencyContact: editEmergency.name ? {
+        name: editEmergency.name,
+        relationship: editEmergency.relationship,
+        phone: editEmergency.phone,
+      } : prev.emergencyContact,
+    }))
+    toast.success('Patient record updated')
+    setEditMode(false)
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
-      <div className="card w-[680px] max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-separator">
+    <>
+      <div className="fixed inset-0 bg-black/20 z-30" onClick={onClose} />
+      <div className="fixed right-0 top-0 h-full w-[520px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-separator shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center text-brand font-bold text-sm">{patient.firstName[0]}{patient.lastName[0]}</div>
+            <div className="w-10 h-10 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center text-brand font-bold text-sm">
+              {localPatient.firstName[0]}{localPatient.lastName[0]}
+            </div>
             <div>
-              <h2 className="font-semibold">{patient.firstName} {patient.lastName}</h2>
-              <span className="text-xs text-content-secondary">{patient.id} • {isUAE ? '🇦🇪 UAE' : '🇺🇸 US'}</span>
+              <h2 className="font-semibold text-content-primary">{localPatient.firstName} {localPatient.lastName}</h2>
+              <span className="text-xs text-content-secondary">{toMRN(patient.id)} • {isUAE ? '🇦🇪 UAE' : '🇺🇸 US'}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
-              <div className="w-16 h-1.5 rounded-full bg-surface-elevated"><div className={`h-full rounded-full ${completenessColor(patient.profileComplete)}`} style={{ width: `${patient.profileComplete}%` }} /></div>
-              <span className="text-[10px] text-content-secondary">{patient.profileComplete}%</span>
+              <div className="w-16 h-1.5 rounded-full bg-surface-elevated">
+                <div className={`h-full rounded-full ${completenessColor(profileComplete)}`} style={{ width: `${profileComplete}%` }} />
+              </div>
+              <span className="text-[10px] text-content-secondary">{profileComplete}%</span>
             </div>
-            <button onClick={onClose} className="text-content-secondary hover:text-content-primary"><X size={18}/></button>
+            <button
+              onClick={() => { if (editMode) handleSave(); else setEditMode(true) }}
+              className={`p-1.5 rounded-btn transition-colors ${editMode ? 'bg-brand text-white' : 'hover:bg-surface-elevated text-content-secondary'}`}
+              title={editMode ? 'Save changes' : 'Edit patient'}>
+              {editMode ? <Check size={15}/> : <Pencil size={15}/>}
+            </button>
+            <button onClick={onClose} className="p-1 hover:bg-surface-elevated rounded-btn text-content-secondary hover:text-content-primary">
+              <X size={18}/>
+            </button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-separator overflow-x-auto">
+        <div className="flex border-b border-separator overflow-x-auto shrink-0">
           {tabs.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-2 text-xs font-medium border-b-2 whitespace-nowrap transition-all ${tab === t ? 'border-brand text-brand' : 'border-transparent text-content-secondary hover:text-content-primary'}`}>
@@ -352,70 +434,122 @@ function PatientDetail({ patient, onClose }: { patient: DemoPatient; onClose: ()
           ))}
         </div>
 
-        <div className="p-4 text-sm">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4 text-sm">
           {tab === 'demographics' && (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-xs text-content-secondary block">Name</span><span>{patient.firstName} {patient.middleName ? patient.middleName + ' ' : ''}{patient.lastName}</span></div>
-                <div><span className="text-xs text-content-secondary block">DOB</span><span>{patient.dob || '—'}</span></div>
-                <div><span className="text-xs text-content-secondary block">Gender</span><span>{patient.gender || '—'}</span></div>
-                <div><span className="text-xs text-content-secondary block">Marital Status</span><span>{patient.maritalStatus || '—'}</span></div>
-                <div><span className="text-xs text-content-secondary block">Phone</span><span>{patient.phone}</span></div>
-                {patient.secondaryPhone && <div><span className="text-xs text-content-secondary block">Secondary Phone</span><span>{patient.secondaryPhone}</span></div>}
-                <div><span className="text-xs text-content-secondary block">Email</span><span>{patient.email || '—'}</span></div>
-                <div><span className="text-xs text-content-secondary block">Preferred Language</span><span>{patient.preferredLanguage || '—'}</span></div>
-                {isUAE && <div><span className="text-xs text-content-secondary block">Emirates ID</span><span>{patient.emiratesId || '—'}</span></div>}
-                {!isUAE && <div><span className="text-xs text-content-secondary block">SSN</span><span>{patient.ssn || '—'}</span></div>}
-                {!isUAE && patient.driversLicense && <div><span className="text-xs text-content-secondary block">Driver&apos;s License</span><span>{patient.driversLicense}</span></div>}
-              </div>
-              {patient.allergies && patient.allergies.length > 0 && (
-                <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-2 text-xs">
-                  <span className="text-content-secondary">Allergies: </span>{patient.allergies.join(', ')}
+              {editMode ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="text-xs text-content-secondary block mb-1">First Name</label>
+                      <input className={ic} value={editForm.firstName} onChange={e => upd('firstName', e.target.value)} /></div>
+                    <div><label className="text-xs text-content-secondary block mb-1">Last Name</label>
+                      <input className={ic} value={editForm.lastName} onChange={e => upd('lastName', e.target.value)} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="text-xs text-content-secondary block mb-1">Date of Birth</label>
+                      <input type="date" className={ic} value={editForm.dob} onChange={e => upd('dob', e.target.value)} /></div>
+                    <div><label className="text-xs text-content-secondary block mb-1">Gender</label>
+                      <select className={ic} value={editForm.gender} onChange={e => upd('gender', e.target.value)}>
+                        <option value="">Select</option><option>Male</option><option>Female</option><option>Other</option>
+                      </select></div>
+                  </div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Phone</label>
+                    <input type="tel" className={ic} value={editForm.phone} onChange={e => upd('phone', e.target.value)} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Email</label>
+                    <input type="email" className={ic} value={editForm.email} onChange={e => upd('email', e.target.value)} /></div>
+                  {isUAE
+                    ? <div><label className="text-xs text-content-secondary block mb-1">Emirates ID</label>
+                        <input className={ic} value={editForm.emiratesId} onChange={e => upd('emiratesId', e.target.value)} /></div>
+                    : <div><label className="text-xs text-content-secondary block mb-1">SSN</label>
+                        <input className={ic} value={editForm.ssn} onChange={e => upd('ssn', e.target.value)} /></div>
+                  }
+                  <div className="flex gap-2 pt-2">
+                    <button onClick={handleSave} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium">Save Changes</button>
+                    <button onClick={() => setEditMode(false)} className="px-4 py-2.5 border border-separator rounded-lg text-sm text-content-secondary">Cancel</button>
+                  </div>
                 </div>
-              )}
-              {patient.noShowCount && patient.noShowCount >= 3 && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2 text-xs text-red-600 dark:text-red-400">⚠ {patient.noShowCount} no-shows on record</div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><span className="text-xs text-content-secondary block">Name</span><span>{localPatient.firstName} {localPatient.middleName ? localPatient.middleName + ' ' : ''}{localPatient.lastName}</span></div>
+                    <div><span className="text-xs text-content-secondary block">DOB</span><span>{formatDOB(localPatient.dob)}</span></div>
+                    <div><span className="text-xs text-content-secondary block">Gender</span><span>{localPatient.gender || '—'}</span></div>
+                    <div><span className="text-xs text-content-secondary block">Marital Status</span><span>{localPatient.maritalStatus || '—'}</span></div>
+                    <div><span className="text-xs text-content-secondary block">Phone</span><span>{localPatient.phone}</span></div>
+                    {localPatient.secondaryPhone && <div><span className="text-xs text-content-secondary block">Secondary Phone</span><span>{localPatient.secondaryPhone}</span></div>}
+                    <div><span className="text-xs text-content-secondary block">Email</span><span>{localPatient.email || '—'}</span></div>
+                    <div><span className="text-xs text-content-secondary block">Preferred Language</span><span>{localPatient.preferredLanguage || '—'}</span></div>
+                    {isUAE && <div><span className="text-xs text-content-secondary block">Emirates ID</span><span>{localPatient.emiratesId || '—'}</span></div>}
+                    {!isUAE && <div><span className="text-xs text-content-secondary block">SSN</span><span>{localPatient.ssn || '—'}</span></div>}
+                    {!isUAE && localPatient.driversLicense && <div><span className="text-xs text-content-secondary block">Driver&apos;s License</span><span>{localPatient.driversLicense}</span></div>}
+                  </div>
+                  {localPatient.allergies && localPatient.allergies.length > 0 && (
+                    <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-2 text-xs">
+                      <span className="text-content-secondary">Allergies: </span>{localPatient.allergies.join(', ')}
+                    </div>
+                  )}
+                  {localPatient.noShowCount && localPatient.noShowCount >= 3 && (
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2 text-xs text-red-600 dark:text-red-400">⚠ {localPatient.noShowCount} no-shows on record</div>
+                  )}
+                </>
               )}
             </div>
           )}
 
           {tab === 'address' && (
-            <div>
-              {patient.address ? (
-                <div className="space-y-1">
-                  <div><span className="text-xs text-content-secondary block">Address</span>
-                    <span>{patient.address.line1}</span>
-                    {patient.address.line2 && <div>{patient.address.line2}</div>}
-                    <div>{patient.address.city}, {patient.address.state} {patient.address.zip}</div>
-                    <div>{patient.address.country}</div>
+            <div className="p-4 space-y-3">
+              {editMode ? (
+                <>
+                  <div><label className="text-xs text-content-secondary block mb-1">Address Line 1</label>
+                    <input className={ic} value={editAddress.line1} onChange={e => setEditAddress(p => ({...p, line1: e.target.value}))} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Address Line 2</label>
+                    <input className={ic} value={editAddress.line2} onChange={e => setEditAddress(p => ({...p, line2: e.target.value}))} /></div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><label className="text-xs text-content-secondary block mb-1">City</label>
+                      <input className={ic} value={editAddress.city} onChange={e => setEditAddress(p => ({...p, city: e.target.value}))} /></div>
+                    <div><label className="text-xs text-content-secondary block mb-1">State / Emirate</label>
+                      <input className={ic} value={editAddress.state} onChange={e => setEditAddress(p => ({...p, state: e.target.value}))} /></div>
                   </div>
+                  <div><label className="text-xs text-content-secondary block mb-1">ZIP / Postal</label>
+                    <input className={ic} value={editAddress.zip} onChange={e => setEditAddress(p => ({...p, zip: e.target.value}))} /></div>
+                </>
+              ) : localPatient.address?.line1 ? (
+                <div className="text-sm space-y-1 text-content-primary">
+                  <div>{localPatient.address.line1}</div>
+                  {localPatient.address.line2 && <div>{localPatient.address.line2}</div>}
+                  <div>{localPatient.address.city}, {localPatient.address.state} {localPatient.address.zip}</div>
                 </div>
-              ) : <div className="text-center py-8 text-xs text-content-secondary">No address on file.</div>}
+              ) : (
+                <div className="text-center py-8 text-xs text-content-secondary">
+                  No address on file. <button onClick={() => setEditMode(true)} className="ml-1 text-brand underline">Add address</button>
+                </div>
+              )}
             </div>
           )}
 
           {tab === 'insurance' && (
             <div className="space-y-3">
-              {patient.insurance ? (
+              {localPatient.insurance ? (
                 <div className="bg-surface-elevated border border-separator rounded-lg p-3">
                   <div className="text-xs text-content-secondary mb-2">Primary Insurance</div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div><span className="text-content-secondary">Payer:</span> {patient.insurance.payer}</div>
-                    <div><span className="text-content-secondary">Policy:</span> {patient.insurance.policyNo}</div>
-                    {patient.insurance.groupNo && <div><span className="text-content-secondary">Group:</span> {patient.insurance.groupNo}</div>}
-                    <div><span className="text-content-secondary">Member ID:</span> {patient.insurance.memberId}</div>
-                    {patient.insurance.relationship && <div><span className="text-content-secondary">Relationship:</span> {patient.insurance.relationship}</div>}
-                    {patient.insurance.copay !== undefined && <div><span className="text-content-secondary">Copay:</span> {isUAE ? 'AED' : '$'}{patient.insurance.copay}</div>}
+                    <div><span className="text-content-secondary">Payer:</span> {localPatient.insurance.payer}</div>
+                    <div><span className="text-content-secondary">Policy:</span> {localPatient.insurance.policyNo}</div>
+                    {localPatient.insurance.groupNo && <div><span className="text-content-secondary">Group:</span> {localPatient.insurance.groupNo}</div>}
+                    <div><span className="text-content-secondary">Member ID:</span> {localPatient.insurance.memberId}</div>
+                    {localPatient.insurance.relationship && <div><span className="text-content-secondary">Relationship:</span> {localPatient.insurance.relationship}</div>}
+                    {localPatient.insurance.copay !== undefined && <div><span className="text-content-secondary">Copay:</span> {isUAE ? 'AED' : '$'}{localPatient.insurance.copay}</div>}
                   </div>
                 </div>
               ) : <div className="text-center py-6 text-xs text-content-secondary">No insurance on file. <button onClick={() => toast.info('Upload insurance card to update coverage details')} className="text-brand underline">Upload insurance card</button></div>}
-              {patient.secondaryInsurance && (
+              {localPatient.secondaryInsurance && (
                 <div className="bg-surface-elevated border border-separator rounded-lg p-3">
                   <div className="text-xs text-content-secondary mb-2">Secondary Insurance</div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div><span className="text-content-secondary">Payer:</span> {patient.secondaryInsurance.payer}</div>
-                    <div><span className="text-content-secondary">Policy:</span> {patient.secondaryInsurance.policyNo}</div>
-                    <div><span className="text-content-secondary">Member ID:</span> {patient.secondaryInsurance.memberId}</div>
+                    <div><span className="text-content-secondary">Payer:</span> {localPatient.secondaryInsurance.payer}</div>
+                    <div><span className="text-content-secondary">Policy:</span> {localPatient.secondaryInsurance.policyNo}</div>
+                    <div><span className="text-content-secondary">Member ID:</span> {localPatient.secondaryInsurance.memberId}</div>
                   </div>
                 </div>
               )}
@@ -426,25 +560,38 @@ function PatientDetail({ patient, onClose }: { patient: DemoPatient; onClose: ()
           )}
 
           {tab === 'emergency' && (
-            <div>
-              {patient.emergencyContact ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <div><span className="text-xs text-content-secondary block">Name</span><span>{patient.emergencyContact.name}</span></div>
-                  <div><span className="text-xs text-content-secondary block">Relationship</span><span>{patient.emergencyContact.relationship}</span></div>
-                  <div><span className="text-xs text-content-secondary block">Phone</span><span>{patient.emergencyContact.phone}</span></div>
+            <div className="p-4 space-y-3">
+              {editMode ? (
+                <>
+                  <div><label className="text-xs text-content-secondary block mb-1">Contact Name</label>
+                    <input className={ic} value={editEmergency.name} onChange={e => setEditEmergency(p => ({...p, name: e.target.value}))} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Relationship</label>
+                    <input className={ic} value={editEmergency.relationship} onChange={e => setEditEmergency(p => ({...p, relationship: e.target.value}))} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Phone</label>
+                    <input className={ic} value={editEmergency.phone} onChange={e => setEditEmergency(p => ({...p, phone: e.target.value}))} /></div>
+                </>
+              ) : localPatient.emergencyContact?.name ? (
+                <div className="text-sm space-y-1 text-content-primary">
+                  <div className="font-medium">{localPatient.emergencyContact.name}</div>
+                  <div className="text-content-secondary">{localPatient.emergencyContact.relationship}</div>
+                  <div>{localPatient.emergencyContact.phone}</div>
                 </div>
-              ) : <div className="text-center py-8 text-xs text-content-secondary">No emergency contact on file.</div>}
+              ) : (
+                <div className="text-center py-8 text-xs text-content-secondary">
+                  No emergency contact on file. <button onClick={() => setEditMode(true)} className="ml-1 text-brand underline">Add contact</button>
+                </div>
+              )}
             </div>
           )}
 
           {tab === 'employment' && (
             <div>
-              {patient.employment ? (
+              {localPatient.employment ? (
                 <div className="grid grid-cols-2 gap-3">
-                  <div><span className="text-xs text-content-secondary block">Status</span><span>{patient.employment.status}</span></div>
-                  {patient.employment.occupation && <div><span className="text-xs text-content-secondary block">Occupation</span><span>{patient.employment.occupation}</span></div>}
-                  {patient.employment.employer && <div><span className="text-xs text-content-secondary block">Employer</span><span>{patient.employment.employer}</span></div>}
-                  {patient.employment.workPhone && <div><span className="text-xs text-content-secondary block">Work Phone</span><span>{patient.employment.workPhone}</span></div>}
+                  <div><span className="text-xs text-content-secondary block">Status</span><span>{localPatient.employment.status}</span></div>
+                  {localPatient.employment.occupation && <div><span className="text-xs text-content-secondary block">Occupation</span><span>{localPatient.employment.occupation}</span></div>}
+                  {localPatient.employment.employer && <div><span className="text-xs text-content-secondary block">Employer</span><span>{localPatient.employment.employer}</span></div>}
+                  {localPatient.employment.workPhone && <div><span className="text-xs text-content-secondary block">Work Phone</span><span>{localPatient.employment.workPhone}</span></div>}
                 </div>
               ) : <div className="text-center py-8 text-xs text-content-secondary">No employment info on file.</div>}
             </div>
@@ -455,7 +602,7 @@ function PatientDetail({ patient, onClose }: { patient: DemoPatient; onClose: ()
           {tab === 'messages' && <div className="text-center py-8 text-xs text-content-secondary">No messages for this patient.</div>}
         </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -469,7 +616,8 @@ export default function PatientsPage() {
     search ? { search, limit: 50 } : { limit: 50 }
   )
 
-  const clientFilter = currentUser.role === 'client' || currentUser.role === 'provider' ? 'org-102' : selectedClient?.id
+  const isClinic = currentUser.role === 'client' || currentUser.role === 'provider'
+  const clientFilter = isClinic ? currentUser.organization_id : selectedClient?.id
 
   const apiPatients = apiResult?.data
     ? apiResult.data.map(apiPatientToDemoPatient)
@@ -499,6 +647,7 @@ export default function PatientsPage() {
         <table className="w-full text-sm">
           <thead><tr className="border-b border-separator text-xs text-content-secondary">
             <th className="text-left px-4 py-3">Patient {apiResult ? <span className="text-brand font-normal">(live)</span> : null}</th>
+            <th className="text-left px-4 py-3">MRN</th>
             <th className="text-left px-4 py-3">DOB</th>
             <th className="text-left px-4 py-3">Phone</th>
             <th className="text-left px-4 py-3">Insurance</th>
@@ -506,14 +655,15 @@ export default function PatientsPage() {
             <th className="text-left px-4 py-3">Status</th>
           </tr></thead>
           <tbody>{apiLoading ? (
-            <tr><td colSpan={6} className="px-4 py-8 text-center text-xs text-content-tertiary">Loading patients…</td></tr>
+            <tr><td colSpan={7} className="px-4 py-8 text-center text-xs text-content-tertiary">Loading patients…</td></tr>
           ) : patients.map(p => (
             <tr key={p.id} onClick={() => setSelected(p)} className="border-b border-separator last:border-0 table-row cursor-pointer transition-all">
-              <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full bg-brand/10 flex items-center justify-center text-brand text-[10px] font-bold">{p.firstName[0]}{p.lastName[0]}</div><div><div className="font-medium">{p.firstName} {p.lastName}</div><div className="text-[10px] text-content-secondary">{p.id}</div></div></div></td>
-              <td className="px-4 py-3 text-content-secondary">{p.dob || '—'}</td>
+              <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full bg-brand/10 flex items-center justify-center text-brand text-[10px] font-bold">{p.firstName[0]}{p.lastName[0]}</div><div className="font-medium">{p.firstName} {p.lastName}</div></div></td>
+              <td className="px-4 py-3 text-xs text-content-secondary font-mono">{toMRN(p.id)}</td>
+              <td className="px-4 py-3 text-content-secondary text-xs">{formatDOB(p.dob)}</td>
               <td className="px-4 py-3 text-content-secondary">{p.phone}</td>
               <td className="px-4 py-3 text-content-secondary text-xs">{p.insurance?.payer || <span className="text-amber-600 dark:text-amber-400">Not on file</span>}</td>
-              <td className="px-4 py-3"><div className="flex items-center gap-1.5"><div className="w-12 h-1.5 rounded-full bg-surface-elevated"><div className={`h-full rounded-full ${completenessColor(p.profileComplete)}`} style={{ width: `${p.profileComplete}%` }}/></div><span className="text-[10px] text-content-secondary">{p.profileComplete}%</span></div></td>
+              <td className="px-4 py-3"><div className="flex items-center gap-1.5"><div className="w-12 h-1.5 rounded-full bg-surface-elevated"><div className={`h-full rounded-full ${completenessColor(computeProfileComplete(p))}`} style={{ width: `${computeProfileComplete(p)}%` }}/></div><span className="text-[10px] text-content-secondary">{computeProfileComplete(p)}%</span></div></td>
               <td className="px-4 py-3"><StatusBadge status={p.status} small/></td>
             </tr>
           ))
@@ -521,7 +671,7 @@ export default function PatientsPage() {
         </table>
       </div>
       {showAdd && <AddPatientModal onClose={() => setShowAdd(false)}/>}
-      {selected && <PatientDetail patient={selected} onClose={() => setSelected(null)}/>}
+      {selected && <PatientDetailDrawer patient={selected} onClose={() => setSelected(null)}/>}
     </ModuleShell>
   )
 }

@@ -13,8 +13,11 @@ interface FileItem { name: string; size: string }
 type Step = 1 | 2 | 3
 
 export default function ScanSubmitPage() {
-  const { selectedClient } = useApp()
-  const clientId = selectedClient?.id ?? 'org-102'
+  const { selectedClient, currentUser, country } = useApp()
+  const isClinic = currentUser.role === 'client' || currentUser.role === 'provider'
+  const clientId = isClinic
+    ? currentUser.organization_id
+    : selectedClient?.id ?? (country === 'uae' ? 'org-101' : 'org-102')
   const myPatients = demoPatients.filter(p => p.clientId === clientId)
 
   const [step, setStep] = useState<Step>(1)

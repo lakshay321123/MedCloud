@@ -2,6 +2,7 @@
 import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
+import { useApp } from '@/lib/context'
 import { demoDocs, demoFaxes, DemoDocRecord } from '@/lib/demo-data'
 import {
   Search, Upload, X, Download, AlertTriangle, FileText, CreditCard,
@@ -38,7 +39,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
   const { toast } = useToast()
   const [patientSearch, setPatientSearch] = useState('')
   return (
-    <div className="fixed inset-y-0 right-0 w-[500px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl animate-fade-in">
+    <div className="fixed inset-y-0 right-0 w-[600px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl animate-fade-in">
       <div className="p-4 border-b border-separator flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -52,13 +53,40 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
       </div>
       <div className="flex-1 overflow-y-auto">
         {/* Preview area */}
-        <div className="m-4 bg-surface-elevated rounded-lg h-64 flex items-center justify-center border border-separator">
-          <div className="text-center">
-            {typeIcon[doc.type] ?? <File size={32}/>}
-            <p className="text-xs text-content-secondary mt-2 font-mono">{doc.name}</p>
-            <p className="text-[10px] text-content-tertiary mt-1">Document preview</p>
-          </div>
+        <div className="m-4 bg-surface-elevated rounded-lg overflow-hidden border border-separator" style={{ minHeight: '60vh', height: '60vh' }}>
+          {(doc as any).url ? (
+            <embed src={(doc as any).url} type="application/pdf" className="w-full" style={{ height: '60vh' }} />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full py-16 gap-3">
+              <FileText size={40} className="opacity-30" />
+              <p className="text-sm font-mono text-content-secondary">{doc.name}</p>
+              <p className="text-xs text-content-tertiary">Preview not available — use Download to open</p>
+            </div>
+          )}
         </div>
+        {/* Quick Code Entry for Superbill / Clinical Note */}
+        {(doc.type === 'Superbill' || doc.type === 'Clinical Note') && (
+          <div className="mx-4 mb-4 card p-4">
+            <div className="text-[10px] font-semibold text-content-secondary uppercase tracking-wider mb-3">Quick Code Entry</div>
+            <div className="space-y-2">
+              {[
+                { label: 'CPT Code(s)', placeholder: 'e.g. 99214, 93000' },
+                { label: 'ICD-10 Code(s)', placeholder: 'e.g. E11.9, I10' },
+                { label: 'Modifier', placeholder: 'e.g. 25, 59' },
+              ].map(f => (
+                <div key={f.label}>
+                  <label className="text-[11px] text-content-tertiary block mb-1">{f.label}</label>
+                  <input placeholder={f.placeholder}
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-brand/40" />
+                </div>
+              ))}
+              <button onClick={() => toast.success('Sent to coding queue')}
+                className="w-full bg-brand text-white rounded-lg py-2 text-xs font-medium hover:bg-brand-deep transition-colors mt-1">
+                Send to Coding Queue
+              </button>
+            </div>
+          </div>
+        )}
         {/* Link to patient section */}
         {doc.status === 'Unlinked' && (
           <div className="mx-4 mb-4 card p-4">
@@ -103,6 +131,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
 }
 
 function AllDocsTab() {
+  const { selectedClient, country } = useApp()
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string[]>([])
   const [statusFilter, setStatusFilter] = useState('')
@@ -112,6 +141,11 @@ function AllDocsTab() {
   const toggleType = (t: string) => setTypeFilter(p => p.includes(t) ? p.filter(x=>x!==t) : [...p,t])
 
   const filtered = demoDocs.filter(d => {
+    if (d.clientId) {
+      if (selectedClient && d.clientId !== selectedClient.id) return false
+      if (!selectedClient && country === 'uae' && !['org-101','org-104'].includes(d.clientId)) return false
+      if (!selectedClient && country === 'usa' && !['org-102','org-103'].includes(d.clientId)) return false
+    }
     if (search && !d.name.toLowerCase().includes(search.toLowerCase()) && !d.patient.toLowerCase().includes(search.toLowerCase())) return false
     if (typeFilter.length > 0 && !typeFilter.includes(d.type)) return false
     if (statusFilter && d.status !== statusFilter) return false
@@ -230,6 +264,10 @@ function FaxCenterTab() {
   const { toast } = useToast()
   const [subTab, setSubTab] = useState<'inbound'|'outbound'>('inbound')
   const [showSendFax, setShowSendFax] = useState(false)
+  const [selectedFax, setSelectedFax] = useState<typeof demoFaxes[0] | null>(null)
+  const [faxTo, setFaxTo] = useState('')
+  const [faxFrom, setFaxFrom] = useState('')
+  const [faxSubject, setFaxSubject] = useState('')
   const faxes = demoFaxes.filter(f => subTab==='inbound' ? f.direction==='Inbound' : f.direction==='Outbound')
   const statusStyle = (s: string) => s==='Received'||s==='Sent'?'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400':s==='Failed'?'bg-red-500/10 text-red-500':s==='Pending'?'bg-amber-500/10 text-amber-500':'bg-surface-elevated text-content-secondary'
   return (
@@ -256,7 +294,7 @@ function FaxCenterTab() {
             <th className="text-left px-4 py-3">Actions</th>
           </tr></thead>
           <tbody>{faxes.map(f=>(
-            <tr key={f.id} className="border-b border-separator last:border-0 table-row">
+            <tr key={f.id} onClick={() => setSelectedFax(f)} className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
               <td className="px-4 py-3 font-mono text-xs">{f.id}</td>
               <td className="px-4 py-3 text-xs">{f.fromTo}</td>
               <td className="px-4 py-3 text-xs text-content-secondary">{f.date}</td>
@@ -264,13 +302,40 @@ function FaxCenterTab() {
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${statusStyle(f.status)}`}>{f.status}</span></td>
               <td className="px-4 py-3 text-xs text-brand">{f.document??'—'}</td>
               <td className="px-4 py-3 flex gap-1">
-                {f.document&&<button onClick={()=>toast.success('Download started')} className="text-[10px] text-content-secondary hover:text-content-primary border border-separator px-2 py-1 rounded transition-colors">View</button>}
-                {f.direction==='Inbound'&&<button onClick={()=>toast.success('Fax linked to patient record')} className="text-[10px] text-brand hover:underline px-2 py-1">Link</button>}
+                {f.document&&<button onClick={e=>{e.stopPropagation();toast.success('Download started')}} className="text-[10px] text-content-secondary hover:text-content-primary border border-separator px-2 py-1 rounded transition-colors">View</button>}
+                {f.direction==='Inbound'&&<button onClick={e=>{e.stopPropagation();toast.success('Fax linked to patient record')}} className="text-[10px] text-brand hover:underline px-2 py-1">Link</button>}
               </td>
             </tr>
           ))}</tbody>
         </table>
       </div>
+
+      {/* Fax detail modal */}
+      {selectedFax && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setSelectedFax(null)} />
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="bg-surface-secondary rounded-xl p-5 w-full max-w-md shadow-2xl border border-separator">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="font-semibold">{selectedFax.id}</h3>
+                <button onClick={() => setSelectedFax(null)}><X size={16} className="text-content-secondary" /></button>
+              </div>
+              <div className="text-xs space-y-1.5">
+                {[['Direction', selectedFax.direction], ['From/To', selectedFax.fromTo],
+                  ['Date', selectedFax.date], ['Pages', selectedFax.pages],
+                  ['Status', selectedFax.status]].map(([k,v]) => (
+                  <div key={k}><span className="text-content-tertiary">{k}:</span><span className="ml-2">{v}</span></div>
+                ))}
+              </div>
+              <button onClick={() => { toast.success('Download started'); setSelectedFax(null) }}
+                className="w-full mt-4 bg-brand text-white rounded-lg py-2.5 text-sm font-medium">
+                Download Fax
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {showSendFax&&(
         <>
           <div className="fixed inset-0 bg-black/40 z-40" onClick={()=>setShowSendFax(false)}/>
@@ -280,12 +345,18 @@ function FaxCenterTab() {
                 <h3 className="text-base font-semibold">Send Fax</h3>
                 <button onClick={()=>setShowSendFax(false)}><X size={16} className="text-content-secondary"/></button>
               </div>
-              {[['To (fax number)','e.g. 1-800-555-0001'],['From','Your fax line'],['Subject','Re: Patient...']].map(([l,p])=>(
-                <div key={l}>
-                  <label className="text-xs text-content-secondary block mb-1">{l}</label>
-                  <input placeholder={p} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"/>
-                </div>
-              ))}
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">To (fax number)</label>
+                <input value={faxTo} onChange={e => setFaxTo(e.target.value)} placeholder="e.g. 1-800-555-0001" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"/>
+              </div>
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">From</label>
+                <input value={faxFrom} onChange={e => setFaxFrom(e.target.value)} placeholder="Your fax line" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"/>
+              </div>
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">Subject</label>
+                <input value={faxSubject} onChange={e => setFaxSubject(e.target.value)} placeholder="Re: Patient..." className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"/>
+              </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Attach Document</label>
                 <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
@@ -293,7 +364,7 @@ function FaxCenterTab() {
                   {demoDocs.filter(d=>d.status==='Linked').slice(0,5).map(d=><option key={d.id}>{d.name}</option>)}
                 </select>
               </div>
-              <button onClick={()=>{toast.success('Fax queued for delivery');setShowSendFax(false)}}
+              <button onClick={()=>{toast.success('Fax queued for delivery');setShowSendFax(false);setFaxTo('');setFaxFrom('');setFaxSubject('')}}
                 className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">
                 Send Fax
               </button>

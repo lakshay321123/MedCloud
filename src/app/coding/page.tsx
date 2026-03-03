@@ -152,6 +152,42 @@ export default function CodingPage() {
   const { toast } = useToast()
   const { data: apiQueueResult } = useCodingQueue({ status: 'pending', limit: 100 })
 
+  const apiMapped = apiQueueResult?.data?.map(c => {
+    const demoMatch = demoCodingQueue.find(d => d.id === c.id)
+    return {
+      id: c.id,
+      patientId: c.patient_id || '',
+      patientName: c.patient_name || 'Unknown Patient',
+      clientId: c.client_id,
+      clientName: c.client_name || '',
+      source: (demoMatch?.source || 'upload') as 'upload' | 'ai_scribe',
+      dos: c.created_at ? c.created_at.split('T')[0] : '',
+      provider: c.provider_name || '',
+      providerNpi: demoMatch?.providerNpi || '',
+      providerSpecialty: demoMatch?.providerSpecialty || '',
+      status: (c.status || 'pending') as 'pending' | 'in_progress' | 'completed' | 'on_hold',
+      receivedAt: c.received_at || c.created_at || new Date().toISOString(),
+      priority: (c.priority ?? 'medium') as 'low' | 'medium' | 'high' | 'urgent',
+      visitNote: demoMatch?.visitNote || {
+        subjective: 'Visit note not yet available \u2014 Bedrock integration Sprint 2',
+        objective: '',
+        assessment: '',
+        plan: '',
+      },
+      aiSuggestedIcd: demoMatch?.aiSuggestedIcd || [],
+      aiSuggestedCpt: demoMatch?.aiSuggestedCpt || [],
+      hasSuperbill: demoMatch?.hasSuperbill || false,
+      superbillCpt: demoMatch?.superbillCpt,
+      priorAuthStatus: demoMatch?.priorAuthStatus || 'not_required',
+      priorAuthNumber: demoMatch?.priorAuthNumber,
+      patientDob: demoMatch?.patientDob,
+      patientGender: demoMatch?.patientGender,
+      patientPayer: demoMatch?.patientPayer,
+      visitType: demoMatch?.visitType,
+      placeOfService: demoMatch?.placeOfService,
+    }
+  }) || []
+
   const coders = [
     { id: 'demo-002', name: 'Sarah Kim' },
     { id: 'demo-003', name: 'Amy Chen' },
@@ -162,7 +198,7 @@ export default function CodingPage() {
   const uaeClientIds = ['org-101', 'org-104']
 
   const queue = (() => {
-    const base = demoCodingQueue
+    const base = apiMapped.length > 0 ? apiMapped : demoCodingQueue
     // Filter by region
     const regionFiltered = base.filter(item => {
       const isUAEClient = uaeClientIds.includes(item.clientId)
@@ -288,7 +324,7 @@ export default function CodingPage() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-[14px] font-semibold text-content-primary leading-tight">{q.patientName}</p>
-                      <span className={`w-2 h-2 rounded-full mt-1 ${priorityColor[q.priority]}`} />
+                      <span className={`w-2 h-2 rounded-full mt-1 ${priorityColor[q.priority ?? 'medium']}`} />
                     </div>
                     <p className="text-[12px] text-content-secondary truncate">{getClientName(q.clientId)} · {q.dos}</p>
                     <div className="flex items-center justify-between mt-1 gap-1 flex-wrap">
@@ -385,10 +421,24 @@ export default function CodingPage() {
                 <div className="p-4 overflow-y-auto flex-1">
                   {tab === 'note' && (
                     <div className="space-y-3">
-                      {item.source === 'ai_scribe' && (
-                        <button onClick={() => toast.info('Audio playback — recording from AI Scribe session')} className="inline-flex items-center gap-2 text-[12px] rounded-btn px-3 py-1.5 bg-brand/10 text-brand">
-                          <Play size={13} /> <Mic size={13} /> Play Recording
-                        </button>
+                      {item.source === 'ai_scribe' ? (
+                        <div className="bg-brand/5 border border-brand/20 rounded-card p-3 flex items-center gap-3 mb-3 shrink-0">
+                          <Mic size={14} className="text-brand shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-xs font-semibold text-content-primary">AI Scribe Recording</p>
+                            <p className="text-[11px] text-content-secondary">Transcribed from live session</p>
+                          </div>
+                          <button onClick={() => toast.info('Audio playback from AI Scribe session')} className="text-xs text-brand underline shrink-0">Play Recording</button>
+                        </div>
+                      ) : (
+                        <div className="bg-surface-elevated border border-separator rounded-card p-3 flex items-center gap-3 mb-3 shrink-0">
+                          <FileText size={14} className="text-content-secondary shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-xs font-semibold text-content-primary">Uploaded Document</p>
+                            <p className="text-[11px] text-content-secondary">Source chart — {item.patientName}</p>
+                          </div>
+                          <button onClick={() => toast.info('Opening document in Documents module...')} className="text-xs text-brand underline shrink-0">View Original</button>
+                        </div>
                       )}
                       {(['subjective', 'objective', 'assessment', 'plan'] as const).map(section => (
                         <div key={section} className="pb-2 border-b border-separator last:border-0">

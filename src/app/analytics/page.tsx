@@ -4,6 +4,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { demoClaims, demoClients } from '@/lib/demo-data'
+import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine
@@ -47,14 +48,17 @@ const denialTrend = [
   { month: 'Mar', initial: 5.1, net: 2.9 },
 ]
 
+// Deterministic daily claim counts — no Math.random(), consistent on every render
+const claimsByDay: Record<number, number> = {
+  0: 16, 1: 38, 2: 42, 3: 35, 4: 40, 5: 44, 6: 17,
+  7: 14, 8: 37, 9: 41, 10: 39, 11: 43, 12: 46, 13: 31,
+}
 const last14Days = Array.from({ length: 14 }, (_, i) => {
   const d = new Date('2026-03-02')
   d.setDate(d.getDate() - (13 - i))
-  const dow = d.getDay()
-  const isWeekend = dow === 0 || dow === 6
   return {
     date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    claims: isWeekend ? Math.round(Math.random() * 10 + 15) : Math.round(Math.random() * 20 + 30),
+    claims: claimsByDay[i] ?? 30,
   }
 })
 
@@ -111,13 +115,19 @@ function HeatCell({ value }: { value: number }) {
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
-  const { selectedClient } = useApp()
+  const { selectedClient, country } = useApp()
   const [tab, setTab] = useState<'financial' | 'operational' | 'ai' | 'payer'>('financial')
   const [dateRange, setDateRange] = useState('last30')
 
   const claims = useMemo(() =>
-    selectedClient ? demoClaims.filter(c => c.clientId === selectedClient.id) : demoClaims,
-    [selectedClient]
+    selectedClient
+      ? demoClaims.filter(c => c.clientId === selectedClient.id)
+      : country === 'uae'
+        ? demoClaims.filter(c => (UAE_ORG_IDS as readonly string[]).includes(c.clientId))
+        : country === 'usa'
+          ? demoClaims.filter(c => (US_ORG_IDS as readonly string[]).includes(c.clientId))
+          : demoClaims,
+    [selectedClient, country]
   )
 
   // ─── Financial calculations ───────────────────────────────────────────────

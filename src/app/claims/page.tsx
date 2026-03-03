@@ -6,8 +6,10 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import DocViewer from '@/components/shared/DocViewer'
 import { useApp } from '@/lib/context'
 import { demoClaims, demoMessages } from '@/lib/demo-data'
+import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import type { DemoClaim, ClaimTimelineEvent } from '@/lib/demo-data'
 import { useToast } from '@/components/shared/Toast'
+import { useRouter } from 'next/navigation'
 import { useClaims } from '@/lib/hooks'
 import type { ApiClaim } from '@/lib/hooks'
 import type { ClaimStatus } from '@/types'
@@ -356,32 +358,49 @@ function ClaimDrawer({ claim, onClose }: { claim: DemoClaim; onClose: () => void
           )}
 
           {tab === 'scrub' && (
-            <div className="space-y-4">
-              <div className="flex items-start gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
-                <CheckSquare size={14} className="text-blue-400 mt-0.5 shrink-0" />
-                <p className="text-[12px] text-blue-400">
-                  Complete all 20 scrub rules before submitting. All {checkedRules.size} / {SCRUB_RULES.length} checked.
-                </p>
+            <div className="grid grid-cols-2 gap-4 h-[calc(100vh-320px)]">
+              {/* Left: document preview */}
+              <div className="card overflow-hidden flex flex-col">
+                <div className="px-4 py-2 border-b border-separator text-xs font-semibold text-content-secondary uppercase tracking-wider">
+                  Supporting Documents
+                </div>
+                <div className="flex-1 flex flex-col items-center justify-center gap-3 text-content-tertiary">
+                  <FileText size={32} className="opacity-20" />
+                  <p className="text-xs">No document attached to this claim</p>
+                  <button onClick={() => { window.location.href = '/documents' }}
+                    className="text-xs text-brand hover:underline">
+                    Open Documents →
+                  </button>
+                </div>
               </div>
-              <div className="space-y-1">
-                {SCRUB_RULES.map(rule => (
-                  <label key={rule.id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-surface-elevated cursor-pointer group">
-                    <input type="checkbox" checked={checkedRules.has(rule.id)} onChange={() => toggleRule(rule.id)}
-                      className="rounded accent-brand w-4 h-4 shrink-0" />
-                    <span className={`text-[12px] font-mono text-content-tertiary w-10 shrink-0`}>{rule.id}</span>
-                    <span className={`text-[13px] flex-1 ${checkedRules.has(rule.id) ? 'line-through text-content-tertiary' : 'text-content-primary'}`}>{rule.label}</span>
-                  </label>
-                ))}
+              {/* Right: scrub rules */}
+              <div className="card overflow-y-auto p-4 space-y-4">
+                <div className="flex items-start gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                  <CheckSquare size={14} className="text-blue-400 mt-0.5 shrink-0" />
+                  <p className="text-[12px] text-blue-400">
+                    Complete all 20 scrub rules before submitting. All {checkedRules.size} / {SCRUB_RULES.length} checked.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  {SCRUB_RULES.map(rule => (
+                    <label key={rule.id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-surface-elevated cursor-pointer group">
+                      <input type="checkbox" checked={checkedRules.has(rule.id)} onChange={() => toggleRule(rule.id)}
+                        className="rounded accent-brand w-4 h-4 shrink-0" />
+                      <span className={`text-[12px] font-mono text-content-tertiary w-10 shrink-0`}>{rule.id}</span>
+                      <span className={`text-[13px] flex-1 ${checkedRules.has(rule.id) ? 'line-through text-content-tertiary' : 'text-content-primary'}`}>{rule.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <button
+                  disabled={!allRulesChecked}
+                  onClick={() => {
+                    toast.success('Manual scrub complete — claim marked ready for submission')
+                    setCheckedRules(new Set())
+                  }}
+                  className={`w-full py-2.5 rounded-btn text-[13px] font-medium transition-colors ${allRulesChecked ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-surface-elevated text-content-tertiary cursor-not-allowed border border-separator'}`}>
+                  {allRulesChecked ? 'Submit Manual Scrub' : `Check all ${SCRUB_RULES.length - checkedRules.size} remaining rules to continue`}
+                </button>
               </div>
-              <button
-                disabled={!allRulesChecked}
-                onClick={() => {
-                  toast.success('Manual scrub complete — claim marked ready for submission')
-                  setCheckedRules(new Set())
-                }}
-                className={`w-full py-2.5 rounded-btn text-[13px] font-medium transition-colors ${allRulesChecked ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-surface-elevated text-content-tertiary cursor-not-allowed border border-separator'}`}>
-                {allRulesChecked ? 'Submit Manual Scrub' : `Check all ${SCRUB_RULES.length - checkedRules.size} remaining rules to continue`}
-              </button>
             </div>
           )}
 
@@ -457,8 +476,9 @@ function ClaimDrawer({ claim, onClose }: { claim: DemoClaim; onClose: () => void
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function ClaimsPage() {
-  const { selectedClient } = useApp()
+  const { selectedClient, country } = useApp()
   const { toast } = useToast()
+  const router = useRouter()
 
   const [search, setSearch] = useState('')
   const [statusFilters, setStatusFilters] = useState<string[]>([])
@@ -488,6 +508,8 @@ export default function ClaimsPage() {
 
     return source.filter(c => {
       if (!apiResult && selectedClient && c.clientId !== selectedClient.id) return false
+      if (!apiResult && !selectedClient && country === 'uae' && !(UAE_ORG_IDS as readonly string[]).includes(c.clientId)) return false
+      if (!apiResult && !selectedClient && country === 'usa' && !(US_ORG_IDS as readonly string[]).includes(c.clientId)) return false
       if (search && !c.patientName.toLowerCase().includes(search.toLowerCase()) && !c.id.toLowerCase().includes(search.toLowerCase())) return false
       if (statusFilters.length && !statusFilters.includes(c.status)) return false
       if (dosFrom && c.dos < dosFrom) return false
@@ -689,9 +711,9 @@ export default function ClaimsPage() {
                           <div className="absolute right-0 top-full mt-1 bg-surface-secondary border border-separator rounded-lg shadow-elevated z-50 w-40 overflow-hidden">
                             {[
                               { label: 'View Detail', action: () => { setDrawerClaim(c); setMenuOpen(null) } },
-                              { label: 'Correct Claim', action: () => { toast.info('Correction mode opened'); setMenuOpen(null) } },
-                              { label: 'Route to Denials', action: () => { toast.success('Routed to denial queue'); setMenuOpen(null) } },
-                              { label: 'Void Claim', action: () => { toast.warning('Void requires supervisor approval'); setMenuOpen(null) } },
+                              { label: 'Correct Claim', action: () => { setDrawerClaim(c); setMenuOpen(null) } },
+                              { label: 'Route to Denials', action: () => { router.push(`/denials?claimId=${c.id}`); setMenuOpen(null) } },
+                              { label: 'Void Claim', action: () => { if (confirm(`Void claim ${c.id}?`)) { toast.warning(`Claim ${c.id} voided`) } setMenuOpen(null) } },
                             ].map(item => (
                               <button key={item.label} onClick={item.action}
                                 className="w-full text-left px-3 py-2 text-xs text-content-primary hover:bg-surface-elevated transition-colors">

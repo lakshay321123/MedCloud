@@ -1,13 +1,14 @@
 'use client'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
-import { demoVisits, DemoVisit } from '@/lib/demo-data'
-import { Mic, Square, Pause, Check, ChevronLeft, BrainCircuit, Clock, FileText, Activity } from 'lucide-react'
+import { demoVisits, demoPatients, demoAppointments, DemoVisit } from '@/lib/demo-data'
+import { Mic, Square, Pause, Check, ChevronLeft, BrainCircuit, Clock, FileText, Activity, User } from 'lucide-react'
+import { formatDOB } from '@/lib/utils/region'
 
 function Waveform() {
   return (
@@ -28,15 +29,28 @@ function RecordingTimer() {
   return <span className="font-mono text-3xl font-bold text-content-primary tracking-widest">{String(m).padStart(2,'0')}:{String(s).padStart(2,'0')}</span>
 }
 
-type UIState = 'queue' | 'recording' | 'processing' | 'note'
+type UIState = 'queue' | 'select_patient' | 'review_patient' | 'recording' | 'processing' | 'note'
 
 function ProviderView() {
   const { toast } = useToast()
+  const { setIsScribeRecording } = useApp()
   const [uiState, setUiState] = useState<UIState>('queue')
+
+  useEffect(() => {
+    if (uiState !== 'recording') { setIsScribeRecording(false); return }
+    setIsScribeRecording(true)
+  }, [uiState]) // eslint-disable-line react-hooks/exhaustive-deps
   const [selectedVisit, setSelectedVisit] = useState<DemoVisit | null>(null)
-  const [selectedPatient, setSelectedPatient] = useState('P-001')
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
   const [soap, setSoap] = useState({ s:'', o:'', a:'', p:'' })
   const [codes, setCodes] = useState(demoVisits[0].suggestedCodes)
+  const [liveTranscript, setLiveTranscript] = useState('')
+  const [recordingTime, setRecordingTime] = useState('00:00')
+
+  // Today's appointments for patient selector
+  const todayAppts = demoAppointments.filter(a => a.date === '2026-03-02')
+  const selectedPatient = demoPatients.find(p => p.id === selectedPatientId)
+  const selectedAppt = todayAppts.find(a => a.patientId === selectedPatientId)
 
   const pending = demoVisits.filter(v => v.status==='pending_signoff')
   const completed = demoVisits.filter(v => v.status==='signed')
@@ -45,34 +59,191 @@ function ProviderView() {
     setSelectedVisit(v); setSoap({...v.soap}); setCodes(v.suggestedCodes); setUiState('note')
   }
 
+  useEffect(() => {
+    if (uiState !== 'recording') return
+    setLiveTranscript('')
+    setRecordingTime('00:00')
+    const SAMPLE = 'Patient presents with chest tightness and shortness of breath for two days. No fever or cough. History of hypertension controlled on Lisinopril. Denies recent travel. Physical exam reveals mild tachycardia at 98 bpm. Lungs clear to auscultation. EKG ordered. Assessment: atypical chest pain, rule out ACS. Plan: cardiology referral, stress test, continue current medications.'.split(' ')
+    let wordIdx = 0, seconds = 0
+    const wordTimer = setInterval(() => {
+      if (wordIdx < SAMPLE.length) {
+        setLiveTranscript(t => t + (t ? ' ' : '') + SAMPLE[wordIdx++])
+      }
+    }, 800)
+    const clockTimer = setInterval(() => {
+      seconds++
+      const m = Math.floor(seconds / 60), s = seconds % 60
+      setRecordingTime(`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`)
+    }, 1000)
+    return () => { clearInterval(wordTimer); clearInterval(clockTimer) }
+  }, [uiState])
+
   function handleStop() {
+    setIsScribeRecording(false)
     setUiState('processing')
+    setLiveTranscript('')
     setTimeout(()=>{
-      const v = demoVisits.find(x=>x.patientId===selectedPatient)??demoVisits[0]
+      const v = demoVisits.find(x=>x.patientId===selectedPatientId)??demoVisits[0]
       setSelectedVisit(v); setSoap({...v.soap}); setCodes(v.suggestedCodes); setUiState('note')
     }, 3000)
   }
 
-  if (uiState === 'recording') return (
-    <div className="max-w-lg mx-auto mt-12 space-y-6 text-center">
-      <div>
-        <p className="text-sm text-content-secondary mb-2">Recording for</p>
-        <select value={selectedPatient} onChange={e=>setSelectedPatient(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-4 py-2 text-sm text-content-primary">
-          {demoVisits.map(v=><option key={v.patientId} value={v.patientId}>{v.patientName}</option>)}
-        </select>
+  // Step 1: Patient selector
+  if (uiState === 'select_patient') return (
+    <div className="max-w-2xl mx-auto mt-8 space-y-4">
+      <div className="flex items-center gap-3 mb-6">
+        <button onClick={()=>setUiState('queue')} className="text-content-secondary hover:text-content-primary flex items-center gap-1 text-sm">
+          <ChevronLeft size={16}/> Back
+        </button>
+        <h2 className="text-base font-semibold text-content-primary">Select Patient for Recording</h2>
       </div>
-      <div className="card p-8 space-y-5">
-        <Waveform />
-        <RecordingTimer />
-        <p className="text-xs text-content-secondary">Recording in progress — speak naturally</p>
-        <div className="flex justify-center gap-4">
-          <button onClick={()=>setUiState('queue')} className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-separator text-content-secondary hover:text-content-primary text-sm transition-colors">
-            <Pause size={16}/> Pause
-          </button>
-          <button onClick={handleStop} className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-red-500 text-white hover:bg-red-600 text-sm font-medium transition-colors">
-            <Square size={16}/> Stop
-          </button>
+      <p className="text-xs text-content-secondary mb-4">Choose a patient from today&apos;s appointments to begin recording.</p>
+      <div className="space-y-2">
+        {todayAppts.map(a => {
+          const pat = demoPatients.find(p => p.id === a.patientId)
+          return (
+            <button key={a.id} onClick={() => { setSelectedPatientId(a.patientId); setUiState('review_patient') }}
+              className="w-full text-left card p-4 hover:border-brand/30 transition-all flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center text-brand font-bold text-sm shrink-0">
+                {a.patientName.split(' ').map(n=>n[0]).join('').slice(0,2)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-content-primary">{a.patientName}</div>
+                <div className="text-xs text-content-secondary">{a.time} · {a.type} · {a.provider}</div>
+                {pat && <div className="text-[10px] text-content-tertiary">{formatDOB(pat.dob)} · {pat.insurance?.payer || 'No insurance on file'}</div>}
+              </div>
+              <StatusBadge status={a.status} small/>
+            </button>
+          )
+        })}
+        {todayAppts.length === 0 && (
+          <div className="card p-8 text-center text-sm text-content-secondary">No appointments scheduled for today.</div>
+        )}
+      </div>
+    </div>
+  )
+
+  // Step 2: Review patient
+  if (uiState === 'review_patient' && selectedPatient) return (
+    <div className="max-w-2xl mx-auto mt-8 space-y-4">
+      <div className="flex items-center gap-3 mb-4">
+        <button onClick={()=>setUiState('select_patient')} className="text-content-secondary hover:text-content-primary flex items-center gap-1 text-sm">
+          <ChevronLeft size={16}/> Back
+        </button>
+        <h2 className="text-base font-semibold text-content-primary">Review Patient — {selectedPatient.firstName} {selectedPatient.lastName}</h2>
+      </div>
+
+      {/* Demographics */}
+      <div className="card p-4 space-y-3">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center text-brand font-bold">
+            {selectedPatient.firstName[0]}{selectedPatient.lastName[0]}
+          </div>
+          <div>
+            <div className="font-semibold">{selectedPatient.firstName} {selectedPatient.lastName}</div>
+            <div className="text-xs text-content-secondary">{selectedAppt?.time} · {selectedAppt?.type}</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3 text-xs">
+          <div><span className="text-content-tertiary block">DOB</span>{formatDOB(selectedPatient.dob)}</div>
+          <div><span className="text-content-tertiary block">Gender</span>{selectedPatient.gender || '—'}</div>
+          <div><span className="text-content-tertiary block">Insurance</span>{selectedPatient.insurance?.payer || '—'}</div>
+          <div><span className="text-content-tertiary block">Phone</span>{selectedPatient.phone}</div>
+          <div><span className="text-content-tertiary block">PCP</span>{selectedPatient.primaryCarePhysician || '—'}</div>
+          <div><span className="text-content-tertiary block">Provider</span>{selectedAppt?.provider || '—'}</div>
+        </div>
+      </div>
+
+      {/* Allergies */}
+      {selectedPatient.allergies && selectedPatient.allergies.length > 0 && (
+        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
+          <div className="text-xs font-semibold text-red-600 dark:text-red-400 mb-1">⚠ Known Allergies</div>
+          <div className="text-sm text-content-primary">{selectedPatient.allergies.join(', ')}</div>
+        </div>
+      )}
+
+      {/* Active medications */}
+      {selectedPatient.medications && selectedPatient.medications.length > 0 && (
+        <div className="card p-4">
+          <div className="text-xs font-semibold text-content-secondary mb-2 uppercase tracking-wide">Active Medications</div>
+          <ul className="space-y-1 text-sm">
+            {selectedPatient.medications.map((m, i) => <li key={i} className="text-content-primary">• {m}</li>)}
+          </ul>
+        </div>
+      )}
+
+      {/* Previous visit history */}
+      <div className="card p-4">
+        <div className="text-xs font-semibold text-content-secondary mb-2 uppercase tracking-wide">Recent Visit History</div>
+        {(() => {
+          const patientVisits = demoVisits.filter(v => v.patientId === selectedPatient.id)
+          return patientVisits.length > 0 ? (
+            <div className="space-y-2">
+              {patientVisits.map(v => (
+                <div key={v.id} className="flex items-center justify-between text-xs">
+                  <span className="text-content-primary">{v.dos} — {v.encounterType}</span>
+                  <StatusBadge status={v.status === 'signed' ? 'completed' : v.status === 'pending_signoff' ? 'in_progress' : 'draft'} small/>
+                </div>
+              ))}
+            </div>
+          ) : <p className="text-xs text-content-secondary">No previous visits on record.</p>
+        })()}
+      </div>
+
+      {/* Documents hint */}
+      {selectedPatient.documents && selectedPatient.documents.length > 0 && (
+        <div className="card p-3 flex items-center gap-2 text-xs text-content-secondary">
+          <FileText size={13}/>
+          <span>{selectedPatient.documents.length} document(s) on file</span>
+        </div>
+      )}
+
+      <button onClick={() => setUiState('recording')}
+        className="w-full bg-emerald-500 text-white rounded-lg py-3 text-sm font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2 transition-colors">
+        <Mic size={16}/> Start Recording for {selectedPatient.firstName} {selectedPatient.lastName}
+      </button>
+    </div>
+  )
+
+  // Step 3: Recording
+  if (uiState === 'recording') return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-4">
+        {/* Left: patient context */}
+        <div className="card p-4 text-xs space-y-2">
+          <div className="font-semibold text-content-primary mb-2">
+            {selectedPatient?.firstName} {selectedPatient?.lastName}
+          </div>
+          <div><span className="text-content-tertiary">DOB: </span>{selectedPatient?.dob}</div>
+          <div><span className="text-content-tertiary">Insurance: </span>{selectedPatient?.insurance?.payer || '—'}</div>
+          <div><span className="text-content-tertiary">Allergies: </span>
+            <span className="text-red-500">
+              {selectedPatient?.allergies?.join(', ') || 'None on file'}
+            </span>
+          </div>
+          <div><span className="text-content-tertiary">Meds: </span>
+            {selectedPatient?.medications?.join(', ') || '—'}
+          </div>
+          <div className="pt-3 border-t border-separator flex justify-center gap-3">
+            <button onClick={()=>setUiState('review_patient')} className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-separator text-content-secondary hover:text-content-primary text-xs transition-colors">
+              <Pause size={13}/> Pause
+            </button>
+            <button onClick={handleStop} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 text-xs font-medium transition-colors">
+              <Square size={13}/> Stop
+            </button>
+          </div>
+        </div>
+        {/* Right: live transcript */}
+        <div className="col-span-2 card p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            <span className="text-xs font-semibold text-red-500">RECORDING</span>
+            <span className="text-xs text-content-tertiary ml-auto font-mono">{recordingTime}</span>
+          </div>
+          <Waveform />
+          <div className="text-sm text-content-primary leading-relaxed min-h-[200px] font-mono whitespace-pre-wrap mt-3">
+            {liveTranscript || <span className="text-content-tertiary">Listening...</span>}
+          </div>
         </div>
       </div>
     </div>
@@ -151,9 +322,13 @@ function ProviderView() {
         </div>
         {selectedVisit.status==='pending_signoff'&&(
           <div className="p-3 border-t border-separator flex gap-2">
-            <button onClick={()=>{toast.success('Note signed. Sent to coding queue as COD-0847');setUiState('queue')}}
+            <button onClick={()=>{
+              const ref = `COD-${Math.floor(Math.random()*9000+1000)}`
+              toast.success(`Note signed. Sent to coding queue as ${ref}`)
+              setUiState('queue')
+            }}
               className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep flex items-center justify-center gap-2 transition-colors">
-              <Check size={16}/> Sign & Send to Billing
+              <Check size={16}/> Sign &amp; Send to Billing
             </button>
             <button onClick={()=>toast.info('Draft saved')}
               className="px-4 py-2.5 rounded-lg border border-separator text-content-secondary hover:text-content-primary text-sm transition-colors">
@@ -165,6 +340,7 @@ function ProviderView() {
     </div>
   )
 
+  // Queue view
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-4 mb-2">
@@ -175,7 +351,7 @@ function ProviderView() {
       </div>
       <div className="grid grid-cols-3 gap-5">
         <div className="col-span-1 space-y-3">
-          <button onClick={()=>setUiState('recording')}
+          <button onClick={()=>setUiState('select_patient')}
             className="w-full bg-emerald-500 text-white rounded-lg py-3 text-sm font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2 transition-colors">
             <Mic size={16}/> Start New Recording
           </button>
@@ -215,6 +391,7 @@ function ProviderView() {
           <div className="max-w-xs">
             <Mic size={48} className="text-content-tertiary mx-auto mb-4 opacity-30"/>
             <p className="text-sm font-medium text-content-secondary">Select a visit to review or start new recording</p>
+            <p className="text-xs text-content-tertiary mt-2">New recording → select patient first</p>
           </div>
         </div>
       </div>

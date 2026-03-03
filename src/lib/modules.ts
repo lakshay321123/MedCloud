@@ -32,7 +32,7 @@ export const modules: ModuleConfig[] = [
   { id: 'scan', label: 'Scan & Submit', icon: 'ScanLine', path: '/portal/scan-submit', section: 'portal', roles: ['client'] },
   { id: 'watch', label: 'Watch & Track', icon: 'Eye', path: '/portal/watch-track', section: 'portal', roles: ['client'] },
   { id: 'messages', label: 'Messages', icon: 'MessageCircle', path: '/portal/messages', section: 'portal', roles: allRoles },
-  { id: 'portal-patients', label: 'Patients', icon: 'Users', path: '/portal/patients', section: 'portal', roles: ['client', 'provider'] },
+  { id: 'portal-patients', label: 'Patients', icon: 'Users', path: '/portal/patients', section: 'portal', roles: ['client', 'provider', 'biller', 'manager', 'supervisor', 'admin', 'director'] },
 ]
 
 // Facility portal shows this curated module set (role-filtered on top)

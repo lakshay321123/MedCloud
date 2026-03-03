@@ -5,6 +5,8 @@ import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import { BadgeCheck, AlertTriangle, X } from 'lucide-react'
 import { useCredentialing } from '@/lib/hooks'
+import { useApp } from '@/lib/context'
+import { UAE_CLIENT_NAMES, US_CLIENT_NAMES } from '@/lib/utils/region'
 
 const providers = [
   { id: 'PRV-001', name: 'Dr. Martinez', npi: '1234567890', client: 'Irvine Family Practice', license: '2027-06-30', malpractice: '2026-12-31', dea: '2027-03-15', caqh: 'Current', payers: 4, status: 'active' },
@@ -19,22 +21,37 @@ type Provider = typeof providers[0]
 
 export default function CredentialingPage() {
   const { toast } = useToast()
+  const { selectedClient, country } = useApp()
   const [selected, setSelected] = useState<Provider | null>(null)
   const { data: apiCredResult } = useCredentialing({ limit: 50 })
 
-  const providerList = apiCredResult?.data
+  const filteredProviders = (apiCredResult?.data?.length
     ? apiCredResult.data.map(p => ({
         id: p.id,
         name: p.provider_name || '',
         status: p.status || '',
         payers: p.payer_enrollment_count || 0,
+        client: (p as Record<string, any>).client_name
+             || (p as Record<string, any>).org_name
+             || '',
+        license: '—',
+        malpractice: '—',
+        dea: '—',
+        caqh: '—',
+        npi: '',
       }))
     : providers
+  ).filter(p => {
+    if (selectedClient) return p.client === selectedClient.name
+    if (country === 'uae') return UAE_CLIENT_NAMES.includes(p.client as typeof UAE_CLIENT_NAMES[number])
+    if (country === 'usa') return US_CLIENT_NAMES.includes(p.client as typeof US_CLIENT_NAMES[number])
+    return true
+  })
 
-  const activeCount = providerList.filter(p => p.status === 'active').length
-  const expiringCount = providerList.filter(p => p.status === 'expiring').length
-  const onboardingCount = providerList.filter(p => p.status === 'onboarding').length
-  const totalEnrollments = providerList.reduce((s, p) => s + p.payers, 0)
+  const activeCount = filteredProviders.filter(p => p.status === 'active').length
+  const expiringCount = filteredProviders.filter(p => p.status === 'expiring').length
+  const onboardingCount = filteredProviders.filter(p => p.status === 'onboarding').length
+  const totalEnrollments = filteredProviders.reduce((s, p) => s + p.payers, 0)
   const expiring = expiringCount
 
   return (
@@ -58,7 +75,7 @@ export default function CredentialingPage() {
             <th className="text-left px-4 py-3">Malpractice Exp</th><th className="text-left px-4 py-3">CAQH</th>
             <th className="text-right px-4 py-3">Payers</th><th className="text-left px-4 py-3">Status</th>
           </tr></thead>
-          <tbody>{providers.map(p=>(
+          <tbody>{filteredProviders.map(p=>(
             <tr key={p.id}
               onClick={() => setSelected(p)}
               className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
