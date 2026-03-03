@@ -1,34 +1,66 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
-import { TrendingUp, X, Phone, Bot, User, PhoneCall, Plus, AlertTriangle, FileText } from 'lucide-react'
+import { TrendingUp, X, Phone, Bot, User, PhoneCall, Plus, AlertTriangle, FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { tfDaysRemaining } from '@/lib/utils/time'
 
 const buckets = [{ l: '0-30', v: 145000, c: 'bg-emerald-500' }, { l: '31-60', v: 98000, c: 'bg-cyan-500' }, { l: '61-90', v: 52000, c: 'bg-amber-500' }, { l: '91-120', v: 28000, c: 'bg-orange-500' }, { l: '120+', v: 12000, c: 'bg-red-500' }]
 const max = Math.max(...buckets.map(b => b.v))
 
-// Timely filing deadlines per payer (days)
 const TF_DEADLINES: Record<string, number> = {
   Medicare: 365, Aetna: 180, UHC: 180, BCBS: 365, NAS: 90, Daman: 90,
 }
 
-const accounts = [
-  { id: 'AR-001', patient: 'Robert Chen', client: 'Patel Cardiology', payer: 'Medicare', original: 1200, balance: 488, age: 95, lastAction: 'Voice AI call — "In process"', nextFollowup: '2026-03-04', priority: 'urgent' as const, source: 'denied_claim' as const, dos: '2025-11-30' },
-  { id: 'AR-002', patient: 'Khalid Ibrahim', client: 'Dubai Wellness Clinic', payer: 'NAS', original: 320, balance: 320, age: 46, lastAction: 'Initial submission', nextFollowup: '2026-03-03', priority: 'high' as const, source: 'underpayment' as const, dos: '2026-01-17' },
-  { id: 'AR-003', patient: 'Sarah Johnson', client: 'Irvine Family Practice', payer: 'Aetna', original: 350, balance: 126, age: 12, lastAction: 'Partial payment posted', nextFollowup: '2026-03-10', priority: 'medium' as const, source: 'patient_balance' as const, dos: '2026-02-19' },
-  { id: 'AR-004', patient: 'John Smith', client: 'Irvine Family Practice', payer: 'UHC', original: 250, balance: 0, age: 5, lastAction: 'Paid in full', nextFollowup: '-', priority: 'low' as const, source: 'denied_claim' as const, dos: '2026-02-26' },
-  { id: 'AR-005', patient: 'Ahmed Al Mansouri', client: 'Gulf Medical Center', payer: 'Daman', original: 480, balance: 0, age: 31, lastAction: 'Paid in full', nextFollowup: '-', priority: 'low' as const, source: 'denied_claim' as const, dos: '2026-02-01' },
-  { id: 'AR-006', patient: 'Emily Williams', client: 'Patel Cardiology', payer: 'BCBS', original: 890, balance: 890, age: 120, lastAction: 'Appeal L1 submitted', nextFollowup: '2026-03-02', priority: 'urgent' as const, source: 'timely_filing_risk' as const, dos: '2025-11-04' },
+// Payer phone numbers for the Log Call modal
+const payerPhones: Record<string, string> = {
+  Medicare: '1-800-MEDICARE (1-800-633-4227)',
+  Aetna: '1-800-872-3862',
+  UHC: '1-866-892-5595',
+  BCBS: '1-800-810-2583',
+  NAS: '+971-4-270-8000',
+  Daman: '+971-2-614-9555',
+}
+
+// IVR steps per payer
+const payerIVR: Record<string, string[]> = {
+  Medicare: ['Press 1 for providers', 'Press 2 for claim status', 'Enter NPI', 'Enter patient Medicare ID'],
+  Aetna: ['Press 2 for providers', 'Press 1 for claims', 'Enter provider NPI', 'Enter patient member ID'],
+  UHC: ['Press 1 for provider services', 'Press 3 for claim status', 'Enter NPI', 'Enter patient ID'],
+  BCBS: ['Press 2 for provider line', 'Press 1 for claim status', 'Enter provider ID', 'Enter member ID'],
+  NAS: ['Press 2 for providers (English)', 'Press 1 for claim status', 'Enter TPA code'],
+  Daman: ['Press 1 for English', 'Press 2 for providers', 'Press 1 for claim status'],
+}
+
+type ARAccount = {
+  id: string; patient: string; client: string; payer: string;
+  original: number; balance: number; age: number;
+  lastAction: string; nextFollowup: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  source: 'denied_claim' | 'underpayment' | 'patient_balance' | 'timely_filing_risk';
+  dos: string;
+  paymentPromisedDate?: string;
+}
+
+type CallLogEntry = {
+  id: string; date: string; type: 'ai' | 'manual'; status: string;
+  ref?: string; rep?: string; duration?: string; note: string;
+  paymentPromisedDate?: string;
+}
+
+const initialAccounts: ARAccount[] = [
+  { id: 'AR-001', patient: 'Robert Chen', client: 'Patel Cardiology', payer: 'Medicare', original: 1200, balance: 488, age: 95, lastAction: 'Voice AI call — "In process"', nextFollowup: '2026-03-04', priority: 'urgent', source: 'denied_claim', dos: '2025-11-30' },
+  { id: 'AR-002', patient: 'Khalid Ibrahim', client: 'Dubai Wellness Clinic', payer: 'NAS', original: 320, balance: 320, age: 46, lastAction: 'Initial submission', nextFollowup: '2026-03-03', priority: 'high', source: 'underpayment', dos: '2026-01-17' },
+  { id: 'AR-003', patient: 'Sarah Johnson', client: 'Irvine Family Practice', payer: 'Aetna', original: 350, balance: 126, age: 12, lastAction: 'Partial payment posted', nextFollowup: '2026-03-10', priority: 'medium', source: 'patient_balance', dos: '2026-02-19' },
+  { id: 'AR-004', patient: 'John Smith', client: 'Irvine Family Practice', payer: 'UHC', original: 250, balance: 0, age: 5, lastAction: 'Paid in full', nextFollowup: '-', priority: 'low', source: 'denied_claim', dos: '2026-02-26' },
+  { id: 'AR-005', patient: 'Ahmed Al Mansouri', client: 'Gulf Medical Center', payer: 'Daman', original: 480, balance: 0, age: 31, lastAction: 'Paid in full', nextFollowup: '-', priority: 'low', source: 'denied_claim', dos: '2026-02-01' },
+  { id: 'AR-006', patient: 'Emily Williams', client: 'Patel Cardiology', payer: 'BCBS', original: 890, balance: 890, age: 120, lastAction: 'Appeal L1 submitted', nextFollowup: '2026-03-02', priority: 'urgent', source: 'timely_filing_risk', dos: '2025-11-04' },
 ]
 
-// Demo call history keyed by account id
-const demoCallHistory: Record<string, Array<{
-  id: string; date: string; type: 'ai' | 'manual'; status: string; ref?: string; rep?: string; duration?: string; note: string
-}>> = {
+const initialCallHistory: Record<string, CallLogEntry[]> = {
   'AR-001': [
     { id: 'C1', date: '2026-02-28 10:14', type: 'ai', status: 'In process', duration: '4m 12s', note: 'Payer confirmed claim received, processing expected within 5 business days.' },
     { id: 'C2', date: '2026-02-21 14:30', type: 'manual', status: 'Requested resubmission', ref: 'REF-8821', rep: 'Maria L.', duration: '8m 05s', note: 'Rep requested corrected claim with updated diagnosis code.' },
@@ -50,39 +82,166 @@ const sourceInfo: Record<string, { color: string; label: string }> = {
   timely_filing_risk: { color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400', label: 'Timely Filing Risk' },
 }
 
-type Account = typeof accounts[0]
+const CALL_OUTCOMES = ['Got Status', 'Voicemail', 'Payment Promised', 'Denied', 'Resubmit Required', 'Submit Appeal']
 
-function ARDrawer({ account, onClose }: { account: Account; onClose: () => void }) {
+// ─── Log Call Modal ───────────────────────────────────────────────────────
+function LogCallModal({
+  account, onClose, onSave
+}: {
+  account: ARAccount
+  onClose: () => void
+  onSave: (entry: CallLogEntry, followupDate?: string, promisedDate?: string) => void
+}) {
+  const { toast } = useToast()
+  const phone = payerPhones[account.payer] || 'Contact payer directly'
+  const ivr = payerIVR[account.payer] || []
+  const [showIVR, setShowIVR] = useState(false)
+  const [outcome, setOutcome] = useState('')
+  const [ref, setRef] = useState('')
+  const [rep, setRep] = useState('')
+  const [promisedDate, setPromisedDate] = useState('')
+  const [followupDate, setFollowupDate] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 7)
+    return d.toISOString().slice(0, 10)
+  })
+  const [notes, setNotes] = useState('')
+
+  function handleSave() {
+    if (!outcome) { toast.error('Call outcome is required'); return }
+    const entry: CallLogEntry = {
+      id: `C${Date.now()}`,
+      date: new Date().toISOString().replace('T', ' ').slice(0, 16),
+      type: 'manual',
+      status: outcome,
+      ref: ref || undefined,
+      rep: rep || undefined,
+      note: notes || `Manual call — outcome: ${outcome}`,
+      paymentPromisedDate: outcome === 'Payment Promised' ? promisedDate : undefined,
+    }
+    onSave(entry, followupDate, outcome === 'Payment Promised' ? promisedDate : undefined)
+    toast.success('Manual call logged successfully')
+    onClose()
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/60 z-50" onClick={onClose} />
+      <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+        <div className="bg-surface-secondary rounded-xl shadow-2xl w-full max-w-lg border border-separator">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-separator">
+            <h3 className="font-semibold text-content-primary">Log Manual Call — {account.payer}</h3>
+            <button onClick={onClose}><X size={16} className="text-content-secondary" /></button>
+          </div>
+          <div className="p-5 space-y-3">
+            {/* Payer phone */}
+            <div className="bg-brand/5 border border-brand/20 rounded-lg p-3 flex items-start gap-3">
+              <Phone size={14} className="text-brand mt-0.5 shrink-0"/>
+              <div>
+                <div className="text-xs font-semibold text-brand mb-0.5">Payer Phone</div>
+                <div className="text-sm text-content-primary font-mono">{phone}</div>
+              </div>
+            </div>
+
+            {/* IVR steps collapsible */}
+            {ivr.length > 0 && (
+              <div className="border border-separator rounded-lg overflow-hidden">
+                <button onClick={() => setShowIVR(p => !p)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-content-secondary hover:bg-surface-elevated transition-colors">
+                  <span>IVR Navigation Steps ({ivr.length} steps)</span>
+                  {showIVR ? <ChevronUp size={13}/> : <ChevronDown size={13}/>}
+                </button>
+                {showIVR && (
+                  <div className="px-3 pb-3 space-y-1.5 bg-surface-elevated">
+                    {ivr.map((step, i) => (
+                      <div key={i} className="flex items-start gap-2 text-xs">
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-brand/10 text-brand flex items-center justify-center text-[10px] font-bold">{i+1}</span>
+                        <span className="text-content-primary">{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Call outcome */}
+            <div>
+              <label className="text-[11px] text-content-tertiary block mb-1">Call Outcome *</label>
+              <select value={outcome} onChange={e => setOutcome(e.target.value)}
+                className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40">
+                <option value="">Select outcome…</option>
+                {CALL_OUTCOMES.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+
+            {/* Payment promised date */}
+            {outcome === 'Payment Promised' && (
+              <div>
+                <label className="text-[11px] text-content-tertiary block mb-1">Payment Promised Date</label>
+                <input type="date" value={promisedDate} onChange={e => setPromisedDate(e.target.value)}
+                  className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40"/>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] text-content-tertiary block mb-1">Reference #</label>
+                <input value={ref} onChange={e => setRef(e.target.value)} placeholder="REF-XXXX"
+                  className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] font-mono text-content-primary focus:outline-none focus:border-brand/40"/>
+              </div>
+              <div>
+                <label className="text-[11px] text-content-tertiary block mb-1">Rep Name</label>
+                <input value={rep} onChange={e => setRep(e.target.value)} placeholder="Payer rep name"
+                  className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40"/>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] text-content-tertiary block mb-1">Next Follow-up Date <span className="text-content-tertiary">(auto-suggested: +7 days)</span></label>
+              <input type="date" value={followupDate} onChange={e => setFollowupDate(e.target.value)}
+                className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40"/>
+            </div>
+
+            <div>
+              <label className="text-[11px] text-content-tertiary block mb-1">Notes</label>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
+                placeholder="What did you discuss? Any commitments made?"
+                className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40 resize-none"/>
+            </div>
+          </div>
+          <div className="flex gap-2 px-5 pb-5">
+            <button onClick={handleSave} className="flex-1 bg-brand text-white rounded-btn py-2.5 text-[13px] font-medium">Log Call</button>
+            <button onClick={onClose} className="px-4 py-2.5 bg-surface-elevated border border-separator rounded-btn text-[13px] text-content-secondary">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ─── AR Drawer ────────────────────────────────────────────────────────────
+function ARDrawer({
+  account, callHistory, onClose, onUpdateAccount, onAddCall
+}: {
+  account: ARAccount
+  callHistory: CallLogEntry[]
+  onClose: () => void
+  onUpdateAccount: (update: Partial<ARAccount>) => void
+  onAddCall: (entry: CallLogEntry, followupDate?: string, promisedDate?: string) => void
+}) {
   const { toast } = useToast()
   const [drawerTab, setDrawerTab] = useState<'summary' | 'calls' | 'notes' | 'claims'>('summary')
   const [followUpDate, setFollowUpDate] = useState(account.nextFollowup !== '-' ? account.nextFollowup : '')
   const [followUpNote, setFollowUpNote] = useState('')
-
-  // Log Manual Call modal
   const [showCallModal, setShowCallModal] = useState(false)
-  const [callStatus, setCallStatus] = useState('')
-  const [callRef, setCallRef] = useState('')
-  const [callRep, setCallRep] = useState('')
-  const [callFollowup, setCallFollowup] = useState('')
-  const [callNextAction, setCallNextAction] = useState('')
-
-  // Write-off modal
   const [showWriteoffModal, setShowWriteoffModal] = useState(false)
   const [writeoffReason, setWriteoffReason] = useState('')
 
-  const callHistory = demoCallHistory[account.id] || []
   const tfDays = TF_DEADLINES[account.payer] || 180
   const dosDate = new Date(account.dos)
   const deadlineDate = new Date(dosDate)
   deadlineDate.setDate(deadlineDate.getDate() + tfDays)
   const daysUntilDeadline = Math.ceil((deadlineDate.getTime() - Date.now()) / 86400000)
-
-  const handleLogCall = () => {
-    if (!callStatus) { toast.error('Call status is required'); return }
-    toast.success('Manual call logged successfully')
-    setShowCallModal(false)
-    setCallStatus(''); setCallRef(''); setCallRep(''); setCallFollowup(''); setCallNextAction('')
-  }
 
   const handleWriteoff = () => {
     if (!writeoffReason) { toast.error('Select a reason for write-off'); return }
@@ -125,7 +284,6 @@ function ARDrawer({ account, onClose }: { account: Account; onClose: () => void 
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-
           {drawerTab === 'summary' && (
             <>
               <div className="grid grid-cols-3 gap-3">
@@ -142,6 +300,12 @@ function ARDrawer({ account, onClose }: { account: Account; onClose: () => void 
                   <div className="text-[10px] text-content-secondary">Age</div>
                 </div>
               </div>
+
+              {account.paymentPromisedDate && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 text-[12px] text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                  💰 Payment Promised for {account.paymentPromisedDate}
+                </div>
+              )}
 
               {/* Timely filing */}
               <div className={`flex items-start gap-2 rounded-lg p-3 text-[12px] ${daysUntilDeadline < 30 ? 'bg-red-500/10 border border-red-500/20' : daysUntilDeadline < 60 ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-surface-elevated'}`}>
@@ -166,7 +330,11 @@ function ARDrawer({ account, onClose }: { account: Account; onClose: () => void 
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => { toast.success('Voice AI call queued'); onClose() }}
+                <button onClick={() => {
+                  onUpdateAccount({ lastAction: 'Voice AI call queued', nextFollowup: followUpDate || account.nextFollowup })
+                  toast.success('Voice AI call queued')
+                  onClose()
+                }}
                   className="bg-brand/10 text-brand rounded-lg py-2.5 text-xs font-medium hover:bg-brand/20 transition-colors flex items-center justify-center gap-2">
                   <Phone size={13} /> Queue AI Call
                 </button>
@@ -176,12 +344,17 @@ function ARDrawer({ account, onClose }: { account: Account; onClose: () => void 
                 </button>
                 <button onClick={() => {
                   if (!followUpDate) { toast.error('Please select a follow-up date'); return }
+                  onUpdateAccount({ nextFollowup: followUpDate })
                   toast.success(`Follow-up saved for ${followUpDate}`)
                   onClose()
                 }} className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-xs font-medium hover:text-content-primary transition-colors">
                   Save Follow-up
                 </button>
-                <button onClick={() => { toast.success('Routed to appeals'); onClose() }}
+                <button onClick={() => {
+                  onUpdateAccount({ priority: 'urgent', lastAction: 'Routed to appeals' })
+                  toast.success('Routed to appeals — priority set to urgent')
+                  onClose()
+                }}
                   className="bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg py-2.5 text-xs font-medium hover:bg-amber-500/20 transition-colors">
                   Route to Appeals
                 </button>
@@ -222,6 +395,9 @@ function ARDrawer({ account, onClose }: { account: Account; onClose: () => void 
                     {c.ref && <span className="text-[11px] font-mono text-content-tertiary">{c.ref}</span>}
                     {c.rep && <span className="text-[11px] text-content-secondary">· {c.rep}</span>}
                   </div>
+                  {c.paymentPromisedDate && (
+                    <div className="text-[11px] text-emerald-600 dark:text-emerald-400">💰 Payment promised: {c.paymentPromisedDate}</div>
+                  )}
                   <p className="text-[12px] text-content-secondary">{c.note}</p>
                 </div>
               ))}
@@ -252,8 +428,8 @@ function ARDrawer({ account, onClose }: { account: Account; onClose: () => void 
                   <p className="text-[13px] font-medium text-content-primary">CLM-{account.id.replace('AR-', '10')}</p>
                   <p className="text-[11px] text-content-secondary">{account.payer} · DOS {account.dos} · ${account.original}</p>
                 </div>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${account.source === 'denied_claim' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
-                  {sourceInfo[account.source]?.label}
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${sourceInfo[account.source]?.color || 'bg-surface-elevated text-content-secondary'}`}>
+                  {sourceInfo[account.source]?.label || account.source}
                 </span>
               </div>
             </div>
@@ -261,55 +437,17 @@ function ARDrawer({ account, onClose }: { account: Account; onClose: () => void 
         </div>
       </div>
 
-      {/* Log Manual Call Modal */}
       {showCallModal && (
-        <>
-          <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setShowCallModal(false)} />
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-            <div className="bg-surface-secondary rounded-xl shadow-2xl w-full max-w-md border border-separator">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-separator">
-                <h3 className="font-semibold text-content-primary">Log Manual Call</h3>
-                <button onClick={() => setShowCallModal(false)}><X size={16} className="text-content-secondary" /></button>
-              </div>
-              <div className="p-5 space-y-3">
-                <div>
-                  <label className="text-[11px] text-content-tertiary block mb-1">Call Status *</label>
-                  <input value={callStatus} onChange={e => setCallStatus(e.target.value)} placeholder="e.g. In process, Needs resubmission…"
-                    className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] text-content-tertiary block mb-1">Reference #</label>
-                    <input value={callRef} onChange={e => setCallRef(e.target.value)} placeholder="REF-XXXX"
-                      className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] font-mono text-content-primary focus:outline-none focus:border-brand/40" />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-content-tertiary block mb-1">Rep Name</label>
-                    <input value={callRep} onChange={e => setCallRep(e.target.value)} placeholder="Payer rep name"
-                      className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40" />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[11px] text-content-tertiary block mb-1">Follow-up Date</label>
-                  <input type="date" value={callFollowup} onChange={e => setCallFollowup(e.target.value)}
-                    className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40" />
-                </div>
-                <div>
-                  <label className="text-[11px] text-content-tertiary block mb-1">Next Action</label>
-                  <input value={callNextAction} onChange={e => setCallNextAction(e.target.value)} placeholder="e.g. Wait for EOB, Resubmit corrected claim…"
-                    className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40" />
-                </div>
-              </div>
-              <div className="flex gap-2 px-5 pb-5">
-                <button onClick={handleLogCall} className="flex-1 bg-brand text-white rounded-btn py-2.5 text-[13px] font-medium">Log Call</button>
-                <button onClick={() => setShowCallModal(false)} className="px-4 py-2.5 bg-surface-elevated border border-separator rounded-btn text-[13px] text-content-secondary">Cancel</button>
-              </div>
-            </div>
-          </div>
-        </>
+        <LogCallModal
+          account={account}
+          onClose={() => setShowCallModal(false)}
+          onSave={(entry, followupDate, promisedDate) => {
+            onAddCall(entry, followupDate, promisedDate)
+            setShowCallModal(false)
+          }}
+        />
       )}
 
-      {/* Write-off Request Modal */}
       {showWriteoffModal && (
         <>
           <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setShowWriteoffModal(false)} />
@@ -322,7 +460,7 @@ function ARDrawer({ account, onClose }: { account: Account; onClose: () => void 
               <div className="p-5 space-y-3">
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-2">
                   <AlertTriangle size={13} className="text-amber-500 mt-0.5 shrink-0" />
-                  <p className="text-[12px] text-amber-600 dark:text-amber-400">Write-off requests require supervisor approval before they are applied. Balance: <span className="font-bold">${account.balance}</span></p>
+                  <p className="text-[12px] text-amber-600 dark:text-amber-400">Write-off requests require supervisor approval. Balance: <span className="font-bold">${account.balance}</span></p>
                 </div>
                 <div>
                   <label className="text-[11px] text-content-tertiary block mb-1">Reason *</label>
@@ -354,9 +492,29 @@ function ARDrawer({ account, onClose }: { account: Account; onClose: () => void 
 
 export default function ARManagementPage() {
   const { selectedClient } = useApp()
-  const [selected, setSelected] = useState<typeof accounts[0] | null>(null)
+  const [accounts, setAccounts] = useState<ARAccount[]>(initialAccounts)
+  const [callHistory, setCallHistory] = useState<Record<string, CallLogEntry[]>>(initialCallHistory)
+  const [selected, setSelected] = useState<ARAccount | null>(null)
 
   const filtered = accounts.filter(a => !selectedClient || a.client.includes(selectedClient.name.split(' ')[0]))
+
+  function updateAccount(id: string, update: Partial<ARAccount>) {
+    setAccounts(prev => prev.map(a => a.id === id ? { ...a, ...update } : a))
+    if (selected?.id === id) setSelected(prev => prev ? { ...prev, ...update } : prev)
+  }
+
+  function addCallEntry(accountId: string, entry: CallLogEntry, followupDate?: string, promisedDate?: string) {
+    setCallHistory(prev => ({
+      ...prev,
+      [accountId]: [entry, ...(prev[accountId] || [])],
+    }))
+    const updates: Partial<ARAccount> = {
+      lastAction: `Manual call — ${entry.status}`,
+    }
+    if (followupDate) updates.nextFollowup = followupDate
+    if (promisedDate) updates.paymentPromisedDate = promisedDate
+    updateAccount(accountId, updates)
+  }
 
   return (
     <ModuleShell title="A/R Management" subtitle="Accounts receivable follow-up and collections">
@@ -396,7 +554,12 @@ export default function ARManagementPage() {
               <tr key={a.id}
                 onClick={() => setSelected(a)}
                 className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
-                <td className="px-4 py-3 font-medium">{a.patient}</td>
+                <td className="px-4 py-3 font-medium">
+                  <div>{a.patient}</div>
+                  {a.paymentPromisedDate && (
+                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">💰 Promised {a.paymentPromisedDate}</div>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-xs text-content-secondary">{a.client}</td>
                 <td className="px-4 py-3 text-xs text-content-secondary">{a.payer}</td>
                 <td className="px-4 py-3">
@@ -420,7 +583,15 @@ export default function ARManagementPage() {
         </table>
       </div>
 
-      {selected && <ARDrawer account={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <ARDrawer
+          account={selected}
+          callHistory={callHistory[selected.id] || []}
+          onClose={() => setSelected(null)}
+          onUpdateAccount={(update) => updateAccount(selected.id, update)}
+          onAddCall={(entry, followupDate, promisedDate) => addCallEntry(selected.id, entry, followupDate, promisedDate)}
+        />
+      )}
     </ModuleShell>
   )
 }

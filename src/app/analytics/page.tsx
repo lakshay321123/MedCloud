@@ -47,14 +47,17 @@ const denialTrend = [
   { month: 'Mar', initial: 5.1, net: 2.9 },
 ]
 
+// Deterministic daily claim counts — no Math.random(), consistent on every render
+const claimsByDay: Record<number, number> = {
+  0: 16, 1: 38, 2: 42, 3: 35, 4: 40, 5: 44, 6: 17,
+  7: 14, 8: 37, 9: 41, 10: 39, 11: 43, 12: 46, 13: 31,
+}
 const last14Days = Array.from({ length: 14 }, (_, i) => {
   const d = new Date('2026-03-02')
   d.setDate(d.getDate() - (13 - i))
-  const dow = d.getDay()
-  const isWeekend = dow === 0 || dow === 6
   return {
     date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    claims: isWeekend ? Math.round(Math.random() * 10 + 15) : Math.round(Math.random() * 20 + 30),
+    claims: claimsByDay[i] ?? 30,
   }
 })
 

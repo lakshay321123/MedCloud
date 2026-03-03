@@ -4,8 +4,9 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
-import { ListChecks, X } from 'lucide-react'
+import { ListChecks, X, Plus } from 'lucide-react'
 import { useTasks } from '@/lib/hooks'
+import { useApp } from '@/lib/context'
 
 const initialTasks = [
   { id: 'TSK-001', type: 'Missing Docs', entity: 'John Smith — visit Feb 25', client: 'Irvine Family Practice', priority: 'medium' as const, status: 'open' as const, assigned: 'Sarah K.', due: '2026-03-03', sla: 'green' },
@@ -30,9 +31,91 @@ type Task = {
   sla: string
 }
 
+function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t: Task) => void }) {
+  const { toast } = useToast()
+  const { clients } = useApp()
+  const ic = 'w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm outline-none focus:border-brand/40 transition-colors'
+  const [form, setForm] = useState({
+    type: '',
+    entity: '',
+    client: clients[0]?.name ?? '',
+    assigned: '',
+    due: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
+    priority: 'medium' as Task['priority'],
+  })
+
+  function handleSave() {
+    if (!form.type || !form.entity) { toast.warning('Type and entity are required'); return }
+    const newTask: Task = {
+      id: `TSK-${String(Date.now()).slice(-5)}`,
+      type: form.type,
+      entity: form.entity,
+      client: form.client,
+      priority: form.priority,
+      status: 'open',
+      assigned: form.assigned || 'Unassigned',
+      due: form.due,
+      sla: 'green',
+    }
+    onSave(newTask)
+    toast.success(`Task created — ${newTask.id}`)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
+      <div className="card w-[520px]" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-separator">
+          <h3 className="font-semibold text-content-primary">Create Task</h3>
+          <button onClick={onClose} className="p-1 hover:bg-surface-elevated rounded-btn"><X size={16} className="text-content-secondary"/></button>
+        </div>
+        <div className="p-4 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-content-secondary block mb-1">Task Type *</label>
+              <select value={form.type} onChange={e => setForm(p=>({...p,type:e.target.value}))} className={ic}>
+                <option value="">Select type</option>
+                {['Missing Docs','Denial Review','ERA Exception','Coding Query','Credentialing','A/R Follow-up','Appeal Deadline','Patient Contact','Prior Auth','Claim Resubmission','Other'].map(t=><option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-content-secondary block mb-1">Priority</label>
+              <select value={form.priority} onChange={e => setForm(p=>({...p,priority:e.target.value as Task['priority']}))} className={ic}>
+                <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-content-secondary block mb-1">Entity (patient, claim, description) *</label>
+            <input value={form.entity} onChange={e=>setForm(p=>({...p,entity:e.target.value}))} placeholder="John Smith — CLM-4501" className={ic}/>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-content-secondary block mb-1">Assign To</label>
+              <select value={form.assigned} onChange={e=>setForm(p=>({...p,assigned:e.target.value}))} className={ic}>
+                <option value="">Unassigned</option>
+                {['Sarah K.','Mike R.','Lisa T.','Amy C.','Tom B.','Voice AI'].map(s=><option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-content-secondary block mb-1">Due Date</label>
+              <input type="date" value={form.due} onChange={e=>setForm(p=>({...p,due:e.target.value}))} className={ic}/>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button onClick={handleSave} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep">Create Task</button>
+            <button onClick={onClose} className="px-4 py-2.5 border border-separator rounded-lg text-sm text-content-secondary">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function TasksPage() {
   const { toast } = useToast()
   const [selected, setSelected] = useState<Task | null>(null)
+  const [showCreate, setShowCreate] = useState(false)
 
   const { data: apiTaskResult } = useTasks({ limit: 50 })
 
@@ -60,7 +143,15 @@ export default function TasksPage() {
   const displayTasks = apiTasks.length > 0 ? apiTasks : taskList
 
   return (
-    <ModuleShell title="Tasks & Workflows" subtitle="Track and manage work across all departments">
+    <ModuleShell
+      title="Tasks & Workflows"
+      subtitle="Track and manage work across all departments"
+      actions={
+        <button onClick={() => setShowCreate(true)} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep">
+          <Plus size={16}/>Create Task
+        </button>
+      }
+    >
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KPICard label="Open Tasks" value={apiTaskResult ? (apiTaskResult.meta?.total ?? displayTasks.filter(t=>t.status!=='completed').length) : taskList.filter(t=>t.status!=='completed').length} icon={<ListChecks size={20}/>}/>
         <KPICard label="In Progress" value={displayTasks.filter(t=>t.status==='in_progress').length}/>
@@ -146,6 +237,7 @@ export default function TasksPage() {
           </div>
         </>
       )}
+      {showCreate && <CreateTaskModal onClose={() => setShowCreate(false)} onSave={(t) => setTaskList(prev => [t, ...prev])}/>}
     </ModuleShell>
   )
 }

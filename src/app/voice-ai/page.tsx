@@ -11,6 +11,7 @@ import {
   demoActiveCalls, demoCallLog, demoCampaigns, demoScripts,
   DemoCall, DemoCampaign, DemoScript
 } from '@/lib/demo-data'
+import { useApp } from '@/lib/context'
 
 // ─── Status Dot ───────────────────────────────────────────────────────────
 function StatusDot({ status }: { status: DemoCall['status'] }) {
@@ -165,13 +166,24 @@ function ActiveCallsTab() {
   const { toast } = useToast()
   const [selectedCall, setSelectedCall] = useState<DemoCall | null>(null)
 
+  const { selectedClient, country } = useApp()
+  const uaeOrgIds = ['org-101', 'org-104']
+  const usOrgIds = ['org-102', 'org-103']
+
+  const filteredCalls = demoActiveCalls.filter(c => {
+    if (selectedClient) return c.clientId === selectedClient.id
+    if (country === 'uae') return uaeOrgIds.includes(c.clientId)
+    if (country === 'usa') return usOrgIds.includes(c.clientId)
+    return true
+  })
+
   return (
     <div>
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KPICard label="Calls Today" value={47} icon={<Phone size={20} />} />
         <KPICard label="Avg Duration" value="4:32" icon={<Clock size={20} />} />
         <KPICard label="Success Rate" value="78%" />
-        <KPICard label="On Hold Right Now" value={demoActiveCalls.filter(c => c.status === 'on_hold').length} icon={<PhoneCall size={20} />} />
+        <KPICard label="On Hold Right Now" value={filteredCalls.filter(c => c.status === 'on_hold').length} icon={<PhoneCall size={20} />} />
       </div>
 
       <div className="card overflow-hidden">
@@ -188,7 +200,7 @@ function ActiveCallsTab() {
             </tr>
           </thead>
           <tbody>
-            {demoActiveCalls.map(call => (
+            {filteredCalls.map(call => (
               <tr key={call.id} onClick={() => setSelectedCall(call)}
                 className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
                 <td className="px-4 py-3"><StatusDot status={call.status} /></td>
@@ -230,7 +242,14 @@ function CallLogTab() {
   const [outcomeFilter, setOutcomeFilter] = useState('')
   const [selectedCall, setSelectedCall] = useState<DemoCall | null>(null)
 
+  const { selectedClient, country } = useApp()
+  const uaeOrgIds = ['org-101', 'org-104']
+  const usOrgIds = ['org-102', 'org-103']
+
   const filtered = demoCallLog.filter(c => {
+    if (selectedClient && c.clientId !== selectedClient.id) return false
+    if (!selectedClient && country === 'uae' && !uaeOrgIds.includes(c.clientId)) return false
+    if (!selectedClient && country === 'usa' && !usOrgIds.includes(c.clientId)) return false
     if (typeFilter && c.type !== typeFilter) return false
     if (outcomeFilter && c.outcome !== outcomeFilter) return false
     return true
