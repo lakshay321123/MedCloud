@@ -55,7 +55,8 @@ export function filterByRegion<T extends { clientId?: string; client_id?: string
 export function formatDOB(dob: string | undefined): string {
   if (!dob) return '—'
   try {
-    return new Date(dob + 'T00:00:00').toLocaleDateString('en-US', {
+    const dateOnly = dob.includes('T') ? dob.split('T')[0] : dob
+    return new Date(dateOnly + 'T00:00:00').toLocaleDateString('en-US', {
       month: 'long', day: 'numeric', year: 'numeric'
     })
   } catch {

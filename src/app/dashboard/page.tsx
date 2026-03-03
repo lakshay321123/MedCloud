@@ -18,7 +18,7 @@ import { useDashboardMetrics } from '@/lib/hooks'
 // ── Shared helpers ────────────────────────────────────────────────────────────
 function QuickLinkCard({ title, subtitle, href, icon }: { title: string; subtitle: string; href: string; icon: React.ReactNode }) {
   return (
-    <a href={href} className="block bg-surface-elevated border border-separator rounded-xl p-4 hover:border-brand/40 hover:bg-brand/5 transition-all group">
+    <Link href={href} className="block bg-surface-elevated border border-separator rounded-xl p-4 hover:border-brand/40 hover:bg-brand/5 transition-all group">
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-lg bg-brand/10 flex items-center justify-center text-brand group-hover:bg-brand group-hover:text-white transition-colors">
           {icon}
@@ -28,7 +28,7 @@ function QuickLinkCard({ title, subtitle, href, icon }: { title: string; subtitl
           <p className="text-[12px] text-content-secondary">{subtitle}</p>
         </div>
       </div>
-    </a>
+    </Link>
   )
 }
 
@@ -168,7 +168,7 @@ function CoderDashboard() {
             <p className="text-[13px] font-semibold text-red-600">{pastSLA} chart{pastSLA > 1 ? 's' : ''} past 24-hour SLA</p>
             <p className="text-[12px] text-content-secondary mt-0.5">These charts were received more than 24 hours ago and must be coded immediately.</p>
           </div>
-          <a href="/coding" className="ml-auto text-[12px] text-brand font-medium shrink-0">Go to Queue →</a>
+          <Link href="/coding" className="ml-auto text-[12px] text-brand font-medium shrink-0">Go to Queue →</Link>
         </div>
       )}
       <div className="grid grid-cols-2 gap-4">
@@ -207,7 +207,7 @@ function BillerDashboard() {
               <p className="text-[12px] text-content-secondary mt-0.5">Fix scrub errors before these claims can be submitted to the clearinghouse.</p>
             </div>
           </div>
-          <a href="/claims" className="text-[12px] text-brand font-medium shrink-0">Fix Now →</a>
+          <Link href="/claims" className="text-[12px] text-brand font-medium shrink-0">Fix Now →</Link>
         </div>
       )}
       {chargeLagCount > 0 && (
@@ -216,7 +216,7 @@ function BillerDashboard() {
             <p className="text-[13px] font-semibold text-amber-600">{chargeLagCount} appointments completed 48h+ with no claim</p>
             <p className="text-[12px] text-content-secondary">Mar 1 — Dr. Martinez × 2, Dr. Patel × 1</p>
           </div>
-          <a href="/claims" className="text-[12px] text-brand font-medium shrink-0">Review →</a>
+          <Link href="/claims" className="text-[12px] text-brand font-medium shrink-0">Review →</Link>
         </div>
       )}
       <div className="grid grid-cols-2 gap-4">
@@ -254,7 +254,7 @@ function ARDashboard() {
               <p className="text-[12px] text-content-secondary">Follow up now or escalate to Level 2 before the window closes.</p>
             </div>
           </div>
-          <a href="/denials" className="text-[12px] text-brand font-medium">Review Appeals →</a>
+          <Link href="/denials" className="text-[12px] text-brand font-medium">Review Appeals →</Link>
         </div>
       )}
       <div className="grid grid-cols-2 gap-4">
@@ -286,7 +286,7 @@ function PostingDashboard() {
       {pastSLAERAs > 0 && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between">
           <p className="text-[13px] font-semibold text-red-600">{pastSLAERAs} ERA past 48-hour posting SLA — requires immediate action</p>
-          <a href="/payment-posting" className="text-[12px] text-brand font-medium">Post Now →</a>
+          <Link href="/payment-posting" className="text-[12px] text-brand font-medium">Post Now →</Link>
         </div>
       )}
       <QuickLinkCard title="Payment Posting" subtitle={`${unpostedERAs} ERAs waiting`} href="/payment-posting" icon={<Receipt size={18} />} />
@@ -318,7 +318,7 @@ function ProviderDashboard() {
       {unsignedNotes > 0 && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center justify-between">
           <p className="text-[13px] font-semibold text-amber-600">{unsignedNotes} note{unsignedNotes > 1 ? 's' : ''} unsigned for more than 24 hours</p>
-          <a href="/ai-scribe" className="text-[12px] text-brand font-medium">Sign Now →</a>
+          <Link href="/ai-scribe" className="text-[12px] text-brand font-medium">Sign Now →</Link>
         </div>
       )}
       <div>
@@ -332,7 +332,7 @@ function ProviderDashboard() {
               </div>
               <div className="flex items-center gap-2">
                 <StatusBadge status={apt.status} small />
-                <a href="/ai-scribe" className="text-[12px] text-brand font-medium">Start Visit →</a>
+                <Link href="/ai-scribe" className="text-[12px] text-brand font-medium">Start Visit →</Link>
               </div>
             </div>
           ))}
@@ -421,7 +421,7 @@ function SupervisorDashboard() {
                 <span className={`text-2xl font-bold ${exc.color === 'red' ? 'text-red-500' : 'text-amber-500'}`}>{exc.count}</span>
                 <p className={`text-[13px] font-medium ${exc.color === 'red' ? 'text-red-600' : 'text-amber-600'}`}>{exc.label}</p>
               </div>
-              <a href={exc.href} className="text-[12px] text-brand font-medium shrink-0">Resolve →</a>
+              <Link href={exc.href} className="text-[12px] text-brand font-medium shrink-0">Resolve →</Link>
             </div>
           ))}
         </div>

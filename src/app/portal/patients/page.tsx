@@ -16,10 +16,18 @@ function apiPatientToDemoPatient(p: ApiPatient): DemoPatient {
     id: p.id,
     firstName: p.first_name,
     lastName: p.last_name,
-    dob: p.dob,
+    dob: p.dob ? p.dob.split('T')[0] : '',
     phone: p.phone || '',
     email: p.email,
     insurance: p.insurance_payer ? { payer: p.insurance_payer, policyNo: '', memberId: p.insurance_member_id || '' } : undefined,
+    address: p.address ? {
+      line1: p.address,
+      line2: '',
+      city: p.city || '',
+      state: p.state || '',
+      zip: p.zip || '',
+      country: '',
+    } : undefined,
     clientId: p.client_id,
     status: (p.status as 'active' | 'inactive') || 'active',
     profileComplete: p.profile_complete || 0,
@@ -338,6 +346,19 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
   })
   const upd = (k: keyof typeof editForm, v: string) => setEditForm(p => ({ ...p, [k]: v }))
 
+  const [editAddress, setEditAddress] = useState({
+    line1: localPatient.address?.line1 || '',
+    line2: localPatient.address?.line2 || '',
+    city: localPatient.address?.city || '',
+    state: localPatient.address?.state || '',
+    zip: localPatient.address?.zip || '',
+  })
+  const [editEmergency, setEditEmergency] = useState({
+    name: localPatient.emergencyContact?.name || '',
+    relation: localPatient.emergencyContact?.relation || localPatient.emergencyContact?.relationship || '',
+    phone: localPatient.emergencyContact?.phone || '',
+  })
+
   const tabs: DetailTab[] = ['demographics', 'address', 'insurance', 'emergency', 'employment', 'documents', 'visits', 'messages']
 
   function handleSave() {
@@ -351,6 +372,20 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
       email: editForm.email,
       emiratesId: editForm.emiratesId,
       ssn: editForm.ssn,
+      address: editAddress.line1 ? {
+        line1: editAddress.line1,
+        line2: editAddress.line2,
+        city: editAddress.city,
+        state: editAddress.state,
+        zip: editAddress.zip,
+        country: '',
+      } : prev.address,
+      emergencyContact: editEmergency.name ? {
+        name: editEmergency.name,
+        relationship: editEmergency.relation,
+        relation: editEmergency.relation,
+        phone: editEmergency.phone,
+      } : prev.emergencyContact,
     }))
     toast.success('Patient record updated')
     setEditMode(false)
@@ -464,42 +499,58 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
           )}
 
           {tab === 'address' && (
-            <div>
-              {patient.address ? (
-                <div className="space-y-1">
-                  <div><span className="text-xs text-content-secondary block">Address</span>
-                    <span>{patient.address.line1}</span>
-                    {patient.address.line2 && <div>{patient.address.line2}</div>}
-                    <div>{patient.address.city}, {patient.address.state} {patient.address.zip}</div>
-                    <div>{patient.address.country}</div>
+            <div className="p-4 space-y-3">
+              {editMode ? (
+                <>
+                  <div><label className="text-xs text-content-secondary block mb-1">Address Line 1</label>
+                    <input className={ic} value={editAddress.line1} onChange={e => setEditAddress(p => ({...p, line1: e.target.value}))} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Address Line 2</label>
+                    <input className={ic} value={editAddress.line2} onChange={e => setEditAddress(p => ({...p, line2: e.target.value}))} /></div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><label className="text-xs text-content-secondary block mb-1">City</label>
+                      <input className={ic} value={editAddress.city} onChange={e => setEditAddress(p => ({...p, city: e.target.value}))} /></div>
+                    <div><label className="text-xs text-content-secondary block mb-1">State / Emirate</label>
+                      <input className={ic} value={editAddress.state} onChange={e => setEditAddress(p => ({...p, state: e.target.value}))} /></div>
                   </div>
+                  <div><label className="text-xs text-content-secondary block mb-1">ZIP / Postal</label>
+                    <input className={ic} value={editAddress.zip} onChange={e => setEditAddress(p => ({...p, zip: e.target.value}))} /></div>
+                </>
+              ) : localPatient.address?.line1 ? (
+                <div className="text-sm space-y-1 text-content-primary">
+                  <div>{localPatient.address.line1}</div>
+                  {localPatient.address.line2 && <div>{localPatient.address.line2}</div>}
+                  <div>{localPatient.address.city}, {localPatient.address.state} {localPatient.address.zip}</div>
                 </div>
-              ) : <div className="text-center py-8 text-xs text-content-secondary">No address on file.</div>}
+              ) : (
+                <div className="text-center py-8 text-xs text-content-secondary">
+                  No address on file. <button onClick={() => setEditMode(true)} className="ml-1 text-brand underline">Add address</button>
+                </div>
+              )}
             </div>
           )}
 
           {tab === 'insurance' && (
             <div className="space-y-3">
-              {patient.insurance ? (
+              {localPatient.insurance ? (
                 <div className="bg-surface-elevated border border-separator rounded-lg p-3">
                   <div className="text-xs text-content-secondary mb-2">Primary Insurance</div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div><span className="text-content-secondary">Payer:</span> {patient.insurance.payer}</div>
-                    <div><span className="text-content-secondary">Policy:</span> {patient.insurance.policyNo}</div>
-                    {patient.insurance.groupNo && <div><span className="text-content-secondary">Group:</span> {patient.insurance.groupNo}</div>}
-                    <div><span className="text-content-secondary">Member ID:</span> {patient.insurance.memberId}</div>
-                    {patient.insurance.relationship && <div><span className="text-content-secondary">Relationship:</span> {patient.insurance.relationship}</div>}
-                    {patient.insurance.copay !== undefined && <div><span className="text-content-secondary">Copay:</span> {isUAE ? 'AED' : '$'}{patient.insurance.copay}</div>}
+                    <div><span className="text-content-secondary">Payer:</span> {localPatient.insurance.payer}</div>
+                    <div><span className="text-content-secondary">Policy:</span> {localPatient.insurance.policyNo}</div>
+                    {localPatient.insurance.groupNo && <div><span className="text-content-secondary">Group:</span> {localPatient.insurance.groupNo}</div>}
+                    <div><span className="text-content-secondary">Member ID:</span> {localPatient.insurance.memberId}</div>
+                    {localPatient.insurance.relationship && <div><span className="text-content-secondary">Relationship:</span> {localPatient.insurance.relationship}</div>}
+                    {localPatient.insurance.copay !== undefined && <div><span className="text-content-secondary">Copay:</span> {isUAE ? 'AED' : '$'}{localPatient.insurance.copay}</div>}
                   </div>
                 </div>
               ) : <div className="text-center py-6 text-xs text-content-secondary">No insurance on file. <button onClick={() => toast.info('Upload insurance card to update coverage details')} className="text-brand underline">Upload insurance card</button></div>}
-              {patient.secondaryInsurance && (
+              {localPatient.secondaryInsurance && (
                 <div className="bg-surface-elevated border border-separator rounded-lg p-3">
                   <div className="text-xs text-content-secondary mb-2">Secondary Insurance</div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div><span className="text-content-secondary">Payer:</span> {patient.secondaryInsurance.payer}</div>
-                    <div><span className="text-content-secondary">Policy:</span> {patient.secondaryInsurance.policyNo}</div>
-                    <div><span className="text-content-secondary">Member ID:</span> {patient.secondaryInsurance.memberId}</div>
+                    <div><span className="text-content-secondary">Payer:</span> {localPatient.secondaryInsurance.payer}</div>
+                    <div><span className="text-content-secondary">Policy:</span> {localPatient.secondaryInsurance.policyNo}</div>
+                    <div><span className="text-content-secondary">Member ID:</span> {localPatient.secondaryInsurance.memberId}</div>
                   </div>
                 </div>
               )}
@@ -510,25 +561,38 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
           )}
 
           {tab === 'emergency' && (
-            <div>
-              {patient.emergencyContact ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <div><span className="text-xs text-content-secondary block">Name</span><span>{patient.emergencyContact.name}</span></div>
-                  <div><span className="text-xs text-content-secondary block">Relationship</span><span>{patient.emergencyContact.relationship}</span></div>
-                  <div><span className="text-xs text-content-secondary block">Phone</span><span>{patient.emergencyContact.phone}</span></div>
+            <div className="p-4 space-y-3">
+              {editMode ? (
+                <>
+                  <div><label className="text-xs text-content-secondary block mb-1">Contact Name</label>
+                    <input className={ic} value={editEmergency.name} onChange={e => setEditEmergency(p => ({...p, name: e.target.value}))} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Relationship</label>
+                    <input className={ic} value={editEmergency.relation} onChange={e => setEditEmergency(p => ({...p, relation: e.target.value}))} /></div>
+                  <div><label className="text-xs text-content-secondary block mb-1">Phone</label>
+                    <input className={ic} value={editEmergency.phone} onChange={e => setEditEmergency(p => ({...p, phone: e.target.value}))} /></div>
+                </>
+              ) : localPatient.emergencyContact?.name ? (
+                <div className="text-sm space-y-1 text-content-primary">
+                  <div className="font-medium">{localPatient.emergencyContact.name}</div>
+                  <div className="text-content-secondary">{localPatient.emergencyContact.relationship || localPatient.emergencyContact.relation}</div>
+                  <div>{localPatient.emergencyContact.phone}</div>
                 </div>
-              ) : <div className="text-center py-8 text-xs text-content-secondary">No emergency contact on file.</div>}
+              ) : (
+                <div className="text-center py-8 text-xs text-content-secondary">
+                  No emergency contact on file. <button onClick={() => setEditMode(true)} className="ml-1 text-brand underline">Add contact</button>
+                </div>
+              )}
             </div>
           )}
 
           {tab === 'employment' && (
             <div>
-              {patient.employment ? (
+              {localPatient.employment ? (
                 <div className="grid grid-cols-2 gap-3">
-                  <div><span className="text-xs text-content-secondary block">Status</span><span>{patient.employment.status}</span></div>
-                  {patient.employment.occupation && <div><span className="text-xs text-content-secondary block">Occupation</span><span>{patient.employment.occupation}</span></div>}
-                  {patient.employment.employer && <div><span className="text-xs text-content-secondary block">Employer</span><span>{patient.employment.employer}</span></div>}
-                  {patient.employment.workPhone && <div><span className="text-xs text-content-secondary block">Work Phone</span><span>{patient.employment.workPhone}</span></div>}
+                  <div><span className="text-xs text-content-secondary block">Status</span><span>{localPatient.employment.status}</span></div>
+                  {localPatient.employment.occupation && <div><span className="text-xs text-content-secondary block">Occupation</span><span>{localPatient.employment.occupation}</span></div>}
+                  {localPatient.employment.employer && <div><span className="text-xs text-content-secondary block">Employer</span><span>{localPatient.employment.employer}</span></div>}
+                  {localPatient.employment.workPhone && <div><span className="text-xs text-content-secondary block">Work Phone</span><span>{localPatient.employment.workPhone}</span></div>}
                 </div>
               ) : <div className="text-center py-8 text-xs text-content-secondary">No employment info on file.</div>}
             </div>

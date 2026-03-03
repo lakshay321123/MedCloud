@@ -32,7 +32,14 @@ interface AppState {
 function getInitialUser(): User {
   if (typeof window !== 'undefined') {
     const pt = localStorage.getItem('cosentus_portal_type') as PortalType | null
-    if (pt === 'facility') return { id: 'demo-001', name: 'Demo Provider', email: 'provider@clinic.com', role: 'provider', organization_id: 'org-102' }
+    const savedRole = localStorage.getItem('cosentus_role') as UserRole | null
+    if (pt === 'facility') {
+      const role = (savedRole && ['provider', 'client'].includes(savedRole)) ? savedRole : 'provider'
+      return { id: 'demo-001', name: 'Demo Provider', email: 'provider@clinic.com', role, organization_id: 'org-102' }
+    }
+    if (savedRole) {
+      return { id: 'demo-001', name: 'Admin User', email: 'admin@cosentus.ai', role: savedRole, organization_id: 'org-001' }
+    }
   }
   return { id: 'demo-001', name: 'Admin User', email: 'admin@cosentus.ai', role: 'admin', organization_id: 'org-001' }
 }
@@ -90,7 +97,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const toggleSidebar = useCallback(() => setSidebarCollapsed(prev => !prev), [])
-  const setRole = useCallback((r: UserRole) => setCurrentUser(prev => ({ ...prev, role: r })), [])
+  const setRole = useCallback((r: UserRole) => {
+    if (typeof window !== 'undefined') localStorage.setItem('cosentus_role', r)
+    setCurrentUser(prev => ({ ...prev, role: r }))
+  }, [])
   const setSelectedClient = useCallback((c: ClientOrg | null) => setSelectedClientState(c), [])
 
   const setCountry = useCallback((c: 'uae' | 'usa') => {
