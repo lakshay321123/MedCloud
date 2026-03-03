@@ -55,13 +55,34 @@ export default function EligibilityPage() {
     }, 2200)
   }
 
+  const eligChecks = apiEligResult?.data
+    ? apiEligResult.data.map(e => ({
+        id: e.id,
+        patientName: e.patient_name || '',
+        status: e.status || '',
+        priorAuthRequired: e.prior_auth_required || false,
+      }))
+    : demoChecks.map(c => ({
+        id: c.id,
+        patientName: c.patient,
+        status: c.status,
+        priorAuthRequired: c.priorAuth.startsWith('Yes'),
+      }))
+
+  const eligStats = {
+    total: apiEligResult?.meta?.total ?? demoChecks.length,
+    active: eligChecks.filter(e => e.status === 'active').length,
+    issues: eligChecks.filter(e => e.status !== 'active').length,
+    priorAuth: eligChecks.filter(e => e.priorAuthRequired).length,
+  }
+
   return (
     <ModuleShell title="Eligibility Verification" subtitle="Check insurance coverage and benefits">
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Checks Today" value={apiEligResult?.meta?.total ?? 34} icon={<ShieldCheck size={20} />} />
-        <KPICard label="Active" value={apiEligResult?.data?.filter(e => e.status === 'active').length ?? 31} sub="91%" trend="up" />
-        <KPICard label="Inactive/Issues" value={apiEligResult?.data?.filter(e => e.status !== 'active').length ?? 3} trend="down" />
-        <KPICard label="Prior Auth Required" value={apiEligResult?.data?.filter(e => e.prior_auth_required).length ?? 5} />
+        <KPICard label="Checks Today" value={eligStats.total} icon={<ShieldCheck size={20} />} />
+        <KPICard label="Active" value={eligStats.active} sub={`${eligStats.total > 0 ? Math.round(eligStats.active / eligStats.total * 100) : 0}%`} trend="up" />
+        <KPICard label="Inactive/Issues" value={eligStats.issues} trend="down" />
+        <KPICard label="Prior Auth Required" value={eligStats.priorAuth} />
       </div>
 
       <div className="flex gap-2 mb-4">

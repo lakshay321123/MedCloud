@@ -32,6 +32,16 @@ function QuickLinkCard({ title, subtitle, href, icon }: { title: string; subtitl
   )
 }
 
+// ── Shared helpers ─────────────────────────────────────────────────────────────
+function timeAgo(dateStr: string): string {
+  if (!dateStr) return ''
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const hours = Math.floor(diff / 3600000)
+  if (hours < 1) return `${Math.max(1, Math.floor(diff / 60000))}m`
+  if (hours < 24) return `${hours}h`
+  return `${Math.floor(hours / 24)}d`
+}
+
 // ── Executive (Admin/Director/Manager) Dashboard ──────────────────────────────
 function ExecutiveDashboard() {
   const router = useRouter()
@@ -47,6 +57,7 @@ function ExecutiveDashboard() {
   const recentClaimsActivity = metrics?.recent_claims?.slice(0, 5).map(c => ({
     t: `Claim #${c.claim_number} — ${c.first_name} ${c.last_name} ($${c.total_charges?.toLocaleString()})`,
     c: c.status === 'paid' ? 'text-emerald-600 dark:text-emerald-400' : c.status === 'denied' ? 'text-red-500' : 'text-brand',
+    ago: timeAgo(c.dos_from),
     href: '/claims',
   }))
 
@@ -109,16 +120,17 @@ function ExecutiveDashboard() {
             {(recentClaimsActivity && recentClaimsActivity.length > 0
               ? recentClaimsActivity
               : [
-                  { t: 'Claim #CLM-4501 paid — $250', c: 'text-emerald-600 dark:text-emerald-400', href: '/claims' },
-                  { t: 'ERA posted — 23 claims from UHC', c: 'text-brand', href: '/payment-posting' },
-                  { t: 'Denial pattern alert: Aetna no-auth', c: 'text-amber-600 dark:text-amber-400', href: '/denials' },
-                  { t: 'Voice AI completed 12 calls', c: 'text-brand', href: '/voice-ai' },
-                  { t: 'New provider credentialing started', c: 'text-blue-600 dark:text-blue-400', href: '/credentialing' },
+                  { t: 'Claim #CLM-4501 paid — $250', c: 'text-emerald-600 dark:text-emerald-400', ago: '2h', href: '/claims' },
+                  { t: 'ERA posted — 23 claims from UHC', c: 'text-brand', ago: '3h', href: '/payment-posting' },
+                  { t: 'Denial pattern alert: Aetna no-auth', c: 'text-amber-600 dark:text-amber-400', ago: '5h', href: '/denials' },
+                  { t: 'Voice AI completed 12 calls', c: 'text-brand', ago: '6h', href: '/voice-ai' },
+                  { t: 'New provider credentialing started', c: 'text-blue-600 dark:text-blue-400', ago: '8h', href: '/credentialing' },
                 ]
             ).map((a, i) => (
               <button key={i} onClick={() => router.push(a.href)}
                 className="w-full flex items-center justify-between hover:bg-surface-elevated rounded-lg px-2 py-1.5 -mx-2 transition-colors group">
                 <span className={`text-[13px] font-medium ${a.c} group-hover:underline text-left truncate pr-2`}>{a.t}</span>
+                <span className="text-[12px] text-content-tertiary shrink-0 ml-2">{a.ago} ago</span>
               </button>
             ))}
           </div>

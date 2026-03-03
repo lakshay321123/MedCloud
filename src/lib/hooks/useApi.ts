@@ -99,7 +99,23 @@ export function useMutation<TData, TInput>(
     setLoading(true)
     setError(null)
     try {
-      const result = await (api[method] as (path: string, body?: unknown) => Promise<TData>)(path, input)
+      let result: TData
+      switch (method) {
+        case 'post':
+          result = await api.post<TData>(path, input)
+          break
+        case 'put':
+          result = await api.put<TData>(path, input)
+          break
+        case 'patch':
+          result = await api.patch<TData>(path, input)
+          break
+        case 'delete':
+          result = await api.delete<TData>(path)
+          break
+        default:
+          throw new MedCloudApiError(`Unsupported mutation method: ${method}`, 0)
+      }
       if (mountedRef.current) {
         setData(result)
         setLoading(false)

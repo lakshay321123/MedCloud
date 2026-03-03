@@ -7,10 +7,15 @@ import type { ClaimStatus, AppointmentStatus, TaskStatus, Priority } from '@/typ
 
 // ── Shared helper ─────────────────────────────────────────────────────────────
 function useClientParams(extra?: ApiListParams): ApiListParams {
-  const { selectedClient, orgId } = useApp()
+  const { selectedClient, orgId, currentUser } = useApp()
+  // Provider and client roles are always scoped to their own organization
+  const isClinicUser = currentUser.role === 'client' || currentUser.role === 'provider'
+  const clientId = isClinicUser
+    ? currentUser.organization_id   // fixed to their org
+    : selectedClient?.id            // backoffice picks from dropdown
   return {
     org_id: orgId,
-    ...(selectedClient ? { client_id: selectedClient.id } : {}),
+    ...(clientId ? { client_id: clientId } : {}),
     ...extra,
   }
 }

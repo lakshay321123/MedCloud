@@ -1,8 +1,12 @@
 import { getAuthToken, refreshToken } from './auth'
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ||
-  'https://fm2l2133of.execute-api.us-east-1.amazonaws.com/prod'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ''
+if (!process.env.NEXT_PUBLIC_API_URL) {
+  console.warn(
+    '[MedCloud] NEXT_PUBLIC_API_URL not set. API calls will fail. ' +
+    'Set it in .env.local or Vercel Environment Variables.'
+  )
+}
 const API_PREFIX = '/api/v1'
 
 export interface ApiListParams {

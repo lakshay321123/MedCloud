@@ -8,6 +8,21 @@ import { useToast } from '@/components/shared/Toast'
 import { Plus, AlertTriangle, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react'
 import NewAppointmentModal from './NewAppointmentModal'
 import { useAppointments } from '@/lib/hooks'
+import type { ApiAppointment } from '@/lib/hooks'
+
+function apiAppointmentToDemo(a: ApiAppointment) {
+  return {
+    id: a.id,
+    patientName: a.patient_name || `${a.first_name || ''} ${a.last_name || ''}`.trim() || 'Unknown Patient',
+    time: a.appointment_time || '09:00',
+    duration: 30,
+    provider: a.provider_name || '',
+    type: a.appointment_type || 'Office Visit',
+    status: (a.status || 'booked') as string,
+    clientId: a.client_id,
+    date: a.appointment_date || '',
+  }
+}
 
 const staffRoles = ['admin','director','supervisor','manager','coder','biller','ar_team','posting_team']
 
@@ -80,18 +95,25 @@ export default function AppointmentsPage() {
   const { data: apiApptResult } = useAppointments({ limit: 50, sort: 'appointment_date', order: 'asc' })
 
   const clientFilter = isClinic ? 'org-102' : selectedClient?.id
-  const dayApts = demoAppointments.filter(a => {
+
+  // Use API data when available, fall back to demo
+  const sourceAppointments = apiApptResult?.data
+    ? apiApptResult.data.map(apiAppointmentToDemo)
+    : demoAppointments
+
+  const dayApts = sourceAppointments.filter(a => {
     if (clientFilter && a.clientId !== clientFilter) return false
     if (a.date !== selectedDate) return false
     return true
   })
 
-  const apiTotal = apiApptResult?.meta?.total
   const stats = {
-    total: apiTotal ?? demoAppointments.filter(a => a.date === '2026-03-02' && (!clientFilter || a.clientId === clientFilter)).length,
-    checkedIn: demoAppointments.filter(a => a.date === '2026-03-02' && ['checked_in','in_progress','completed'].includes(a.status) && (!clientFilter || a.clientId === clientFilter)).length,
-    completed: demoAppointments.filter(a => a.date === '2026-03-02' && a.status === 'completed' && (!clientFilter || a.clientId === clientFilter)).length,
-    noShows: demoAppointments.filter(a => a.date === '2026-03-02' && a.status === 'no_show' && (!clientFilter || a.clientId === clientFilter)).length,
+    total: apiApptResult?.meta?.total ?? sourceAppointments.filter(a =>
+      a.date === selectedDate && (!clientFilter || a.clientId === clientFilter)
+    ).length,
+    checkedIn: dayApts.filter(a => ['checked_in', 'in_progress', 'completed'].includes(a.status as string)).length,
+    completed: dayApts.filter(a => a.status === 'completed').length,
+    noShows: dayApts.filter(a => a.status === 'no_show').length,
   }
 
   const missingDocs = isStaff ? demoAppointments.filter(a =>

@@ -53,6 +53,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [portalType, setPortalTypeState] = useState<PortalType | null>(
     () => (typeof window !== 'undefined' ? (localStorage.getItem('cosentus_portal_type') as PortalType) : null)
   )
+  // TODO: Sprint 2 — derive orgId from Cognito JWT claims after authentication
+  // For Sprint 1 dev mode, hardcode to seeded organization UUID
   const orgId = 'a0000000-0000-0000-0000-000000000001'
 
   const direction = getDirection(language)

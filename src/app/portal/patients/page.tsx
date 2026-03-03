@@ -470,8 +470,13 @@ export default function PatientsPage() {
   )
 
   const clientFilter = currentUser.role === 'client' || currentUser.role === 'provider' ? 'org-102' : selectedClient?.id
-  const patients: DemoPatient[] = apiResult?.data
+
+  const apiPatients = apiResult?.data
     ? apiResult.data.map(apiPatientToDemoPatient)
+    : null
+
+  const patients: DemoPatient[] = apiPatients
+    ? (clientFilter ? apiPatients.filter(p => p.clientId === clientFilter) : apiPatients)
     : demoPatients.filter(p => {
         if (clientFilter && p.clientId !== clientFilter) return false
         if (search) {

@@ -21,15 +21,29 @@ export default function CredentialingPage() {
   const { toast } = useToast()
   const [selected, setSelected] = useState<Provider | null>(null)
   const { data: apiCredResult } = useCredentialing({ limit: 50 })
-  const expiring = providers.filter(p => p.status === 'expiring').length
+
+  const providerList = apiCredResult?.data
+    ? apiCredResult.data.map(p => ({
+        id: p.id,
+        name: p.provider_name || '',
+        status: p.status || '',
+        payers: p.payer_enrollment_count || 0,
+      }))
+    : providers
+
+  const activeCount = providerList.filter(p => p.status === 'active').length
+  const expiringCount = providerList.filter(p => p.status === 'expiring').length
+  const onboardingCount = providerList.filter(p => p.status === 'onboarding').length
+  const totalEnrollments = providerList.reduce((s, p) => s + p.payers, 0)
+  const expiring = expiringCount
 
   return (
     <ModuleShell title="Credentialing" subtitle="Provider credentials and payer enrollment">
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Active Providers" value={apiCredResult ? apiCredResult.data.filter(p=>p.status==='active').length : providers.filter(p=>p.status==='active').length} icon={<BadgeCheck size={20}/>}/>
-        <KPICard label="Expiring (30 days)" value={apiCredResult ? apiCredResult.data.filter(p=>p.status==='expiring').length : expiring} trend="down"/>
-        <KPICard label="Onboarding" value={apiCredResult ? apiCredResult.data.filter(p=>p.status==='onboarding').length : providers.filter(p=>p.status==='onboarding').length}/>
-        <KPICard label="Total Enrollments" value={apiCredResult ? apiCredResult.data.reduce((s,p)=>s+(p.payer_enrollment_count||0),0) : providers.reduce((s,p)=>s+p.payers,0)}/>
+        <KPICard label="Active Providers" value={activeCount} icon={<BadgeCheck size={20}/>}/>
+        <KPICard label="Expiring (30 days)" value={expiringCount} trend="down"/>
+        <KPICard label="Onboarding" value={onboardingCount}/>
+        <KPICard label="Total Enrollments" value={totalEnrollments}/>
       </div>
       {expiring > 0 && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-4 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2">

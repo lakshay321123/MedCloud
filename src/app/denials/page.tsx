@@ -57,8 +57,9 @@ export default function DenialsPage() {
     dos: d.dos, source: d.source, appealLevel: d.appealLevel, status: d.status,
   }))
 
-  const allDenials = apiDenials.length > 0 ? apiDenials : demoDenialsMapped
-  const denials = allDenials.filter(c => !selectedClient || c.clientId === selectedClient.id)
+  const denials = apiDenials.length > 0
+    ? apiDenials
+    : demoDenialsMapped.filter(c => !selectedClient || c.clientId === selectedClient.id)
 
   const [selected, setSelected] = useState(denials[0]?.id || '')
   const [appealLevel, setAppealLevel] = useState<'L1' | 'L2' | 'L3'>('L1')
