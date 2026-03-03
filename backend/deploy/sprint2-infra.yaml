@@ -1,0 +1,194 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: MedCloud Sprint 2 Infrastructure — S3 Documents, Lambda IAM, Textract, Bedrock
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [prod, staging]
+  Region:
+    Type: String
+    Default: us
+    AllowedValues: [us, uae]
+  ExistingLambdaRoleName:
+    Type: String
+    Default: medcloud-api-role
+    Description: Name of the existing Lambda execution role to attach policies to
+
+Resources:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # S3 DOCUMENT BUCKET
+  # ═══════════════════════════════════════════════════════════════════════════
+  DocumentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'medcloud-documents-${Region}-${Environment}'
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, PUT, POST]
+            AllowedOrigins:
+              - 'https://*.vercel.app'
+              - 'https://*.cosentus.ai'
+              - 'http://localhost:3000'
+            MaxAge: 300
+      LifecycleConfiguration:
+        Rules:
+          # Move old documents to IA after 90 days
+          - Id: MoveToIA
+            Status: Enabled
+            Prefix: uploads/
+            Transitions:
+              - StorageClass: STANDARD_IA
+                TransitionInDays: 90
+          # Move voice recordings to Glacier after 1 year
+          - Id: VoiceToGlacier
+            Status: Enabled
+            Prefix: voice-recordings/
+            Transitions:
+              - StorageClass: GLACIER
+                TransitionInDays: 365
+          # Keep ERA files for 10 years (HIPAA), move to Glacier after 1 year
+          - Id: ERARetention
+            Status: Enabled
+            Prefix: era-files/
+            Transitions:
+              - StorageClass: GLACIER
+                TransitionInDays: 365
+      Tags:
+        - Key: Project
+          Value: MedCloud
+        - Key: Region
+          Value: !Ref Region
+        - Key: HIPAA
+          Value: 'true'
+
+  # Bucket policy — allow Lambda role access only
+  DocumentsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DocumentsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowLambdaAccess
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${ExistingLambdaRoleName}'
+            Action:
+              - 's3:GetObject'
+              - 's3:PutObject'
+              - 's3:DeleteObject'
+              - 's3:ListBucket'
+            Resource:
+              - !Sub '${DocumentsBucket.Arn}'
+              - !Sub '${DocumentsBucket.Arn}/*'
+          - Sid: DenyUnencryptedUploads
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:PutObject'
+            Resource: !Sub '${DocumentsBucket.Arn}/*'
+            Condition:
+              StringNotEquals:
+                's3:x-amz-server-side-encryption': 'AES256'
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # IAM POLICY — Lambda access to S3, Textract, Bedrock
+  # ═══════════════════════════════════════════════════════════════════════════
+  LambdaS3TextractBedrockPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub 'medcloud-sprint2-${Region}-${Environment}'
+      Description: MedCloud Sprint 2 — S3 + Textract + Bedrock access
+      Roles:
+        - !Ref ExistingLambdaRoleName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # S3 document access
+          - Sid: S3Access
+            Effect: Allow
+            Action:
+              - 's3:GetObject'
+              - 's3:PutObject'
+              - 's3:DeleteObject'
+              - 's3:ListBucket'
+            Resource:
+              - !Sub '${DocumentsBucket.Arn}'
+              - !Sub '${DocumentsBucket.Arn}/*'
+          # S3 presigned URL generation
+          - Sid: S3Presign
+            Effect: Allow
+            Action:
+              - 's3:GetObject'
+              - 's3:PutObject'
+            Resource: !Sub '${DocumentsBucket.Arn}/*'
+          # Textract
+          - Sid: TextractAccess
+            Effect: Allow
+            Action:
+              - 'textract:AnalyzeDocument'
+              - 'textract:StartDocumentAnalysis'
+              - 'textract:GetDocumentAnalysis'
+              - 'textract:DetectDocumentText'
+              - 'textract:StartDocumentTextDetection'
+              - 'textract:GetDocumentTextDetection'
+            Resource: '*'
+          # Bedrock (Claude for auto-coding)
+          - Sid: BedrockAccess
+            Effect: Allow
+            Action:
+              - 'bedrock:InvokeModel'
+              - 'bedrock:InvokeModelWithResponseStream'
+            Resource:
+              - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0'
+              - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0'
+          # CloudWatch Logs (Lambda already has this, but explicit)
+          - Sid: Logs
+            Effect: Allow
+            Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+            Resource: '*'
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # S3 EVENT → LAMBDA TRIGGER (for Textract auto-processing)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # NOTE: Uncomment after Lambda v4 is deployed and tested
+  # TextractTriggerPermission:
+  #   Type: AWS::Lambda::Permission
+  #   Properties:
+  #     FunctionName: medcloud-api
+  #     Action: 'lambda:InvokeFunction'
+  #     Principal: 's3.amazonaws.com'
+  #     SourceArn: !GetAtt DocumentsBucket.Arn
+
+Outputs:
+  BucketName:
+    Value: !Ref DocumentsBucket
+    Description: S3 bucket for document storage
+  BucketArn:
+    Value: !GetAtt DocumentsBucket.Arn
+  PolicyArn:
+    Value: !Ref LambdaS3TextractBedrockPolicy
+    Description: IAM policy attached to Lambda role
+
+  # Environment variables to set on Lambda
+  LambdaEnvVars:
+    Value: !Sub |
+      S3_BUCKET=${DocumentsBucket}
+      AWS_REGION=${AWS::Region}
+      BEDROCK_MODEL=anthropic.claude-sonnet-4-5-20250929-v1:0
+    Description: Set these as Lambda environment variables
