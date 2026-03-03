@@ -329,7 +329,7 @@ export default function CodingPage() {
                       <p className="text-[14px] font-semibold text-content-primary leading-tight">{q.patientName}</p>
                       <span className={`w-2 h-2 rounded-full mt-1 ${priorityColor[q.priority ?? 'medium']}`} />
                     </div>
-                    <p className="text-[12px] text-content-secondary truncate">{getClientName(q.clientId)} · {q.dos}</p>
+                    <p className="text-[12px] text-content-secondary truncate">{q.clientName || '—'} · {q.dos}</p>
                     <div className="flex items-center justify-between mt-1 gap-1 flex-wrap">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[11px] ${q.source === 'ai_scribe' ? 'bg-brand/10 text-brand' : 'bg-purple-500/10 text-purple-600 dark:text-purple-400'}`}>
                         {q.source === 'ai_scribe' ? <Mic size={12} /> : <FileUp size={12} />}
@@ -368,7 +368,7 @@ export default function CodingPage() {
         </div>
 
         {/* ── Visit Note Panel ── */}
-        <div className={docOpen ? 'col-span-3' : 'col-span-5'}>
+        <div className="col-span-5 relative">
           <div className="card h-full flex flex-col overflow-hidden">
             {item ? (
               <>
@@ -395,8 +395,45 @@ export default function CodingPage() {
                       </div>
                     )}
                   </div>
-                  <div className="grid grid-cols-4 gap-2 mt-2">
-                    {([
+                  {/* Doc + History Buttons */}
+                  <div className="pt-3 pb-2 flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => setDocOpen(docOpen === 'note' ? null : 'note')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border transition-colors ${
+                        docOpen === 'note'
+                          ? 'bg-brand text-white border-brand'
+                          : 'border-separator text-content-secondary hover:border-brand/40 hover:text-content-primary'
+                      }`}
+                    >
+                      <FileText size={12} />
+                      {item.source === 'ai_scribe' ? 'AI Scribe Note' : 'Visit Note'}
+                    </button>
+                    {item.source === 'upload' && (
+                      <button
+                        onClick={() => setDocOpen(docOpen === 'superbill' ? null : 'superbill')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border transition-colors ${
+                          docOpen === 'superbill'
+                            ? 'bg-brand text-white border-brand'
+                            : 'border-separator text-content-secondary hover:border-brand/40 hover:text-content-primary'
+                        }`}
+                      >
+                        <FileText size={12} /> Superbill
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setTab(tab === 'history' ? 'note' : 'history')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border transition-colors ${
+                        tab === 'history'
+                          ? 'bg-surface-elevated border-separator text-content-primary'
+                          : 'border-separator text-content-secondary hover:border-brand/40 hover:text-content-primary'
+                      }`}
+                    >
+                      History
+                    </button>
+                  </div>
+                  {/* Only show fields that have values */}
+                  {(() => {
+                    const fields = [
                       ['DOB', item.patientDob],
                       ['Gender', item.patientGender],
                       ['Payer', item.patientPayer],
@@ -405,37 +442,22 @@ export default function CodingPage() {
                       ['POS', item.placeOfService],
                       ['Specialty', item.providerSpecialty],
                       ['Source', item.source === 'ai_scribe' ? '🎙 AI Scribe' : '📄 Upload'],
-                    ] as [string, string][]).map(([label, value]) => (
-                      <div key={label} className="bg-surface-elevated rounded-lg px-2 py-1.5">
-                        <span className="text-[10px] text-content-tertiary block">{label}</span>
-                        <span className="text-[12px] text-content-primary font-medium">{value}</span>
+                    ].filter(([, v]) => v && v !== '') as [string, string][]
+                    return fields.length > 0 ? (
+                      <div className="grid grid-cols-4 gap-2 mt-2">
+                        {fields.map(([label, value]) => (
+                          <div key={label} className="bg-surface-elevated rounded-lg px-2 py-1.5">
+                            <span className="text-[10px] text-content-tertiary block">{label}</span>
+                            <span className="text-[12px] text-content-primary font-medium">{value}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2 mt-3">
-                    <button
-                      onClick={() => setDocOpen(docOpen === 'note' ? null : 'note')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border transition-colors ${docOpen === 'note' ? 'bg-brand text-white border-brand' : 'border-separator text-content-secondary hover:border-brand/40 hover:text-content-primary'}`}>
-                      <FileText size={12} /> Visit Note
-                    </button>
-                    {item.source === 'upload' && (
-                      <button
-                        onClick={() => setDocOpen(docOpen === 'superbill' ? null : 'superbill')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border transition-colors ${docOpen === 'superbill' ? 'bg-brand text-white border-brand' : 'border-separator text-content-secondary hover:border-brand/40 hover:text-content-primary'}`}>
-                        <Receipt size={12} /> Superbill
-                      </button>
-                    )}
-                    {item.source === 'ai_scribe' && (
-                      <button
-                        onClick={() => setDocOpen(docOpen === 'note' ? null : 'note')}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border border-brand/30 text-brand hover:bg-brand/5 transition-colors">
-                        <Mic size={12} /> AI Scribe Note
-                      </button>
-                    )}
-                    <button onClick={() => setTab('history')} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border border-separator text-content-secondary hover:border-brand/40 hover:text-content-primary transition-colors">
-                      History
-                    </button>
-                  </div>
+                    ) : (
+                      <p className="text-[11px] text-content-tertiary mt-2 italic">
+                        Patient demographics — available after Sprint 2 backend enrichment
+                      </p>
+                    )
+                  })()}
                 </div>
 
                 <div className="p-4 overflow-y-auto flex-1">
@@ -466,6 +488,110 @@ export default function CodingPage() {
                     </div>
                   )}
                 </div>
+                {/* ── Doc Viewer Overlay ── */}
+                {docOpen && item && (
+                  <div className="absolute inset-0 z-20 bg-surface card flex flex-col overflow-hidden">
+                    {/* Header with tabs + close */}
+                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-separator shrink-0">
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => setDocOpen('note')}
+                          className={`px-3 py-1.5 text-xs rounded-btn font-medium transition-colors ${
+                            docOpen === 'note' ? 'bg-brand text-white' : 'text-content-secondary hover:text-content-primary'
+                          }`}
+                        >
+                          Visit Note
+                        </button>
+                        {item.source === 'upload' && (
+                          <button
+                            onClick={() => setDocOpen('superbill')}
+                            className={`px-3 py-1.5 text-xs rounded-btn font-medium transition-colors ${
+                              docOpen === 'superbill' ? 'bg-brand text-white' : 'text-content-secondary hover:text-content-primary'
+                            }`}
+                          >
+                            Superbill
+                          </button>
+                        )}
+                      </div>
+                      <button onClick={() => setDocOpen(null)} className="text-content-tertiary hover:text-content-primary p-1 rounded">
+                        <X size={15} />
+                      </button>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 overflow-y-auto p-4">
+                      {docOpen === 'note' && (
+                        <div className="space-y-4">
+                          {item.source === 'ai_scribe' && (
+                            <button
+                              onClick={() => toast.info('Playing AI Scribe recording...')}
+                              className="inline-flex items-center gap-2 text-[12px] rounded-btn px-3 py-1.5 bg-brand/10 text-brand"
+                            >
+                              <Play size={13} /> <Mic size={13} /> Play Recording
+                            </button>
+                          )}
+                          {item.source === 'upload' && (
+                            <div className="flex items-center gap-2 px-3 py-2 bg-surface-elevated border border-separator rounded-lg">
+                              <FileText size={13} className="text-content-tertiary shrink-0" />
+                              <span className="text-xs text-content-secondary flex-1">Source chart — {item.patientName}</span>
+                              <button onClick={() => toast.info('Opening source document...')} className="text-xs text-brand underline shrink-0">
+                                View Original
+                              </button>
+                            </div>
+                          )}
+                          {(['subjective', 'objective', 'assessment', 'plan'] as const).map(section => (
+                            <div key={section} className="pb-3 border-b border-separator last:border-0">
+                              <p className="text-[10px] uppercase tracking-widest text-content-tertiary font-bold mb-1.5">{section}</p>
+                              <p className="text-[13px] text-content-secondary leading-relaxed whitespace-pre-line">
+                                {item.visitNote[section] || <span className="italic text-content-tertiary">Not yet available — Bedrock Sprint 2</span>}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {docOpen === 'superbill' && (
+                        <div className="space-y-4">
+                          <div className="bg-surface-elevated border border-separator rounded-lg p-6 text-center">
+                            <FileText size={28} className="mx-auto mb-2 text-content-tertiary opacity-40" />
+                            <p className="text-sm font-medium text-content-primary mb-0.5">{item.patientName}</p>
+                            <p className="text-xs text-content-secondary mb-3">Uploaded superbill</p>
+                            <button onClick={() => toast.info('Opening superbill PDF...')} className="text-xs text-brand underline">
+                              View PDF
+                            </button>
+                          </div>
+                          {item.superbillCpt && item.superbillCpt.length > 0 ? (
+                            <div className="space-y-2">
+                              <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold">Codes on Superbill</p>
+                              {item.superbillCpt.map(code => (
+                                <div key={code} className="flex items-center justify-between px-3 py-2 bg-surface-elevated rounded-lg border border-separator">
+                                  <span className="font-mono text-xs text-content-primary">{code}</span>
+                                  {aiCptCodes.includes(code)
+                                    ? <span className="text-[11px] text-emerald-500 font-medium">✓ AI matched</span>
+                                    : <span className="text-[11px] text-amber-500 font-medium">⚠ Not in AI suggestion</span>
+                                  }
+                                </div>
+                              ))}
+                              {aiOnly.length > 0 && (
+                                <div className="mt-3 space-y-1">
+                                  <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold">AI Also Suggests</p>
+                                  {aiOnly.map(code => (
+                                    <div key={code} className="flex items-center gap-2 px-3 py-2 bg-blue-500/5 border border-blue-500/20 rounded-lg">
+                                      <span className="font-mono text-xs text-content-primary">{code}</span>
+                                      <span className="text-[11px] text-blue-500">Not on superbill</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-content-tertiary text-center py-4">No superbill codes available</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <div className="h-full flex items-center justify-center text-[14px] text-content-tertiary">Select a chart from the queue</div>
@@ -473,86 +599,8 @@ export default function CodingPage() {
           </div>
         </div>
 
-        {/* ── Doc Viewer Panel ── */}
-        {docOpen && (
-          <div className="col-span-4 flex flex-col bg-surface-secondary border border-separator rounded-card overflow-hidden">
-            {/* Doc viewer header */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-separator shrink-0">
-              <div className="flex gap-1">
-                <button
-                  onClick={() => setDocOpen('note')}
-                  className={`px-3 py-1 text-xs rounded-btn font-medium transition-colors ${docOpen === 'note' ? 'bg-brand text-white' : 'text-content-secondary hover:text-content-primary'}`}>
-                  Visit Note
-                </button>
-                {item?.source === 'upload' && (
-                  <button
-                    onClick={() => setDocOpen('superbill')}
-                    className={`px-3 py-1 text-xs rounded-btn font-medium transition-colors ${docOpen === 'superbill' ? 'bg-brand text-white' : 'text-content-secondary hover:text-content-primary'}`}>
-                    Superbill
-                  </button>
-                )}
-              </div>
-              <button onClick={() => setDocOpen(null)} className="text-content-tertiary hover:text-content-primary">
-                <X size={15} />
-              </button>
-            </div>
-
-            {/* Doc content */}
-            <div className="flex-1 overflow-y-auto p-4">
-              {docOpen === 'note' && (
-                <div className="space-y-4">
-                  {item?.source === 'ai_scribe' && (
-                    <div className="bg-brand/5 border border-brand/20 rounded-card p-3 flex items-center gap-2">
-                      <Mic size={13} className="text-brand shrink-0" />
-                      <div className="flex-1">
-                        <p className="text-xs font-semibold text-content-primary">AI Scribe</p>
-                        <p className="text-[11px] text-content-secondary">Note from recorded session</p>
-                      </div>
-                      <button onClick={() => toast.info('Playing AI Scribe recording...')}
-                        className="text-xs text-brand underline shrink-0">Play</button>
-                    </div>
-                  )}
-                  {(['subjective', 'objective', 'assessment', 'plan'] as const).map(section => (
-                    <div key={section} className="pb-3 border-b border-separator last:border-0">
-                      <p className="text-[10px] uppercase tracking-widest text-content-tertiary font-bold mb-1.5">{section}</p>
-                      <p className="text-[13px] text-content-secondary leading-relaxed whitespace-pre-line">
-                        {item?.visitNote[section] || '—'}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {docOpen === 'superbill' && (
-                <div className="space-y-3">
-                  <div className="bg-surface-elevated border border-separator rounded-card p-8 text-center text-content-secondary text-sm">
-                    <FileText size={32} className="mx-auto mb-3 opacity-30" />
-                    <p className="font-medium text-content-primary mb-1">Superbill</p>
-                    <p className="text-xs text-content-secondary mb-3">{item?.patientName}</p>
-                    <button onClick={() => toast.info('Opening superbill PDF...')}
-                      className="text-xs text-brand underline">View PDF</button>
-                  </div>
-                  {item?.superbillCpt && item.superbillCpt.length > 0 && (
-                    <div className="space-y-1.5">
-                      <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold">Superbill Codes</p>
-                      {item.superbillCpt.map(code => (
-                        <div key={code} className="flex items-center justify-between px-3 py-1.5 bg-surface-elevated rounded-lg">
-                          <span className="font-mono text-xs text-content-primary">{code}</span>
-                          {aiCptCodes.includes(code)
-                            ? <span className="text-[11px] text-emerald-500">✓ AI matched</span>
-                            : <span className="text-[11px] text-amber-500">⚠ Not in AI suggestion</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* ── Code Review Panel ── */}
-        <div className={docOpen ? 'col-span-3' : 'col-span-5'}>
+        <div className="col-span-5">
           <div className="card h-full p-4 overflow-y-auto">
             {item ? (
               <>
