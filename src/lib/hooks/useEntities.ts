@@ -630,3 +630,421 @@ export function useBatchEligibility() {
     client_id?: string
   }>('post', '/eligibility/batch')
 }
+
+// ── Sprint 2 v3: Documents ────────────────────────────────────────────────────
+
+export interface ApiDocument {
+  id: string
+  org_id: string
+  client_id?: string
+  patient_id?: string
+  encounter_id?: string
+  document_type: string
+  file_name: string
+  s3_key: string
+  s3_bucket: string
+  content_type: string
+  file_size: number
+  source: string
+  status: string
+  ai_confidence?: number
+  extracted_data?: Record<string, unknown>
+  uploaded_by?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ApiPresignedUrl {
+  upload_url: string
+  s3_key: string
+  s3_bucket: string
+  expires_in: number
+}
+
+export function useDocuments() {
+  return useApi<ApiDocument[]>('/documents', useClientParams())
+}
+
+export function useDocument(id: string) {
+  return useApi<ApiDocument>(`/documents/${id}`)
+}
+
+export function useRequestUploadUrl() {
+  return useMutation<ApiPresignedUrl, {
+    file_name: string
+    content_type?: string
+    folder?: string
+  }>('post', '/documents/upload-url')
+}
+
+export function useCreateDocument() {
+  return useMutation<ApiDocument, {
+    client_id?: string
+    patient_id?: string
+    encounter_id?: string
+    document_type: string
+    file_name: string
+    s3_key: string
+    s3_bucket?: string
+    content_type?: string
+    file_size?: number
+    source?: string
+  }>('post', '/documents')
+}
+
+// ── Sprint 2 v3: SOAP Notes ──────────────────────────────────────────────────
+
+export interface ApiSOAPNote {
+  id: string
+  org_id: string
+  encounter_id: string
+  patient_id: string
+  provider_id: string
+  client_id?: string
+  dos: string
+  subjective: string
+  objective: string
+  assessment: string
+  plan: string
+  transcript?: string
+  audio_url?: string
+  signed_off: boolean
+  signed_off_at?: string
+  ai_suggestions?: Record<string, unknown>
+  created_at: string
+}
+
+export function useSOAPNote(encounterId: string) {
+  return useApi<ApiSOAPNote>(`/soap-notes/${encounterId}`)
+}
+
+export function useCreateSOAPNote() {
+  return useMutation<ApiSOAPNote, {
+    encounter_id: string
+    patient_id: string
+    provider_id: string
+    client_id?: string
+    dos: string
+    subjective: string
+    objective: string
+    assessment: string
+    plan: string
+    transcript?: string
+    audio_url?: string
+    signed_off?: boolean
+    ai_suggestions?: Record<string, unknown>
+  }>('post', '/soap-notes')
+}
+
+// ── Sprint 2 v3: Denials Create ──────────────────────────────────────────────
+
+export function useCreateDenial() {
+  return useMutation<ApiDenial, {
+    claim_id: string
+    carc_code?: string
+    rarc_code?: string
+    denial_reason?: string
+    denial_category?: string
+    denied_amount?: number
+    source_era_id?: string
+    source_line_item?: string
+    client_id?: string
+    status?: string
+  }>('post', '/denials')
+}
+
+export function useUpdateDenial(id: string) {
+  return useMutation<ApiDenial, {
+    status?: string
+    notes?: string
+    assigned_to?: string
+  }>('put', `/denials/${id}`)
+}
+
+// ── Sprint 2 v3: Appeals ─────────────────────────────────────────────────────
+
+export interface ApiAppeal {
+  id: string
+  org_id: string
+  denial_id: string
+  claim_id: string
+  appeal_level: 'L1' | 'L2' | 'L3'
+  appeal_reason: string
+  appeal_letter: string
+  supporting_docs?: string[]
+  submitted_by?: string
+  status: string
+  created_at: string
+}
+
+export function useSubmitAppeal(denialId: string) {
+  return useMutation<ApiAppeal, {
+    appeal_level?: 'L1' | 'L2' | 'L3'
+    appeal_reason: string
+    appeal_letter?: string
+    supporting_docs?: string[]
+  }>('post', `/denials/${denialId}/appeal`)
+}
+
+// ── Sprint 2 v3: AR Call Logging ─────────────────────────────────────────────
+
+export interface ApiARCallLog {
+  id: string
+  org_id: string
+  claim_id: string
+  denial_id?: string
+  client_id?: string
+  payer_id?: string
+  call_type: string
+  duration_seconds: number
+  outcome: string
+  notes: string
+  reference_number?: string
+  called_by?: string
+  called_at: string
+  follow_up_date?: string
+  follow_up_reason?: string
+  patient_name?: string
+  payer_name?: string
+  claim_number?: string
+}
+
+export function useLogARCall() {
+  return useMutation<ApiARCallLog, {
+    claim_id: string
+    denial_id?: string
+    client_id?: string
+    payer_id?: string
+    call_type?: string
+    duration_seconds?: number
+    outcome: string
+    notes?: string
+    reference_number?: string
+    follow_up_date?: string
+    follow_up_reason?: string
+  }>('post', '/ar/log-call')
+}
+
+export function useARFollowUps() {
+  return useApi<ApiARCallLog[]>('/ar/follow-ups', useClientParams())
+}
+
+// ── Sprint 2 v3: Payment Auto-Post ──────────────────────────────────────────
+
+export interface ApiAutoPostResult {
+  auto_posted: number
+  manual_review: number
+  total: number
+  details: Array<{ payment_id: string; action: string; reason: string }>
+}
+
+export function useAutoPostPayments() {
+  return useMutation<ApiAutoPostResult, {
+    era_file_id: string
+  }>('post', '/payments/auto-post')
+}
+
+export function useUpdatePayment(id: string) {
+  return useMutation<ApiPayment, {
+    action?: string
+    notes?: string
+    posted_at?: string
+  }>('put', `/payments/${id}`)
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SPRINT 2 v4: New Endpoints
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── 835 ERA Parser ──────────────────────────────────────────────────────────
+
+export interface Api835ParseResult {
+  era_file_id: string
+  claims_found: number
+  payments_created: number
+  matched: number
+  unmatched: number
+  denials_created?: number
+}
+
+export function useParse835(eraFileId: string) {
+  return useMutation<Api835ParseResult, {
+    edi_content: string
+  }>('post', `/era-files/${eraFileId}/parse-835`)
+}
+
+// ── DHA eClaim XML Generator (UAE) ──────────────────────────────────────────
+
+export interface ApiDHAeClaimResult {
+  xml_content: string
+  claim_id: string
+  claim_number: string
+  format: string
+}
+
+export function useGenerateDHA(claimId: string) {
+  return useMutation<ApiDHAeClaimResult, Record<string, never>>('post', `/claims/${claimId}/generate-dha`)
+}
+
+// ── AI Auto-Coding (Bedrock) ────────────────────────────────────────────────
+
+export interface ApiAICodingSuggestion {
+  suggested_cpt: Array<{ code: string; description: string; confidence: number; modifier?: string }>
+  suggested_icd: Array<{ code: string; description: string; confidence: number; is_primary?: boolean }>
+  suggested_em?: string
+  em_confidence?: number
+  reasoning?: string
+  suggestion_id?: string
+  processing_ms?: number
+  confidence?: number
+  mock?: boolean
+}
+
+export function useAIAutoCode(codingId: string) {
+  return useMutation<ApiAICodingSuggestion, Record<string, never>>('post', `/coding/${codingId}/ai-suggest`)
+}
+
+export function useAICodingSuggestion(codingId: string | null) {
+  const { orgId } = useApp()
+  return useApi<ApiAICodingSuggestion>(
+    codingId ? `/ai-coding-suggestions/${codingId}` : '/ai-coding-suggestions/none',
+    { org_id: orgId },
+    { skip: !codingId }
+  )
+}
+
+// ── Textract Document Processing ────────────────────────────────────────────
+
+export interface ApiTextractResult {
+  document_id: string
+  status: string
+  job_id?: string
+  result?: Record<string, unknown>
+  mock?: boolean
+}
+
+export function useTriggerTextract(documentId: string) {
+  return useMutation<ApiTextractResult, Record<string, never>>('post', `/documents/${documentId}/textract`)
+}
+
+export function useTextractResults(documentId: string | null) {
+  const { orgId } = useApp()
+  return useApi<ApiTextractResult>(
+    documentId ? `/documents/${documentId}/textract` : '/documents/none/textract',
+    { org_id: orgId },
+    { skip: !documentId }
+  )
+}
+
+// ── EDI Transactions ────────────────────────────────────────────────────────
+
+export interface ApiEDITransaction {
+  id: string
+  org_id: string
+  client_id?: string
+  transaction_type: string
+  direction: string
+  clearinghouse?: string
+  file_name?: string
+  claim_id?: string
+  claim_count?: number
+  status: string
+  response_code?: string
+  response_detail?: string
+  submitted_at?: string
+  response_at?: string
+  created_at?: string
+}
+
+export function useEDITransactions(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiEDITransaction>>('/edi-transactions', params)
+}
+
+export function useCreateEDITransaction() {
+  return useMutation<ApiEDITransaction, Partial<ApiEDITransaction>>('post', '/edi-transactions')
+}
+
+// ── Scrub Results (persisted) ───────────────────────────────────────────────
+
+export interface ApiScrubResultItem {
+  id: string
+  claim_id: string
+  rule_id?: string
+  rule_code: string
+  rule_name: string
+  severity: string
+  passed: boolean
+  message: string
+  auto_fixed?: boolean
+  scrubbed_at?: string
+}
+
+export function useScrubResults(claimId: string | null) {
+  const { orgId } = useApp()
+  return useApi<ApiScrubResultItem[]>(
+    claimId ? `/scrub-results/${claimId}` : '/scrub-results/none',
+    { org_id: orgId },
+    { skip: !claimId }
+  )
+}
+
+// ── AR Call Log ─────────────────────────────────────────────────────────────
+
+export interface ApiARCallLogEntry {
+  id: string
+  org_id: string
+  client_id?: string
+  claim_id?: string
+  denial_id?: string
+  caller_id?: string
+  call_type?: string
+  payer_id?: string
+  phone_number?: string
+  call_date?: string
+  duration_sec?: number
+  outcome?: string
+  reference_number?: string
+  next_action?: string
+  next_follow_up?: string
+  notes?: string
+  ai_generated?: boolean
+  created_at?: string
+}
+
+export function useARCallLog(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiARCallLogEntry>>('/ar/call-log', params)
+}
+
+// ── SOAP Notes (list + update) ──────────────────────────────────────────────
+// ApiSOAPNote interface already defined above in Sprint 2 v3 section
+
+export function useSOAPNotes(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiSOAPNote>>('/soap-notes', params)
+}
+
+export function useUpdateSOAPNote(id: string) {
+  return useMutation<ApiSOAPNote, Partial<ApiSOAPNote>>('put', `/soap-notes/${id}`)
+}
+
+// ── Encounters CRUD ─────────────────────────────────────────────────────────
+
+export function useCreateEncounter() {
+  return useMutation<ApiEncounter, Partial<ApiEncounter>>('post', '/encounters')
+}
+
+export function useUpdateEncounter(id: string) {
+  return useMutation<ApiEncounter, Partial<ApiEncounter>>('put', `/encounters/${id}`)
+}
+
+// ── Credentialing CRUD ──────────────────────────────────────────────────────
+
+export function useCreateCredentialing() {
+  return useMutation<ApiCredentialing, Partial<ApiCredentialing>>('post', '/credentialing')
+}
+
+export function useUpdateCredentialing(id: string) {
+  return useMutation<ApiCredentialing, Partial<ApiCredentialing>>('put', `/credentialing/${id}`)
+}
