@@ -9,8 +9,7 @@ import { TrendingUp, X, Phone, Bot, User, PhoneCall, Plus, AlertTriangle, FileTe
 import { tfDaysRemaining } from '@/lib/utils/time'
 import { useRouter } from 'next/navigation'
 
-const buckets = [{ l: '0-30', v: 145000, c: 'bg-emerald-500' }, { l: '31-60', v: 98000, c: 'bg-cyan-500' }, { l: '61-90', v: 52000, c: 'bg-amber-500' }, { l: '91-120', v: 28000, c: 'bg-orange-500' }, { l: '120+', v: 12000, c: 'bg-red-500' }]
-const max = Math.max(...buckets.map(b => b.v))
+
 
 const TF_DEADLINES: Record<string, number> = {
   Medicare: 365, Aetna: 180, UHC: 180, BCBS: 365, NAS: 90, Daman: 90,

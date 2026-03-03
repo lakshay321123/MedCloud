@@ -457,7 +457,7 @@ function ClaimDrawer({ claim, onClose }: { claim: DemoClaim; onClose: () => void
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function ClaimsPage() {
-  const { selectedClient } = useApp()
+  const { selectedClient, country } = useApp()
   const { toast } = useToast()
 
   const [search, setSearch] = useState('')
@@ -488,6 +488,8 @@ export default function ClaimsPage() {
 
     return source.filter(c => {
       if (!apiResult && selectedClient && c.clientId !== selectedClient.id) return false
+      if (!apiResult && !selectedClient && country === 'uae' && !['org-101','org-104'].includes(c.clientId)) return false
+      if (!apiResult && !selectedClient && country === 'usa' && !['org-102','org-103'].includes(c.clientId)) return false
       if (search && !c.patientName.toLowerCase().includes(search.toLowerCase()) && !c.id.toLowerCase().includes(search.toLowerCase())) return false
       if (statusFilters.length && !statusFilters.includes(c.status)) return false
       if (dosFrom && c.dos < dosFrom) return false

@@ -114,13 +114,19 @@ function HeatCell({ value }: { value: number }) {
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
-  const { selectedClient } = useApp()
+  const { selectedClient, country } = useApp()
   const [tab, setTab] = useState<'financial' | 'operational' | 'ai' | 'payer'>('financial')
   const [dateRange, setDateRange] = useState('last30')
 
   const claims = useMemo(() =>
-    selectedClient ? demoClaims.filter(c => c.clientId === selectedClient.id) : demoClaims,
-    [selectedClient]
+    selectedClient
+      ? demoClaims.filter(c => c.clientId === selectedClient.id)
+      : country === 'uae'
+        ? demoClaims.filter(c => ['org-101','org-104'].includes(c.clientId))
+        : country === 'usa'
+          ? demoClaims.filter(c => ['org-102','org-103'].includes(c.clientId))
+          : demoClaims,
+    [selectedClient, country]
   )
 
   // ─── Financial calculations ───────────────────────────────────────────────

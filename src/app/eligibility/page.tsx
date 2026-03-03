@@ -18,7 +18,7 @@ const demoChecks = [
 ]
 
 export default function EligibilityPage() {
-  const { country } = useApp()
+  const { country, selectedClient } = useApp()
   const { toast } = useToast()
   const { data: apiEligResult } = useEligibilityChecks({ limit: 20 })
   const [tab, setTab] = useState<'single' | 'batch'>('single')
@@ -123,7 +123,12 @@ export default function EligibilityPage() {
           <div className="card overflow-hidden">
             <table className="w-full text-[13px]">
               <thead><tr className="border-b border-separator text-content-secondary text-[12px]"><th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Payer</th><th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3">Network</th><th className="text-left px-4 py-3">Copay</th><th className="text-left px-4 py-3">Deductible</th><th className="text-left px-4 py-3">Prior Auth</th></tr></thead>
-              <tbody>{demoChecks.map(c => (
+              <tbody>{demoChecks.filter(c => {
+                if (selectedClient) return c.client === selectedClient.name
+                if (country === 'uae') return ['Gulf Medical Center', 'Dubai Wellness Clinic'].includes(c.client)
+                if (country === 'usa') return ['Irvine Family Practice', 'Patel Cardiology'].includes(c.client)
+                return true
+              }).map(c => (
                 <React.Fragment key={c.id}>
                   <tr
                     onClick={() => setExpandedRow(expandedRow === c.id ? null : c.id)}
