@@ -215,6 +215,7 @@ export interface DemoClaim {
   scrubErrors: ClaimScrubError[];
   timeline: ClaimTimelineEvent[];
   documents: DemoDocument[];
+  apiId?: string;
 }
 
 const claimDocs: DemoDocument[] = [

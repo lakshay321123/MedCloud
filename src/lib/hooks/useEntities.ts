@@ -176,7 +176,7 @@ export interface ApiEligibilityCheck {
   payer_id?: string
   dos?: string
   status?: string
-  result?: string
+  result?: Record<string, unknown> | string
   network_status?: string
   copay?: number
   deductible?: number
@@ -184,6 +184,59 @@ export interface ApiEligibilityCheck {
   // enriched — present when Lambda JOINs patients table
   patient_name?: string
   created_at?: string
+}
+
+export interface ApiScrubResult {
+  passed: boolean
+  total_rules: number
+  errors: number
+  warnings: number
+  violations: Array<{
+    rule_code: string
+    rule_name: string
+    severity: 'error' | 'warning'
+    description: string
+    category: string
+  }>
+  claim_id: string
+  scrubbed_at: string
+}
+
+export interface ApiClaimLine {
+  id: string
+  claim_id: string
+  line_number?: number
+  cpt_code: string
+  modifier_1?: string
+  modifier_2?: string
+  units: number
+  charge_amount: number
+  place_of_service?: string
+  description?: string
+  diagnosis_pointers?: string
+  created_at?: string
+}
+
+export interface ApiClaimDiagnosis {
+  id: string
+  claim_id: string
+  icd_code: string
+  sequence: number
+  is_primary?: boolean
+  description?: string
+  created_at?: string
+}
+
+export interface ApiScrubRule {
+  id: string
+  org_id: string
+  rule_code: string
+  rule_name: string
+  rule_type: string
+  severity: 'error' | 'warning'
+  logic: Record<string, string>
+  description: string
+  is_active: boolean
 }
 
 export interface ApiTask {
@@ -482,4 +535,98 @@ export function useClients() {
 export function useCredentialing(extra?: ApiListParams) {
   const params = useClientParams(extra)
   return useApi<ApiListResponse<ApiCredentialing>>('/credentialing', params)
+}
+
+// ── Claims Workflow (Sprint 2) ────────────────────────────────────────────────
+
+export function useScrubClaim(claimId: string) {
+  return useMutation<ApiScrubResult, { user_id?: string }>('post', `/claims/${claimId}/scrub`)
+}
+
+export function useTransitionClaim(claimId: string) {
+  return useMutation<ApiClaim, { to_status: string; user_id?: string; note?: string }>('post', `/claims/${claimId}/transition`)
+}
+
+export function useGenerateEDI(claimId: string) {
+  return useMutation<{ edi: string; claim_id: string }, Record<string, never>>('post', `/claims/${claimId}/generate-edi`)
+}
+
+export function useClaimLines(claimId: string | null) {
+  const { orgId } = useApp()
+  return useApi<ApiListResponse<ApiClaimLine>>(
+    claimId ? `/claims/${claimId}/lines` : '/claims',
+    { org_id: orgId },
+    { skip: !claimId }
+  )
+}
+
+export function useAddClaimLine(claimId: string) {
+  return useMutation<ApiClaimLine, {
+    cpt_code: string; units?: number; charge_amount: number;
+    modifier_1?: string; modifier_2?: string; place_of_service?: string;
+    description?: string; diagnosis_pointers?: string
+  }>('post', `/claims/${claimId}/lines`)
+}
+
+export function useClaimDiagnoses(claimId: string | null) {
+  const { orgId } = useApp()
+  return useApi<ApiListResponse<ApiClaimDiagnosis>>(
+    claimId ? `/claims/${claimId}/diagnoses` : '/claims',
+    { org_id: orgId },
+    { skip: !claimId }
+  )
+}
+
+export function useAddClaimDiagnosis(claimId: string) {
+  return useMutation<ApiClaimDiagnosis, {
+    icd_code: string; sequence: number; is_primary?: boolean; description?: string
+  }>('post', `/claims/${claimId}/diagnoses`)
+}
+
+export function useScrubRules(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiScrubRule>>('/scrub-rules', { ...params, limit: 100 })
+}
+
+// ── Coding Workflow (Sprint 2) ────────────────────────────────────────────────
+
+export function useApproveCoding(codingId: string) {
+  return useMutation<{ claim_id: string; claim_number: string }, {
+    icd_codes: Array<{ code: string; description?: string }>
+    cpt_codes: Array<{ code: string; modifiers?: string[]; units?: number; charge?: number }>
+    patient_id: string
+    provider_id: string
+    client_id: string
+    payer_id?: string
+    dos: string
+    user_id?: string
+  }>('post', `/coding/${codingId}/approve`)
+}
+
+export function useSendCodingQuery(codingId: string) {
+  return useMutation<ApiCodingItem, { query_text: string; user_id?: string }>('post', `/coding/${codingId}/query`)
+}
+
+export function useAssignCoding(codingId: string) {
+  return useMutation<ApiCodingItem, { assigned_to: string }>('put', `/coding/${codingId}/assign`)
+}
+
+// ── Eligibility Workflow (Sprint 2) ───────────────────────────────────────────
+
+export function useEligibilityCheck() {
+  return useMutation<ApiEligibilityCheck, {
+    patient_id: string
+    payer_id: string
+    dos: string
+    member_id?: string
+    group_number?: string
+    client_id?: string
+  }>('post', '/eligibility/check')
+}
+
+export function useBatchEligibility() {
+  return useMutation<{ results: ApiEligibilityCheck[]; total: number; checked: number }, {
+    date: string
+    client_id?: string
+  }>('post', '/eligibility/batch')
 }

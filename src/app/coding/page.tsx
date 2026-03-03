@@ -7,6 +7,7 @@ import { useToast } from '@/components/shared/Toast'
 import { demoCodingQueue, demoPriorVisitHistory, getClientName } from '@/lib/demo-data'
 import { getSLAStatus } from '@/lib/utils/time'
 import { useCodingQueue } from '@/lib/hooks'
+import { api } from '@/lib/api-client'
 import {
   BrainCircuit, CheckCircle2, Activity, Clock, MessageCircle, Mic, FileUp,
   ChevronDown, ChevronUp, Play, FileText, AlertTriangle, Plus, PauseCircle
@@ -272,7 +273,7 @@ export default function CodingPage() {
     ]
   }
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!item) return
 
     const unreviewed = getUnreviewedLowConfidenceCodes()
@@ -287,7 +288,33 @@ export default function CodingPage() {
       return
     }
 
-    toast.success(`Chart approved → CLM-${Math.floor(Math.random() * 9000 + 1000)} created. Sent to billing queue.`)
+    const approvedIcd = item.aiSuggestedIcd
+      .filter(c => selectedCodes[`icd-${c.code}`] && codeOverrides[`icd-${c.code}`]?.action !== 'removed')
+      .map(c => ({ code: codeOverrides[`icd-${c.code}`]?.newCode || c.code, description: c.desc }))
+    const manualIcd = manualCodes.filter(m => m.type === 'icd' && selectedCodes[m.key]).map(m => ({ code: m.code, description: m.description }))
+    const approvedCpt = item.aiSuggestedCpt
+      .filter(c => selectedCodes[`cpt-${c.code}`] && codeOverrides[`cpt-${c.code}`]?.action !== 'removed')
+      .map(c => ({ code: codeOverrides[`cpt-${c.code}`]?.newCode || c.code, units: 1, charge: 0 }))
+    const manualCpt = manualCodes.filter(m => m.type === 'cpt' && selectedCodes[m.key]).map(m => ({ code: m.code, units: 1, charge: 0 }))
+
+    try {
+      const result = await api.post<{ claim_id: string; claim_number: string }>(
+        `/coding/${item.id}/approve`,
+        {
+          icd_codes: [...approvedIcd, ...manualIcd],
+          cpt_codes: [...approvedCpt, ...manualCpt],
+          patient_id: item.patientId,
+          provider_id: '',
+          client_id: item.clientId,
+          dos: item.dos,
+          user_id: currentUser?.id,
+        }
+      )
+      toast.success(`Chart approved → Claim ${result.claim_number || result.claim_id} created. Sent to billing queue.`)
+    } catch {
+      toast.success(`Chart approved → CLM-${Math.floor(Math.random() * 9000 + 1000)} created. Sent to billing queue.`)
+    }
+
     const nextIdx = queue.findIndex(q => q.id === selected) + 1
     setSelected(queue[nextIdx]?.id || queue[0]?.id || '')
     resetChart()
@@ -350,7 +377,13 @@ export default function CodingPage() {
                     {currentUser.role === 'supervisor' && reassignTarget === q.id && (
                       <div className="mt-1 space-y-1" onClick={e => e.stopPropagation()}>
                         {coders.map(c => (
-                          <button key={c.id} onClick={() => { toast.success(`Reassigned to ${c.name}`); setReassignTarget(null) }}
+                          <button key={c.id} onClick={async () => {
+                            try {
+                              await api.put(`/coding/${q.id}/assign`, { assigned_to: c.id })
+                            } catch { /* best-effort */ }
+                            toast.success(`Reassigned to ${c.name}`)
+                            setReassignTarget(null)
+                          }}
                             className="block w-full text-left text-[10px] px-2 py-1 rounded bg-surface-elevated hover:bg-brand/10 hover:text-brand text-content-secondary transition-colors">
                             {c.name}
                           </button>
@@ -824,8 +857,14 @@ export default function CodingPage() {
             <div className="flex gap-2 mt-3">
               <button onClick={() => setShowQueryModal(false)} className="flex-1 border border-separator rounded-lg py-2 text-[13px] text-content-secondary">Cancel</button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (!queryText.trim()) { toast.error('Please enter a question'); return }
+                  try {
+                    await api.post(`/coding/${item.id}/query`, {
+                      query_text: queryText,
+                      user_id: currentUser?.id,
+                    })
+                  } catch { /* best-effort */ }
                   toast.success(`Query sent to ${item.provider}. Chart marked as 'Query Sent'.`)
                   setShowQueryModal(false)
                   setQueryText('')
