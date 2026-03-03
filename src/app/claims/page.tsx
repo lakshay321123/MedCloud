@@ -367,7 +367,7 @@ function ClaimDrawer({ claim, onClose }: { claim: DemoClaim; onClose: () => void
                 <div className="flex-1 flex flex-col items-center justify-center gap-3 text-content-tertiary">
                   <FileText size={32} className="opacity-20" />
                   <p className="text-xs">No document attached to this claim</p>
-                  <button onClick={() => router.push('/documents')}
+                  <button onClick={() => { window.location.href = '/documents' }}
                     className="text-xs text-brand hover:underline">
                     Open Documents →
                   </button>
