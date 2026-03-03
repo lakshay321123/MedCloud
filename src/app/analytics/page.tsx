@@ -4,6 +4,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { demoClaims, demoClients } from '@/lib/demo-data'
+import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine
@@ -122,9 +123,9 @@ export default function AnalyticsPage() {
     selectedClient
       ? demoClaims.filter(c => c.clientId === selectedClient.id)
       : country === 'uae'
-        ? demoClaims.filter(c => ['org-101','org-104'].includes(c.clientId))
+        ? demoClaims.filter(c => (UAE_ORG_IDS as readonly string[]).includes(c.clientId))
         : country === 'usa'
-          ? demoClaims.filter(c => ['org-102','org-103'].includes(c.clientId))
+          ? demoClaims.filter(c => (US_ORG_IDS as readonly string[]).includes(c.clientId))
           : demoClaims,
     [selectedClient, country]
   )

@@ -5,6 +5,7 @@ import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 import { demoClients, demoPatients } from '@/lib/demo-data'
+import { UAE_CLIENT_NAMES, US_CLIENT_NAMES } from '@/lib/utils/region'
 import { ShieldCheck, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useEligibilityChecks } from '@/lib/hooks'
 
@@ -125,8 +126,8 @@ export default function EligibilityPage() {
               <thead><tr className="border-b border-separator text-content-secondary text-[12px]"><th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Payer</th><th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3">Network</th><th className="text-left px-4 py-3">Copay</th><th className="text-left px-4 py-3">Deductible</th><th className="text-left px-4 py-3">Prior Auth</th></tr></thead>
               <tbody>{demoChecks.filter(c => {
                 if (selectedClient) return c.client === selectedClient.name
-                if (country === 'uae') return ['Gulf Medical Center', 'Dubai Wellness Clinic'].includes(c.client)
-                if (country === 'usa') return ['Irvine Family Practice', 'Patel Cardiology'].includes(c.client)
+                if (country === 'uae') return (UAE_CLIENT_NAMES as readonly string[]).includes(c.client)
+                if (country === 'usa') return (US_CLIENT_NAMES as readonly string[]).includes(c.client)
                 return true
               }).map(c => (
                 <React.Fragment key={c.id}>

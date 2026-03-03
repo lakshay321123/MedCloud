@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useApp } from '@/lib/context'
 import { UserRole } from '@/types'
 import { Search, Sun, Moon, Bell, LogOut } from 'lucide-react'
@@ -41,7 +41,8 @@ export default function Topbar() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  const searchResults = searchQuery.length < 2 ? [] : (() => {
+  const searchResults = useMemo(() => {
+    if (searchQuery.length < 2) return []
     const q = searchQuery.toLowerCase()
     const results: { type: string; label: string; sub: string; path: string }[] = []
     demoPatients
@@ -57,7 +58,7 @@ export default function Topbar() {
       .slice(0, 2)
       .forEach(d => results.push({ type: 'Doc', label: d.name, sub: d.type, path: '/documents' }))
     return results.slice(0, 8)
-  })()
+  }, [searchQuery])
 
   const availableRoles = portalType === 'facility' ? facilityRoles : portalType === 'backoffice' ? backofficeRoles : [...backofficeRoles, ...facilityRoles]
   const roleOptions: DropdownOption[] = availableRoles.map(r => ({ value: r, label: roleDisplayLabels[r] }))

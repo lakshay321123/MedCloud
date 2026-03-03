@@ -6,6 +6,7 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import DocViewer from '@/components/shared/DocViewer'
 import { useApp } from '@/lib/context'
 import { demoClaims, demoMessages } from '@/lib/demo-data'
+import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import type { DemoClaim, ClaimTimelineEvent } from '@/lib/demo-data'
 import { useToast } from '@/components/shared/Toast'
 import { useClaims } from '@/lib/hooks'
@@ -488,8 +489,8 @@ export default function ClaimsPage() {
 
     return source.filter(c => {
       if (!apiResult && selectedClient && c.clientId !== selectedClient.id) return false
-      if (!apiResult && !selectedClient && country === 'uae' && !['org-101','org-104'].includes(c.clientId)) return false
-      if (!apiResult && !selectedClient && country === 'usa' && !['org-102','org-103'].includes(c.clientId)) return false
+      if (!apiResult && !selectedClient && country === 'uae' && !(UAE_ORG_IDS as readonly string[]).includes(c.clientId)) return false
+      if (!apiResult && !selectedClient && country === 'usa' && !(US_ORG_IDS as readonly string[]).includes(c.clientId)) return false
       if (search && !c.patientName.toLowerCase().includes(search.toLowerCase()) && !c.id.toLowerCase().includes(search.toLowerCase())) return false
       if (statusFilters.length && !statusFilters.includes(c.status)) return false
       if (dosFrom && c.dos < dosFrom) return false
