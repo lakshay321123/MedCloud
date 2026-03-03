@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
@@ -370,10 +370,6 @@ export default function AdminPage() {
     ? ALL_TABS.filter(t => t.id === 'orgs')
     : ALL_TABS
   const [tab, setTab] = useState<TabId>(isDirector ? 'orgs' : 'users')
-
-  useEffect(() => {
-    if (isDirector && tab !== 'orgs') setTab('orgs')
-  }, [isDirector, tab])
 
   return (
     <ModuleShell title="Admin & Settings" subtitle="System administration">

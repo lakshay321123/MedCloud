@@ -6,6 +6,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { TrendingUp, X, Phone, Bot, User, PhoneCall, Plus, AlertTriangle, FileText } from 'lucide-react'
+import { tfDaysRemaining } from '@/lib/utils/time'
 
 const buckets = [{ l: '0-30', v: 145000, c: 'bg-emerald-500' }, { l: '31-60', v: 98000, c: 'bg-cyan-500' }, { l: '61-90', v: 52000, c: 'bg-amber-500' }, { l: '91-120', v: 28000, c: 'bg-orange-500' }, { l: '120+', v: 12000, c: 'bg-red-500' }]
 const max = Math.max(...buckets.map(b => b.v))
@@ -357,14 +358,6 @@ export default function ARManagementPage() {
 
   const filtered = accounts.filter(a => !selectedClient || a.client.includes(selectedClient.name.split(' ')[0]))
 
-  // Compute TF deadline days for table column
-  const tfDaysRemaining = (a: typeof accounts[0]) => {
-    const tfDays = TF_DEADLINES[a.payer] || 180
-    const deadline = new Date(a.dos)
-    deadline.setDate(deadline.getDate() + tfDays)
-    return Math.ceil((deadline.getTime() - Date.now()) / 86400000)
-  }
-
   return (
     <ModuleShell title="A/R Management" subtitle="Accounts receivable follow-up and collections">
       <div className="grid grid-cols-4 gap-4 mb-4">
@@ -398,7 +391,7 @@ export default function ARManagementPage() {
             <th className="text-left px-4 py-3">Priority</th>
           </tr></thead>
           <tbody>{filtered.map(a => {
-            const tf = tfDaysRemaining(a)
+            const tf = tfDaysRemaining(a.dos, a.payer, TF_DEADLINES)
             return (
               <tr key={a.id}
                 onClick={() => setSelected(a)}

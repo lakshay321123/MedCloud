@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Which routes each role is allowed to visit
+// TODO Sprint 2: Wire this map to JWT role claim from Cognito
+// When real auth is implemented, decode the JWT in middleware,
+// extract the role claim, and enforce routes using this map.
+// Current implementation uses portalType (facility vs backoffice)
+// as a coarse guard until JWT auth is ready.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const roleRouteMap: Record<string, string[]> = {
-  admin:        ['*'], // all routes
+  admin:        ['*'],
   director:     ['/dashboard', '/claims', '/coding', '/eligibility', '/denials', '/ar-management', '/payment-posting', '/contracts', '/voice-ai', '/ai-scribe', '/tasks', '/documents', '/credentialing', '/analytics', '/admin', '/integrations', '/portal'],
   supervisor:   ['/dashboard', '/claims', '/coding', '/eligibility', '/denials', '/ar-management', '/payment-posting', '/contracts', '/voice-ai', '/ai-scribe', '/tasks', '/documents', '/credentialing', '/analytics', '/portal'],
   manager:      ['/dashboard', '/claims', '/coding', '/eligibility', '/denials', '/ar-management', '/payment-posting', '/contracts', '/voice-ai', '/ai-scribe', '/tasks', '/documents', '/credentialing', '/analytics', '/portal'],
   coder:        ['/dashboard', '/coding', '/ai-scribe', '/tasks', '/documents', '/portal/messages'],
-  biller:       ['/dashboard', '/claims', '/eligibility', '/denials', '/tasks', '/documents', '/portal/appointments', '/portal/messages'],
+  biller:       ['/dashboard', '/claims', '/eligibility', '/denials', '/tasks', '/documents', '/portal/appointments', '/portal/messages', '/portal/patients'],
   ar_team:      ['/dashboard', '/denials', '/ar-management', '/voice-ai', '/tasks', '/documents', '/portal/messages'],
   posting_team: ['/dashboard', '/payment-posting', '/tasks', '/documents', '/portal/messages'],
   provider:     ['/dashboard', '/ai-scribe', '/documents', '/portal/appointments', '/portal/messages', '/portal/patients'],

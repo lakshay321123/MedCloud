@@ -7,13 +7,7 @@ import { useApp } from '@/lib/context'
 import { demoERAFiles, demoERALineItems, demoUnmatchedPayments } from '@/lib/demo-data'
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
-
-function getSLAStatus(receivedAt: string): { label: string; color: string; urgent: boolean } {
-  const hours = (Date.now() - new Date(receivedAt).getTime()) / 3600000
-  if (hours < 24) return { label: `${Math.round(hours)}h`, color: 'text-emerald-500', urgent: false }
-  if (hours < 48) return { label: `${Math.round(hours)}h`, color: 'text-amber-500', urgent: false }
-  return { label: `${Math.round(hours)}h`, color: 'text-red-500', urgent: true }
-}
+import { getSLAStatus } from '@/lib/utils/time'
 
 export default function PaymentPostingPage() {
   const { selectedClient } = useApp()

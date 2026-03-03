@@ -5,6 +5,7 @@ import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 import { demoCodingQueue, demoPriorVisitHistory, getClientName } from '@/lib/demo-data'
+import { getSLAStatus } from '@/lib/utils/time'
 import {
   BrainCircuit, CheckCircle2, Activity, Clock, MessageCircle, Mic, FileUp,
   ChevronDown, ChevronUp, Play, FileText, AlertTriangle, Plus, PauseCircle
@@ -58,14 +59,6 @@ function validateNCCI(approvedCptCodes: string[]): Array<{ code1: string; code2:
     }
   }
   return violations
-}
-
-// ── SLA Timer helper ─────────────────────────────────────────────────────────
-function getSLAStatus(receivedAt: string): { label: string; color: string; urgent: boolean } {
-  const hoursElapsed = (Date.now() - new Date(receivedAt).getTime()) / (1000 * 60 * 60)
-  if (hoursElapsed < 24) return { label: `${Math.floor(hoursElapsed)}h`, color: 'text-emerald-500', urgent: false }
-  if (hoursElapsed < 48) return { label: `${Math.floor(hoursElapsed)}h ⚠`, color: 'text-amber-500', urgent: false }
-  return { label: `${Math.floor(hoursElapsed)}h 🔴`, color: 'text-red-500', urgent: true }
 }
 
 // ── Priority dot colors ──────────────────────────────────────────────────────
@@ -213,6 +206,54 @@ export default function CodingPage() {
     setManualCodes([])
     setForcedReviewCodes(new Set())
     setSelectedCodes({})
+  }
+
+  const getApprovedCptCodes = (): string[] => {
+    if (!item) return []
+    return [
+      ...item.aiSuggestedCpt
+        .filter(c => selectedCodes[`cpt-${c.code}`] && codeOverrides[`cpt-${c.code}`]?.action !== 'removed')
+        .map(c => codeOverrides[`cpt-${c.code}`]?.newCode || c.code),
+      ...manualCodes.filter(m => m.type === 'cpt' && selectedCodes[m.key]).map(m => m.code),
+    ]
+  }
+
+  const getUnreviewedLowConfidenceCodes = () => {
+    if (!item) return []
+    return [
+      ...item.aiSuggestedIcd.filter(c =>
+        c.confidence < 70 &&
+        !forcedReviewCodes.has(`icd-${c.code}`) &&
+        selectedCodes[`icd-${c.code}`]
+      ),
+      ...item.aiSuggestedCpt.filter(c =>
+        c.confidence < 70 &&
+        !forcedReviewCodes.has(`cpt-${c.code}`) &&
+        selectedCodes[`cpt-${c.code}`]
+      ),
+    ]
+  }
+
+  const handleApprove = () => {
+    if (!item) return
+
+    const unreviewed = getUnreviewedLowConfidenceCodes()
+    if (unreviewed.length > 0) {
+      toast.error(`${unreviewed.length} low-confidence code(s) must be confirmed before approving`)
+      return
+    }
+
+    const ncciViolations = validateNCCI(getApprovedCptCodes())
+    if (ncciViolations.length > 0) {
+      toast.error(`NCCI Edit Violation: ${ncciViolations[0].message}`)
+      return
+    }
+
+    toast.success(`Chart approved → CLM-${Math.floor(Math.random() * 9000 + 1000)} created. Sent to billing queue.`)
+    const nextIdx = queue.findIndex(q => q.id === selected) + 1
+    setSelected(queue[nextIdx]?.id || queue[0]?.id || '')
+    resetChart()
+    setExpanded({})
   }
 
   return (
@@ -687,33 +728,7 @@ export default function CodingPage() {
                 {/* Action Buttons */}
                 <div className="flex gap-2 mt-4">
                   <button
-                    onClick={() => {
-                      if (!item) return
-                      const approvedCpt = [
-                        ...item.aiSuggestedCpt
-                          .filter(c => selectedCodes[`cpt-${c.code}`] && codeOverrides[`cpt-${c.code}`]?.action !== 'removed')
-                          .map(c => codeOverrides[`cpt-${c.code}`]?.newCode || c.code),
-                        ...manualCodes.filter(m => m.type === 'cpt' && selectedCodes[m.key]).map(m => m.code),
-                      ]
-                      const lowConfidenceUnreviewed = [
-                        ...item.aiSuggestedIcd.filter(c => c.confidence < 70 && !forcedReviewCodes.has(`icd-${c.code}`) && selectedCodes[`icd-${c.code}`]),
-                        ...item.aiSuggestedCpt.filter(c => c.confidence < 70 && !forcedReviewCodes.has(`cpt-${c.code}`) && selectedCodes[`cpt-${c.code}`]),
-                      ]
-                      if (lowConfidenceUnreviewed.length > 0) {
-                        toast.error(`${lowConfidenceUnreviewed.length} low-confidence code(s) must be confirmed before approving`)
-                        return
-                      }
-                      const ncciViolations = validateNCCI(approvedCpt)
-                      if (ncciViolations.length > 0) {
-                        toast.error(`NCCI Edit Violation: ${ncciViolations[0].message}`)
-                        return
-                      }
-                      toast.success(`Chart approved → CLM-${Math.floor(Math.random() * 9000 + 1000)} created. Sent to billing queue.`)
-                      const nextIdx = queue.findIndex(q => q.id === selected) + 1
-                      setSelected(queue[nextIdx]?.id || queue[0]?.id || '')
-                      resetChart()
-                      setExpanded({})
-                    }}
+                    onClick={handleApprove}
                     className="flex-1 bg-brand text-white rounded-btn px-3 py-2 text-[13px] font-medium inline-flex items-center justify-center gap-2"
                   >
                     <CheckCircle2 size={14} /> Approve & Send to Billing
