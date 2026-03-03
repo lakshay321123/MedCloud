@@ -157,6 +157,46 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
   })
   const allRulesChecked = checkedRules.size === apiScrubRules.length
 
+  // Denial prediction
+  const [denialRisk, setDenialRisk] = useState<{ risk: 'high' | 'medium' | 'low'; probability: number; reasons: string[] } | null>(null)
+  const [predictingDenial, setPredictingDenial] = useState(false)
+
+  async function predictDenialRisk() {
+    setPredictingDenial(true)
+    try {
+      const prompt = [
+        'You are an expert medical billing denial analyst. Predict the denial risk for this claim.',
+        `Payer: ${claim.payer}`,
+        `CPT Codes: ${claim.cptCodes?.join(', ') || 'N/A'}`,
+        `ICD Codes: ${claim.icdCodes?.join(', ') || 'N/A'}`,
+        `Billed Amount: $${claim.billed}`,
+        `Place of Service: 11 (Office)`,
+        `Claim Status: ${claim.status}`,
+        '',
+        'Return ONLY valid JSON, no markdown:',
+        '{"risk":"high|medium|low","probability":75,"reasons":["Reason 1","Reason 2"]}',
+        '',
+        'Rules: probability is 0-100 integer. reasons is 2-3 specific denial risk factors. Be accurate based on payer/code patterns.',
+      ].join('\n')
+
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, max_tokens: 200 }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      const cleaned = (data.text || '').replace(/```json|```/g, '').trim()
+      const parsed = JSON.parse(cleaned)
+      setDenialRisk({ risk: parsed.risk, probability: parsed.probability, reasons: parsed.reasons || [] })
+    } catch {
+      toast.error('Prediction unavailable')
+    } finally {
+      setPredictingDenial(false)
+    }
+  }
+
   async function handleScrub() {
     if (!claimApiId) { toast.warning('No API ID — demo claim cannot be scrubbed'); return }
     const result = await scrubClaim({ user_id: currentUser?.id })
@@ -403,6 +443,43 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   {claim.status === 'scrub_failed' && <button onClick={statusAction} disabled={scrubbing} className="w-full bg-red-500 text-white rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{scrubbing ? 'Scrubbing…' : 'Fix & Re-Scrub'}</button>}
                   {claim.status === 'ready' && (
                     <>
+                      {/* Denial Risk Prediction */}
+                      {!denialRisk && (
+                        <button
+                          onClick={predictDenialRisk}
+                          disabled={predictingDenial}
+                          className="w-full bg-purple-600/10 border border-purple-500/30 text-purple-600 dark:text-purple-400 rounded-btn py-2 text-[13px] font-medium flex items-center justify-center gap-2 hover:bg-purple-600/20 disabled:opacity-50 transition-colors mb-1">
+                          {predictingDenial
+                            ? <><span className="animate-spin inline-block w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full"/><span>Analyzing denial risk…</span></>
+                            : <><span>✦</span><span>Predict Denial Risk before Submit</span></>}
+                        </button>
+                      )}
+                      {denialRisk && (
+                        <div className={`rounded-lg border p-3 mb-1 ${
+                          denialRisk.risk === 'high' ? 'bg-red-500/10 border-red-500/30' :
+                          denialRisk.risk === 'medium' ? 'bg-amber-500/10 border-amber-500/30' :
+                          'bg-emerald-500/10 border-emerald-500/30'}`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[12px] font-semibold text-content-primary flex items-center gap-1.5">
+                              <span>✦</span>
+                              Denial Risk: <span className={
+                                denialRisk.risk === 'high' ? 'text-red-500' :
+                                denialRisk.risk === 'medium' ? 'text-amber-500' : 'text-emerald-500'
+                              }>{denialRisk.risk.toUpperCase()}</span>
+                            </span>
+                            <span className={`text-[13px] font-bold ${
+                              denialRisk.risk === 'high' ? 'text-red-500' :
+                              denialRisk.risk === 'medium' ? 'text-amber-500' : 'text-emerald-500'
+                            }`}>{denialRisk.probability}%</span>
+                          </div>
+                          {denialRisk.reasons.map((r, i) => (
+                            <p key={i} className="text-[11px] text-content-secondary flex items-start gap-1">
+                              <span className="shrink-0 mt-0.5">•</span>{r}
+                            </p>
+                          ))}
+                          <button onClick={() => setDenialRisk(null)} className="text-[10px] text-content-tertiary hover:text-content-secondary mt-1.5">Re-analyze</button>
+                        </div>
+                      )}
                       <button onClick={statusAction} disabled={transitioning} className="w-full bg-brand text-white rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{transitioning ? 'Submitting…' : 'Submit to Clearinghouse'}</button>
                       <button onClick={handleGenerateEDI} disabled={generatingEDI} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generatingEDI ? 'Generating EDI…' : 'Generate 837P EDI'}</button>
                     </>
