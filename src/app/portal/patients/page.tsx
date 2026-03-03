@@ -573,7 +573,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
               ) : localPatient.emergencyContact?.name ? (
                 <div className="text-sm space-y-1 text-content-primary">
                   <div className="font-medium">{localPatient.emergencyContact.name}</div>
-                  <div className="text-content-secondary">{localPatient.emergencyContact.relationship || localPatient.emergencyContact.relation}</div>
+                  <div className="text-content-secondary">{localPatient.emergencyContact.relationship}</div>
                   <div>{localPatient.emergencyContact.phone}</div>
                 </div>
               ) : (
