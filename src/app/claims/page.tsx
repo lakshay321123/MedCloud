@@ -8,11 +8,42 @@ import { useApp } from '@/lib/context'
 import { demoClaims, demoMessages } from '@/lib/demo-data'
 import type { DemoClaim, ClaimTimelineEvent } from '@/lib/demo-data'
 import { useToast } from '@/components/shared/Toast'
+import { useClaims } from '@/lib/hooks'
+import type { ApiClaim } from '@/lib/hooks'
+import type { ClaimStatus } from '@/types'
+import { ErrorBanner } from '@/components/shared/ApiStates'
 import {
   FileText, CheckCircle2, Activity, Clock, Search, X, ChevronDown, ChevronUp,
   AlertTriangle, ShieldAlert, MessageCircle, DollarSign, Eye, RotateCcw,
   Filter, Download, CheckSquare, Edit3, Save
 } from 'lucide-react'
+
+function apiClaimToDemoClaim(c: ApiClaim): DemoClaim {
+  return {
+    id: c.claim_number || c.id,
+    patientId: c.patient_id,
+    patientName: c.patient_name || `Patient ${c.patient_id}`,
+    clientId: c.client_id,
+    clientName: c.client_name || '',
+    payer: c.payer_name || '',
+    payerId: c.payer_id || '',
+    dos: c.dos_from || '',
+    cptCodes: [],
+    icdCodes: [],
+    billed: c.total_charges || 0,
+    allowed: c.allowed_amount || 0,
+    paid: c.paid_amount || 0,
+    status: c.status as ClaimStatus,
+    age: c.dos_from
+      ? Math.floor((Date.now() - new Date(c.dos_from).getTime()) / 86400000)
+      : 0,
+    submittedDate: c.submitted_date,
+    paymentDate: c.paid_date,
+    scrubErrors: [],
+    timeline: [],
+    documents: [],
+  }
+}
 
 const SCRUB_RULES = [
   { id: 'S01', label: 'Patient name matches insurance card' },
@@ -442,31 +473,43 @@ export default function ClaimsPage() {
   const [page, setPage] = useState(1)
   const PER_PAGE = 10
 
+  // API integration
+  const { data: apiResult, loading: apiLoading, error: apiError, refetch } = useClaims({
+    limit: 100,
+    ...(search ? { search } : {}),
+    ...(statusFilters.length === 1 ? { status: statusFilters[0] } : {}),
+  })
+
   const allClaims = useMemo(() => {
-    return demoClaims.filter(c => {
-      if (selectedClient && c.clientId !== selectedClient.id) return false
+    // Use API data if available, otherwise fall back to demo data
+    const source: DemoClaim[] = apiResult?.data
+      ? apiResult.data.map(apiClaimToDemoClaim)
+      : demoClaims
+
+    return source.filter(c => {
+      if (!apiResult && selectedClient && c.clientId !== selectedClient.id) return false
       if (search && !c.patientName.toLowerCase().includes(search.toLowerCase()) && !c.id.toLowerCase().includes(search.toLowerCase())) return false
       if (statusFilters.length && !statusFilters.includes(c.status)) return false
       if (dosFrom && c.dos < dosFrom) return false
       if (dosTo && c.dos > dosTo) return false
       return true
     }).sort((a, b) => {
-      let av = sortKey === 'id' ? a.id : sortKey === 'age' ? a.age : a.billed
-      let bv = sortKey === 'id' ? b.id : sortKey === 'age' ? b.age : b.billed
+      const av = sortKey === 'id' ? a.id : sortKey === 'age' ? a.age : a.billed
+      const bv = sortKey === 'id' ? b.id : sortKey === 'age' ? b.age : b.billed
       if (typeof av === 'string' && typeof bv === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
       return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number)
     })
-  }, [selectedClient, search, statusFilters, dosFrom, dosTo, sortKey, sortDir])
+  }, [apiResult, selectedClient, search, statusFilters, dosFrom, dosTo, sortKey, sortDir])
 
   const paginated = allClaims.slice((page - 1) * PER_PAGE, page * PER_PAGE)
   const totalPages = Math.ceil(allClaims.length / PER_PAGE)
 
   // KPIs
   const today = new Date().toISOString().split('T')[0]
-  const submittedToday = demoClaims.filter(c => c.submittedDate === today).length
-  const cleanClaims = demoClaims.filter(c => !['scrub_failed'].includes(c.status))
-  const cleanRate = Math.round((cleanClaims.length / demoClaims.length) * 100)
-  const paidClaimsWithDates = demoClaims.filter(c => c.status === 'paid' && c.submittedDate && c.paymentDate)
+  const submittedToday = allClaims.filter(c => c.submittedDate === today).length
+  const cleanClaims = allClaims.filter(c => !['scrub_failed'].includes(c.status))
+  const cleanRate = allClaims.length ? Math.round((cleanClaims.length / allClaims.length) * 100) : 0
+  const paidClaimsWithDates = allClaims.filter(c => c.status === 'paid' && c.submittedDate && c.paymentDate)
   const avgDays = paidClaimsWithDates.length
     ? Math.round(paidClaimsWithDates.reduce((s, c) => {
         const diff = (new Date(c.paymentDate!).getTime() - new Date(c.submittedDate!).getTime()) / 86400000
@@ -495,12 +538,13 @@ export default function ClaimsPage() {
 
   return (
     <ModuleShell title="Claims Center" subtitle="Manage claims across all clients">
+      {apiError && <ErrorBanner error={apiError} onRetry={refetch} />}
       {/* KPI Bar */}
       <div className="grid grid-cols-4 gap-4 mb-5">
-        <KPICard label="Total Claims" value={demoClaims.length} icon={<FileText size={20}/>} />
-        <KPICard label="Submitted Today" value={submittedToday} icon={<CheckCircle2 size={20}/>} />
-        <KPICard label="Clean Claim Rate" value={`${cleanRate}%`} icon={<Activity size={20}/>} />
-        <KPICard label="Avg Days to Payment" value={`${avgDays}d`} icon={<Clock size={20}/>} />
+        <KPICard label="Total Claims" value={apiLoading ? '…' : allClaims.length} icon={<FileText size={20}/>} />
+        <KPICard label="Submitted Today" value={apiLoading ? '…' : submittedToday} icon={<CheckCircle2 size={20}/>} />
+        <KPICard label="Clean Claim Rate" value={apiLoading ? '…' : `${cleanRate}%`} icon={<Activity size={20}/>} />
+        <KPICard label="Avg Days to Payment" value={apiLoading ? '…' : `${avgDays}d`} icon={<Clock size={20}/>} />
       </div>
 
       <div className="flex gap-4 h-[calc(100vh-300px)]">
@@ -568,7 +612,9 @@ export default function ClaimsPage() {
               <button onClick={() => setSidebarOpen(o => !o)} className="p-1.5 rounded hover:bg-surface-elevated text-content-tertiary">
                 <Filter size={14} />
               </button>
-              <span className="text-[12px] text-content-tertiary">{allClaims.length} claims</span>
+              <span className="text-[12px] text-content-tertiary">
+                {apiLoading ? 'Loading…' : `${allClaims.length} claims${apiResult ? ' (live)' : ' (demo)'}`}
+              </span>
             </div>
           )}
 

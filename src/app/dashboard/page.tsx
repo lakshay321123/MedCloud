@@ -13,6 +13,7 @@ import {
 import {
   demoCodingQueue, demoClaims, demoARAccounts, demoDenialsData, demoAppointments
 } from '@/lib/demo-data'
+import { useDashboardMetrics } from '@/lib/hooks'
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 function QuickLinkCard({ title, subtitle, href, icon }: { title: string; subtitle: string; href: string; icon: React.ReactNode }) {
@@ -34,49 +35,90 @@ function QuickLinkCard({ title, subtitle, href, icon }: { title: string; subtitl
 // ── Executive (Admin/Director/Manager) Dashboard ──────────────────────────────
 function ExecutiveDashboard() {
   const router = useRouter()
+  const { data: metrics, loading } = useDashboardMetrics()
+
+  const totalClaims = metrics?.total_claims ?? 3847
+  const totalPatients = metrics?.total_patients ?? 12450
+  const openDenials = metrics?.open_denials ?? 0
+  const totalCollectionsMtd = metrics?.total_collections_mtd ?? 2400000
+  const denialRate = totalClaims > 0 ? ((openDenials / totalClaims) * 100).toFixed(1) : '4.2'
+  const agingData = metrics?.ar_aging
+
+  const recentClaimsActivity = metrics?.recent_claims?.slice(0, 5).map(c => ({
+    t: `Claim #${c.claim_number} — ${c.first_name} ${c.last_name} ($${c.total_charges?.toLocaleString()})`,
+    c: c.status === 'paid' ? 'text-emerald-600 dark:text-emerald-400' : c.status === 'denied' ? 'text-red-500' : 'text-brand',
+    href: '/claims',
+  }))
+
+  const agingBuckets = agingData
+    ? [
+        { label: '0–30', value: agingData['0_30'] },
+        { label: '31–60', value: agingData['31_60'] },
+        { label: '61–90', value: agingData['61_90'] },
+        { label: '91–120', value: agingData['91_120'] },
+        { label: '120+', value: agingData['120_plus'] },
+      ]
+    : null
+
+  const maxAgingVal = agingBuckets ? Math.max(...agingBuckets.map(b => b.value), 1) : 1
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-4 gap-5">
-        <KPICard label="Total Revenue (MTD)" value="$2.4M" sub="+8.2% vs last month" trend="up" icon={<DollarSign size={20} />} />
-        <KPICard label="Claims Submitted" value="3,847" sub="+124 today" trend="up" icon={<FileText size={20} />} />
-        <KPICard label="Denial Rate" value="4.2%" sub="-0.3% vs last month" trend="down" icon={<AlertTriangle size={20} />} />
+        <KPICard label="Total Revenue (MTD)" value={loading ? '…' : `$${(totalCollectionsMtd / 1000000).toFixed(1)}M`} sub="+8.2% vs last month" trend="up" icon={<DollarSign size={20} />} />
+        <KPICard label="Claims Submitted" value={loading ? '…' : totalClaims.toLocaleString()} sub="+124 today" trend="up" icon={<FileText size={20} />} />
+        <KPICard label="Denial Rate" value={loading ? '…' : `${denialRate}%`} sub="-0.3% vs last month" trend="down" icon={<AlertTriangle size={20} />} />
         <KPICard label="Avg Days in A/R" value="28.5" sub="-2.1 days" trend="down" icon={<Clock size={20} />} />
       </div>
       <div className="grid grid-cols-4 gap-5">
         <KPICard label="Collection Rate" value="96.8%" sub="+0.4%" trend="up" icon={<TrendingUp size={20} />} />
-        <KPICard label="Active Patients" value="12,450" icon={<Users size={20} />} />
+        <KPICard label="Active Patients" value={loading ? '…' : totalPatients.toLocaleString()} icon={<Users size={20} />} />
         <KPICard label="AI Calls Today" value="127" icon={<Phone size={20} />} />
         <KPICard label="AI Coding Accuracy" value="94.2%" icon={<BrainCircuit size={20} />} />
       </div>
       <div className="grid grid-cols-5 gap-5">
         <div className="col-span-3 card p-6">
-          <h3 className="text-[15px] font-semibold text-content-primary mb-4">Revenue Trend</h3>
+          <h3 className="text-[15px] font-semibold text-content-primary mb-4">
+            {agingBuckets ? 'A/R Aging Buckets' : 'Revenue Trend'}
+          </h3>
           <div className="flex items-end gap-3 h-40 px-2">
-            {[1.8, 2.0, 2.1, 2.2, 2.3, 2.4].map((v, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                <span className="text-[11px] font-medium text-content-secondary">${v}M</span>
-                <div className="w-full rounded-lg relative overflow-hidden" style={{ height: `${(v / 2.5) * 140}px` }}>
-                  <div className="absolute inset-0 bg-gradient-to-t from-brand-dark to-brand rounded-lg" />
-                </div>
-                <span className="text-[11px] text-content-tertiary">{['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'][i]}</span>
-              </div>
-            ))}
+            {agingBuckets
+              ? agingBuckets.map((b, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                    <span className="text-[11px] font-medium text-content-secondary">{b.value}</span>
+                    <div className="w-full rounded-lg relative overflow-hidden" style={{ height: `${(b.value / maxAgingVal) * 140}px` }}>
+                      <div className="absolute inset-0 bg-gradient-to-t from-brand-dark to-brand rounded-lg" />
+                    </div>
+                    <span className="text-[11px] text-content-tertiary">{b.label}d</span>
+                  </div>
+                ))
+              : [1.8, 2.0, 2.1, 2.2, 2.3, 2.4].map((v, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                    <span className="text-[11px] font-medium text-content-secondary">${v}M</span>
+                    <div className="w-full rounded-lg relative overflow-hidden" style={{ height: `${(v / 2.5) * 140}px` }}>
+                      <div className="absolute inset-0 bg-gradient-to-t from-brand-dark to-brand rounded-lg" />
+                    </div>
+                    <span className="text-[11px] text-content-tertiary">{['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'][i]}</span>
+                  </div>
+                ))}
           </div>
         </div>
         <div className="col-span-2 card p-6">
           <h3 className="text-[15px] font-semibold text-content-primary mb-4">Recent Activity</h3>
           <div className="space-y-1">
-            {[
-              { t: 'Claim #CLM-4501 paid — $250', c: 'text-emerald-600 dark:text-emerald-400', ago: '2h', href: '/claims' },
-              { t: 'ERA posted — 23 claims from UHC', c: 'text-brand', ago: '3h', href: '/payment-posting' },
-              { t: 'Denial pattern alert: Aetna no-auth', c: 'text-amber-600 dark:text-amber-400', ago: '4h', href: '/denials' },
-              { t: 'Voice AI completed 12 calls', c: 'text-brand', ago: '5h', href: '/voice-ai' },
-              { t: 'New provider credentialing started', c: 'text-blue-600 dark:text-blue-400', ago: '6h', href: '/credentialing' },
-            ].map((a, i) => (
+            {(recentClaimsActivity && recentClaimsActivity.length > 0
+              ? recentClaimsActivity
+              : [
+                  { t: 'Claim #CLM-4501 paid — $250', c: 'text-emerald-600 dark:text-emerald-400', href: '/claims' },
+                  { t: 'ERA posted — 23 claims from UHC', c: 'text-brand', href: '/payment-posting' },
+                  { t: 'Denial pattern alert: Aetna no-auth', c: 'text-amber-600 dark:text-amber-400', href: '/denials' },
+                  { t: 'Voice AI completed 12 calls', c: 'text-brand', href: '/voice-ai' },
+                  { t: 'New provider credentialing started', c: 'text-blue-600 dark:text-blue-400', href: '/credentialing' },
+                ]
+            ).map((a, i) => (
               <button key={i} onClick={() => router.push(a.href)}
                 className="w-full flex items-center justify-between hover:bg-surface-elevated rounded-lg px-2 py-1.5 -mx-2 transition-colors group">
-                <span className={`text-[13px] font-medium ${a.c} group-hover:underline text-left`}>{a.t}</span>
-                <span className="text-[12px] text-content-tertiary shrink-0 ml-2">{a.ago} ago</span>
+                <span className={`text-[13px] font-medium ${a.c} group-hover:underline text-left truncate pr-2`}>{a.t}</span>
               </button>
             ))}
           </div>

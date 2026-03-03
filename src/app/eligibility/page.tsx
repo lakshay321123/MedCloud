@@ -6,6 +6,7 @@ import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 import { demoClients, demoPatients } from '@/lib/demo-data'
 import { ShieldCheck, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { useEligibilityChecks } from '@/lib/hooks'
 
 const demoChecks = [
   { id: 'ELG-001', patient: 'John Smith', client: 'Irvine Family Practice', payer: 'UnitedHealthcare', status: 'active', network: 'In-Network', copay: '$30', deductible: '$450 remaining', priorAuth: 'No', dos: '2026-03-02' },
@@ -19,6 +20,7 @@ const demoChecks = [
 export default function EligibilityPage() {
   const { country } = useApp()
   const { toast } = useToast()
+  const { data: apiEligResult } = useEligibilityChecks({ limit: 20 })
   const [tab, setTab] = useState<'single' | 'batch'>('single')
   const [selectedClientId, setSelectedClientId] = useState(demoClients[0].id)
   const [selectedPatientId, setSelectedPatientId] = useState('')
@@ -56,10 +58,10 @@ export default function EligibilityPage() {
   return (
     <ModuleShell title="Eligibility Verification" subtitle="Check insurance coverage and benefits">
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Checks Today" value="34" icon={<ShieldCheck size={20} />} />
-        <KPICard label="Active" value="31" sub="91%" trend="up" />
-        <KPICard label="Inactive/Issues" value="3" trend="down" />
-        <KPICard label="Prior Auth Required" value="5" />
+        <KPICard label="Checks Today" value={apiEligResult?.meta?.total ?? 34} icon={<ShieldCheck size={20} />} />
+        <KPICard label="Active" value={apiEligResult?.data?.filter(e => e.status === 'active').length ?? 31} sub="91%" trend="up" />
+        <KPICard label="Inactive/Issues" value={apiEligResult?.data?.filter(e => e.status !== 'active').length ?? 3} trend="down" />
+        <KPICard label="Prior Auth Required" value={apiEligResult?.data?.filter(e => e.prior_auth_required).length ?? 5} />
       </div>
 
       <div className="flex gap-2 mb-4">

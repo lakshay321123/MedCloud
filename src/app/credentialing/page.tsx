@@ -4,6 +4,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import { BadgeCheck, AlertTriangle, X } from 'lucide-react'
+import { useCredentialing } from '@/lib/hooks'
 
 const providers = [
   { id: 'PRV-001', name: 'Dr. Martinez', npi: '1234567890', client: 'Irvine Family Practice', license: '2027-06-30', malpractice: '2026-12-31', dea: '2027-03-15', caqh: 'Current', payers: 4, status: 'active' },
@@ -19,15 +20,16 @@ type Provider = typeof providers[0]
 export default function CredentialingPage() {
   const { toast } = useToast()
   const [selected, setSelected] = useState<Provider | null>(null)
+  const { data: apiCredResult } = useCredentialing({ limit: 50 })
   const expiring = providers.filter(p => p.status === 'expiring').length
 
   return (
     <ModuleShell title="Credentialing" subtitle="Provider credentials and payer enrollment">
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Active Providers" value={providers.filter(p=>p.status==='active').length} icon={<BadgeCheck size={20}/>}/>
-        <KPICard label="Expiring (30 days)" value={expiring} trend="down"/>
-        <KPICard label="Onboarding" value={providers.filter(p=>p.status==='onboarding').length}/>
-        <KPICard label="Total Enrollments" value={providers.reduce((s,p)=>s+p.payers,0)}/>
+        <KPICard label="Active Providers" value={apiCredResult ? apiCredResult.data.filter(p=>p.status==='active').length : providers.filter(p=>p.status==='active').length} icon={<BadgeCheck size={20}/>}/>
+        <KPICard label="Expiring (30 days)" value={apiCredResult ? apiCredResult.data.filter(p=>p.status==='expiring').length : expiring} trend="down"/>
+        <KPICard label="Onboarding" value={apiCredResult ? apiCredResult.data.filter(p=>p.status==='onboarding').length : providers.filter(p=>p.status==='onboarding').length}/>
+        <KPICard label="Total Enrollments" value={apiCredResult ? apiCredResult.data.reduce((s,p)=>s+(p.payer_enrollment_count||0),0) : providers.reduce((s,p)=>s+p.payers,0)}/>
       </div>
       {expiring > 0 && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-4 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2">

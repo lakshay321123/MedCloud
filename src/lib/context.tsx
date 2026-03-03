@@ -17,6 +17,7 @@ interface AppState {
   clients: ClientOrg[]
   country: 'uae' | 'usa' | null
   portalType: PortalType | null
+  orgId: string
   setTheme: (t: Theme) => void
   setLanguage: (l: Language) => void
   toggleSidebar: () => void
@@ -52,6 +53,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [portalType, setPortalTypeState] = useState<PortalType | null>(
     () => (typeof window !== 'undefined' ? (localStorage.getItem('cosentus_portal_type') as PortalType) : null)
   )
+  const orgId = 'a0000000-0000-0000-0000-000000000001'
 
   const direction = getDirection(language)
 
@@ -113,6 +115,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       theme, language, direction, sidebarCollapsed, currentUser,
       selectedClient, clients,
       country, portalType,
+      orgId,
       setTheme, setLanguage, toggleSidebar, setRole, setSelectedClient,
       setCountry, setPortalType,
     }}>

@@ -7,6 +7,8 @@ import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { ShieldAlert, FileText, AlertTriangle, Send } from 'lucide-react'
 import { useToast } from '@/components/shared/Toast'
+import { useDenials } from '@/lib/hooks'
+import { ErrorBanner } from '@/components/shared/ApiStates'
 
 const demoDenials = [
   (() => {
@@ -26,15 +28,47 @@ const demoDenials = [
 export default function DenialsPage() {
   const { selectedClient } = useApp()
   const { toast } = useToast()
-  const denials = demoDenials.filter(c => !selectedClient || c.clientId === selectedClient.id)
+
+  const { data: apiResult, error: apiError, refetch } = useDenials({ limit: 50 })
+
+  type DenialRow = {
+    id: string; patientName: string; payer: string; denialReason?: string; clientId: string; clientName: string;
+    dos: string; source?: string; appealLevel?: string | null; status: string; carc_description?: string; rarc_description?: string;
+  }
+
+  const apiDenials: DenialRow[] = apiResult?.data?.map(d => ({
+    id: d.claim_number || d.id,
+    patientName: d.patient_name || '',
+    payer: d.payer_name || '',
+    denialReason: d.carc_description || d.denial_reason || d.denial_code || '',
+    clientId: d.client_id,
+    clientName: d.client_name || '',
+    dos: d.dos_from || '',
+    source: 'payment_posting',
+    appealLevel: d.appeal_level || null,
+    status: d.status || 'denied',
+    carc_description: d.carc_description,
+    rarc_description: d.rarc_description,
+  })) || []
+
+  const demoDenialsMapped: DenialRow[] = demoDenials.map(d => ({
+    id: d.id, patientName: d.patientName, payer: d.payer,
+    denialReason: d.denialReason, clientId: d.clientId, clientName: d.clientName,
+    dos: d.dos, source: d.source, appealLevel: d.appealLevel, status: d.status,
+  }))
+
+  const allDenials = apiDenials.length > 0 ? apiDenials : demoDenialsMapped
+  const denials = allDenials.filter(c => !selectedClient || c.clientId === selectedClient.id)
+
   const [selected, setSelected] = useState(denials[0]?.id || '')
   const [appealLevel, setAppealLevel] = useState<'L1' | 'L2' | 'L3'>('L1')
   const [appealTexts, setAppealTexts] = useState<Record<string, string>>({})
-  const getAppealText = (d: typeof denials[0]) =>
+  const getAppealText = (d: DenialRow) =>
     appealTexts[d.id] ?? `Dear ${d.payer} Appeals Department,\n\nWe are writing to appeal claim ${d.id} for ${d.patientName}...`
 
   return (
     <ModuleShell title="Denials & Appeals" subtitle="Manage denied claims and appeal workflows">
+      {apiError && <ErrorBanner error={apiError} onRetry={refetch} />}
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KPICard label="Open Denials" value={denials.filter(d => d.status === 'denied').length} icon={<ShieldAlert size={20} />} />
         <KPICard label="In Appeal" value={denials.filter(d => d.status === 'appealed').length} />

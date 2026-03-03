@@ -7,6 +7,7 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
 import { Plus, AlertTriangle, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react'
 import NewAppointmentModal from './NewAppointmentModal'
+import { useAppointments } from '@/lib/hooks'
 
 const staffRoles = ['admin','director','supervisor','manager','coder','biller','ar_team','posting_team']
 
@@ -76,6 +77,8 @@ export default function AppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState('2026-03-02')
   const [showAdd, setShowAdd] = useState(false)
 
+  const { data: apiApptResult } = useAppointments({ limit: 50, sort: 'appointment_date', order: 'asc' })
+
   const clientFilter = isClinic ? 'org-102' : selectedClient?.id
   const dayApts = demoAppointments.filter(a => {
     if (clientFilter && a.clientId !== clientFilter) return false
@@ -83,8 +86,9 @@ export default function AppointmentsPage() {
     return true
   })
 
+  const apiTotal = apiApptResult?.meta?.total
   const stats = {
-    total: demoAppointments.filter(a => a.date === '2026-03-02' && (!clientFilter || a.clientId === clientFilter)).length,
+    total: apiTotal ?? demoAppointments.filter(a => a.date === '2026-03-02' && (!clientFilter || a.clientId === clientFilter)).length,
     checkedIn: demoAppointments.filter(a => a.date === '2026-03-02' && ['checked_in','in_progress','completed'].includes(a.status) && (!clientFilter || a.clientId === clientFilter)).length,
     completed: demoAppointments.filter(a => a.date === '2026-03-02' && a.status === 'completed' && (!clientFilter || a.clientId === clientFilter)).length,
     noShows: demoAppointments.filter(a => a.date === '2026-03-02' && a.status === 'no_show' && (!clientFilter || a.clientId === clientFilter)).length,
