@@ -39,7 +39,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
   const { toast } = useToast()
   const [patientSearch, setPatientSearch] = useState('')
   return (
-    <div className="fixed inset-y-0 right-0 w-[500px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl animate-fade-in">
+    <div className="fixed inset-y-0 right-0 w-[600px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl animate-fade-in">
       <div className="p-4 border-b border-separator flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -53,9 +53,9 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
       </div>
       <div className="flex-1 overflow-y-auto">
         {/* Preview area */}
-        <div className="m-4 bg-surface-elevated rounded-lg overflow-hidden border border-separator" style={{ minHeight: '50vh' }}>
+        <div className="m-4 bg-surface-elevated rounded-lg overflow-hidden border border-separator" style={{ minHeight: '60vh', height: '60vh' }}>
           {(doc as any).url ? (
-            <embed src={(doc as any).url} type="application/pdf" className="w-full" style={{ height: '50vh' }} />
+            <embed src={(doc as any).url} type="application/pdf" className="w-full" style={{ height: '60vh' }} />
           ) : (
             <div className="flex flex-col items-center justify-center h-full py-16 gap-3">
               <FileText size={40} className="opacity-30" />

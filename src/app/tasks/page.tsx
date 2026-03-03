@@ -128,7 +128,7 @@ export default function TasksPage() {
     client: '',
     priority: (t.priority as Task['priority']) || 'medium',
     status: (t.status as Task['status']) || 'open',
-    assigned: t.assigned_to || '',
+    assigned: t.assigned_to && t.assigned_to.length > 20 ? 'Staff' : (t.assigned_to || 'Unassigned'),
     due: t.due_date || '',
     sla: 'green',
   })) || []

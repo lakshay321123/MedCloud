@@ -31,11 +31,15 @@ export default function Topbar() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
+  const [notifOpen, setNotifOpen] = useState(false)
+  const notifRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(e.target as Node))
         setSearchOpen(false)
+      if (notifRef.current && !notifRef.current.contains(e.target as Node))
+        setNotifOpen(false)
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
@@ -151,11 +155,30 @@ export default function Topbar() {
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
 
-        {/* Notification bell — text-white fixes readability in light mode */}
-        <button className="p-2 rounded-btn hover:bg-surface-elevated text-content-secondary relative transition-colors">
-          <Bell size={18} />
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center">3</span>
-        </button>
+        {/* Notification bell */}
+        <div className="relative" ref={notifRef}>
+          <button onClick={() => setNotifOpen(p => !p)}
+            className="p-2 rounded-btn hover:bg-surface-elevated text-content-secondary relative transition-colors">
+            <Bell size={18} />
+            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center">3</span>
+          </button>
+          {notifOpen && (
+            <div className="absolute right-0 top-full mt-1 w-80 bg-surface-secondary border border-separator rounded-card shadow-2xl z-50 overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-separator text-xs font-semibold text-content-secondary uppercase tracking-wider">Notifications</div>
+              {[
+                { title: 'CLM-4504 appeal deadline in 2 days', time: '1h ago', type: 'urgent' },
+                { title: 'ERA from BCBS ready to post', time: '3h ago', type: 'info' },
+                { title: 'Dr. Patel credentials expiring in 30 days', time: '1d ago', type: 'warning' },
+              ].map((n, i) => (
+                <button key={i} onClick={() => setNotifOpen(false)}
+                  className="w-full text-left px-4 py-3 hover:bg-surface-elevated border-b border-separator last:border-0">
+                  <p className="text-sm text-content-primary">{n.title}</p>
+                  <p className="text-xs text-content-tertiary mt-0.5">{n.time}</p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Role switcher — shows only portal-appropriate roles */}
         <Dropdown

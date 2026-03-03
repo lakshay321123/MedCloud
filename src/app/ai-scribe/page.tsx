@@ -38,6 +38,8 @@ function ProviderView() {
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
   const [soap, setSoap] = useState({ s:'', o:'', a:'', p:'' })
   const [codes, setCodes] = useState(demoVisits[0].suggestedCodes)
+  const [liveTranscript, setLiveTranscript] = useState('')
+  const [recordingTime, setRecordingTime] = useState('00:00')
 
   // Today's appointments for patient selector
   const todayAppts = demoAppointments.filter(a => a.date === '2026-03-02')
@@ -51,8 +53,28 @@ function ProviderView() {
     setSelectedVisit(v); setSoap({...v.soap}); setCodes(v.suggestedCodes); setUiState('note')
   }
 
+  useEffect(() => {
+    if (uiState !== 'recording') return
+    setLiveTranscript('')
+    setRecordingTime('00:00')
+    const SAMPLE = 'Patient presents with chest tightness and shortness of breath for two days. No fever or cough. History of hypertension controlled on Lisinopril. Denies recent travel. Physical exam reveals mild tachycardia at 98 bpm. Lungs clear to auscultation. EKG ordered. Assessment: atypical chest pain, rule out ACS. Plan: cardiology referral, stress test, continue current medications.'.split(' ')
+    let wordIdx = 0, seconds = 0
+    const wordTimer = setInterval(() => {
+      if (wordIdx < SAMPLE.length) {
+        setLiveTranscript(t => t + (t ? ' ' : '') + SAMPLE[wordIdx++])
+      }
+    }, 800)
+    const clockTimer = setInterval(() => {
+      seconds++
+      const m = Math.floor(seconds / 60), s = seconds % 60
+      setRecordingTime(`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`)
+    }, 1000)
+    return () => { clearInterval(wordTimer); clearInterval(clockTimer) }
+  }, [uiState])
+
   function handleStop() {
     setUiState('processing')
+    setLiveTranscript('')
     setTimeout(()=>{
       const v = demoVisits.find(x=>x.patientId===selectedPatientId)??demoVisits[0]
       setSelectedVisit(v); setSoap({...v.soap}); setCodes(v.suggestedCodes); setUiState('note')
@@ -178,30 +200,43 @@ function ProviderView() {
 
   // Step 3: Recording
   if (uiState === 'recording') return (
-    <div className="max-w-lg mx-auto mt-12 space-y-6 text-center">
-      <div>
-        <p className="text-sm text-content-secondary mb-1">Recording for</p>
-        {selectedPatient ? (
-          <div className="flex items-center justify-center gap-2">
-            <User size={16} className="text-brand"/>
-            <span className="text-base font-semibold text-content-primary">{selectedPatient.firstName} {selectedPatient.lastName}</span>
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-4">
+        {/* Left: patient context */}
+        <div className="card p-4 text-xs space-y-2">
+          <div className="font-semibold text-content-primary mb-2">
+            {selectedPatient?.firstName} {selectedPatient?.lastName}
           </div>
-        ) : (
-          <span className="text-base font-semibold text-content-primary">Unknown Patient</span>
-        )}
-        {selectedAppt && <p className="text-xs text-content-secondary mt-0.5">{selectedAppt.type} · {selectedAppt.time}</p>}
-      </div>
-      <div className="card p-8 space-y-5">
-        <Waveform />
-        <RecordingTimer />
-        <p className="text-xs text-content-secondary">Recording in progress — speak naturally</p>
-        <div className="flex justify-center gap-4">
-          <button onClick={()=>setUiState('review_patient')} className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-separator text-content-secondary hover:text-content-primary text-sm transition-colors">
-            <Pause size={16}/> Pause
-          </button>
-          <button onClick={handleStop} className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-red-500 text-white hover:bg-red-600 text-sm font-medium transition-colors">
-            <Square size={16}/> Stop
-          </button>
+          <div><span className="text-content-tertiary">DOB: </span>{selectedPatient?.dob}</div>
+          <div><span className="text-content-tertiary">Insurance: </span>{selectedPatient?.insurance?.payer || '—'}</div>
+          <div><span className="text-content-tertiary">Allergies: </span>
+            <span className="text-red-500">
+              {selectedPatient?.allergies?.join(', ') || 'None on file'}
+            </span>
+          </div>
+          <div><span className="text-content-tertiary">Meds: </span>
+            {selectedPatient?.medications?.join(', ') || '—'}
+          </div>
+          <div className="pt-3 border-t border-separator flex justify-center gap-3">
+            <button onClick={()=>setUiState('review_patient')} className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-separator text-content-secondary hover:text-content-primary text-xs transition-colors">
+              <Pause size={13}/> Pause
+            </button>
+            <button onClick={handleStop} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 text-xs font-medium transition-colors">
+              <Square size={13}/> Stop
+            </button>
+          </div>
+        </div>
+        {/* Right: live transcript */}
+        <div className="col-span-2 card p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            <span className="text-xs font-semibold text-red-500">RECORDING</span>
+            <span className="text-xs text-content-tertiary ml-auto font-mono">{recordingTime}</span>
+          </div>
+          <Waveform />
+          <div className="text-sm text-content-primary leading-relaxed min-h-[200px] font-mono whitespace-pre-wrap mt-3">
+            {liveTranscript || <span className="text-content-tertiary">Listening...</span>}
+          </div>
         </div>
       </div>
     </div>

@@ -239,7 +239,13 @@ export default function PaymentPostingPage() {
             <thead><tr className="border-b border-separator text-content-secondary bg-surface-secondary">
               <th className="text-left px-3 py-2">Patient</th><th className="text-left px-3 py-2">CPT</th><th className="text-left px-3 py-2">DOS</th><th className="text-right px-3 py-2">Billed</th><th className="text-right px-3 py-2">Allowed</th><th className="text-right px-3 py-2">Paid</th><th className="text-right px-3 py-2">Denied</th><th className="text-left px-3 py-2">Adj Code</th><th className="text-left px-3 py-2">Adj Reason</th><th className="text-right px-3 py-2">Pat Bal</th><th className="text-left px-3 py-2">Notes</th><th className="text-left px-3 py-2">Action</th>
             </tr></thead>
-            <tbody>{eraLines.map(row => {
+            <tbody>{eraLines.length === 0 ? (
+              <tr>
+                <td colSpan={12} className="px-4 py-8 text-center text-sm text-content-tertiary">
+                  No line items loaded — upload the .835 file to parse line items automatically
+                </td>
+              </tr>
+            ) : eraLines.map(row => {
               const bg = row.denied > 0 ? 'bg-red-500/5' : row.action === 'review' ? 'bg-amber-500/5' : row.action === 'patient_bill' ? 'bg-blue-500/5' : ''
               return <tr key={row.id} className={`border-b border-separator ${bg}`}>
                 <td className="px-3 py-2 text-[13px]">{row.patientName}</td>
