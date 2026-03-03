@@ -35,7 +35,7 @@ export default function MessagesPage() {
     const abuseError = getError(reply)
     if (abuseError) {
       toast.error(abuseError)
-      handleAbuseViolation(currentUser.username || 'unknown')
+      handleAbuseViolation(currentUser.id || 'unknown')
       return
     }
     const newMsg = {
