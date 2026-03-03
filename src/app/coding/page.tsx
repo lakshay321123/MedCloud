@@ -9,7 +9,8 @@ import { getSLAStatus } from '@/lib/utils/time'
 import { useCodingQueue } from '@/lib/hooks'
 import {
   BrainCircuit, CheckCircle2, Activity, Clock, MessageCircle, Mic, FileUp,
-  ChevronDown, ChevronUp, Play, FileText, AlertTriangle, Plus, PauseCircle
+  ChevronDown, ChevronUp, Play, FileText, AlertTriangle, Plus, PauseCircle,
+  X, Receipt
 } from 'lucide-react'
 
 // ── Demo code lookup tables ─────────────────────────────────────────────────
@@ -222,6 +223,7 @@ export default function CodingPage() {
   const [aiUnavailable, setAiUnavailable] = useState(false)
   const [showQueryModal, setShowQueryModal] = useState(false)
   const [showHoldModal, setShowHoldModal] = useState(false)
+  const [docOpen, setDocOpen] = useState<'note' | 'superbill' | null>(null)
   const [queryText, setQueryText] = useState('')
   const [holdReason, setHoldReason] = useState('')
 
@@ -303,7 +305,7 @@ export default function CodingPage() {
         <KPICard label="Avg Time/Chart" value="6.2m" icon={<Clock size={20} />} />
       </div>
 
-      <div className="grid grid-cols-12 gap-4 h-[calc(100vh-280px)]">
+      <div className={`grid gap-4 h-[calc(100vh-280px)] ${docOpen ? 'grid-cols-12' : 'grid-cols-12'}`}>
         {/* ── Queue Panel ── */}
         <div className="col-span-2">
           <div className="card p-3 h-full flex flex-col">
@@ -319,6 +321,7 @@ export default function CodingPage() {
                       setTab('note')
                       resetChart()
                       setExpanded({})
+                      setDocOpen('note')
                     }}
                     className={`w-full text-left p-2 rounded-btn border transition-colors ${selected === q.id ? 'bg-brand/10 border-brand/20' : 'border-transparent hover:bg-surface-elevated'}`}
                   >
@@ -365,7 +368,7 @@ export default function CodingPage() {
         </div>
 
         {/* ── Visit Note Panel ── */}
-        <div className="col-span-5">
+        <div className={docOpen ? 'col-span-3' : 'col-span-5'}>
           <div className="card h-full flex flex-col overflow-hidden">
             {item ? (
               <>
@@ -409,63 +412,33 @@ export default function CodingPage() {
                       </div>
                     ))}
                   </div>
-                </div>
-
-                {/* Tab Bar */}
-                <div className="px-4 border-b border-separator flex gap-2">
-                  <button onClick={() => setTab('note')} className={tabClass(tab === 'note')}>Visit Note</button>
-                  {item.hasSuperbill && <button onClick={() => setTab('superbill')} className={tabClass(tab === 'superbill')}>Superbill</button>}
-                  <button onClick={() => setTab('history')} className={tabClass(tab === 'history')}>History</button>
+                  <div className="flex items-center gap-2 mt-3">
+                    <button
+                      onClick={() => setDocOpen(docOpen === 'note' ? null : 'note')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border transition-colors ${docOpen === 'note' ? 'bg-brand text-white border-brand' : 'border-separator text-content-secondary hover:border-brand/40 hover:text-content-primary'}`}>
+                      <FileText size={12} /> Visit Note
+                    </button>
+                    {item.source === 'upload' && (
+                      <button
+                        onClick={() => setDocOpen(docOpen === 'superbill' ? null : 'superbill')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border transition-colors ${docOpen === 'superbill' ? 'bg-brand text-white border-brand' : 'border-separator text-content-secondary hover:border-brand/40 hover:text-content-primary'}`}>
+                        <Receipt size={12} /> Superbill
+                      </button>
+                    )}
+                    {item.source === 'ai_scribe' && (
+                      <button
+                        onClick={() => setDocOpen(docOpen === 'note' ? null : 'note')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border border-brand/30 text-brand hover:bg-brand/5 transition-colors">
+                        <Mic size={12} /> AI Scribe Note
+                      </button>
+                    )}
+                    <button onClick={() => setTab('history')} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border border-separator text-content-secondary hover:border-brand/40 hover:text-content-primary transition-colors">
+                      History
+                    </button>
+                  </div>
                 </div>
 
                 <div className="p-4 overflow-y-auto flex-1">
-                  {tab === 'note' && (
-                    <div className="space-y-3">
-                      {item.source === 'ai_scribe' ? (
-                        <div className="bg-brand/5 border border-brand/20 rounded-card p-3 flex items-center gap-3 mb-3 shrink-0">
-                          <Mic size={14} className="text-brand shrink-0" />
-                          <div className="flex-1">
-                            <p className="text-xs font-semibold text-content-primary">AI Scribe Recording</p>
-                            <p className="text-[11px] text-content-secondary">Transcribed from live session</p>
-                          </div>
-                          <button onClick={() => toast.info('Audio playback from AI Scribe session')} className="text-xs text-brand underline shrink-0">Play Recording</button>
-                        </div>
-                      ) : (
-                        <div className="bg-surface-elevated border border-separator rounded-card p-3 flex items-center gap-3 mb-3 shrink-0">
-                          <FileText size={14} className="text-content-secondary shrink-0" />
-                          <div className="flex-1">
-                            <p className="text-xs font-semibold text-content-primary">Uploaded Document</p>
-                            <p className="text-[11px] text-content-secondary">Source chart — {item.patientName}</p>
-                          </div>
-                          <button onClick={() => toast.info('Opening document in Documents module...')} className="text-xs text-brand underline shrink-0">View Original</button>
-                        </div>
-                      )}
-                      {(['subjective', 'objective', 'assessment', 'plan'] as const).map(section => (
-                        <div key={section} className="pb-2 border-b border-separator last:border-0">
-                          <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-1">{section}</p>
-                          <p className="text-[13px] text-content-secondary whitespace-pre-line">{item.visitNote[section]}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {tab === 'superbill' && item.hasSuperbill && (
-                    <div className="space-y-3">
-                      <div className="bg-surface-elevated border border-separator rounded-card p-6 text-center text-content-secondary text-[13px]">
-                        📄 PDF Viewer — {item.patientName} superbill
-                      </div>
-                      <p className="text-[13px] text-content-secondary">Superbill codes ticked: <span className="font-mono text-content-primary">{item.superbillCpt?.join(', ')}</span></p>
-                      {allMatch ? (
-                        <p className="text-[12px] text-emerald-600 dark:text-emerald-400 mt-1">✓ All codes match</p>
-                      ) : (
-                        <div className="text-[12px] text-amber-600 dark:text-amber-400 mt-1 space-y-0.5">
-                          {aiOnly.map(code => <p key={`ai-${code}`}><AlertTriangle size={12} className="inline" /> AI suggests {code} not on superbill</p>)}
-                          {superbillOnly.map(code => <p key={`sb-${code}`}><AlertTriangle size={12} className="inline" /> Superbill has {code} not suggested by AI</p>)}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
                   {tab === 'history' && (
                     <div className="space-y-2">
                       <p className="text-[11px] text-content-tertiary uppercase tracking-wider font-semibold mb-3">Prior Visits</p>
@@ -500,8 +473,86 @@ export default function CodingPage() {
           </div>
         </div>
 
+        {/* ── Doc Viewer Panel ── */}
+        {docOpen && (
+          <div className="col-span-4 flex flex-col bg-surface-secondary border border-separator rounded-card overflow-hidden">
+            {/* Doc viewer header */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-separator shrink-0">
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setDocOpen('note')}
+                  className={`px-3 py-1 text-xs rounded-btn font-medium transition-colors ${docOpen === 'note' ? 'bg-brand text-white' : 'text-content-secondary hover:text-content-primary'}`}>
+                  Visit Note
+                </button>
+                {item?.source === 'upload' && (
+                  <button
+                    onClick={() => setDocOpen('superbill')}
+                    className={`px-3 py-1 text-xs rounded-btn font-medium transition-colors ${docOpen === 'superbill' ? 'bg-brand text-white' : 'text-content-secondary hover:text-content-primary'}`}>
+                    Superbill
+                  </button>
+                )}
+              </div>
+              <button onClick={() => setDocOpen(null)} className="text-content-tertiary hover:text-content-primary">
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Doc content */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {docOpen === 'note' && (
+                <div className="space-y-4">
+                  {item?.source === 'ai_scribe' && (
+                    <div className="bg-brand/5 border border-brand/20 rounded-card p-3 flex items-center gap-2">
+                      <Mic size={13} className="text-brand shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-content-primary">AI Scribe</p>
+                        <p className="text-[11px] text-content-secondary">Note from recorded session</p>
+                      </div>
+                      <button onClick={() => toast.info('Playing AI Scribe recording...')}
+                        className="text-xs text-brand underline shrink-0">Play</button>
+                    </div>
+                  )}
+                  {(['subjective', 'objective', 'assessment', 'plan'] as const).map(section => (
+                    <div key={section} className="pb-3 border-b border-separator last:border-0">
+                      <p className="text-[10px] uppercase tracking-widest text-content-tertiary font-bold mb-1.5">{section}</p>
+                      <p className="text-[13px] text-content-secondary leading-relaxed whitespace-pre-line">
+                        {item?.visitNote[section] || '—'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {docOpen === 'superbill' && (
+                <div className="space-y-3">
+                  <div className="bg-surface-elevated border border-separator rounded-card p-8 text-center text-content-secondary text-sm">
+                    <FileText size={32} className="mx-auto mb-3 opacity-30" />
+                    <p className="font-medium text-content-primary mb-1">Superbill</p>
+                    <p className="text-xs text-content-secondary mb-3">{item?.patientName}</p>
+                    <button onClick={() => toast.info('Opening superbill PDF...')}
+                      className="text-xs text-brand underline">View PDF</button>
+                  </div>
+                  {item?.superbillCpt && item.superbillCpt.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold">Superbill Codes</p>
+                      {item.superbillCpt.map(code => (
+                        <div key={code} className="flex items-center justify-between px-3 py-1.5 bg-surface-elevated rounded-lg">
+                          <span className="font-mono text-xs text-content-primary">{code}</span>
+                          {aiCptCodes.includes(code)
+                            ? <span className="text-[11px] text-emerald-500">✓ AI matched</span>
+                            : <span className="text-[11px] text-amber-500">⚠ Not in AI suggestion</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ── Code Review Panel ── */}
-        <div className="col-span-5">
+        <div className={docOpen ? 'col-span-3' : 'col-span-5'}>
           <div className="card h-full p-4 overflow-y-auto">
             {item ? (
               <>
