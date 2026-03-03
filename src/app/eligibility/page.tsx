@@ -4,26 +4,16 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
-import { demoClients, demoPatients } from '@/lib/demo-data'
-import { UAE_CLIENT_NAMES, US_CLIENT_NAMES } from '@/lib/utils/region'
+// removed demo imports
 import { ShieldCheck, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useEligibilityChecks } from '@/lib/hooks'
 
-const demoChecks = [
-  { id: 'ELG-001', patient: 'John Smith', client: 'Irvine Family Practice', payer: 'UnitedHealthcare', status: 'active', network: 'In-Network', copay: '$30', deductible: '$450 remaining', priorAuth: 'No', dos: '2026-03-02' },
-  { id: 'ELG-002', patient: 'Sarah Johnson', client: 'Irvine Family Practice', payer: 'Aetna', status: 'active', network: 'In-Network', copay: '$25', deductible: '$200 remaining', priorAuth: 'No', dos: '2026-03-02' },
-  { id: 'ELG-003', patient: 'Ahmed Al Mansouri', client: 'Gulf Medical Center', payer: 'Daman', status: 'active', network: 'In-Network', copay: '0%', deductible: 'N/A', priorAuth: 'No', dos: '2026-03-02' },
-  { id: 'ELG-004', patient: 'Robert Chen', client: 'Patel Cardiology', payer: 'Medicare', status: 'active', network: 'In-Network', copay: '20%', deductible: '$0 remaining', priorAuth: 'Yes — Radiology', dos: '2026-03-02' },
-  { id: 'ELG-005', patient: 'Emily Williams', client: 'Patel Cardiology', payer: 'BCBS', status: 'inactive', network: '-', copay: '-', deductible: '-', priorAuth: 'N/A', dos: '2026-03-02' },
-  { id: 'ELG-006', patient: 'Khalid Ibrahim', client: 'Dubai Wellness Clinic', payer: 'NAS', status: 'active', network: 'In-Network', copay: '20%', deductible: 'AED 500 remaining', priorAuth: 'No', dos: '2026-03-02' },
-]
-
 export default function EligibilityPage() {
-  const { country, selectedClient } = useApp()
+  const { country } = useApp()
   const { toast } = useToast()
   const { data: apiEligResult } = useEligibilityChecks({ limit: 20 })
   const [tab, setTab] = useState<'single' | 'batch'>('single')
-  const [selectedClientId, setSelectedClientId] = useState(demoClients[0].id)
+  const [selectedClientId, setSelectedClientId] = useState('')
   const [selectedPatientId, setSelectedPatientId] = useState('')
   const [payer, setPayer] = useState('')
   const [dos, setDos] = useState(new Date().toISOString().slice(0, 10))
@@ -33,9 +23,10 @@ export default function EligibilityPage() {
   const [batchRunning, setBatchRunning] = useState(false)
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
 
-  const patients = useMemo(() => demoPatients.filter(p => p.clientId === selectedClientId), [selectedClientId])
-  const selectedPatient = patients.find(p => p.id === selectedPatientId)
-  const isUAEPatient = (selectedPatient ? demoClients.find(c => c.id === selectedPatient.clientId)?.region : country) === 'uae'
+  const patients = useMemo(() => [], [selectedClientId])
+  // Sprint 2: replace with usePatients({ client_id: selectedClientId })
+  const selectedPatient = undefined
+  const isUAEPatient = country === 'uae'
 
   function handleVerify() {
     if (!selectedPatientId) { toast.warning('Select a patient first'); return }
@@ -63,15 +54,10 @@ export default function EligibilityPage() {
         status: e.status || '',
         priorAuthRequired: e.prior_auth_required || false,
       }))
-    : demoChecks.map(c => ({
-        id: c.id,
-        patientName: c.patient,
-        status: c.status,
-        priorAuthRequired: c.priorAuth.startsWith('Yes'),
-      }))
+    : []
 
   const eligStats = {
-    total: apiEligResult?.meta?.total ?? demoChecks.length,
+    total: apiEligResult?.meta?.total ?? 0,
     active: eligChecks.filter(e => e.status === 'active').length,
     issues: eligChecks.filter(e => e.status !== 'active').length,
     priorAuth: eligChecks.filter(e => e.priorAuthRequired).length,
@@ -95,7 +81,8 @@ export default function EligibilityPage() {
           <div className="card p-4 mb-4">
             <div className="grid grid-cols-4 gap-3">
               <select value={selectedClientId} onChange={e => { setSelectedClientId(e.target.value); setSelectedPatientId(''); setVerified(false) }} className="bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px]">
-                {demoClients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                <option value=''>All Clients</option>
+                {/* Sprint 2: replace with API client list */}
               </select>
               <select value={selectedPatientId} onChange={e => { setSelectedPatientId(e.target.value); setVerified(false) }} className="bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px]">
                 <option value="">Select patient</option>
@@ -124,27 +111,40 @@ export default function EligibilityPage() {
           <div className="card overflow-hidden">
             <table className="w-full text-[13px]">
               <thead><tr className="border-b border-separator text-content-secondary text-[12px]"><th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Payer</th><th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3">Network</th><th className="text-left px-4 py-3">Copay</th><th className="text-left px-4 py-3">Deductible</th><th className="text-left px-4 py-3">Prior Auth</th></tr></thead>
-              <tbody>{demoChecks.filter(c => {
-                if (selectedClient) return c.client === selectedClient.name
-                if (country === 'uae') return (UAE_CLIENT_NAMES as readonly string[]).includes(c.client)
-                if (country === 'usa') return (US_CLIENT_NAMES as readonly string[]).includes(c.client)
-                return true
-              }).map(c => (
+              <tbody>
+                {eligChecks.length === 0 && (
+                  <tr><td colSpan={7}>
+                    <div className='flex flex-col items-center justify-center py-16 text-center'>
+                      <div className='w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center mb-3'>
+                        <ShieldCheck size={20} className='text-content-tertiary' />
+                      </div>
+                      <p className='text-sm font-medium text-content-primary mb-1'>No eligibility checks yet</p>
+                      <p className='text-xs text-content-secondary'>Checks will appear here once they&apos;re added to the system.</p>
+                    </div>
+                  </td></tr>
+                )}
+                {eligChecks.map(c => (
                 <React.Fragment key={c.id}>
                   <tr
                     onClick={() => setExpandedRow(expandedRow === c.id ? null : c.id)}
                     className="table-row border-b border-separator cursor-pointer hover:bg-surface-elevated transition-colors"
                   >
-                    <td className="px-4 py-3 font-medium">{c.patient}</td><td className="px-4 py-3">{c.payer}</td><td className="px-4 py-3">{c.status === 'active' ? <span className="text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1"><CheckCircle2 size={12} />Active</span> : <span className="text-red-600 dark:text-red-400 inline-flex items-center gap-1"><AlertTriangle size={12} />Inactive</span>}</td><td className="px-4 py-3">{c.network}</td><td className="px-4 py-3">{c.copay}</td><td className="px-4 py-3">{c.deductible}</td><td className={`px-4 py-3 ${c.priorAuth.startsWith('Yes') ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-content-secondary'}`}>{c.priorAuth}</td>
+                    <td className="px-4 py-3 font-medium">{c.patientName}</td>
+                    <td className="px-4 py-3 text-content-secondary">—</td>
+                    <td className="px-4 py-3">{c.status === 'active' ? <span className="text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1"><CheckCircle2 size={12} />Active</span> : <span className="text-red-600 dark:text-red-400 inline-flex items-center gap-1"><AlertTriangle size={12} />Inactive</span>}</td>
+                    <td className="px-4 py-3 text-content-secondary">—</td>
+                    <td className="px-4 py-3 text-content-secondary">—</td>
+                    <td className="px-4 py-3 text-content-secondary">—</td>
+                    <td className={`px-4 py-3 ${c.priorAuthRequired ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-content-secondary'}`}>{c.priorAuthRequired ? 'Yes' : 'No'}</td>
                   </tr>
                   {expandedRow === c.id && (
                     <tr>
                       <td colSpan={7} className="px-4 py-3 bg-surface-elevated border-b border-separator">
                         <div className="grid grid-cols-4 gap-4 text-xs">
-                          <div><span className="text-content-secondary block">DOS</span>{c.dos}</div>
-                          <div><span className="text-content-secondary block">Network</span>{c.network}</div>
+                          <div><span className="text-content-secondary block">Patient</span>{c.patientName}</div>
+                          <div><span className="text-content-secondary block">Status</span>{c.status}</div>
                           <div><span className="text-content-secondary block">Prior Auth</span>
-                            <span className={c.priorAuth.startsWith('Yes') ? 'text-amber-500 font-medium' : ''}>{c.priorAuth}</span>
+                            <span className={c.priorAuthRequired ? 'text-amber-500 font-medium' : ''}>{c.priorAuthRequired ? 'Yes' : 'No'}</span>
                           </div>
                           <div><span className="text-content-secondary block">Action</span>
                             <button onClick={e => { e.stopPropagation(); toast.success('Eligibility saved to patient record') }}

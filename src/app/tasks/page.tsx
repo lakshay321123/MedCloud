@@ -142,7 +142,7 @@ export default function TasksPage() {
 
   const slaColor = (s: string) => s === 'green' ? 'bg-emerald-500' : s === 'yellow' ? 'bg-amber-500' : 'bg-red-500'
 
-  const rawTasks = apiTasks.length > 0 ? apiTasks : taskList
+  const rawTasks = apiTasks
   const displayTasks = rawTasks.filter(t => {
     if (selectedClient) return t.client === selectedClient.name
     if (country === 'uae') return UAE_CLIENT_NAMES.includes(t.client as typeof UAE_CLIENT_NAMES[number]) || !t.client
@@ -173,7 +173,19 @@ export default function TasksPage() {
             <th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">Assigned</th>
             <th className="text-left px-4 py-3">Due</th><th className="text-left px-4 py-3">Priority</th><th className="text-left px-4 py-3">Status</th>
           </tr></thead>
-          <tbody>{displayTasks.map(t=>(
+          <tbody>
+            {displayTasks.length === 0 && (
+              <tr><td colSpan={8}>
+                <div className='flex flex-col items-center justify-center py-16 text-center'>
+                  <div className='w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center mb-3'>
+                    <ListChecks size={20} className='text-content-tertiary' />
+                  </div>
+                  <p className='text-sm font-medium text-content-primary mb-1'>No tasks yet</p>
+                  <p className='text-xs text-content-secondary'>Tasks will appear here once they&apos;re added to the system.</p>
+                </div>
+              </td></tr>
+            )}
+            {displayTasks.map(t=>(
             <tr key={t.id}
               onClick={() => setSelected(t)}
               className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">

@@ -10,9 +10,7 @@ import {
   BrainCircuit, CalendarDays, Mic, Activity, Eye, MessageCircle,
   CheckCircle2, ShieldAlert, Receipt, ScanLine, Send, ShieldCheck, XCircle
 } from 'lucide-react'
-import {
-  demoCodingQueue, demoClaims, demoARAccounts, demoDenialsData, demoAppointments
-} from '@/lib/demo-data'
+// removed all demo imports from dashboard
 import { useDashboardMetrics } from '@/lib/hooks'
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
@@ -142,12 +140,10 @@ function ExecutiveDashboard() {
 
 // ── Coder Dashboard ───────────────────────────────────────────────────────────
 function CoderDashboard() {
-  const pendingCharts = demoCodingQueue.filter(q => q.status === 'pending').length
-  const pastSLA = demoCodingQueue.filter(q => {
-    const hours = (Date.now() - new Date(q.receivedAt).getTime()) / (1000 * 60 * 60)
-    return hours > 24
-  }).length
-  const queryPending = demoCodingQueue.filter(q => q.status === 'query_sent').length
+  const { data: metrics } = useDashboardMetrics()
+  const pendingCharts = metrics?.coding_queue_count ?? 0
+  const pastSLA = 0  // Sprint 2: add to dashboard metrics endpoint
+  const queryPending = 0  // Sprint 2: add to dashboard metrics endpoint
 
   return (
     <div className="space-y-6">
@@ -181,9 +177,10 @@ function CoderDashboard() {
 
 // ── Biller Dashboard ──────────────────────────────────────────────────────────
 function BillerDashboard() {
-  const scrubFailed = demoClaims.filter(c => (c.status as string) === 'scrub_failed').length
-  const pendingSubmit = demoClaims.filter(c => (c.status as string) === 'ready').length
-  const rejectedYesterday = demoClaims.filter(c => (c.status as string) === 'rejected' || (c.status as string) === 'denied').length
+  const { data: metrics } = useDashboardMetrics()
+  const scrubFailed = metrics?.claims_by_status?.find(s => s.status === 'scrub_failed') ? Number(metrics.claims_by_status.find(s => s.status === 'scrub_failed')!.count) : 0
+  const pendingSubmit = metrics?.claims_by_status?.find(s => s.status === 'ready') ? Number(metrics.claims_by_status.find(s => s.status === 'ready')!.count) : 0
+  const rejectedYesterday = 0  // Sprint 2
   const chargeLagCount = 3
 
   return (
@@ -229,8 +226,9 @@ function BillerDashboard() {
 
 // ── AR Team Dashboard ─────────────────────────────────────────────────────────
 function ARDashboard() {
-  const overdueAccounts = demoARAccounts.filter(a => a.age > 60).length
-  const denialsPending = demoDenialsData.filter(d => d.status === 'denied' && !d.appealLevel).length
+  const { data: metrics } = useDashboardMetrics()
+  const overdueAccounts = metrics?.ar_aging ? (metrics.ar_aging['61_90'] + metrics.ar_aging['91_120'] + metrics.ar_aging['120_plus']) : 0
+  const denialsPending = Number(metrics?.open_denials) || 0
   const appealsNearDeadline = 2
 
   return (
@@ -296,13 +294,10 @@ function PostingDashboard() {
 
 // ── Provider Dashboard ────────────────────────────────────────────────────────
 function ProviderDashboard() {
-  const todayDate = new Date().toISOString().split('T')[0]
-  const todayAppointments = demoAppointments.filter(a => a.date === todayDate)
-  const pendingSignOffs = demoCodingQueue.filter(q => q.status === 'pending' && q.source === 'ai_scribe').length
-  const unsignedNotes = demoCodingQueue.filter(q => {
-    const hours = (Date.now() - new Date(q.receivedAt).getTime()) / (1000 * 60 * 60)
-    return hours > 24 && q.source === 'ai_scribe'
-  }).length
+  const { data: metrics } = useDashboardMetrics()
+  const todayAppointments = metrics?.upcoming_appointments ?? []
+  const pendingSignOffs = 0  // Sprint 2: add to dashboard metrics endpoint
+  const unsignedNotes = 0  // Sprint 2: add to dashboard metrics endpoint
 
   return (
     <div className="space-y-6">
@@ -327,11 +322,10 @@ function ProviderDashboard() {
           {todayAppointments.slice(0, 4).map(apt => (
             <div key={apt.id} className="flex items-center justify-between p-3 bg-surface-elevated rounded-lg border border-separator">
               <div>
-                <p className="text-[13px] font-medium text-content-primary">{apt.patientName}</p>
-                <p className="text-[12px] text-content-secondary">{apt.time} · {apt.type} · {apt.duration} min</p>
+                <p className="text-[13px] font-medium text-content-primary">{apt.first_name} {apt.last_name}</p>
+                <p className="text-[12px] text-content-secondary">{apt.appointment_time} · {apt.appointment_date}</p>
               </div>
               <div className="flex items-center gap-2">
-                <StatusBadge status={apt.status} small />
                 <Link href="/ai-scribe" className="text-[12px] text-brand font-medium">Start Visit →</Link>
               </div>
             </div>
@@ -348,9 +342,12 @@ function ProviderDashboard() {
 // ── Client Dashboard ──────────────────────────────────────────────────────────
 function ClientDashboard() {
   const { selectedClient } = useApp()
+  const { data: metrics } = useDashboardMetrics()
   const mtdCollections = 84200
   const denialRate = 8.3
-  const actionNeeded = demoClaims.filter(c => c.status === 'denied' || c.status === 'scrub_failed').length
+  const actionNeeded = metrics?.claims_by_status
+    ? (metrics.claims_by_status.filter(s => s.status === 'denied' || s.status === 'scrub_failed').reduce((sum, s) => sum + Number(s.count), 0))
+    : 0
 
   return (
     <div className="space-y-6">
@@ -385,12 +382,11 @@ function ClientDashboard() {
 
 // ── Supervisor Exception Dashboard ────────────────────────────────────────────
 function SupervisorDashboard() {
-  const chartsPastSLA = demoCodingQueue.filter(q => {
-    const hours = (Date.now() - new Date(q.receivedAt).getTime()) / (1000 * 60 * 60)
-    return hours > 24
-  }).length
-  const scrubErrors = demoClaims.filter(c => c.status === 'scrub_failed').length
-  const unassignedDenials = demoDenialsData.filter(d => d.status === 'denied' && !d.appealLevel).length
+  const { data: metrics } = useDashboardMetrics()
+  const chartsPastSLA = 0  // Sprint 2: add to dashboard metrics endpoint
+  const scrubFailed = metrics?.claims_by_status?.find(s => s.status === 'scrub_failed') ? Number(metrics.claims_by_status.find(s => s.status === 'scrub_failed')!.count) : 0
+  const scrubErrors = scrubFailed  // reuse from above
+  const unassignedDenials = Number(metrics?.open_denials) || 0
   const unpostedERAs = 2
 
   const exceptions = [

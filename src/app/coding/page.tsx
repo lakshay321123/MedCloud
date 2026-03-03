@@ -4,7 +4,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
-import { demoCodingQueue, demoPriorVisitHistory, getClientName } from '@/lib/demo-data'
+import { getClientName } from '@/lib/demo-data'
 import { getSLAStatus } from '@/lib/utils/time'
 import { useCodingQueue } from '@/lib/hooks'
 import {
@@ -152,41 +152,38 @@ export default function CodingPage() {
   const { toast } = useToast()
   const { data: apiQueueResult } = useCodingQueue({ status: 'pending', limit: 100 })
 
-  const apiMapped = apiQueueResult?.data?.map(c => {
-    const demoMatch = demoCodingQueue.find(d => d.id === c.id)
-    return {
-      id: c.id,
-      patientId: c.patient_id || '',
-      patientName: c.patient_name || 'Unknown Patient',
-      clientId: c.client_id,
-      clientName: c.client_name || '',
-      source: (demoMatch?.source || 'upload') as 'upload' | 'ai_scribe',
-      dos: c.created_at ? c.created_at.split('T')[0] : '',
-      provider: c.provider_name || '',
-      providerNpi: demoMatch?.providerNpi || '',
-      providerSpecialty: demoMatch?.providerSpecialty || '',
-      status: (c.status || 'pending') as 'pending' | 'in_progress' | 'completed' | 'on_hold',
-      receivedAt: c.received_at || c.created_at || new Date().toISOString(),
-      priority: (c.priority ?? 'medium') as 'low' | 'medium' | 'high' | 'urgent',
-      visitNote: demoMatch?.visitNote || {
-        subjective: 'Visit note not yet available \u2014 Bedrock integration Sprint 2',
-        objective: '',
-        assessment: '',
-        plan: '',
-      },
-      aiSuggestedIcd: demoMatch?.aiSuggestedIcd || [],
-      aiSuggestedCpt: demoMatch?.aiSuggestedCpt || [],
-      hasSuperbill: demoMatch?.hasSuperbill || false,
-      superbillCpt: demoMatch?.superbillCpt,
-      priorAuthStatus: demoMatch?.priorAuthStatus || 'not_required',
-      priorAuthNumber: demoMatch?.priorAuthNumber,
-      patientDob: demoMatch?.patientDob,
-      patientGender: demoMatch?.patientGender,
-      patientPayer: demoMatch?.patientPayer,
-      visitType: demoMatch?.visitType,
-      placeOfService: demoMatch?.placeOfService,
-    }
-  }) || []
+  const apiMapped = apiQueueResult?.data?.map(c => ({
+    id: c.id,
+    patientId: c.patient_id || '',
+    patientName: c.patient_name || 'Unknown Patient',
+    clientId: c.client_id,
+    clientName: c.client_name || '',
+    source: 'upload' as 'upload' | 'ai_scribe',
+    dos: c.created_at ? c.created_at.split('T')[0] : '',
+    provider: c.provider_name || '',
+    providerNpi: '',
+    providerSpecialty: '',
+    status: (c.status || 'pending') as 'pending' | 'in_progress' | 'completed' | 'on_hold',
+    receivedAt: c.received_at || c.created_at || new Date().toISOString(),
+    priority: (c.priority ?? 'medium') as 'low' | 'medium' | 'high' | 'urgent',
+    visitNote: {
+      subjective: 'Visit note not yet available \u2014 Bedrock integration Sprint 2',
+      objective: '',
+      assessment: '',
+      plan: '',
+    },
+    aiSuggestedIcd: [] as { code: string; description: string }[],
+    aiSuggestedCpt: [] as { code: string; description: string }[],
+    hasSuperbill: false,
+    superbillCpt: undefined as string[] | undefined,
+    priorAuthStatus: 'not_required' as string,
+    priorAuthNumber: undefined as string | undefined,
+    patientDob: undefined as string | undefined,
+    patientGender: undefined as string | undefined,
+    patientPayer: undefined as string | undefined,
+    visitType: undefined as string | undefined,
+    placeOfService: undefined as string | undefined,
+  })) || []
 
   const coders = [
     { id: 'demo-002', name: 'Sarah Kim' },
@@ -198,7 +195,7 @@ export default function CodingPage() {
   const uaeClientIds = ['org-101', 'org-104']
 
   const queue = (() => {
-    const base = apiMapped.length > 0 ? apiMapped : demoCodingQueue
+    const base = apiMapped.length > 0 ? apiMapped : []
     // Filter by region
     const regionFiltered = base.filter(item => {
       const isUAEClient = uaeClientIds.includes(item.clientId)
@@ -309,6 +306,15 @@ export default function CodingPage() {
           <div className="card p-3 h-full flex flex-col">
             <h3 className="text-[11px] font-semibold uppercase text-content-tertiary tracking-wider mb-2">Coding Queue ({queue.length})</h3>
             <div className="overflow-y-auto space-y-1 flex-1">
+              {queue.length === 0 && (
+                <div className='flex flex-col items-center justify-center py-16 text-center'>
+                  <div className='w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center mb-3'>
+                    <BrainCircuit size={20} className='text-content-tertiary' />
+                  </div>
+                  <p className='text-sm font-medium text-content-primary mb-1'>No charts in queue</p>
+                  <p className='text-xs text-content-secondary'>Charts will appear here once they&apos;re added to the system.</p>
+                </div>
+              )}
               {queue.map(q => {
                 const sla = getSLAStatus(q.receivedAt)
                 return (
@@ -467,29 +473,8 @@ export default function CodingPage() {
                   )}
 
                   {tab === 'history' && (
-                    <div className="space-y-2">
-                      <p className="text-[11px] text-content-tertiary uppercase tracking-wider font-semibold mb-3">Prior Visits</p>
-                      {(demoPriorVisitHistory[item.patientId] || []).length === 0 ? (
-                        <p className="text-[13px] text-content-tertiary text-center py-6">No prior visit history found</p>
-                      ) : (
-                        (demoPriorVisitHistory[item.patientId] || []).map((visit, i) => (
-                          <div key={i} className="bg-surface-elevated rounded-lg p-3 border border-separator">
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="text-[12px] font-semibold text-content-primary">{visit.dos}</span>
-                              <span className={`text-[11px] px-2 py-0.5 rounded-pill font-medium ${
-                                visit.claimStatus === 'Paid' ? 'bg-emerald-500/10 text-emerald-600' :
-                                visit.claimStatus === 'Denied' ? 'bg-red-500/10 text-red-600' :
-                                'bg-amber-500/10 text-amber-600'
-                              }`}>{visit.claimStatus}</span>
-                            </div>
-                            <p className="text-[11px] text-content-secondary">{visit.provider}</p>
-                            <div className="flex gap-2 mt-1.5 flex-wrap">
-                              {visit.icdCodes.map(c => <span key={c} className="text-[10px] font-mono bg-blue-500/10 text-blue-600 px-1.5 py-0.5 rounded">{c}</span>)}
-                              {visit.cptCodes.map(c => <span key={c} className="text-[10px] font-mono bg-purple-500/10 text-purple-600 px-1.5 py-0.5 rounded">{c}</span>)}
-                            </div>
-                          </div>
-                        ))
-                      )}
+                    <div className='text-center py-8 text-xs text-content-secondary'>
+                      Prior visit history — available Sprint 2
                     </div>
                   )}
                 </div>
