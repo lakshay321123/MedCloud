@@ -334,6 +334,7 @@ function CampaignLauncherTab() {
   const [type, setType] = useState('Payer Status Check')
   const [schedule, setSchedule] = useState<'now' | 'daily' | 'weekly'>('now')
   const [selectedDays, setSelectedDays] = useState<string[]>(['Mon', 'Wed', 'Fri'])
+  const [scheduleTime, setScheduleTime] = useState('09:00')
   const estCalls = type === 'Payer Status Check' ? 12 : type === 'Patient Balance Reminder' ? 27 : type === 'Payer Appeal Follow-up' ? 6 : 18
 
   return (
@@ -400,7 +401,7 @@ function CampaignLauncherTab() {
             ))}
           </div>
           {schedule === 'daily' && (
-            <input type="time" defaultValue="09:00" className="mt-2 bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" />
+            <input type="time" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} className="mt-2 bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" />
           )}
           {schedule === 'weekly' && (
             <div className="mt-2 flex gap-1">

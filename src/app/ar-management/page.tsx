@@ -7,6 +7,7 @@ import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { TrendingUp, X, Phone, Bot, User, PhoneCall, Plus, AlertTriangle, FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { tfDaysRemaining } from '@/lib/utils/time'
+import { useRouter } from 'next/navigation'
 
 const buckets = [{ l: '0-30', v: 145000, c: 'bg-emerald-500' }, { l: '31-60', v: 98000, c: 'bg-cyan-500' }, { l: '61-90', v: 52000, c: 'bg-amber-500' }, { l: '91-120', v: 28000, c: 'bg-orange-500' }, { l: '120+', v: 12000, c: 'bg-red-500' }]
 const max = Math.max(...buckets.map(b => b.v))
@@ -230,6 +231,7 @@ function ARDrawer({
   onAddCall: (entry: CallLogEntry, followupDate?: string, promisedDate?: string) => void
 }) {
   const { toast } = useToast()
+  const router = useRouter()
   const [drawerTab, setDrawerTab] = useState<'summary' | 'calls' | 'notes' | 'claims'>('summary')
   const [followUpDate, setFollowUpDate] = useState(account.nextFollowup !== '-' ? account.nextFollowup : '')
   const [followUpNote, setFollowUpNote] = useState('')
@@ -332,11 +334,12 @@ function ARDrawer({
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={() => {
                   onUpdateAccount({ lastAction: 'Voice AI call queued', nextFollowup: followUpDate || account.nextFollowup })
-                  toast.success('Voice AI call queued')
+                  toast.success(`Outbound call queued for ${account.payer}`)
                   onClose()
+                  router.push(`/voice-ai?payer=${encodeURIComponent(account.payer)}&patient=${encodeURIComponent(account.patient)}&claim=${account.id}`)
                 }}
                   className="bg-brand/10 text-brand rounded-lg py-2.5 text-xs font-medium hover:bg-brand/20 transition-colors flex items-center justify-center gap-2">
-                  <Phone size={13} /> Queue AI Call
+                  <Phone size={13} /> Voice AI
                 </button>
                 <button onClick={() => setShowCallModal(true)}
                   className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-xs font-medium hover:text-content-primary transition-colors flex items-center justify-center gap-2">
@@ -490,11 +493,70 @@ function ARDrawer({
   )
 }
 
+function InboundCallPanel() {
+  const { toast } = useToast()
+  const [phoneSearch, setPhoneSearch] = useState('')
+  const [found, setFound] = useState<ARAccount | null>(null)
+
+  function lookUp() {
+    const m = initialAccounts.find(a => a.patient.toLowerCase().includes(phoneSearch.toLowerCase()))
+    m ? setFound(m) : toast.warning('No patient found')
+  }
+
+  return (
+    <div className="card p-6 max-w-2xl">
+      <h3 className="text-base font-semibold mb-1">Inbound Patient Call</h3>
+      <p className="text-xs text-content-secondary mb-4">Patient calling in — look up account by name or phone.</p>
+      <div className="flex gap-2 mb-4">
+        <input value={phoneSearch} onChange={e => setPhoneSearch(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && lookUp()}
+          placeholder="Patient name or phone..."
+          className="flex-1 bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] focus:outline-none focus:border-brand/40" />
+        <button onClick={lookUp} className="bg-brand text-white rounded-btn px-4 py-2 text-[13px] font-medium">Look Up</button>
+      </div>
+      {found && (
+        <div className="space-y-3">
+          <div className="bg-brand/5 border border-brand/20 rounded-lg p-4">
+            <div className="flex justify-between mb-3">
+              <div>
+                <p className="font-semibold">{found.patient}</p>
+                <p className="text-xs text-content-secondary">{found.client} · {found.payer}</p>
+              </div>
+              <span className={`text-xs font-bold px-2 py-1 rounded ${found.balance > 0 ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600'}`}>
+                {found.balance > 0 ? `$${found.balance} BALANCE` : 'PAID'}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-xs">
+              <div><span className="text-content-tertiary block">Original</span>${found.original}</div>
+              <div><span className="text-content-tertiary block">Balance</span>${found.balance}</div>
+              <div><span className="text-content-tertiary block">Age</span>{found.age} days</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: '💳 Offer Payment Plan', color: 'bg-brand/10 text-brand border-brand/20', msg: 'Payment plan offered' },
+              { label: '✓ Take Payment', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20', msg: 'Payment collected' },
+              { label: '⚠ Log Dispute', color: 'bg-amber-500/10 text-amber-600 border-amber-500/20', msg: 'Dispute submitted' },
+              { label: '📋 Log & Callback', color: 'bg-surface-elevated border-separator text-content-secondary', msg: 'Call logged' },
+            ].map(b => (
+              <button key={b.label} onClick={() => toast.success(b.msg)}
+                className={`${b.color} rounded-lg py-2.5 text-xs font-medium border hover:opacity-80 transition-opacity`}>
+                {b.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ARManagementPage() {
   const { selectedClient } = useApp()
   const [accounts, setAccounts] = useState<ARAccount[]>(initialAccounts)
   const [callHistory, setCallHistory] = useState<Record<string, CallLogEntry[]>>(initialCallHistory)
   const [selected, setSelected] = useState<ARAccount | null>(null)
+  const [callMode, setCallMode] = useState<'accounts' | 'inbound'>('accounts')
 
   const filtered = accounts.filter(a => !selectedClient || a.client.includes(selectedClient.name.split(' ')[0]))
 
@@ -516,20 +578,51 @@ export default function ARManagementPage() {
     updateAccount(accountId, updates)
   }
 
+  const totalAR = accounts.reduce((s, a) => s + a.balance, 0)
+  const followupsDue = accounts.filter(a =>
+    a.balance > 0 && a.nextFollowup !== '-' && a.nextFollowup <= new Date().toISOString().slice(0,10)
+  ).length
+  const avgAge = Math.round(
+    accounts.filter(a => a.balance > 0).reduce((s, a) => s + a.age, 0) /
+    Math.max(1, accounts.filter(a => a.balance > 0).length)
+  )
+  const computedBuckets = [
+    { l: '0-30',   v: accounts.filter(a => a.age <= 30).reduce((s,a) => s+a.balance,0),  c: 'bg-emerald-500' },
+    { l: '31-60',  v: accounts.filter(a => a.age>30&&a.age<=60).reduce((s,a) => s+a.balance,0), c: 'bg-cyan-500' },
+    { l: '61-90',  v: accounts.filter(a => a.age>60&&a.age<=90).reduce((s,a) => s+a.balance,0), c: 'bg-amber-500' },
+    { l: '91-120', v: accounts.filter(a => a.age>90&&a.age<=120).reduce((s,a) => s+a.balance,0), c: 'bg-orange-500' },
+    { l: '120+',   v: accounts.filter(a => a.age>120).reduce((s,a) => s+a.balance,0),  c: 'bg-red-500' },
+  ]
+  const computedMax = Math.max(...computedBuckets.map(b => b.v), 1)
+  const workedToday = Object.values(callHistory).flat()
+    .filter(c => c.date?.startsWith(new Date().toISOString().slice(0,10))).length
+
   return (
     <ModuleShell title="A/R Management" subtitle="Accounts receivable follow-up and collections">
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Total A/R" value="$335K" icon={<TrendingUp size={20} />} />
-        <KPICard label="Worked Today" value="28" sub="+6" trend="up" />
-        <KPICard label="Follow-ups Due" value="42" />
-        <KPICard label="Avg Days Outstanding" value="34.2" />
+        <KPICard label="Total A/R" value={`$${(totalAR/1000).toFixed(0)}K`} icon={<TrendingUp size={20} />} />
+        <KPICard label="Worked Today" value={String(workedToday)} trend="up" />
+        <KPICard label="Follow-ups Due" value={String(followupsDue)} />
+        <KPICard label="Avg Days Outstanding" value={`${avgAge}`} />
       </div>
+
+      {/* Tab bar */}
+      <div className="flex gap-1 mb-4 border-b border-separator">
+        {[{ id: 'accounts', label: 'AR Accounts' }, { id: 'inbound', label: '📞 Inbound Call' }].map(t => (
+          <button key={t.id} onClick={() => setCallMode(t.id as 'accounts' | 'inbound')}
+            className={`px-4 py-2.5 text-[13px] font-medium transition-colors ${callMode === t.id ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {callMode === 'inbound' ? <InboundCallPanel /> : (<>
       <div className="card p-4 mb-4">
         <h3 className="text-xs font-semibold text-content-secondary mb-2">AGING BUCKETS</h3>
-        <div className="flex items-end gap-4 h-28 px-4">{buckets.map(b => (
+        <div className="flex items-end gap-4 h-28 px-4">{computedBuckets.map(b => (
           <div key={b.l} className="flex-1 flex flex-col items-center gap-1">
             <span className="text-[10px] text-content-secondary">${(b.v / 1000).toFixed(0)}K</span>
-            <div className={`w-full ${b.c} rounded-t transition-all`} style={{ height: `${(b.v / max) * 90}px` }} />
+            <div className={`w-full ${b.c} rounded-t transition-all`} style={{ height: `${(b.v / computedMax) * 90}px` }} />
             <span className="text-[10px] text-content-secondary">{b.l} days</span>
           </div>
         ))}</div>
@@ -592,6 +685,7 @@ export default function ARManagementPage() {
           onAddCall={(entry, followupDate, promisedDate) => addCallEntry(selected.id, entry, followupDate, promisedDate)}
         />
       )}
+      </>)}
     </ModuleShell>
   )
 }

@@ -5,13 +5,22 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { FileText, DollarSign, Clock, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react'
+import { useApp } from '@/lib/context'
 
 export default function WatchTrackPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const { currentUser, selectedClient, country } = useApp()
 
-  const myClaims = demoClaims.filter(c => c.clientId === 'org-102')
+  const myClaims = demoClaims.filter(c => {
+    if (selectedClient) return c.clientId === selectedClient.id
+    if (currentUser.role === 'client' || currentUser.role === 'provider')
+      return c.clientId === currentUser.organization_id
+    if (country === 'uae') return ['org-101','org-104'].includes(c.clientId)
+    if (country === 'usa') return ['org-102','org-103'].includes(c.clientId)
+    return true
+  })
   const filtered = myClaims.filter(c => {
     if (statusFilter && c.status !== statusFilter) return false
     if (search) { const s = search.toLowerCase(); return c.patientName.toLowerCase().includes(s) || c.id.toLowerCase().includes(s) || c.payer.toLowerCase().includes(s) }

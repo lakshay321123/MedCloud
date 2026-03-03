@@ -55,6 +55,7 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
     addressLine1: '', addressLine2: '', city: '', stateEmirate: '', zip: '',
     ssn: '', driversLicense: '', emiratesId: '', passport: '',
     insurancePayer: '', policyNo: '', groupNo: '', memberId: '', copay: '', relationship: '', subscriberName: '', subscriberDob: '',
+    insuranceCardFront: '', insuranceCardBack: '',
     secPayer: '', secPolicyNo: '', secMemberId: '',
     ecName: '', ecRelationship: '', ecPhone: '',
     empStatus: '', employer: '', occupation: '', workPhone: '',
@@ -180,9 +181,39 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
                   <div><label className="text-xs text-content-secondary block mb-1">Subscriber Name (if not self)</label><input className={ic} value={form.subscriberName} onChange={e => upd('subscriberName', e.target.value)} /></div>
                 </div>
                 <div><label className="text-xs text-content-secondary block mb-1">Subscriber DOB (if not self)</label><input type="date" className={ic} value={form.subscriberDob} onChange={e => upd('subscriberDob', e.target.value)} /></div>
-                <button type="button" onClick={() => toast.info('Camera / file picker — attach front and back of insurance card')} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-2.5 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2">
-                  <Upload size={14}/> Scan Insurance Card (Front &amp; Back)
-                </button>
+                <div className="grid grid-cols-2 gap-3">
+                  {(['Front', 'Back'] as const).map(side => {
+                    const key = `insuranceCard${side}` as 'insuranceCardFront' | 'insuranceCardBack'
+                    const preview = form[key] as string | undefined
+                    return (
+                      <div key={side}>
+                        <label className="text-[11px] text-content-tertiary block mb-1">Card {side}</label>
+                        {preview ? (
+                          <div className="relative w-full h-24 rounded-lg overflow-hidden border border-separator">
+                            <img src={preview} alt={`Card ${side}`} className="w-full h-full object-cover" />
+                            <button type="button" onClick={() => upd(key, '')}
+                              className="absolute top-1 right-1 bg-black/60 text-white rounded px-1.5 py-0.5 text-[10px] hover:bg-red-500/80">
+                              Remove
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="block w-full border border-dashed border-separator rounded-lg py-3 text-center text-xs text-content-secondary cursor-pointer hover:border-brand/30 hover:text-brand transition-all">
+                            <Upload size={14} className="mx-auto mb-1" />
+                            Upload {side}
+                            <input type="file" accept="image/*,application/pdf" className="hidden"
+                              onChange={e => {
+                                const file = e.target.files?.[0]
+                                if (!file) return
+                                const reader = new FileReader()
+                                reader.onload = ev => upd(key, ev.target?.result as string)
+                                reader.readAsDataURL(file)
+                              }} />
+                          </label>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
           </div>

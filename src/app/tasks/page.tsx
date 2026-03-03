@@ -7,6 +7,7 @@ import { useToast } from '@/components/shared/Toast'
 import { ListChecks, X, Plus } from 'lucide-react'
 import { useTasks } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
+import { UAE_CLIENT_NAMES, US_CLIENT_NAMES } from '@/lib/utils/region'
 
 const initialTasks = [
   { id: 'TSK-001', type: 'Missing Docs', entity: 'John Smith — visit Feb 25', client: 'Irvine Family Practice', priority: 'medium' as const, status: 'open' as const, assigned: 'Sarah K.', due: '2026-03-03', sla: 'green' },
@@ -114,6 +115,7 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
 
 export default function TasksPage() {
   const { toast } = useToast()
+  const { country, selectedClient } = useApp()
   const [selected, setSelected] = useState<Task | null>(null)
   const [showCreate, setShowCreate] = useState(false)
 
@@ -140,7 +142,13 @@ export default function TasksPage() {
 
   const slaColor = (s: string) => s === 'green' ? 'bg-emerald-500' : s === 'yellow' ? 'bg-amber-500' : 'bg-red-500'
 
-  const displayTasks = apiTasks.length > 0 ? apiTasks : taskList
+  const rawTasks = apiTasks.length > 0 ? apiTasks : taskList
+  const displayTasks = rawTasks.filter(t => {
+    if (selectedClient) return t.client === selectedClient.name
+    if (country === 'uae') return UAE_CLIENT_NAMES.includes(t.client as typeof UAE_CLIENT_NAMES[number]) || !t.client
+    if (country === 'usa') return US_CLIENT_NAMES.includes(t.client as typeof US_CLIENT_NAMES[number]) || !t.client
+    return true
+  })
 
   return (
     <ModuleShell
@@ -153,7 +161,7 @@ export default function TasksPage() {
       }
     >
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Open Tasks" value={apiTaskResult ? (apiTaskResult.meta?.total ?? displayTasks.filter(t=>t.status!=='completed').length) : taskList.filter(t=>t.status!=='completed').length} icon={<ListChecks size={20}/>}/>
+        <KPICard label="Open Tasks" value={displayTasks.filter(t=>t.status!=='completed').length} icon={<ListChecks size={20}/>}/>
         <KPICard label="In Progress" value={displayTasks.filter(t=>t.status==='in_progress').length}/>
         <KPICard label="Blocked" value={displayTasks.filter(t=>t.status==='blocked').length} trend="down"/>
         <KPICard label="SLA Breached" value={displayTasks.filter(t=>t.sla==='red').length} trend="down"/>

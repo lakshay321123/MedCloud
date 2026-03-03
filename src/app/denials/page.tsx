@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useApp } from '@/lib/context'
 import { demoClaims } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
@@ -9,6 +9,7 @@ import { ShieldAlert, FileText, AlertTriangle, Send } from 'lucide-react'
 import { useToast } from '@/components/shared/Toast'
 import { useDenials } from '@/lib/hooks'
 import { ErrorBanner } from '@/components/shared/ApiStates'
+import { useRouter } from 'next/navigation'
 
 // ─── Demo denials (US) ────────────────────────────────────────────────────
 const demoDenialsUS = [
@@ -91,6 +92,7 @@ type DenialRow = {
 export default function DenialsPage() {
   const { selectedClient, country } = useApp()
   const { toast } = useToast()
+  const router = useRouter()
 
   const { data: apiResult, error: apiError, refetch } = useDenials({ limit: 50 })
 
@@ -163,6 +165,10 @@ export default function DenialsPage() {
   const [appealLevel, setAppealLevel] = useState<'L1' | 'L2' | 'L3'>('L1')
   const [appealTexts, setAppealTexts] = useState<Record<string, string>>({})
 
+  useEffect(() => {
+    if (!selected && denials.length > 0) setSelected(denials[0].id)
+  }, [denials]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const selectedDenial = denials.find(x => x.id === selected)
 
   const getAppealText = (d: DenialRow) => {
@@ -174,9 +180,13 @@ export default function DenialsPage() {
     <ModuleShell title="Denials &amp; Appeals" subtitle="Manage denied claims and appeal workflows">
       {apiError && <ErrorBanner error={apiError} onRetry={refetch} />}
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Open Denials" value={denials.filter(d => d.status === 'denied').length} icon={<ShieldAlert size={20} />} />
-        <KPICard label="In Appeal" value={denials.filter(d => d.status === 'appealed').length} />
-        <KPICard label="Appeal Success Rate" value="68%" trend="up" sub="+4%" />
+        <KPICard label="Open Denials" value={denials.filter(d => ['denied','open','pending','new'].includes(d.status)).length} icon={<ShieldAlert size={20} />} />
+        <KPICard label="In Appeal" value={denials.filter(d => ['appealed','appeal_pending','in_appeal'].includes(d.status)).length} />
+        <KPICard label="Appeal Success Rate" value={(() => {
+          const paid = denials.filter(d => d.status === 'paid').length
+          const appealed = denials.filter(d => ['appealed','appeal_pending','in_appeal'].includes(d.status)).length
+          return paid > 0 ? `${Math.round((paid / Math.max(1, appealed)) * 100)}%` : '—'
+        })()} trend="up" sub="+4%" />
         <KPICard label="Avg Resolution" value="18 days" />
       </div>
       <div className="grid grid-cols-2 gap-4 h-[calc(100vh-380px)]">
@@ -232,11 +242,20 @@ export default function DenialsPage() {
               {selectedDenial.source === 'payment_posting' && <div className="text-xs text-content-secondary mb-3">EOB Reference: ERA-001, Line EOB-004</div>}
               <div className="mb-3">
                 <span className="text-xs text-content-secondary block mb-1">Related Documents</span>
-                <div className="flex gap-2">
-                  {['Original Claim', 'Clinical Note', 'Denial Letter'].map(doc => (
-                    <div key={doc} className="bg-surface-elevated border border-separator rounded px-2 py-1 text-[10px] text-content-secondary flex items-center gap-1">
-                      <FileText size={10} />{doc}
-                    </div>
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { label: 'Original Claim', path: '/claims' },
+                    ...(selectedDenial.source === 'payment_posting' ? [{ label: 'ERA/EOB', path: '/payment-posting' }] : []),
+                    { label: 'Clinical Note', path: '/documents' },
+                    { label: 'Denial Letter', path: '/documents' },
+                  ].map(doc => (
+                    <button
+                      key={doc.label}
+                      onClick={() => router.push(doc.path)}
+                      className="bg-surface-elevated border border-separator rounded px-2 py-1 text-[10px] text-content-secondary flex items-center gap-1 hover:border-brand/30 hover:text-brand transition-colors cursor-pointer"
+                    >
+                      <FileText size={10} />{doc.label}
+                    </button>
                   ))}
                 </div>
               </div>
