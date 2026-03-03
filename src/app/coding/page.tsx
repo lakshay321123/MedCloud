@@ -225,40 +225,28 @@ export default function CodingPage() {
   async function generateCDIQuery() {
     if (!item) return
     setQueryGenerating(true)
-    const lowConfidenceCodes = [
-      ...item.aiSuggestedIcd.filter(c => (c.confidence ?? 100) < 75).map(c => `ICD: ${c.code} — ${c.desc}`),
-      ...item.aiSuggestedCpt.filter(c => (c.confidence ?? 100) < 75).map(c => `CPT: ${c.code} — ${c.desc}`),
+    const lowCodes = [
+      ...item.aiSuggestedIcd.filter(c => (c.confidence ?? 100) < 75).map(c => `ICD ${c.code} (${c.desc})`),
+      ...item.aiSuggestedCpt.filter(c => (c.confidence ?? 100) < 75).map(c => `CPT ${c.code} (${c.desc})`),
     ]
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const parts = [
+        'You are a CDI specialist. Write a brief physician query (2-3 sentences) asking for documentation clarification.',
+        `Patient: ${item.patientName} | Provider: ${item.provider} | DOS: ${item.dos}`,
+        `Assessment: ${item.visitNote.assessment}`,
+        `Plan: ${item.visitNote.plan}`,
+        lowCodes.length > 0 ? `Codes needing clarification: ${lowCodes.join(', ')}` : 'Request diagnostic specificity.',
+        'Be concise and professional. Ask what specific documentation would support more precise coding.',
+      ]
+      const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 500,
-          messages: [{
-            role: 'user',
-            content: `You are a Clinical Documentation Improvement (CDI) specialist. Write a concise, professional physician query.
-
-Patient: ${item.patientName}
-Provider: ${item.provider}
-Date of Service: ${item.dos}
-Specialty: ${item.providerSpecialty || 'General'}
-
-SOAP Note Summary:
-Subjective: ${item.visitNote.subjective}
-Assessment: ${item.visitNote.assessment}
-Plan: ${item.visitNote.plan}
-
-${lowConfidenceCodes.length > 0 ? `Low-confidence codes requiring clarification:\n${lowConfidenceCodes.join('\n')}` : 'Request clarification on the specificity of diagnoses documented.'}
-
-Write a brief, respectful CDI query asking the provider for additional documentation specificity. Be specific about what information is needed and why it matters for accurate coding. 2-3 sentences max.`
-          }]
-        })
+        body: JSON.stringify({ prompt: parts.join('\n'), max_tokens: 300 }),
       })
-      const data = await response.json()
-      const text = data.content?.[0]?.text
-      if (text) setQueryText(text)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      if (data.text) setQueryText(data.text)
       toast.success('AI query generated')
     } catch {
       toast.error('AI generation failed')

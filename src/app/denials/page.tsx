@@ -86,41 +86,31 @@ export default function DenialsPage() {
     const key = `${denial.id}-${appealLevel}`
     setAiGenerating(true)
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const levelLabel = appealLevel === 'L1' ? 'First Level' : appealLevel === 'L2' ? 'Second Level' : 'External Review'
+      const prompt = [
+        `You are an expert medical billing appeals specialist. Write a professional ${levelLabel} appeal letter.`,
+        `Claim ID: ${denial.id}`,
+        `Patient: ${denial.patientName}`,
+        `Payer: ${denial.payer}`,
+        `Provider: ${denial.clientName}`,
+        `Date of Service: ${denial.dos}`,
+        `Denial Reason: ${denial.denialReason}`,
+        `CARC: ${denial.carc_description || 'N/A'}`,
+        `RARC: ${denial.rarc_description || 'N/A'}`,
+        `Appeal Level: ${appealLevel}`,
+        '',
+        'Write a compelling professional appeal letter addressing the denial. Cite medical necessity. Format as a business letter. Output the letter text only.',
+      ].join('\n')
+
+      const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{
-            role: 'user',
-            content: `You are an expert medical billing appeals specialist. Write a professional ${appealLevel === 'L1' ? 'First Level' : appealLevel === 'L2' ? 'Second Level' : 'External Review'} appeal letter.
-
-Claim details:
-- Claim ID: ${denial.id}
-- Patient: ${denial.patientName}
-- Payer: ${denial.payer}
-- Provider/Client: ${denial.clientName}
-- Date of Service: ${denial.dos}
-- Denial Reason: ${denial.denialReason}
-- CARC: ${denial.carc_description || 'N/A'}
-- RARC: ${denial.rarc_description || 'N/A'}
-- Appeal Level: ${appealLevel}
-
-Write a compelling, professional appeal letter that:
-1. References all claim details accurately
-2. Addresses the specific denial reason with appropriate counterarguments
-3. Cites medical necessity where applicable
-4. Uses proper medical billing appeal language
-5. Is formatted as a formal business letter
-
-Output only the letter text, no preamble.`
-          }]
-        })
+        body: JSON.stringify({ prompt, max_tokens: 1000 }),
       })
-      const data = await response.json()
-      const text = data.content?.[0]?.text || buildAppealLetter(denial, appealLevel)
-      setAppealTexts(prev => ({ ...prev, [key]: text }))
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setAppealTexts(prev => ({ ...prev, [key]: data.text || buildAppealLetter(denial, appealLevel) }))
       toast.success('AI appeal letter generated')
     } catch {
       toast.error('AI generation failed — using template')
