@@ -322,7 +322,8 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
   const { toast } = useToast()
   const [tab, setTab] = useState<DetailTab>('demographics')
   const [editMode, setEditMode] = useState(false)
-  const isUAE = country === 'uae' || !!patient.emiratesId
+  const [localPatient, setLocalPatient] = useState(patient)
+  const isUAE = country === 'uae' || !!localPatient.emiratesId
   const profileComplete = computeProfileComplete(patient)
 
   const [editForm, setEditForm] = useState({
@@ -340,7 +341,18 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
   const tabs: DetailTab[] = ['demographics', 'address', 'insurance', 'emergency', 'employment', 'documents', 'visits', 'messages']
 
   function handleSave() {
-    toast.success('Patient record updated successfully')
+    setLocalPatient(prev => ({
+      ...prev,
+      firstName: editForm.firstName,
+      lastName: editForm.lastName,
+      dob: editForm.dob,
+      gender: editForm.gender,
+      phone: editForm.phone,
+      email: editForm.email,
+      emiratesId: editForm.emiratesId,
+      ssn: editForm.ssn,
+    }))
+    toast.success('Patient record updated')
     setEditMode(false)
   }
 
@@ -352,10 +364,10 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
         <div className="flex items-center justify-between p-4 border-b border-separator shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center text-brand font-bold text-sm">
-              {patient.firstName[0]}{patient.lastName[0]}
+              {localPatient.firstName[0]}{localPatient.lastName[0]}
             </div>
             <div>
-              <h2 className="font-semibold text-content-primary">{patient.firstName} {patient.lastName}</h2>
+              <h2 className="font-semibold text-content-primary">{localPatient.firstName} {localPatient.lastName}</h2>
               <span className="text-xs text-content-secondary">{toMRN(patient.id)} • {isUAE ? '🇦🇪 UAE' : '🇺🇸 US'}</span>
             </div>
           </div>
@@ -426,25 +438,25 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
               ) : (
                 <>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><span className="text-xs text-content-secondary block">Name</span><span>{patient.firstName} {patient.middleName ? patient.middleName + ' ' : ''}{patient.lastName}</span></div>
-                    <div><span className="text-xs text-content-secondary block">DOB</span><span>{formatDOB(patient.dob)}</span></div>
-                    <div><span className="text-xs text-content-secondary block">Gender</span><span>{patient.gender || '—'}</span></div>
-                    <div><span className="text-xs text-content-secondary block">Marital Status</span><span>{patient.maritalStatus || '—'}</span></div>
-                    <div><span className="text-xs text-content-secondary block">Phone</span><span>{patient.phone}</span></div>
-                    {patient.secondaryPhone && <div><span className="text-xs text-content-secondary block">Secondary Phone</span><span>{patient.secondaryPhone}</span></div>}
-                    <div><span className="text-xs text-content-secondary block">Email</span><span>{patient.email || '—'}</span></div>
-                    <div><span className="text-xs text-content-secondary block">Preferred Language</span><span>{patient.preferredLanguage || '—'}</span></div>
-                    {isUAE && <div><span className="text-xs text-content-secondary block">Emirates ID</span><span>{patient.emiratesId || '—'}</span></div>}
-                    {!isUAE && <div><span className="text-xs text-content-secondary block">SSN</span><span>{patient.ssn || '—'}</span></div>}
-                    {!isUAE && patient.driversLicense && <div><span className="text-xs text-content-secondary block">Driver&apos;s License</span><span>{patient.driversLicense}</span></div>}
+                    <div><span className="text-xs text-content-secondary block">Name</span><span>{localPatient.firstName} {localPatient.middleName ? localPatient.middleName + ' ' : ''}{localPatient.lastName}</span></div>
+                    <div><span className="text-xs text-content-secondary block">DOB</span><span>{formatDOB(localPatient.dob)}</span></div>
+                    <div><span className="text-xs text-content-secondary block">Gender</span><span>{localPatient.gender || '—'}</span></div>
+                    <div><span className="text-xs text-content-secondary block">Marital Status</span><span>{localPatient.maritalStatus || '—'}</span></div>
+                    <div><span className="text-xs text-content-secondary block">Phone</span><span>{localPatient.phone}</span></div>
+                    {localPatient.secondaryPhone && <div><span className="text-xs text-content-secondary block">Secondary Phone</span><span>{localPatient.secondaryPhone}</span></div>}
+                    <div><span className="text-xs text-content-secondary block">Email</span><span>{localPatient.email || '—'}</span></div>
+                    <div><span className="text-xs text-content-secondary block">Preferred Language</span><span>{localPatient.preferredLanguage || '—'}</span></div>
+                    {isUAE && <div><span className="text-xs text-content-secondary block">Emirates ID</span><span>{localPatient.emiratesId || '—'}</span></div>}
+                    {!isUAE && <div><span className="text-xs text-content-secondary block">SSN</span><span>{localPatient.ssn || '—'}</span></div>}
+                    {!isUAE && localPatient.driversLicense && <div><span className="text-xs text-content-secondary block">Driver&apos;s License</span><span>{localPatient.driversLicense}</span></div>}
                   </div>
-                  {patient.allergies && patient.allergies.length > 0 && (
+                  {localPatient.allergies && localPatient.allergies.length > 0 && (
                     <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-2 text-xs">
-                      <span className="text-content-secondary">Allergies: </span>{patient.allergies.join(', ')}
+                      <span className="text-content-secondary">Allergies: </span>{localPatient.allergies.join(', ')}
                     </div>
                   )}
-                  {patient.noShowCount && patient.noShowCount >= 3 && (
-                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2 text-xs text-red-600 dark:text-red-400">⚠ {patient.noShowCount} no-shows on record</div>
+                  {localPatient.noShowCount && localPatient.noShowCount >= 3 && (
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2 text-xs text-red-600 dark:text-red-400">⚠ {localPatient.noShowCount} no-shows on record</div>
                   )}
                 </>
               )}

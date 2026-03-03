@@ -24,7 +24,7 @@ const facilityRoles: UserRole[] = ['provider', 'client']
 const backofficeRoles: UserRole[] = ['admin', 'director', 'supervisor', 'manager', 'coder', 'biller', 'ar_team', 'posting_team']
 
 export default function Topbar() {
-  const { theme, setTheme, language, setLanguage, currentUser, setRole, selectedClient, setSelectedClient, clients, country, portalType } = useApp()
+  const { theme, setTheme, language, setLanguage, currentUser, setRole, selectedClient, setSelectedClient, clients, country, portalType, isScribeRecording } = useApp()
   const isStaff = backofficeRoles.includes(currentUser.role)
   const router = useRouter()
 
@@ -33,6 +33,12 @@ export default function Topbar() {
   const searchRef = useRef<HTMLDivElement>(null)
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
+
+  const notifications = [
+    { title: 'CLM-4504 appeal deadline in 2 days', time: '1h ago', type: 'urgent', href: '/denials' },
+    { title: 'ERA from BCBS ready to post', time: '3h ago', type: 'info', href: '/payment-posting' },
+    { title: 'Dr. Patel credentials expiring', time: '1d ago', type: 'warning', href: '/credentialing' },
+  ]
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -80,6 +86,14 @@ export default function Topbar() {
   }
 
   return (
+    <>
+    {isScribeRecording && (
+      <div className='h-9 bg-red-500 flex items-center justify-center gap-3 px-4 z-50'>
+        <span className='w-2 h-2 rounded-full bg-white animate-pulse' />
+        <span className='text-white text-xs font-semibold'>AI Scribe is recording</span>
+        <a href='/ai-scribe' className='ml-2 text-xs font-bold text-white underline'>Return to Scribe</a>
+      </div>
+    )}
     <header className="h-16 bg-surface-secondary border-b border-separator flex items-center px-6 gap-4 shrink-0">
       {/* Search — always-visible border that turns brand on focus */}
       <div className="flex-1 max-w-md relative" ref={searchRef}>
@@ -157,23 +171,21 @@ export default function Topbar() {
 
         {/* Notification bell */}
         <div className="relative" ref={notifRef}>
-          <button onClick={() => setNotifOpen(p => !p)}
-            className="p-2 rounded-btn hover:bg-surface-elevated text-content-secondary relative transition-colors">
+          <button onClick={() => setNotifOpen(o => !o)} className="p-2 rounded-btn hover:bg-surface-elevated text-content-secondary relative transition-colors">
             <Bell size={18} />
-            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center">3</span>
+            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center">{notifications.length}</span>
           </button>
           {notifOpen && (
-            <div className="absolute right-0 top-full mt-1 w-80 bg-surface-secondary border border-separator rounded-card shadow-2xl z-50 overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-separator text-xs font-semibold text-content-secondary uppercase tracking-wider">Notifications</div>
-              {[
-                { title: 'CLM-4504 appeal deadline in 2 days', time: '1h ago', type: 'urgent' },
-                { title: 'ERA from BCBS ready to post', time: '3h ago', type: 'info' },
-                { title: 'Dr. Patel credentials expiring in 30 days', time: '1d ago', type: 'warning' },
-              ].map((n, i) => (
-                <button key={i} onClick={() => setNotifOpen(false)}
-                  className="w-full text-left px-4 py-3 hover:bg-surface-elevated border-b border-separator last:border-0">
-                  <p className="text-sm text-content-primary">{n.title}</p>
-                  <p className="text-xs text-content-tertiary mt-0.5">{n.time}</p>
+            <div className="absolute right-0 top-full mt-2 w-72 bg-surface-secondary border border-separator rounded-card shadow-2xl z-50 overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-separator text-xs font-semibold text-content-secondary uppercase tracking-wide">Notifications</div>
+              {notifications.map((n, i) => (
+                <button key={i} onClick={() => { setNotifOpen(false); router.push(n.href) }}
+                  className="w-full text-left px-4 py-3 hover:bg-surface-elevated border-b border-separator last:border-0 flex items-start gap-3 transition-colors">
+                  <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.type === 'urgent' ? 'bg-red-500' : n.type === 'warning' ? 'bg-amber-500' : 'bg-brand'}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] text-content-primary leading-snug">{n.title}</p>
+                    <p className="text-[11px] text-content-tertiary mt-0.5">{n.time}</p>
+                  </div>
                 </button>
               ))}
             </div>
@@ -198,5 +210,6 @@ export default function Topbar() {
         </button>
       </div>
     </header>
+    </>
   )
 }

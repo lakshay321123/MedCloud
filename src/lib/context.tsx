@@ -25,6 +25,8 @@ interface AppState {
   setSelectedClient: (c: ClientOrg | null) => void
   setCountry: (c: 'uae' | 'usa') => void
   setPortalType: (p: PortalType) => void
+  isScribeRecording: boolean
+  setIsScribeRecording: (v: boolean) => void
 }
 
 function getInitialUser(): User {
@@ -53,6 +55,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [portalType, setPortalTypeState] = useState<PortalType | null>(
     () => (typeof window !== 'undefined' ? (localStorage.getItem('cosentus_portal_type') as PortalType) : null)
   )
+  const [isScribeRecording, setIsScribeRecording] = useState(false)
   // TODO: Sprint 2 — derive orgId from Cognito JWT claims after authentication
   // For Sprint 1 dev mode, hardcode to seeded organization UUID
   const orgId = 'a0000000-0000-0000-0000-000000000001'
@@ -120,6 +123,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       orgId,
       setTheme, setLanguage, toggleSidebar, setRole, setSelectedClient,
       setCountry, setPortalType,
+      isScribeRecording, setIsScribeRecording,
     }}>
       {children}
     </AppContext.Provider>

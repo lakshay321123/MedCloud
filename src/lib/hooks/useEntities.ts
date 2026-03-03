@@ -6,16 +6,17 @@ import type { ApiListParams, ApiListResponse } from '@/lib/api-client'
 import type { ClaimStatus, AppointmentStatus, TaskStatus, Priority } from '@/types'
 
 // ── Shared helper ─────────────────────────────────────────────────────────────
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 function useClientParams(extra?: ApiListParams): ApiListParams {
   const { selectedClient, orgId, currentUser } = useApp()
   // Provider and client roles are always scoped to their own organization
   const isClinicUser = currentUser.role === 'client' || currentUser.role === 'provider'
-  const clientId = isClinicUser
-    ? currentUser.organization_id   // fixed to their org
-    : selectedClient?.id            // backoffice picks from dropdown
+  const rawClientId = isClinicUser ? currentUser.organization_id : selectedClient?.id
+  const clientId = rawClientId && UUID_REGEX.test(rawClientId) ? rawClientId : undefined
   return {
     org_id: orgId,
-    ...(clientId ? { client_id: clientId } : {}),
+    ...(clientId !== undefined ? { client_id: clientId } : {}),
     ...extra,
   }
 }

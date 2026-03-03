@@ -216,7 +216,7 @@ function BillerDashboard() {
             <p className="text-[13px] font-semibold text-amber-600">{chargeLagCount} appointments completed 48h+ with no claim</p>
             <p className="text-[12px] text-content-secondary">Mar 1 — Dr. Martinez × 2, Dr. Patel × 1</p>
           </div>
-          <a href="/portal/appointments" className="text-[12px] text-brand font-medium shrink-0">Review →</a>
+          <a href="/claims" className="text-[12px] text-brand font-medium shrink-0">Review →</a>
         </div>
       )}
       <div className="grid grid-cols-2 gap-4">

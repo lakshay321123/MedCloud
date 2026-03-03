@@ -84,7 +84,7 @@ function MiniCalendar({ selectedDate, onSelect }: { selectedDate: string; onSele
 const eligibilityConfig = {
   verified: { color: 'bg-emerald-500', label: '✓ Verified' },
   inactive: { color: 'bg-amber-500', label: '⚠ Inactive' },
-  not_checked: { color: 'bg-gray-400', label: '? Not Checked' },
+  not_checked: { color: 'bg-gray-400', label: 'Not Verified' },
 }
 
 // ─── Appointment Drawer ───────────────────────────────────────────────────
@@ -226,7 +226,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
               Check In
             </button>
           )}
-          {['booked','confirmed','checked_in'].includes(appt.status) && (
+          {['booked','confirmed'].includes(appt.status) && (
             <button onClick={() => { toast.warning(`${appt.patientName} marked no-show`); onClose() }}
               className="flex-1 border border-separator rounded-lg py-2.5 text-sm text-content-secondary hover:text-red-500 hover:border-red-500/30 transition-colors">
               No Show
@@ -381,7 +381,7 @@ export default function AppointmentsPage() {
                     <button onClick={() => checkIn(a.id, a.patientName)}
                       className="text-[10px] px-2.5 py-1.5 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 rounded hover:bg-cyan-500/20 transition-colors">Check In</button>
                   )}
-                  {['booked','confirmed','checked_in'].includes(currentStatus) && (
+                  {['booked','confirmed'].includes(currentStatus) && (
                     <button onClick={() => markNoShow(a.id, a.patientName)}
                       className="text-[10px] px-2.5 py-1.5 border border-separator text-content-secondary rounded hover:text-red-500 hover:border-red-500/30 transition-colors">No Show</button>
                   )}

@@ -33,7 +33,13 @@ type UIState = 'queue' | 'select_patient' | 'review_patient' | 'recording' | 'pr
 
 function ProviderView() {
   const { toast } = useToast()
+  const { setIsScribeRecording } = useApp()
   const [uiState, setUiState] = useState<UIState>('queue')
+
+  useEffect(() => {
+    if (uiState !== 'recording') { setIsScribeRecording(false); return }
+    setIsScribeRecording(true)
+  }, [uiState]) // eslint-disable-line react-hooks/exhaustive-deps
   const [selectedVisit, setSelectedVisit] = useState<DemoVisit | null>(null)
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
   const [soap, setSoap] = useState({ s:'', o:'', a:'', p:'' })
@@ -73,6 +79,7 @@ function ProviderView() {
   }, [uiState])
 
   function handleStop() {
+    setIsScribeRecording(false)
     setUiState('processing')
     setLiveTranscript('')
     setTimeout(()=>{
