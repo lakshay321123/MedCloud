@@ -179,6 +179,7 @@ export default function CodingPage() {
       hasSuperbill: demoMatch?.hasSuperbill || false,
       superbillCpt: demoMatch?.superbillCpt,
       priorAuthStatus: demoMatch?.priorAuthStatus || 'not_required',
+      priorAuthNumber: demoMatch?.priorAuthNumber,
     }
   }) || []
 
