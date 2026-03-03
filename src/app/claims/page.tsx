@@ -10,7 +10,9 @@ import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import type { DemoClaim, ClaimTimelineEvent } from '@/lib/demo-data'
 import { useToast } from '@/components/shared/Toast'
 import { useRouter } from 'next/navigation'
-import { useClaims } from '@/lib/hooks'
+import { useClaims, useScrubClaim, useTransitionClaim, useGenerateEDI,
+         useClaimLines, useAddClaimLine, useClaimDiagnoses, useAddClaimDiagnosis,
+         useScrubRules } from '@/lib/hooks'
 import type { ApiClaim } from '@/lib/hooks'
 import type { ClaimStatus } from '@/types'
 import { ErrorBanner } from '@/components/shared/ApiStates'
@@ -23,6 +25,7 @@ import {
 function apiClaimToDemoClaim(c: ApiClaim): DemoClaim {
   return {
     id: c.claim_number || c.id,
+    apiId: c.id,
     patientId: c.patient_id,
     patientName: c.patient_name || `Patient ${c.patient_id}`,
     clientId: c.client_id,
@@ -110,11 +113,18 @@ function ClaimStatusBadge({ status }: { status: string }) {
 }
 
 // ─── Claim Detail Drawer ────────────────────────────────────────────────────
-function ClaimDrawer({ claim, onClose }: { claim: DemoClaim; onClose: () => void }) {
+function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
+  claim: DemoClaim
+  onClose: () => void
+  onRefetch?: () => void
+  apiScrubRules: Array<{ id: string; label: string }>
+}) {
+  const { currentUser } = useApp()
   const [tab, setTab] = useState<'overview' | 'lines' | 'docs' | 'messages' | 'audit' | 'scrub'>('overview')
   const { toast } = useToast()
   const [localMessages, setLocalMessages] = useState(demoMessages.filter(m => m.entityId === claim.id))
   const [msgInput, setMsgInput] = useState('')
+  const [ediOutput, setEdiOutput] = useState<string | null>(null)
 
   // Edit mode state
   const [editMode, setEditMode] = useState(false)
@@ -127,19 +137,90 @@ function ClaimDrawer({ claim, onClose }: { claim: DemoClaim; onClose: () => void
     cptCodes: [...claim.cptCodes],
   })
 
+  // Sprint 2 API hooks — use claim.apiId (raw UUID) when available
+  const claimApiId = claim.apiId || ''
+  const { mutate: scrubClaim, loading: scrubbing } = useScrubClaim(claimApiId)
+  const { mutate: transitionClaim, loading: transitioning } = useTransitionClaim(claimApiId)
+  const { mutate: generateEDI, loading: generatingEDI } = useGenerateEDI(claimApiId)
+  const { data: linesData, refetch: refetchLines } = useClaimLines(claimApiId || null)
+  const { data: dxData, refetch: refetchDx } = useClaimDiagnoses(claimApiId || null)
+  const { mutate: addLine } = useAddClaimLine(claimApiId)
+  const { mutate: addDx } = useAddClaimDiagnosis(claimApiId)
+
+  const claimLines = linesData?.data ?? []
+  const claimDiagnoses = dxData?.data ?? []
+
   // Manual scrub checklist
   const [checkedRules, setCheckedRules] = useState<Set<string>>(new Set())
   const toggleRule = (id: string) => setCheckedRules(prev => {
     const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next
   })
-  const allRulesChecked = checkedRules.size === SCRUB_RULES.length
+  const allRulesChecked = checkedRules.size === apiScrubRules.length
+
+  async function handleScrub() {
+    if (!claimApiId) { toast.warning('No API ID — demo claim cannot be scrubbed'); return }
+    const result = await scrubClaim({ user_id: currentUser?.id })
+    if (result) {
+      if (result.passed) {
+        toast.success(`Scrub passed — ${result.total_rules} rules checked, 0 errors`)
+      } else {
+        toast.error(`Scrub failed — ${result.errors} error(s), ${result.warnings} warning(s)`)
+      }
+      onRefetch?.()
+    }
+  }
+
+  async function handleTransition(toStatus: string) {
+    if (!claimApiId) { toast.warning('No API ID — demo claim cannot be transitioned'); return }
+    const result = await transitionClaim({
+      to_status: toStatus,
+      user_id: currentUser?.id,
+      note: `Transitioned to ${toStatus}`,
+    })
+    if (result) {
+      toast.success(`Claim transitioned to ${toStatus}`)
+      onRefetch?.()
+    } else {
+      toast.error('Transition failed — check claim status rules')
+    }
+  }
+
+  async function handleGenerateEDI() {
+    if (!claimApiId) { toast.warning('No API ID — demo claim cannot generate EDI'); return }
+    const result = await generateEDI({} as Record<string, never>)
+    if (result?.edi) {
+      setEdiOutput(result.edi)
+      toast.success('837P EDI generated')
+    }
+  }
+
+  async function handleAddLine(lineData: Parameters<typeof addLine>[0]) {
+    await addLine(lineData)
+    refetchLines()
+  }
+
+  async function handleAddDiagnosis(dxPayload: Parameters<typeof addDx>[0]) {
+    await addDx(dxPayload)
+    refetchDx()
+  }
 
   const statusAction = () => {
-    if (claim.status === 'scrub_failed') toast.error('Fix scrub errors before re-submitting')
-    else if (claim.status === 'ready') toast.success(`${claim.id} submitted to Availity`)
-    else if (claim.status === 'denied') toast.success('Routed to denial queue')
-    else if (claim.status === 'paid') toast.info('Opening payment details…')
+    if (claim.status === 'scrub_failed') {
+      if (claimApiId) handleScrub()
+      else toast.error('Fix scrub errors before re-submitting')
+    } else if (claim.status === 'ready') {
+      if (claimApiId) handleTransition('submitted')
+      else toast.success(`${claim.id} submitted to Availity`)
+    } else if (claim.status === 'denied') {
+      toast.success('Routed to denial queue')
+    } else if (claim.status === 'paid') {
+      toast.info('Opening payment details…')
+    }
   }
+
+  // suppress unused-var warnings for handlers available for future use
+  void handleAddLine
+  void handleAddDiagnosis
 
   const sendMessage = () => {
     if (!msgInput.trim()) return
@@ -318,42 +399,83 @@ function ClaimDrawer({ claim, onClose }: { claim: DemoClaim; onClose: () => void
               )}
               {/* Action button */}
               {!editMode && (
-                <div>
-                  {claim.status === 'scrub_failed' && <button onClick={statusAction} className="w-full bg-red-500 text-white rounded-btn py-2.5 text-[13px] font-medium">Fix & Re-Scrub</button>}
-                  {claim.status === 'ready' && <button onClick={statusAction} className="w-full bg-brand text-white rounded-btn py-2.5 text-[13px] font-medium">Submit to Clearinghouse</button>}
-                  {claim.status === 'denied' && <button onClick={statusAction} className="w-full bg-amber-500 text-white rounded-btn py-2.5 text-[13px] font-medium">Route to Denials</button>}
+                <div className="space-y-2">
+                  {claim.status === 'scrub_failed' && <button onClick={statusAction} disabled={scrubbing} className="w-full bg-red-500 text-white rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{scrubbing ? 'Scrubbing…' : 'Fix & Re-Scrub'}</button>}
+                  {claim.status === 'ready' && (
+                    <>
+                      <button onClick={statusAction} disabled={transitioning} className="w-full bg-brand text-white rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{transitioning ? 'Submitting…' : 'Submit to Clearinghouse'}</button>
+                      <button onClick={handleGenerateEDI} disabled={generatingEDI} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generatingEDI ? 'Generating EDI…' : 'Generate 837P EDI'}</button>
+                    </>
+                  )}
+                  {claim.status === 'submitted' && <button onClick={handleGenerateEDI} disabled={generatingEDI} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generatingEDI ? 'Generating EDI…' : 'Generate 837P EDI'}</button>}
+                  {claim.status === 'denied' && (
+                    <>
+                      <button onClick={statusAction} className="w-full bg-amber-500 text-white rounded-btn py-2.5 text-[13px] font-medium">Route to Denials</button>
+                      <button onClick={() => handleTransition('appealed')} disabled={transitioning} className="w-full bg-orange-500 text-white rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{transitioning ? 'Appealing…' : 'Appeal Claim'}</button>
+                    </>
+                  )}
                   {claim.status === 'paid' && <button onClick={statusAction} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium">View Payment</button>}
+                  {ediOutput && (
+                    <div className="mt-2">
+                      <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-1">Generated 837P EDI</p>
+                      <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[10px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{ediOutput}</pre>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
 
           {tab === 'lines' && (
-            <div>
+            <div className="space-y-4">
               <table className="w-full text-[12px]">
                 <thead><tr className="border-b border-separator text-[11px] text-content-tertiary uppercase tracking-wider">
-                  {['CPT','Modifier','Description','Units','Billed','Allowed','Paid','Adj Code'].map(h => (
+                  {['CPT','Modifier','Description','Units','Billed','POS'].map(h => (
                     <th key={h} className="text-left py-2 pr-3">{h}</th>
                   ))}
                 </tr></thead>
                 <tbody>
-                  {claim.cptCodes.map((cpt) => (
+                  {claimLines.length > 0 ? claimLines.map(line => (
+                    <tr key={line.id} className="border-b border-separator last:border-0">
+                      <td className="py-3 pr-3 font-mono font-medium text-content-primary">{line.cpt_code}</td>
+                      <td className="py-3 pr-3 font-mono text-content-tertiary">{line.modifier_1 || '—'}</td>
+                      <td className="py-3 pr-3 text-content-secondary">{line.description || 'Office/Procedure visit'}</td>
+                      <td className="py-3 pr-3">{line.units}</td>
+                      <td className="py-3 pr-3">${Number(line.charge_amount).toLocaleString()}</td>
+                      <td className="py-3 pr-3 text-content-tertiary">{line.place_of_service || '—'}</td>
+                    </tr>
+                  )) : claim.cptCodes.length > 0 ? claim.cptCodes.map((cpt) => (
                     <tr key={cpt} className="border-b border-separator last:border-0">
                       <td className="py-3 pr-3 font-mono font-medium text-content-primary">{cpt}</td>
                       <td className="py-3 pr-3 font-mono text-content-tertiary">—</td>
                       <td className="py-3 pr-3 text-content-secondary">Office/Procedure visit</td>
                       <td className="py-3 pr-3">1</td>
                       <td className="py-3 pr-3">${Math.round(claim.billed / claim.cptCodes.length)}</td>
-                      <td className="py-3 pr-3">{claim.allowed ? `$${Math.round(claim.allowed / claim.cptCodes.length)}` : '—'}</td>
-                      <td className="py-3 pr-3 text-emerald-500">{claim.paid ? `$${Math.round(claim.paid / claim.cptCodes.length)}` : '—'}</td>
-                      <td className="py-3 text-content-tertiary">CO-45</td>
+                      <td className="py-3 pr-3 text-content-tertiary">11</td>
                     </tr>
-                  ))}
+                  )) : (
+                    <tr><td colSpan={6} className="py-8 text-center text-content-tertiary text-[13px]">No line items</td></tr>
+                  )}
                 </tbody>
               </table>
-              <p className="text-[12px] text-content-secondary mt-4">
-                Diagnoses: <span className="font-mono text-content-primary">{claim.icdCodes.join(', ')}</span>
-              </p>
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-2">Diagnoses</p>
+                {claimDiagnoses.length > 0 ? (
+                  <div className="space-y-1">
+                    {claimDiagnoses.map(dx => (
+                      <div key={dx.id} className="flex items-center gap-3 text-[12px]">
+                        <span className="font-mono text-content-primary w-16">{dx.icd_code}</span>
+                        <span className="text-content-secondary">{dx.description || '—'}</span>
+                        {dx.is_primary && <span className="text-[10px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-pill">Primary</span>}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[12px] text-content-secondary">
+                    <span className="font-mono text-content-primary">{claim.icdCodes.join(', ') || '—'}</span>
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -372,17 +494,25 @@ function ClaimDrawer({ claim, onClose }: { claim: DemoClaim; onClose: () => void
                     Open Documents →
                   </button>
                 </div>
+                {claimApiId && (
+                  <div className="p-3 border-t border-separator">
+                    <button onClick={handleScrub} disabled={scrubbing}
+                      className="w-full bg-brand text-white rounded-btn py-2 text-[12px] font-medium disabled:opacity-50">
+                      {scrubbing ? 'Running AI Scrub…' : 'Run AI Scrub'}
+                    </button>
+                  </div>
+                )}
               </div>
               {/* Right: scrub rules */}
               <div className="card overflow-y-auto p-4 space-y-4">
                 <div className="flex items-start gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
                   <CheckSquare size={14} className="text-blue-400 mt-0.5 shrink-0" />
                   <p className="text-[12px] text-blue-400">
-                    Complete all 20 scrub rules before submitting. All {checkedRules.size} / {SCRUB_RULES.length} checked.
+                    Complete all {apiScrubRules.length} scrub rules before submitting. {checkedRules.size} / {apiScrubRules.length} checked.
                   </p>
                 </div>
                 <div className="space-y-1">
-                  {SCRUB_RULES.map(rule => (
+                  {apiScrubRules.map(rule => (
                     <label key={rule.id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-surface-elevated cursor-pointer group">
                       <input type="checkbox" checked={checkedRules.has(rule.id)} onChange={() => toggleRule(rule.id)}
                         className="rounded accent-brand w-4 h-4 shrink-0" />
@@ -398,7 +528,7 @@ function ClaimDrawer({ claim, onClose }: { claim: DemoClaim; onClose: () => void
                     setCheckedRules(new Set())
                   }}
                   className={`w-full py-2.5 rounded-btn text-[13px] font-medium transition-colors ${allRulesChecked ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-surface-elevated text-content-tertiary cursor-not-allowed border border-separator'}`}>
-                  {allRulesChecked ? 'Submit Manual Scrub' : `Check all ${SCRUB_RULES.length - checkedRules.size} remaining rules to continue`}
+                  {allRulesChecked ? 'Submit Manual Scrub' : `Check all ${apiScrubRules.length - checkedRules.size} remaining rules to continue`}
                 </button>
               </div>
             </div>
@@ -499,6 +629,11 @@ export default function ClaimsPage() {
     ...(search ? { search } : {}),
     ...(statusFilters.length === 1 ? { status: statusFilters[0] } : {}),
   })
+  const { data: scrubRulesData } = useScrubRules()
+  const apiScrubRules = scrubRulesData?.data?.map(r => ({
+    id: r.rule_code,
+    label: r.rule_name + ' — ' + r.description,
+  })) ?? SCRUB_RULES
 
   const allClaims = useMemo(() => {
     // Use API data if available, otherwise fall back to demo data
@@ -749,7 +884,7 @@ export default function ClaimsPage() {
         </div>
       </div>
 
-      {drawerClaim && <ClaimDrawer claim={drawerClaim} onClose={() => setDrawerClaim(null)} />}
+      {drawerClaim && <ClaimDrawer claim={drawerClaim} onClose={() => setDrawerClaim(null)} onRefetch={refetch} apiScrubRules={apiScrubRules} />}
     </ModuleShell>
   )
 }
