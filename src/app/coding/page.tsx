@@ -257,12 +257,12 @@ export default function CodingPage() {
     if (!item) return []
     return [
       ...item.aiSuggestedIcd.filter(c =>
-        c.confidence < 70 &&
+        (c.confidence ?? 100) < 70 &&
         !forcedReviewCodes.has(`icd-${c.code}`) &&
         selectedCodes[`icd-${c.code}`]
       ),
       ...item.aiSuggestedCpt.filter(c =>
-        c.confidence < 70 &&
+        (c.confidence ?? 100) < 70 &&
         !forcedReviewCodes.has(`cpt-${c.code}`) &&
         selectedCodes[`cpt-${c.code}`]
       ),
