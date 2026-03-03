@@ -167,7 +167,7 @@ export default function CodingPage() {
       providerSpecialty: demoMatch?.providerSpecialty || '',
       status: (c.status || 'pending') as 'pending' | 'in_progress' | 'completed' | 'on_hold',
       receivedAt: c.received_at || c.created_at || new Date().toISOString(),
-      priority: c.priority,
+      priority: (c.priority ?? 'medium') as 'low' | 'medium' | 'high' | 'urgent',
       visitNote: demoMatch?.visitNote || {
         subjective: 'Visit note not yet available \u2014 Bedrock integration Sprint 2',
         objective: '',
@@ -318,7 +318,7 @@ export default function CodingPage() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-[14px] font-semibold text-content-primary leading-tight">{q.patientName}</p>
-                      <span className={`w-2 h-2 rounded-full mt-1 ${priorityColor[q.priority]}`} />
+                      <span className={`w-2 h-2 rounded-full mt-1 ${priorityColor[q.priority ?? 'medium']}`} />
                     </div>
                     <p className="text-[12px] text-content-secondary truncate">{getClientName(q.clientId)} · {q.dos}</p>
                     <div className="flex items-center justify-between mt-1 gap-1 flex-wrap">
