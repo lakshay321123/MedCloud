@@ -1,11 +1,11 @@
 'use client'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
-import { demoPatients, DemoPatient } from '@/lib/demo-data'
+import type { DemoPatient } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
-import { Plus, Search, X, Upload, ChevronDown, Pencil, Check } from 'lucide-react'
+import { Plus, Search, X, Upload, ChevronDown, Pencil, Check, Users } from 'lucide-react'
 import { usePatients } from '@/lib/hooks'
 import type { ApiPatient } from '@/lib/hooks'
 import { ErrorBanner } from '@/components/shared/ApiStates'
@@ -625,14 +625,7 @@ export default function PatientsPage() {
 
   const patients: DemoPatient[] = apiPatients
     ? (clientFilter ? apiPatients.filter(p => p.clientId === clientFilter) : apiPatients)
-    : demoPatients.filter(p => {
-        if (clientFilter && p.clientId !== clientFilter) return false
-        if (search) {
-          const s = search.toLowerCase()
-          return `${p.firstName} ${p.lastName}`.toLowerCase().includes(s) || p.phone.includes(s) || p.id.toLowerCase().includes(s)
-        }
-        return true
-      })
+    : []
 
   return (
     <ModuleShell title="Patients" subtitle="Manage patient records"
@@ -656,6 +649,16 @@ export default function PatientsPage() {
           </tr></thead>
           <tbody>{apiLoading ? (
             <tr><td colSpan={7} className="px-4 py-8 text-center text-xs text-content-tertiary">Loading patients…</td></tr>
+          ) : patients.length === 0 ? (
+            <tr><td colSpan={7}>
+              <div className='flex flex-col items-center justify-center py-16 text-center'>
+                <div className='w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center mb-3'>
+                  <Users size={20} className='text-content-tertiary' />
+                </div>
+                <p className='text-sm font-medium text-content-primary mb-1'>No patients yet</p>
+                <p className='text-xs text-content-secondary'>Patients will appear here once they&apos;re added to the system.</p>
+              </div>
+            </td></tr>
           ) : patients.map(p => (
             <tr key={p.id} onClick={() => setSelected(p)} className="border-b border-separator last:border-0 table-row cursor-pointer transition-all">
               <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full bg-brand/10 flex items-center justify-center text-brand text-[10px] font-bold">{p.firstName[0]}{p.lastName[0]}</div><div className="font-medium">{p.firstName} {p.lastName}</div></div></td>

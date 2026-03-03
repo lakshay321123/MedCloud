@@ -1,11 +1,11 @@
 'use client'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
-import { demoAppointments, demoPatients, getClientName } from '@/lib/demo-data'
+import { getClientName } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
-import { Plus, AlertTriangle, ChevronLeft, ChevronRight, X, Mic, ShieldCheck } from 'lucide-react'
+import { Plus, AlertTriangle, ChevronLeft, ChevronRight, X, Mic, ShieldCheck, CalendarDays } from 'lucide-react'
 import NewAppointmentModal from './NewAppointmentModal'
 import { useAppointments } from '@/lib/hooks'
 import type { ApiAppointment } from '@/lib/hooks'
@@ -30,14 +30,13 @@ function apiAppointmentToDemo(a: ApiAppointment) {
 const staffRoles = ['admin','director','supervisor','manager','coder','biller','ar_team','posting_team']
 
 // ─── Mini Calendar ────────────────────────────────────────────────────────
-function MiniCalendar({ selectedDate, onSelect }: { selectedDate: string; onSelect: (d: string) => void }) {
+function MiniCalendar({ selectedDate, onSelect, apptDates }: { selectedDate: string; onSelect: (d: string) => void; apptDates: Set<string> }) {
   const [viewDate, setViewDate] = useState(new Date('2026-03-02'))
   const year = viewDate.getFullYear()
   const month = viewDate.getMonth()
   const monthName = viewDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })
   const firstDay = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const apptDates = new Set(demoAppointments.map(a => a.date))
 
   function prevMonth() { setViewDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1)) }
   function nextMonth() { setViewDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1)) }
@@ -102,7 +101,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
   const isProvider = currentUserRole === 'provider'
   const isFrontDesk = currentUserRole === 'client'
 
-  const patient = demoPatients.find(p => p.id === appt.patientId)
+  const patient = null as null | { dob?: string; gender?: string; phone?: string; insurance?: { payer?: string; memberId?: string; policyNo?: string; copay?: number }; allergies?: string[]; medications?: string[]; emiratesId?: string; ssn?: string } // Sprint 2: load from patient API by appt.patientId
 
   const eligMap: Record<string, keyof typeof eligibilityConfig> = {
     'APT-001': 'verified', 'APT-002': 'verified', 'APT-003': 'inactive', 'APT-004': 'not_checked',
@@ -248,7 +247,7 @@ export default function AppointmentsPage() {
   const isClinic = currentUser.role === 'client' || currentUser.role === 'provider'
   const [selectedDate, setSelectedDate] = useState('2026-03-02')
   const [showAdd, setShowAdd] = useState(false)
-  const [drawerAppt, setDrawerAppt] = useState<typeof demoAppointments[0] | null>(null)
+  const [drawerAppt, setDrawerAppt] = useState<ReturnType<typeof apiAppointmentToDemo> | null>(null)
   const [statusOverrides, setStatusOverrides] = useState<Record<string, AppointmentStatus>>({})
 
   const { data: apiApptResult } = useAppointments({ limit: 50, sort: 'appointment_date', order: 'asc' })
@@ -257,7 +256,7 @@ export default function AppointmentsPage() {
 
   const sourceAppointments = apiApptResult?.data
     ? apiApptResult.data.map(apiAppointmentToDemo)
-    : demoAppointments
+    : []
 
   const dayApts = sourceAppointments.filter(a => {
     if (clientFilter && a.clientId !== clientFilter) return false
@@ -274,7 +273,7 @@ export default function AppointmentsPage() {
     noShows: dayApts.filter(a => a.status === 'no_show').length,
   }
 
-  const missingDocs = isStaff ? demoAppointments.filter(a =>
+  const missingDocs = isStaff ? sourceAppointments.filter(a =>
     a.status === 'completed' &&
     a.date < '2026-03-01' &&
     (!clientFilter || a.clientId === clientFilter)
@@ -316,7 +315,7 @@ export default function AppointmentsPage() {
       <div className="grid grid-cols-5 gap-5">
         {/* Mini calendar */}
         <div className="col-span-1">
-          <MiniCalendar selectedDate={selectedDate} onSelect={setSelectedDate}/>
+          <MiniCalendar selectedDate={selectedDate} onSelect={setSelectedDate} apptDates={new Set(sourceAppointments.map(a => a.date))}/>
         </div>
 
         {/* Appointment cards */}
@@ -329,8 +328,12 @@ export default function AppointmentsPage() {
           </div>
 
           {dayApts.length === 0 ? (
-            <div className="card flex items-center justify-center py-16 text-content-secondary text-sm">
-              No appointments for this date
+            <div className='card flex flex-col items-center justify-center py-16 text-center'>
+              <div className='w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center mb-3'>
+                <CalendarDays size={20} className='text-content-tertiary' />
+              </div>
+              <p className='text-sm font-medium text-content-primary mb-1'>No appointments yet</p>
+              <p className='text-xs text-content-secondary'>Appointments will appear here once they&apos;re added to the system.</p>
             </div>
           ) : dayApts.map(a => {
             const currentStatus = a.status
@@ -375,7 +378,7 @@ export default function AppointmentsPage() {
 
                 {/* Actions */}
                 <div className="flex gap-1.5 shrink-0">
-                  <button onClick={() => setDrawerAppt(a as typeof demoAppointments[0])}
+                  <button onClick={() => setDrawerAppt(a)}
                     className="text-[10px] px-2.5 py-1.5 border border-separator text-content-secondary rounded hover:text-content-primary transition-colors">View</button>
                   {['booked','confirmed'].includes(currentStatus) && (
                     <button onClick={() => checkIn(a.id, a.patientName)}

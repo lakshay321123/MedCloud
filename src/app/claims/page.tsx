@@ -5,7 +5,7 @@ import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import DocViewer from '@/components/shared/DocViewer'
 import { useApp } from '@/lib/context'
-import { demoClaims, demoMessages } from '@/lib/demo-data'
+import { demoMessages } from '@/lib/demo-data'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import type { DemoClaim, ClaimTimelineEvent } from '@/lib/demo-data'
 import { useToast } from '@/components/shared/Toast'
@@ -639,12 +639,9 @@ export default function ClaimsPage() {
     // Use API data if available, otherwise fall back to demo data
     const source: DemoClaim[] = apiResult?.data
       ? apiResult.data.map(apiClaimToDemoClaim)
-      : demoClaims
+      : []
 
     return source.filter(c => {
-      if (!apiResult && selectedClient && c.clientId !== selectedClient.id) return false
-      if (!apiResult && !selectedClient && country === 'uae' && !(UAE_ORG_IDS as readonly string[]).includes(c.clientId)) return false
-      if (!apiResult && !selectedClient && country === 'usa' && !(US_ORG_IDS as readonly string[]).includes(c.clientId)) return false
       if (search && !c.patientName.toLowerCase().includes(search.toLowerCase()) && !c.id.toLowerCase().includes(search.toLowerCase())) return false
       if (statusFilters.length && !statusFilters.includes(c.status)) return false
       if (dosFrom && c.dos < dosFrom) return false
@@ -807,6 +804,17 @@ export default function ClaimsPage() {
                 </tr>
               </thead>
               <tbody>
+                {allClaims.length === 0 && !apiLoading && (
+                  <tr><td colSpan={9}>
+                    <div className='flex flex-col items-center justify-center py-16 text-center'>
+                      <div className='w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center mb-3'>
+                        <FileText size={20} className='text-content-tertiary' />
+                      </div>
+                      <p className='text-sm font-medium text-content-primary mb-1'>No claims yet</p>
+                      <p className='text-xs text-content-secondary'>Claims will appear here once they&apos;re added to the system.</p>
+                    </div>
+                  </td></tr>
+                )}
                 {paginated.map(c => (
                   <tr key={c.id} onClick={() => setDrawerClaim(c)}
                     className={`border-b border-separator last:border-0 cursor-pointer hover:bg-surface-elevated transition-colors ${drawerClaim?.id === c.id ? 'bg-brand/5' : ''}`}>

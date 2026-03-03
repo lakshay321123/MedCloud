@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import { useApp } from '@/lib/context'
-import { demoClaims } from '@/lib/demo-data'
+// removed - no longer using demoClaims
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -10,42 +10,6 @@ import { useToast } from '@/components/shared/Toast'
 import { useDenials } from '@/lib/hooks'
 import { ErrorBanner } from '@/components/shared/ApiStates'
 import { useRouter } from 'next/navigation'
-
-// ─── Demo denials (US) ────────────────────────────────────────────────────
-const demoDenialsUS = [
-  (() => {
-    const base = demoClaims.find(c => c.id === 'CLM-4504')
-    if (!base) throw new Error('Demo data missing CLM-4504 — check demo-data.ts')
-    return { ...base, source: 'claim_rejection' as const, appealLevel: 'L1' as const, denialCategory: 'Authorization' }
-  })(),
-  (() => {
-    const base = demoClaims.find(c => c.id === 'CLM-4507')
-    if (!base) throw new Error('Demo data missing CLM-4507 — check demo-data.ts')
-    return { ...base, source: 'payment_posting' as const, appealLevel: null, denialCategory: 'Eligibility' }
-  })(),
-  {
-    id: 'CLM-4515', patientId: 'P-008', patientName: 'Emily Williams', clientId: 'org-103', clientName: 'Patel Cardiology',
-    payer: 'Medicare', dos: '2026-02-18', cptCodes: ['99214'], icdCodes: ['I50.9'], charges: 250, paid: 0,
-    status: 'denied' as const, age: 12, denialReason: 'Expenses not covered — inactive coverage',
-    source: 'payment_posting' as const, appealLevel: null, denialCategory: 'Eligibility',
-  },
-]
-
-// ─── Demo denials (UAE) ───────────────────────────────────────────────────
-const demoDenialsUAE = [
-  {
-    id: 'CLM-UAE-001', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', clientId: 'org-101', clientName: 'Gulf Medical Center',
-    payer: 'Daman', dos: '2026-02-24', cptCodes: ['99213'], icdCodes: ['I25.10'], charges: 280, paid: 0,
-    status: 'denied' as const, age: 7, denialReason: 'Prior authorization not obtained',
-    source: 'payment_posting' as const, appealLevel: null, denialCategory: 'Authorization',
-  },
-  {
-    id: 'CLM-UAE-002', patientId: 'P-007', patientName: 'Khalid Ibrahim', clientId: 'org-104', clientName: 'Dubai Wellness Clinic',
-    payer: 'NAS', dos: '2026-01-17', cptCodes: ['99214'], icdCodes: ['M54.5'], charges: 320, paid: 0,
-    status: 'denied' as const, age: 45, denialReason: 'Eligibility not confirmed at time of service',
-    source: 'claim_rejection' as const, appealLevel: 'L1' as const, denialCategory: 'Eligibility',
-  },
-]
 
 // ─── Dynamic appeal template ──────────────────────────────────────────────
 function buildAppealLetter(denial: DenialRow, level: 'L1' | 'L2' | 'L3'): string {
@@ -111,55 +75,7 @@ export default function DenialsPage() {
     rarc_description: d.rarc_description,
   })) || []
 
-  // Build demo denials based on region filter
-  const getDemoDenials = (): DenialRow[] => {
-    let rows: DenialRow[] = []
-
-    if (selectedClient) {
-      // If a specific client is selected, show only their denials
-      const usRows = demoDenialsUS.map(d => ({
-        id: d.id, patientName: d.patientName, payer: d.payer, denialReason: d.denialReason,
-        clientId: d.clientId, clientName: d.clientName, dos: d.dos, source: d.source,
-        appealLevel: d.appealLevel, status: d.status, denialCategory: d.denialCategory,
-      }))
-      const uaeRows = demoDenialsUAE.map(d => ({
-        id: d.id, patientName: d.patientName, payer: d.payer, denialReason: d.denialReason,
-        clientId: d.clientId, clientName: d.clientName, dos: d.dos, source: d.source,
-        appealLevel: d.appealLevel, status: d.status, denialCategory: d.denialCategory,
-      }))
-      return [...usRows, ...uaeRows].filter(d => d.clientId === selectedClient.id)
-    }
-
-    if (country === 'uae') {
-      rows = demoDenialsUAE.map(d => ({
-        id: d.id, patientName: d.patientName, payer: d.payer, denialReason: d.denialReason,
-        clientId: d.clientId, clientName: d.clientName, dos: d.dos, source: d.source,
-        appealLevel: d.appealLevel, status: d.status, denialCategory: d.denialCategory,
-      }))
-    } else if (country === 'usa') {
-      rows = demoDenialsUS.map(d => ({
-        id: d.id, patientName: d.patientName, payer: d.payer, denialReason: d.denialReason,
-        clientId: d.clientId, clientName: d.clientName, dos: d.dos, source: d.source,
-        appealLevel: d.appealLevel, status: d.status, denialCategory: d.denialCategory,
-      }))
-    } else {
-      // No region filter — show all
-      const usRows = demoDenialsUS.map(d => ({
-        id: d.id, patientName: d.patientName, payer: d.payer, denialReason: d.denialReason,
-        clientId: d.clientId, clientName: d.clientName, dos: d.dos, source: d.source,
-        appealLevel: d.appealLevel, status: d.status, denialCategory: d.denialCategory,
-      }))
-      const uaeRows = demoDenialsUAE.map(d => ({
-        id: d.id, patientName: d.patientName, payer: d.payer, denialReason: d.denialReason,
-        clientId: d.clientId, clientName: d.clientName, dos: d.dos, source: d.source,
-        appealLevel: d.appealLevel, status: d.status, denialCategory: d.denialCategory,
-      }))
-      rows = [...usRows, ...uaeRows]
-    }
-    return rows
-  }
-
-  const denials: DenialRow[] = apiDenials.length > 0 ? apiDenials : getDemoDenials()
+  const denials: DenialRow[] = apiDenials
 
   const [selected, setSelected] = useState(denials[0]?.id || '')
   const [appealLevel, setAppealLevel] = useState<'L1' | 'L2' | 'L3'>('L1')
@@ -203,7 +119,19 @@ export default function DenialsPage() {
                 <th className="text-left px-4 py-3">Status</th>
               </tr>
             </thead>
-            <tbody>{denials.map(d => (
+            <tbody>
+              {denials.length === 0 && (
+                <tr><td colSpan={7}>
+                  <div className='flex flex-col items-center justify-center py-16 text-center'>
+                    <div className='w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center mb-3'>
+                      <ShieldAlert size={20} className='text-content-tertiary' />
+                    </div>
+                    <p className='text-sm font-medium text-content-primary mb-1'>No denials yet</p>
+                    <p className='text-xs text-content-secondary'>Denials will appear here once they&apos;re added to the system.</p>
+                  </div>
+                </td></tr>
+              )}
+              {denials.map(d => (
               <tr key={d.id} onClick={() => { setSelected(d.id); setAppealLevel('L1') }}
                 className={`border-b border-separator table-row cursor-pointer ${selected === d.id ? 'bg-brand/5' : ''}`}>
                 <td className="px-4 py-3 font-mono text-xs">{d.id}</td>
