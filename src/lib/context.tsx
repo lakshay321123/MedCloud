@@ -35,7 +35,8 @@ function getInitialUser(): User {
     const savedRole = localStorage.getItem('cosentus_role') as UserRole | null
     if (pt === 'facility') {
       const role = (savedRole && ['provider', 'client'].includes(savedRole)) ? savedRole : 'provider'
-      return { id: 'demo-001', name: 'Demo Provider', email: 'provider@clinic.com', role, organization_id: 'org-102' }
+      const savedOrgId = localStorage.getItem('cosentus_org_id') || ''
+      return { id: 'demo-001', name: 'Demo Provider', email: 'provider@clinic.com', role, organization_id: savedOrgId }
     }
     if (savedRole) {
       return { id: 'demo-001', name: 'Admin User', email: 'admin@cosentus.ai', role: savedRole, organization_id: 'org-001' }

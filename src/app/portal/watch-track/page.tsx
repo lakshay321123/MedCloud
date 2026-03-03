@@ -32,7 +32,12 @@ export default function WatchTrackPage() {
 
   return (
     <ModuleShell title="Watch & Track" subtitle="Track your claims and revenue">
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
+        <span className="text-lg shrink-0">👁</span>
+        <div>
+          <span className="font-semibold">Demo data</span> — Live claim tracking connects to your real claims in Sprint 2.
+        </div>
+      </div>      <div className="grid grid-cols-4 gap-4 mb-6">
         <KPICard label="Total Claims" value={myClaims.length} icon={<FileText size={20}/>}/>
         <KPICard label="Total Charges" value={`$${totalCharges.toLocaleString()}`} icon={<DollarSign size={20}/>}/>
         <KPICard label="Collected" value={`$${totalPaid.toLocaleString()}`} sub={`${((totalPaid/totalCharges)*100).toFixed(1)}% rate`} trend="up"/>
