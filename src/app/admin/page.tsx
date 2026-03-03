@@ -2,6 +2,7 @@
 import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
+import { useApp } from '@/lib/context'
 import { demoAuditLog } from '@/lib/demo-data'
 import { Users, Building2, Activity, Shield, X, Search, Plus } from 'lucide-react'
 
@@ -354,20 +355,26 @@ function AuditLogTab() {
   )
 }
 
-const TABS = [
+const ALL_TABS = [
   { id:'users', label:'Users', icon:Users },
   { id:'orgs', label:'Organizations', icon:Building2 },
   { id:'health', label:'System Health', icon:Activity },
   { id:'audit', label:'Audit Log', icon:Shield },
 ] as const
-type TabId = typeof TABS[number]['id']
+type TabId = typeof ALL_TABS[number]['id']
 
 export default function AdminPage() {
-  const [tab, setTab] = useState<TabId>('users')
+  const { currentUser } = useApp()
+  const isDirector = currentUser.role === 'director'
+  const tabs = isDirector
+    ? ALL_TABS.filter(t => t.id === 'orgs')
+    : ALL_TABS
+  const [tab, setTab] = useState<TabId>(isDirector ? 'orgs' : 'users')
+
   return (
     <ModuleShell title="Admin & Settings" subtitle="System administration">
       <div className="flex gap-1 mb-5 border-b border-separator">
-        {TABS.map(t=>{const Icon=t.icon;return(
+        {tabs.map(t=>{const Icon=t.icon;return(
           <button key={t.id} onClick={()=>setTab(t.id)}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${tab===t.id?'border-brand text-brand':'border-transparent text-content-secondary hover:text-content-primary'}`}>
             <Icon size={14}/>{t.label}

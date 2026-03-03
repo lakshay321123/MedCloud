@@ -11,8 +11,44 @@ import { useToast } from '@/components/shared/Toast'
 import {
   FileText, CheckCircle2, Activity, Clock, Search, X, ChevronDown, ChevronUp,
   AlertTriangle, ShieldAlert, MessageCircle, DollarSign, Eye, RotateCcw,
-  Filter, Download, CheckSquare
+  Filter, Download, CheckSquare, Edit3, Save
 } from 'lucide-react'
+
+const SCRUB_RULES = [
+  { id: 'S01', label: 'Patient name matches insurance card' },
+  { id: 'S02', label: 'Date of birth verified against eligibility' },
+  { id: 'S03', label: 'Member ID confirmed active on DOS' },
+  { id: 'S04', label: 'Billing NPI registered with payer' },
+  { id: 'S05', label: 'Rendering NPI on claim' },
+  { id: 'S06', label: 'Place of Service code valid for CPT' },
+  { id: 'S07', label: 'Primary diagnosis code valid (ICD-10)' },
+  { id: 'S08', label: 'All ICD codes medically necessary for CPT' },
+  { id: 'S09', label: 'CPT codes not mutually exclusive (NCCI)' },
+  { id: 'S10', label: 'Modifiers applied correctly' },
+  { id: 'S11', label: 'Units billed match documentation' },
+  { id: 'S12', label: 'Authorization obtained where required' },
+  { id: 'S13', label: 'Referral on file if required by plan' },
+  { id: 'S14', label: 'Timely filing window open' },
+  { id: 'S15', label: 'Coordination of benefits order verified' },
+  { id: 'S16', label: 'No duplicate claim on file' },
+  { id: 'S17', label: 'Taxonomy code present and accurate' },
+  { id: 'S18', label: 'Service facility NPI included if applicable' },
+  { id: 'S19', label: 'Claim total matches sum of line items' },
+  { id: 'S20', label: 'Claim reviewed and signed off by biller' },
+]
+
+const POS_OPTIONS = [
+  { value: '11', label: '11 – Office' },
+  { value: '12', label: '12 – Home' },
+  { value: '21', label: '21 – Inpatient Hospital' },
+  { value: '22', label: '22 – On Campus Outpatient Hospital' },
+  { value: '23', label: '23 – Emergency Room' },
+  { value: '24', label: '24 – Ambulatory Surgical Center' },
+  { value: '31', label: '31 – Skilled Nursing Facility' },
+  { value: '32', label: '32 – Nursing Facility' },
+  { value: '41', label: '41 – Ambulance – Land' },
+  { value: '81', label: '81 – Independent Laboratory' },
+]
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-500/10 text-gray-400 border border-gray-500/20',
@@ -42,10 +78,28 @@ function ClaimStatusBadge({ status }: { status: string }) {
 
 // ─── Claim Detail Drawer ────────────────────────────────────────────────────
 function ClaimDrawer({ claim, onClose }: { claim: DemoClaim; onClose: () => void }) {
-  const [tab, setTab] = useState<'overview' | 'lines' | 'docs' | 'messages' | 'audit'>('overview')
+  const [tab, setTab] = useState<'overview' | 'lines' | 'docs' | 'messages' | 'audit' | 'scrub'>('overview')
   const { toast } = useToast()
   const [localMessages, setLocalMessages] = useState(demoMessages.filter(m => m.entityId === claim.id))
   const [msgInput, setMsgInput] = useState('')
+
+  // Edit mode state
+  const [editMode, setEditMode] = useState(false)
+  const [editedClaim, setEditedClaim] = useState<{
+    billingNpi: string; renderingNpi: string; placeOfService: string; cptCodes: string[]
+  }>({
+    billingNpi: '1234567890',
+    renderingNpi: '0987654321',
+    placeOfService: '11',
+    cptCodes: [...claim.cptCodes],
+  })
+
+  // Manual scrub checklist
+  const [checkedRules, setCheckedRules] = useState<Set<string>>(new Set())
+  const toggleRule = (id: string) => setCheckedRules(prev => {
+    const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next
+  })
+  const allRulesChecked = checkedRules.size === SCRUB_RULES.length
 
   const statusAction = () => {
     if (claim.status === 'scrub_failed') toast.error('Fix scrub errors before re-submitting')
@@ -67,9 +121,15 @@ function ClaimDrawer({ claim, onClose }: { claim: DemoClaim; onClose: () => void
     toast.success('Message sent')
   }
 
+  const handleSaveEdit = () => {
+    toast.success('Claim updated — changes logged to audit trail')
+    setEditMode(false)
+  }
+
   const TABS = [
     { id: 'overview', label: 'Overview' },
     { id: 'lines', label: 'Line Items' },
+    { id: 'scrub', label: 'Manual Scrub' },
     { id: 'docs', label: 'Documents' },
     { id: 'messages', label: 'Messages' },
     { id: 'audit', label: 'Audit Log' },
@@ -84,13 +144,30 @@ function ClaimDrawer({ claim, onClose }: { claim: DemoClaim; onClose: () => void
           <span className="font-mono text-[15px] font-bold text-content-primary">{claim.id}</span>
           <ClaimStatusBadge status={claim.status} />
           <span className="ml-auto text-[15px] font-bold text-content-primary">${claim.billed.toLocaleString()}</span>
-          <button onClick={onClose} className="text-content-tertiary hover:text-content-primary ml-2 p-1"><X size={18} /></button>
+          {!editMode ? (
+            <button onClick={() => setEditMode(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-surface-elevated border border-separator rounded-btn text-content-secondary hover:text-content-primary ml-2">
+              <Edit3 size={13} /> Edit
+            </button>
+          ) : (
+            <>
+              <button onClick={handleSaveEdit}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-brand text-white rounded-btn ml-2">
+                <Save size={13} /> Save
+              </button>
+              <button onClick={() => setEditMode(false)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-surface-elevated border border-separator rounded-btn text-content-secondary hover:text-content-primary">
+                Cancel
+              </button>
+            </>
+          )}
+          <button onClick={onClose} className="text-content-tertiary hover:text-content-primary p-1"><X size={18} /></button>
         </div>
         {/* Tab bar */}
-        <div className="flex border-b border-separator px-4 shrink-0">
+        <div className="flex border-b border-separator px-4 shrink-0 overflow-x-auto">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`px-3 py-2.5 text-[12px] font-medium transition-colors ${tab === t.id ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>
+              className={`px-3 py-2.5 text-[12px] font-medium transition-colors whitespace-nowrap ${tab === t.id ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>
               {t.label}
             </button>
           ))}
@@ -99,46 +176,96 @@ function ClaimDrawer({ claim, onClose }: { claim: DemoClaim; onClose: () => void
         <div className="flex-1 overflow-y-auto p-5">
           {tab === 'overview' && (
             <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-4 text-[13px]">
-                <div className="space-y-2">
-                  <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-2">Patient Info</p>
-                  <div className="flex justify-between"><span className="text-content-secondary">Patient</span><span className="text-content-primary font-medium">{claim.patientName}</span></div>
-                  <div className="flex justify-between"><span className="text-content-secondary">Client</span><span className="text-content-primary">{claim.clientName}</span></div>
-                  <div className="flex justify-between"><span className="text-content-secondary">DOS</span><span className="text-content-primary font-mono">{claim.dos}</span></div>
-                  <div className="flex justify-between"><span className="text-content-secondary">CPT</span><span className="text-content-primary font-mono">{claim.cptCodes.join(', ')}</span></div>
-                  <div className="flex justify-between"><span className="text-content-secondary">ICD</span><span className="text-content-primary font-mono">{claim.icdCodes.join(', ')}</span></div>
+              {/* Audit warning when in edit mode */}
+              {editMode && (
+                <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+                  <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
+                  <p className="text-[12px] text-amber-600 dark:text-amber-400">
+                    All edits are recorded in the audit log with your user ID and timestamp.
+                    Only make changes authorized by your supervisor.
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-2">Payer Info</p>
-                  <div className="flex justify-between"><span className="text-content-secondary">Payer</span><span className="text-content-primary font-medium">{claim.payer}</span></div>
-                  <div className="flex justify-between"><span className="text-content-secondary">Billed</span><span className="text-content-primary">${claim.billed}</span></div>
-                  <div className="flex justify-between"><span className="text-content-secondary">Allowed</span><span className="text-content-primary">{claim.allowed ? `$${claim.allowed}` : '—'}</span></div>
-                  <div className="flex justify-between"><span className="text-content-secondary">Paid</span><span className={claim.paid ? 'text-emerald-500 font-medium' : 'text-content-tertiary'}>{claim.paid ? `$${claim.paid}` : '—'}</span></div>
-                  {claim.submittedDate && <div className="flex justify-between"><span className="text-content-secondary">Submitted</span><span className="text-content-primary font-mono">{claim.submittedDate}</span></div>}
-                  {claim.paymentDate && <div className="flex justify-between"><span className="text-content-secondary">Paid On</span><span className="text-content-primary font-mono">{claim.paymentDate}</span></div>}
+              )}
+
+              {/* Editable fields */}
+              {editMode ? (
+                <div className="space-y-3">
+                  <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold">Billing Details</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] text-content-tertiary block mb-1">Billing NPI</label>
+                      <input value={editedClaim.billingNpi}
+                        onChange={e => setEditedClaim(p => ({ ...p, billingNpi: e.target.value }))}
+                        className="w-full bg-surface-elevated border border-separator rounded-btn px-2.5 py-1.5 text-[13px] text-content-primary font-mono focus:outline-none focus:border-brand/40" />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-content-tertiary block mb-1">Rendering NPI</label>
+                      <input value={editedClaim.renderingNpi}
+                        onChange={e => setEditedClaim(p => ({ ...p, renderingNpi: e.target.value }))}
+                        className="w-full bg-surface-elevated border border-separator rounded-btn px-2.5 py-1.5 text-[13px] text-content-primary font-mono focus:outline-none focus:border-brand/40" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-[11px] text-content-tertiary block mb-1">Place of Service</label>
+                      <select value={editedClaim.placeOfService}
+                        onChange={e => setEditedClaim(p => ({ ...p, placeOfService: e.target.value }))}
+                        className="w-full bg-surface-elevated border border-separator rounded-btn px-2.5 py-1.5 text-[13px] text-content-primary focus:outline-none focus:border-brand/40">
+                        {POS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-content-tertiary block mb-1">CPT Codes (comma-separated)</label>
+                    <input value={editedClaim.cptCodes.join(', ')}
+                      onChange={e => setEditedClaim(p => ({ ...p, cptCodes: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))}
+                      className="w-full bg-surface-elevated border border-separator rounded-btn px-2.5 py-1.5 text-[13px] text-content-primary font-mono focus:outline-none focus:border-brand/40" />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4 text-[13px]">
+                  <div className="space-y-2">
+                    <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-2">Patient Info</p>
+                    <div className="flex justify-between"><span className="text-content-secondary">Patient</span><span className="text-content-primary font-medium">{claim.patientName}</span></div>
+                    <div className="flex justify-between"><span className="text-content-secondary">Client</span><span className="text-content-primary">{claim.clientName}</span></div>
+                    <div className="flex justify-between"><span className="text-content-secondary">DOS</span><span className="text-content-primary font-mono">{claim.dos}</span></div>
+                    <div className="flex justify-between"><span className="text-content-secondary">CPT</span><span className="text-content-primary font-mono">{claim.cptCodes.join(', ')}</span></div>
+                    <div className="flex justify-between"><span className="text-content-secondary">ICD</span><span className="text-content-primary font-mono">{claim.icdCodes.join(', ')}</span></div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-2">Payer Info</p>
+                    <div className="flex justify-between"><span className="text-content-secondary">Payer</span><span className="text-content-primary font-medium">{claim.payer}</span></div>
+                    <div className="flex justify-between"><span className="text-content-secondary">Billed</span><span className="text-content-primary">${claim.billed}</span></div>
+                    <div className="flex justify-between"><span className="text-content-secondary">Allowed</span><span className="text-content-primary">{claim.allowed ? `$${claim.allowed}` : '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-content-secondary">Paid</span><span className={claim.paid ? 'text-emerald-500 font-medium' : 'text-content-tertiary'}>{claim.paid ? `$${claim.paid}` : '—'}</span></div>
+                    {claim.submittedDate && <div className="flex justify-between"><span className="text-content-secondary">Submitted</span><span className="text-content-primary font-mono">{claim.submittedDate}</span></div>}
+                    {claim.paymentDate && <div className="flex justify-between"><span className="text-content-secondary">Paid On</span><span className="text-content-primary font-mono">{claim.paymentDate}</span></div>}
+                  </div>
+                </div>
+              )}
+
               {/* Timeline */}
-              <div>
-                <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-3">Status Timeline</p>
-                <div className="space-y-0">
-                  {claim.timeline.map((ev: ClaimTimelineEvent, i: number) => {
-                    const isLast = i === claim.timeline.length - 1
-                    return (
-                      <div key={i} className="flex gap-3">
-                        <div className="flex flex-col items-center">
-                          <div className={`w-3 h-3 rounded-full mt-0.5 shrink-0 ${isLast ? 'bg-brand' : 'bg-separator'}`} />
-                          {!isLast && <div className="w-0.5 bg-separator flex-1 my-1" />}
+              {!editMode && (
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-3">Status Timeline</p>
+                  <div className="space-y-0">
+                    {claim.timeline.map((ev: ClaimTimelineEvent, i: number) => {
+                      const isLast = i === claim.timeline.length - 1
+                      return (
+                        <div key={i} className="flex gap-3">
+                          <div className="flex flex-col items-center">
+                            <div className={`w-3 h-3 rounded-full mt-0.5 shrink-0 ${isLast ? 'bg-brand' : 'bg-separator'}`} />
+                            {!isLast && <div className="w-0.5 bg-separator flex-1 my-1" />}
+                          </div>
+                          <div className={`pb-4 ${isLast ? 'pb-0' : ''}`}>
+                            <p className={`text-[13px] font-medium ${isLast ? 'text-brand' : 'text-content-primary'}`}>{ev.status.replace(/_/g, ' ')}</p>
+                            <p className="text-[11px] text-content-tertiary">{ev.timestamp} · {ev.by}</p>
+                          </div>
                         </div>
-                        <div className={`pb-4 ${isLast ? 'pb-0' : ''}`}>
-                          <p className={`text-[13px] font-medium ${isLast ? 'text-brand' : 'text-content-primary'}`}>{ev.status.replace(/_/g, ' ')}</p>
-                          <p className="text-[11px] text-content-tertiary">{ev.timestamp} · {ev.by}</p>
-                        </div>
-                      </div>
-                    )
-                  })}
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
+
               {/* Scrub errors */}
               {claim.scrubErrors.length > 0 && (
                 <div className="space-y-2">
@@ -157,12 +284,14 @@ function ClaimDrawer({ claim, onClose }: { claim: DemoClaim; onClose: () => void
                 </div>
               )}
               {/* Action button */}
-              <div>
-                {claim.status === 'scrub_failed' && <button onClick={statusAction} className="w-full bg-red-500 text-white rounded-btn py-2.5 text-[13px] font-medium">Fix & Re-Scrub</button>}
-                {claim.status === 'ready' && <button onClick={statusAction} className="w-full bg-brand text-white rounded-btn py-2.5 text-[13px] font-medium">Submit to Clearinghouse</button>}
-                {claim.status === 'denied' && <button onClick={statusAction} className="w-full bg-amber-500 text-white rounded-btn py-2.5 text-[13px] font-medium">Route to Denials</button>}
-                {claim.status === 'paid' && <button onClick={statusAction} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium">View Payment</button>}
-              </div>
+              {!editMode && (
+                <div>
+                  {claim.status === 'scrub_failed' && <button onClick={statusAction} className="w-full bg-red-500 text-white rounded-btn py-2.5 text-[13px] font-medium">Fix & Re-Scrub</button>}
+                  {claim.status === 'ready' && <button onClick={statusAction} className="w-full bg-brand text-white rounded-btn py-2.5 text-[13px] font-medium">Submit to Clearinghouse</button>}
+                  {claim.status === 'denied' && <button onClick={statusAction} className="w-full bg-amber-500 text-white rounded-btn py-2.5 text-[13px] font-medium">Route to Denials</button>}
+                  {claim.status === 'paid' && <button onClick={statusAction} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium">View Payment</button>}
+                </div>
+              )}
             </div>
           )}
 
@@ -170,14 +299,15 @@ function ClaimDrawer({ claim, onClose }: { claim: DemoClaim; onClose: () => void
             <div>
               <table className="w-full text-[12px]">
                 <thead><tr className="border-b border-separator text-[11px] text-content-tertiary uppercase tracking-wider">
-                  {['CPT','Description','Units','Billed','Allowed','Paid','Adj Code'].map(h => (
+                  {['CPT','Modifier','Description','Units','Billed','Allowed','Paid','Adj Code'].map(h => (
                     <th key={h} className="text-left py-2 pr-3">{h}</th>
                   ))}
                 </tr></thead>
                 <tbody>
-                  {claim.cptCodes.map((cpt, i) => (
+                  {claim.cptCodes.map((cpt) => (
                     <tr key={cpt} className="border-b border-separator last:border-0">
                       <td className="py-3 pr-3 font-mono font-medium text-content-primary">{cpt}</td>
+                      <td className="py-3 pr-3 font-mono text-content-tertiary">—</td>
                       <td className="py-3 pr-3 text-content-secondary">Office/Procedure visit</td>
                       <td className="py-3 pr-3">1</td>
                       <td className="py-3 pr-3">${Math.round(claim.billed / claim.cptCodes.length)}</td>
@@ -191,6 +321,36 @@ function ClaimDrawer({ claim, onClose }: { claim: DemoClaim; onClose: () => void
               <p className="text-[12px] text-content-secondary mt-4">
                 Diagnoses: <span className="font-mono text-content-primary">{claim.icdCodes.join(', ')}</span>
               </p>
+            </div>
+          )}
+
+          {tab === 'scrub' && (
+            <div className="space-y-4">
+              <div className="flex items-start gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                <CheckSquare size={14} className="text-blue-400 mt-0.5 shrink-0" />
+                <p className="text-[12px] text-blue-400">
+                  Complete all 20 scrub rules before submitting. All {checkedRules.size} / {SCRUB_RULES.length} checked.
+                </p>
+              </div>
+              <div className="space-y-1">
+                {SCRUB_RULES.map(rule => (
+                  <label key={rule.id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-surface-elevated cursor-pointer group">
+                    <input type="checkbox" checked={checkedRules.has(rule.id)} onChange={() => toggleRule(rule.id)}
+                      className="rounded accent-brand w-4 h-4 shrink-0" />
+                    <span className={`text-[12px] font-mono text-content-tertiary w-10 shrink-0`}>{rule.id}</span>
+                    <span className={`text-[13px] flex-1 ${checkedRules.has(rule.id) ? 'line-through text-content-tertiary' : 'text-content-primary'}`}>{rule.label}</span>
+                  </label>
+                ))}
+              </div>
+              <button
+                disabled={!allRulesChecked}
+                onClick={() => {
+                  toast.success('Manual scrub complete — claim marked ready for submission')
+                  setCheckedRules(new Set())
+                }}
+                className={`w-full py-2.5 rounded-btn text-[13px] font-medium transition-colors ${allRulesChecked ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-surface-elevated text-content-tertiary cursor-not-allowed border border-separator'}`}>
+                {allRulesChecked ? 'Submit Manual Scrub' : `Check all ${SCRUB_RULES.length - checkedRules.size} remaining rules to continue`}
+              </button>
             </div>
           )}
 

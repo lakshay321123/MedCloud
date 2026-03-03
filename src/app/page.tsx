@@ -29,7 +29,7 @@ export default function LoginPage() {
       if (res.ok) {
         localStorage.setItem('cosentus_region', country)
         localStorage.setItem('cosentus_portal_type', portalType)
-        router.push('/dashboard')
+        window.location.href = '/dashboard'
       } else {
         setError('Invalid username or password')
         setLoading(false)

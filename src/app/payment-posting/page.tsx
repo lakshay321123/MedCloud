@@ -6,7 +6,8 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import { useApp } from '@/lib/context'
 import { demoERAFiles, demoERALineItems, demoUnmatchedPayments } from '@/lib/demo-data'
 import { useToast } from '@/components/shared/Toast'
-import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote } from 'lucide-react'
+import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
+import { getSLAStatus } from '@/lib/utils/time'
 
 export default function PaymentPostingPage() {
   const { selectedClient } = useApp()
@@ -15,6 +16,9 @@ export default function PaymentPostingPage() {
   const [selectedEra, setSelectedEra] = useState<string | null>(null)
   const [lineItems, setLineItems] = useState(demoERALineItems)
   const [editingCell, setEditingCell] = useState<{ rowId: string; field: string } | null>(null)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const era = eras.find(e => e.id === selectedEra)
   const eraLines = lineItems.filter(line => line.eraId === selectedEra)
@@ -36,6 +40,9 @@ export default function PaymentPostingPage() {
     setLineItems(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row))
   }
 
+  // Silent denials: ERA lines with denied > 0 that have action 'post' (not yet routed)
+  const silentDenials = demoERALineItems.filter(l => l.denied > 0 && l.action === 'post')
+
   if (!selectedEra) {
     return (
       <ModuleShell title="Payment Posting" subtitle="Process ERAs and post payments">
@@ -46,18 +53,72 @@ export default function PaymentPostingPage() {
           <KPICard label="Unmatched" value={demoUnmatchedPayments.length} icon={<AlertTriangle size={20} />} />
         </div>
 
+        {/* Silent denial detection banner */}
+        {silentDenials.length > 0 && (
+          <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-4">
+            <AlertTriangle size={15} className="text-red-500 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-[13px] font-semibold text-red-500">Silent Denials Detected</p>
+              <p className="text-[12px] text-content-secondary mt-0.5">
+                {silentDenials.length} ERA line{silentDenials.length > 1 ? 's' : ''} have denied amounts but are not routed to AR.
+                These may be silently written off.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setLineItems(prev => prev.map(row =>
+                  row.denied > 0 && row.action === 'post' ? { ...row, action: 'deny_route' } : row
+                ))
+                toast.success(`${silentDenials.length} silent denial(s) routed to AR queue`)
+              }}
+              className="shrink-0 bg-red-500 text-white rounded-btn px-3 py-1.5 text-[12px] font-medium hover:bg-red-600 transition-colors">
+              Create AR Tasks
+            </button>
+          </div>
+        )}
+
         <div className="card overflow-hidden mb-4">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-separator">
+            <h3 className="text-[12px] font-semibold text-content-secondary uppercase tracking-wider">ERA Files</h3>
+            <button onClick={() => setShowUploadModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-brand text-white rounded-btn text-[12px] font-medium hover:bg-brand-dark transition-colors">
+              <Upload size={13} /> Upload ERA
+            </button>
+          </div>
           <table className="w-full text-[13px]">
             <thead><tr className="border-b border-separator text-content-secondary text-[12px]">
-              <th className="text-left px-4 py-3">File</th><th className="text-left px-4 py-3">Payer</th><th className="text-left px-4 py-3">Client</th><th className="text-right px-4 py-3">Claims</th><th className="text-right px-4 py-3">Total</th><th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3">Exceptions</th>
+              <th className="text-left px-4 py-3">File</th>
+              <th className="text-left px-4 py-3">Payer</th>
+              <th className="text-left px-4 py-3">Client</th>
+              <th className="text-right px-4 py-3">Claims</th>
+              <th className="text-right px-4 py-3">Total</th>
+              <th className="text-left px-4 py-3">Status</th>
+              <th className="text-left px-4 py-3">SLA</th>
+              <th className="text-left px-4 py-3">Exceptions</th>
             </tr></thead>
-            <tbody>{eras.map(r => (
-              <tr key={r.id} onClick={() => setSelectedEra(r.id)} className="table-row cursor-pointer border-b border-separator last:border-0">
-                <td className="px-4 py-3 font-mono">{r.file}</td><td className="px-4 py-3">{r.payer}</td><td className="px-4 py-3 text-content-secondary">{r.client}</td><td className="px-4 py-3 text-right font-mono">{r.claims}</td><td className="px-4 py-3 text-right font-mono">${r.total.toFixed(2)}</td>
-                <td className="px-4 py-3"><StatusBadge status={r.status === 'posted' ? 'completed' : r.status === 'processing' ? 'in_progress' : 'received'} small /></td>
-                <td className={`px-4 py-3 ${r.exceptions > 0 ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-content-secondary'}`}>{r.exceptions}</td>
-              </tr>
-            ))}</tbody>
+            <tbody>{eras.map(r => {
+              const sla = r.receivedAt ? getSLAStatus(r.receivedAt) : null
+              return (
+                <tr key={r.id} onClick={() => setSelectedEra(r.id)} className="table-row cursor-pointer border-b border-separator last:border-0">
+                  <td className="px-4 py-3 font-mono">{r.file}</td>
+                  <td className="px-4 py-3">{r.payer}</td>
+                  <td className="px-4 py-3 text-content-secondary">{r.client}</td>
+                  <td className="px-4 py-3 text-right font-mono">{r.claims}</td>
+                  <td className="px-4 py-3 text-right font-mono">${r.total.toFixed(2)}</td>
+                  <td className="px-4 py-3"><StatusBadge status={r.status === 'posted' ? 'completed' : r.status === 'processing' ? 'in_progress' : 'received'} small /></td>
+                  <td className="px-4 py-3">
+                    {sla ? (
+                      <span className={`flex items-center gap-1 text-[12px] font-mono font-medium ${sla.color}`}>
+                        <Clock size={11} />
+                        {sla.label}
+                        {sla.urgent && <AlertTriangle size={11} />}
+                      </span>
+                    ) : <span className="text-content-tertiary">—</span>}
+                  </td>
+                  <td className={`px-4 py-3 ${r.exceptions > 0 ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-content-secondary'}`}>{r.exceptions}</td>
+                </tr>
+              )
+            })}</tbody>
           </table>
         </div>
 
@@ -72,6 +133,60 @@ export default function PaymentPostingPage() {
             ))}
           </div>
         </div>
+
+        {/* Upload ERA Modal */}
+        {showUploadModal && (
+          <>
+            <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setShowUploadModal(false)} />
+            <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+              <div className="bg-surface-secondary rounded-xl shadow-2xl w-full max-w-md border border-separator">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-separator">
+                  <h3 className="font-semibold text-content-primary">Upload ERA File</h3>
+                  <button onClick={() => setShowUploadModal(false)}><X size={16} className="text-content-secondary" /></button>
+                </div>
+                <div className="p-5 space-y-4">
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={e => {
+                      e.preventDefault()
+                      const f = e.dataTransfer.files[0]
+                      if (f) setUploadedFile(f)
+                    }}
+                    className="border-2 border-dashed border-separator rounded-xl p-8 text-center cursor-pointer hover:border-brand/50 transition-colors group">
+                    <Upload size={24} className="mx-auto mb-2 text-content-tertiary group-hover:text-brand transition-colors" />
+                    {uploadedFile ? (
+                      <p className="text-[13px] font-medium text-content-primary">{uploadedFile.name}</p>
+                    ) : (
+                      <>
+                        <p className="text-[13px] text-content-secondary">Drop 835 file here or <span className="text-brand">browse</span></p>
+                        <p className="text-[11px] text-content-tertiary mt-1">Accepts .835, .txt, .edi files</p>
+                      </>
+                    )}
+                    <input ref={fileInputRef} type="file" accept=".835,.txt,.edi" className="hidden"
+                      onChange={e => { if (e.target.files?.[0]) setUploadedFile(e.target.files[0]) }} />
+                  </div>
+                </div>
+                <div className="flex gap-2 px-5 pb-5">
+                  <button
+                    disabled={!uploadedFile}
+                    onClick={() => {
+                      toast.success(`ERA file "${uploadedFile?.name}" uploaded and queued for processing`)
+                      setUploadedFile(null)
+                      setShowUploadModal(false)
+                    }}
+                    className={`flex-1 rounded-btn py-2.5 text-[13px] font-medium transition-colors ${uploadedFile ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-surface-elevated text-content-tertiary cursor-not-allowed border border-separator'}`}>
+                    Upload & Process
+                  </button>
+                  <button onClick={() => { setUploadedFile(null); setShowUploadModal(false) }}
+                    className="px-4 py-2.5 bg-surface-elevated border border-separator rounded-btn text-[13px] text-content-secondary">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </ModuleShell>
     )
   }

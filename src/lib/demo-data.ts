@@ -445,12 +445,23 @@ export interface DemoCodingItem {
   dos: string
   provider: string
   providerSpecialty: string
+  providerNpi: string
   aiSuggestedCpt: AISuggestedCode[]
   aiSuggestedIcd: AISuggestedCode[]
   superbillCpt?: string[]
   hasSuperbill: boolean
   priority: 'low' | 'medium' | 'high' | 'urgent'
   receivedAt: string
+  status: 'pending' | 'in_progress' | 'on_hold' | 'query_sent' | 'approved'
+  patientDob: string
+  patientGender: 'Male' | 'Female' | 'Other'
+  patientPayer: string
+  patientPayerId: string
+  placeOfService: string
+  visitType: 'New Patient' | 'Established Patient' | 'Telehealth' | 'Consultation'
+  priorAuthStatus: 'not_required' | 'obtained' | 'pending' | 'not_obtained'
+  priorAuthNumber?: string
+  slaNotes?: string
   visitNote: {
     subjective: string
     objective: string
@@ -463,7 +474,12 @@ export const demoCodingQueue: DemoCodingItem[] = [
   {
     id: 'COD-001', patientName: 'John Smith', patientId: 'P-001', clientId: 'org-102', clientName: 'Irvine Family Practice',
     source: 'upload', dos: '2026-03-02', provider: 'Dr. Martinez', providerSpecialty: 'Family Medicine',
-    hasSuperbill: true, superbillCpt: ['99214', '93000'], priority: 'medium', receivedAt: '2026-03-02T08:30:00',
+    providerNpi: '1234567890',
+    hasSuperbill: true, superbillCpt: ['99214', '93000'], priority: 'medium',
+    receivedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    status: 'pending',
+    patientDob: '1985-03-15', patientGender: 'Male', patientPayer: 'UnitedHealthcare', patientPayerId: 'UHC',
+    placeOfService: '11 - Office', visitType: 'Established Patient', priorAuthStatus: 'not_required',
     aiSuggestedCpt: [
       { code: '99214', desc: 'Office visit, est. patient, moderate', confidence: 94, modifiers: [], reasoning: 'Moderate complexity: 4 HPI elements, 2 organ systems examined, moderate MDM with prescription management.' },
       { code: '93000', desc: 'Electrocardiogram, routine', confidence: 78, modifiers: [], reasoning: 'ECG documented in objective. Separate reportable service.' }
@@ -489,7 +505,12 @@ export const demoCodingQueue: DemoCodingItem[] = [
   {
     id: 'COD-002', patientName: 'Ahmed Al Mansouri', patientId: 'P-003', clientId: 'org-101', clientName: 'Gulf Medical Center',
     source: 'ai_scribe', dos: '2026-03-01', provider: 'Dr. Al Zaabi', providerSpecialty: 'Internal Medicine',
-    hasSuperbill: false, priority: 'medium', receivedAt: '2026-03-01T16:20:00',
+    providerNpi: '9876543210',
+    hasSuperbill: false, priority: 'medium',
+    receivedAt: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(),
+    status: 'pending',
+    patientDob: '1978-11-08', patientGender: 'Male', patientPayer: 'Daman', patientPayerId: 'DAMAN',
+    placeOfService: '11 - Office', visitType: 'Established Patient', priorAuthStatus: 'pending', priorAuthNumber: 'AUTH-2026-0892',
     aiSuggestedCpt: [
       { code: '99213', desc: 'Office visit, est. patient, low', confidence: 88, modifiers: [], reasoning: 'Low complexity: 2 HPI elements, limited exam, straightforward MDM.' }
     ],
@@ -506,7 +527,12 @@ export const demoCodingQueue: DemoCodingItem[] = [
   {
     id: 'COD-003', patientName: 'Robert Chen', patientId: 'P-005', clientId: 'org-103', clientName: 'Patel Cardiology',
     source: 'ai_scribe', dos: '2026-03-02', provider: 'Dr. Patel', providerSpecialty: 'Cardiology',
-    hasSuperbill: false, priority: 'high', receivedAt: '2026-03-02T09:45:00',
+    providerNpi: '1122334455',
+    hasSuperbill: false, priority: 'high',
+    receivedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+    status: 'in_progress',
+    patientDob: '1965-01-30', patientGender: 'Male', patientPayer: 'Medicare', patientPayerId: 'MEDICARE',
+    placeOfService: '11 - Office', visitType: 'Established Patient', priorAuthStatus: 'not_required',
     aiSuggestedCpt: [
       { code: '93306', desc: 'TTE with Doppler, complete', confidence: 96, modifiers: ['26'], reasoning: 'Complete transthoracic echo with Doppler documented. Modifier 26 for professional component — interpretation only.' },
       { code: '93320', desc: 'Doppler echo, complete', confidence: 91, modifiers: [], reasoning: 'Separate Doppler study documented with spectral and color flow analysis.' }
@@ -530,7 +556,12 @@ export const demoCodingQueue: DemoCodingItem[] = [
   {
     id: 'COD-004', patientName: 'Sarah Johnson', patientId: 'P-002', clientId: 'org-102', clientName: 'Irvine Family Practice',
     source: 'upload', dos: '2026-03-01', provider: 'Dr. Martinez', providerSpecialty: 'Family Medicine',
-    hasSuperbill: true, superbillCpt: ['99214'], priority: 'medium', receivedAt: '2026-03-01T17:00:00',
+    providerNpi: '1234567890',
+    hasSuperbill: true, superbillCpt: ['99214'], priority: 'medium',
+    receivedAt: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(),
+    status: 'pending',
+    patientDob: '1992-07-22', patientGender: 'Female', patientPayer: 'Aetna', patientPayerId: 'AETNA',
+    placeOfService: '11 - Office', visitType: 'Established Patient', priorAuthStatus: 'not_required',
     aiSuggestedCpt: [
       { code: '99214', desc: 'Office visit, est. patient, moderate', confidence: 72, modifiers: [], reasoning: 'Borderline 99213/99214. Moderate MDM due to prescription management, but exam is limited. Superbill ticked 99214.' },
       { code: '99213', desc: 'Office visit, est. patient, low', confidence: 68, modifiers: [], reasoning: 'Alternative: low complexity visit — only 1 chronic condition addressed with stable management.' }
@@ -550,7 +581,12 @@ export const demoCodingQueue: DemoCodingItem[] = [
   {
     id: 'COD-005', patientName: 'Fatima Hassan', patientId: 'P-004', clientId: 'org-101', clientName: 'Gulf Medical Center',
     source: 'upload', dos: '2026-03-02', provider: 'Dr. Al Zaabi', providerSpecialty: 'Internal Medicine',
-    hasSuperbill: false, priority: 'low', receivedAt: '2026-03-02T10:15:00',
+    providerNpi: '9876543210',
+    hasSuperbill: false, priority: 'low',
+    receivedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    status: 'pending',
+    patientDob: '1980-06-15', patientGender: 'Female', patientPayer: 'Daman', patientPayerId: 'DAMAN',
+    placeOfService: '11 - Office', visitType: 'New Patient', priorAuthStatus: 'not_obtained',
     aiSuggestedCpt: [{ code: '99203', desc: 'Office visit, new patient, low', confidence: 82, modifiers: [], reasoning: 'New patient, low complexity. Straightforward presentation with single acute complaint.' }],
     aiSuggestedIcd: [{ code: 'R10.9', desc: 'Unspecified abdominal pain', confidence: 75, reasoning: 'Abdominal pain NOS — consider more specific code once workup complete (R10.31 RLQ, K30 dyspepsia, etc.)' }],
     visitNote: {
@@ -566,7 +602,12 @@ export const demoCodingQueue: DemoCodingItem[] = [
   {
     id: 'COD-006', patientName: 'Maria Garcia', patientId: 'P-006', clientId: 'org-102', clientName: 'Irvine Family Practice',
     source: 'upload', dos: '2026-02-28', provider: 'Dr. Martinez', providerSpecialty: 'Family Medicine',
-    hasSuperbill: true, superbillCpt: ['99213'], priority: 'low', receivedAt: '2026-02-28T15:30:00',
+    providerNpi: '1234567890',
+    hasSuperbill: true, superbillCpt: ['99213'], priority: 'low',
+    receivedAt: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString(),
+    status: 'on_hold',
+    patientDob: '1990-05-12', patientGender: 'Female', patientPayer: 'Aetna', patientPayerId: 'AETNA',
+    placeOfService: '11 - Office', visitType: 'Established Patient', priorAuthStatus: 'not_required',
     aiSuggestedCpt: [{ code: '99213', desc: 'Office visit, est. patient, low', confidence: 91, modifiers: [], reasoning: 'Low complexity: 1 acute problem, limited exam, straightforward decision making. Matches superbill.' }],
     aiSuggestedIcd: [{ code: 'J02.9', desc: 'Acute pharyngitis, unspecified', confidence: 88 }],
     visitNote: {
@@ -695,6 +736,46 @@ export function getClientName(clientId: string): string {
 
 export function getClientRegion(clientId: string) {
   return demoClients.find(c => c.id === clientId)?.region || 'us'
+}
+
+// AR accounts for dashboard and AR management page
+export const demoARAccounts = [
+  { id: 'AR-001', patient: 'Robert Chen', client: 'Patel Cardiology', payer: 'Medicare', original: 1200, balance: 488, age: 95, lastAction: 'Voice AI call — "In process"', nextFollowup: '2026-03-04', priority: 'urgent' as const, source: 'denied_claim' as const },
+  { id: 'AR-002', patient: 'Khalid Ibrahim', client: 'Dubai Wellness Clinic', payer: 'NAS', original: 320, balance: 320, age: 46, lastAction: 'Initial submission', nextFollowup: '2026-03-03', priority: 'high' as const, source: 'underpayment' as const },
+  { id: 'AR-003', patient: 'Sarah Johnson', client: 'Irvine Family Practice', payer: 'Aetna', original: 350, balance: 126, age: 12, lastAction: 'Partial payment posted', nextFollowup: '2026-03-10', priority: 'medium' as const, source: 'patient_balance' as const },
+  { id: 'AR-004', patient: 'John Smith', client: 'Irvine Family Practice', payer: 'UHC', original: 250, balance: 0, age: 5, lastAction: 'Paid in full', nextFollowup: '-', priority: 'low' as const, source: 'denied_claim' as const },
+  { id: 'AR-005', patient: 'Ahmed Al Mansouri', client: 'Gulf Medical Center', payer: 'Daman', original: 480, balance: 0, age: 31, lastAction: 'Paid in full', nextFollowup: '-', priority: 'low' as const, source: 'denied_claim' as const },
+  { id: 'AR-006', patient: 'Emily Williams', client: 'Patel Cardiology', payer: 'BCBS', original: 890, balance: 890, age: 120, lastAction: 'Appeal L1 submitted', nextFollowup: '2026-03-02', priority: 'urgent' as const, source: 'timely_filing_risk' as const },
+]
+
+// Denials for dashboard and denials page
+export const demoDenialsData = [
+  { id: 'DEN-001', claimId: 'CLM-4504', patientName: 'Sarah Johnson', payer: 'Aetna', denialReason: 'Prior authorization required', status: 'denied' as const, appealLevel: 'L1' as const },
+  { id: 'DEN-002', claimId: 'CLM-4507', patientName: 'Robert Chen', payer: 'Medicare', denialReason: 'Not medically necessary', status: 'appealed' as const, appealLevel: null },
+  { id: 'DEN-003', claimId: 'CLM-4511', patientName: 'Khalid Ibrahim', payer: 'NAS', denialReason: 'Prior auth required — not obtained', status: 'denied' as const, appealLevel: null },
+  { id: 'DEN-004', claimId: 'CLM-4515', patientName: 'Emily Williams', payer: 'Medicare', denialReason: 'Expenses not covered — inactive coverage', status: 'denied' as const, appealLevel: null },
+]
+
+export const demoPriorVisitHistory: Record<string, Array<{
+  dos: string
+  provider: string
+  icdCodes: string[]
+  cptCodes: string[]
+  claimStatus: string
+}>> = {
+  'P-001': [
+    { dos: '2026-02-25', provider: 'Dr. Martinez', icdCodes: ['E11.9', 'I10'], cptCodes: ['99214', '93000'], claimStatus: 'Paid' },
+    { dos: '2026-01-20', provider: 'Dr. Martinez', icdCodes: ['E11.65', 'I10'], cptCodes: ['99213'], claimStatus: 'Paid' },
+    { dos: '2025-12-10', provider: 'Dr. Martinez', icdCodes: ['E11.9', 'I10', 'Z79.4'], cptCodes: ['99214'], claimStatus: 'Paid' },
+  ],
+  'P-003': [
+    { dos: '2026-01-30', provider: 'Dr. Al Zaabi', icdCodes: ['I25.10', 'I10'], cptCodes: ['99214', '93000'], claimStatus: 'Paid' },
+    { dos: '2025-11-15', provider: 'Dr. Al Zaabi', icdCodes: ['I25.10'], cptCodes: ['99213'], claimStatus: 'Denied' },
+  ],
+  'P-005': [
+    { dos: '2026-02-20', provider: 'Dr. Patel', icdCodes: ['I50.9'], cptCodes: ['93306', '93320'], claimStatus: 'Pending' },
+    { dos: '2026-01-05', provider: 'Dr. Patel', icdCodes: ['I50.9', 'I25.10'], cptCodes: ['93350'], claimStatus: 'Paid' },
+  ],
 }
 
 // ─── Contracts ──────────────────────────────────────────────────────────────
