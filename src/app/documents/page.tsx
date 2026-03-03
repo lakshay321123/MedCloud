@@ -54,8 +54,8 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
       <div className="flex-1 overflow-y-auto">
         {/* Preview area */}
         <div className="m-4 bg-surface-elevated rounded-lg overflow-hidden border border-separator" style={{ minHeight: '50vh' }}>
-          {doc.url ? (
-            <embed src={doc.url} type="application/pdf" className="w-full" style={{ height: '50vh' }} />
+          {(doc as any).url ? (
+            <embed src={(doc as any).url} type="application/pdf" className="w-full" style={{ height: '50vh' }} />
           ) : (
             <div className="flex flex-col items-center justify-center h-full py-16 gap-3">
               <FileText size={40} className="opacity-30" />
