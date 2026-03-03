@@ -127,9 +127,9 @@ function CoderDashboard() {
 
 // ── Biller Dashboard ──────────────────────────────────────────────────────────
 function BillerDashboard() {
-  const scrubFailed = demoClaims.filter(c => c.status === 'scrub_failed').length
-  const pendingSubmit = demoClaims.filter(c => c.status === 'ready').length
-  const rejectedYesterday = demoClaims.filter(c => c.status === 'rejected' || c.status === 'denied').length
+  const scrubFailed = demoClaims.filter(c => (c.status as string) === 'scrub_failed').length
+  const pendingSubmit = demoClaims.filter(c => (c.status as string) === 'ready').length
+  const rejectedYesterday = demoClaims.filter(c => (c.status as string) === 'rejected' || (c.status as string) === 'denied').length
   const chargeLagCount = 3
 
   return (
