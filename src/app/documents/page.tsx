@@ -6,6 +6,7 @@ import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
 import { demoDocs, demoFaxes, DemoDocRecord } from '@/lib/demo-data'
 import { useDocuments, useTriggerTextract, useClassifyDocument } from '@/lib/hooks'
+import type { ApiDocument } from '@/lib/hooks'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import {
   Search, Upload, X, Download, AlertTriangle, FileText, CreditCard,
@@ -136,18 +137,19 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
 function AllDocsTab() {
   const { selectedClient, country } = useApp()
   const { data: apiDocRaw } = useDocuments()
-  const apiDocs: any[] = (Array.isArray(apiDocRaw) ? apiDocRaw : []).map((d: any) => ({
-    id: d.id, name: d.file_name || d.original_filename || 'document',
-    fileName: d.file_name || d.original_filename || 'document',
-    type: d.classification || d.document_type || 'other',
-    patient: d.patient_name || '—', client: d.client_name || '—',
+  const apiDocs: DemoDocRecord[] = (Array.isArray(apiDocRaw) ? apiDocRaw : []).map((d: ApiDocument) => ({
+    id: d.id, name: d.file_name || 'document',
+    fileName: d.file_name || 'document',
+    type: d.document_type || 'other',
+    patient: (d as any).patient_name || '—', client: (d as any).client_name || '—',
     clientId: d.client_id || '', uploadDate: d.created_at || '',
-    uploadedBy: d.uploaded_by_name || '—', uploadedAt: d.created_at || '',
-    source: 'Upload', status: d.status || 'uploaded', size: d.file_size || '—',
-    textractStatus: d.textract_status || 'pending',
-    classification: d.classification || null,
-    classificationConfidence: d.classification_confidence || null,
-  }))
+    uploadedBy: (d as any).uploaded_by_name || '—', uploadedAt: d.created_at || '',
+    source: (d.source as DemoDocRecord['source']) || 'Manual Upload',
+    status: d.status || 'uploaded', size: d.file_size || '—',
+    textractStatus: (d as any).textract_status || 'pending',
+    classification: (d as any).classification || null,
+    classificationConfidence: d.ai_confidence || null,
+  })) as DemoDocRecord[]
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string[]>([])
   const [statusFilter, setStatusFilter] = useState('')
@@ -234,10 +236,10 @@ function UnlinkedQueueTab() {
   const [patientSearch, setPatientSearch] = useState<Record<string,string>>({})
   const [linking, setLinking] = useState<string|null>(null)
   const { data: apiDocRaw2 } = useDocuments()
-  const apiDocs2: any[] = (Array.isArray(apiDocRaw2) ? apiDocRaw2 : []).map((d: any) => ({
-    id: d.id, name: d.file_name || d.original_filename || 'document',
-    type: d.classification || d.document_type || 'other', patient: d.patient_name || '—',
-    client: d.client_name || '—', status: d.status || 'uploaded',
+  const apiDocs2: any[] = (Array.isArray(apiDocRaw2) ? apiDocRaw2 : []).map((d: ApiDocument) => ({
+    id: d.id, name: d.file_name || 'document',
+    type: d.document_type || 'other', patient: (d as any).patient_name || '—',
+    client: (d as any).client_name || '—', status: d.status || 'uploaded',
   })) as any[]
   const unlinked = (apiDocs2.length ? apiDocs2 : demoDocs).filter((d: any)=>d.status==='Unlinked')
   return (

@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS messages (
   entity_type       TEXT NOT NULL,               -- 'patient','claim','denial','encounter','document','submission','general'
   entity_id         UUID,                        -- ID of attached entity (NULL for general messages)
   parent_id         UUID REFERENCES messages(id),-- for threaded replies
-  sender_id         UUID NOT NULL,               -- user who sent it
+  sender_id         UUID NOT NULL REFERENCES users(id), -- user who sent it
   sender_role       TEXT,                        -- 'admin','biller','coder','provider','client','system'
   recipient_ids     UUID[],                      -- specific recipients (NULL = visible to all with entity access)
   subject           TEXT,                        -- optional subject line (first message in thread)
@@ -136,6 +136,23 @@ CREATE TABLE IF NOT EXISTS appeal_templates (
 CREATE INDEX IF NOT EXISTS idx_appeal_tmpl_org ON appeal_templates(org_id);
 CREATE INDEX IF NOT EXISTS idx_appeal_tmpl_payer ON appeal_templates(payer_id, carc_code);
 
+-- Trigger: auto-calculate win_rate when times_used/times_won change
+CREATE OR REPLACE FUNCTION fn_appeal_template_win_rate() RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.times_used > 0 THEN
+    NEW.win_rate := ROUND((NEW.times_won::numeric / NEW.times_used) * 100, 2);
+  ELSE
+    NEW.win_rate := 0;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_appeal_template_win_rate ON appeal_templates;
+CREATE TRIGGER trg_appeal_template_win_rate
+  BEFORE INSERT OR UPDATE OF times_used, times_won ON appeal_templates
+  FOR EACH ROW EXECUTE FUNCTION fn_appeal_template_win_rate();
+
 -- ─── Column additions to existing tables ─────────────────────────────────────
 
 -- Claims: timely filing tracking
@@ -205,7 +222,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_onboarding_client ON client_onboarding(org
 CREATE TABLE IF NOT EXISTS note_addendums (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id            UUID NOT NULL REFERENCES organizations(id),
-  soap_note_id      UUID NOT NULL,
+  soap_note_id      UUID NOT NULL REFERENCES soap_notes(id),
   encounter_id      UUID,
   provider_id       UUID NOT NULL,                -- provider adding the addendum
   addendum_text     TEXT NOT NULL,

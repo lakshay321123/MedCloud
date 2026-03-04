@@ -2736,7 +2736,7 @@ async function categorizeDenials(orgId, clientId) {
       await pool.query(
         'UPDATE denials SET category = $1, updated_at = NOW() WHERE id = $2',
         [d.category, d.id]
-      ).catch(() => {});
+      ).catch((err) => { console.error('Notification error:', err.message); });
     }
   }
 
@@ -3298,7 +3298,17 @@ async function getMessages(orgId, userId, qs) {
   q += ' ORDER BY m.created_at DESC';
   if (qs.limit) { q += ` LIMIT $${p.length + 1}`; p.push(qs.limit); }
   const r = await pool.query(q, p);
-  const unread = r.rows.filter(m => !(m.read_by || []).includes(userId)).length;
+  // Count unread in DB for efficiency
+  const unreadP = [...p].slice(0, p.length - (qs.limit ? 1 : 0)); // exclude LIMIT param
+  const unreadQ = q.replace(/SELECT m\.\*, .*? FROM/, 'SELECT COUNT(*) FROM').replace(/ORDER BY.*$/, '') + (userId ? ` AND NOT (m.read_by @> ARRAY[$${unreadP.length + 1}::uuid])` : '');
+  let unread = 0;
+  if (userId) {
+    try {
+      unreadP.push(userId);
+      const unreadR = await pool.query(unreadQ, unreadP);
+      unread = Number(unreadR.rows[0]?.count || 0);
+    } catch (_) { unread = r.rows.filter(m => !(m.read_by || []).includes(userId)).length; }
+  }
   return { data: r.rows, total: r.rows.length, unread_count: unread };
 }
 
@@ -3336,20 +3346,22 @@ async function markMessageRead(messageId, orgId, userId) {
 
 // ─── Audit Log Viewer ───────────────────────────────────────────────────────
 async function getAuditLog(orgId, qs) {
-  let q = 'SELECT al.*, u.email as user_email FROM audit_log al LEFT JOIN users u ON al.user_id = u.id WHERE al.org_id = $1';
+  let where = 'WHERE al.org_id = $1';
   const p = [orgId];
-  if (qs.user_id) { q += ` AND al.user_id = $${p.length + 1}`; p.push(qs.user_id); }
-  if (qs.entity_type) { q += ` AND al.entity_type = $${p.length + 1}`; p.push(qs.entity_type); }
-  if (qs.entity_id) { q += ` AND al.entity_id = $${p.length + 1}`; p.push(qs.entity_id); }
-  if (qs.action) { q += ` AND al.action = $${p.length + 1}`; p.push(qs.action); }
-  if (qs.from) { q += ` AND al.created_at >= $${p.length + 1}`; p.push(qs.from); }
-  if (qs.to) { q += ` AND al.created_at <= $${p.length + 1}`; p.push(qs.to); }
+  if (qs.user_id) { where += ` AND al.user_id = $${p.length + 1}`; p.push(qs.user_id); }
+  if (qs.entity_type) { where += ` AND al.entity_type = $${p.length + 1}`; p.push(qs.entity_type); }
+  if (qs.entity_id) { where += ` AND al.entity_id = $${p.length + 1}`; p.push(qs.entity_id); }
+  if (qs.action) { where += ` AND al.action = $${p.length + 1}`; p.push(qs.action); }
+  if (qs.from) { where += ` AND al.created_at >= $${p.length + 1}`; p.push(qs.from); }
+  if (qs.to) { where += ` AND al.created_at <= $${p.length + 1}`; p.push(qs.to); }
+  const countP = [...p];
+  const countR = await pool.query(`SELECT COUNT(*) FROM audit_log al ${where}`, countP);
+  let q = `SELECT al.*, u.email as user_email FROM audit_log al LEFT JOIN users u ON al.user_id = u.id ${where}`;
   q += ' ORDER BY al.created_at DESC';
   const limit = Math.min(Number(qs.limit) || 50, 500);
   q += ` LIMIT $${p.length + 1}`; p.push(limit);
   if (qs.offset) { q += ` OFFSET $${p.length + 1}`; p.push(qs.offset); }
   const r = await pool.query(q, p);
-  const countR = await pool.query('SELECT COUNT(*) FROM audit_log WHERE org_id = $1', [orgId]);
   return { data: r.rows, total: Number(countR.rows[0].count), limit };
 }
 
@@ -3398,7 +3410,7 @@ async function calculateTimelyFilingDeadlines(orgId, clientId) {
   });
   for (const r of results) {
     await pool.query('UPDATE claims SET timely_filing_deadline = $1, timely_filing_days_remaining = $2 WHERE id = $3',
-      [r.deadline, r.days_remaining, r.claim_id]).catch(() => {});
+      [r.deadline, r.days_remaining, r.claim_id]).catch((err) => { console.error(`Failed to update timely filing for claim ${r.claim_id}:`, err.message); });
   }
   const summary = { expired: results.filter(r => r.risk === 'expired').length,
     critical: results.filter(r => r.risk === 'critical').length,
@@ -3420,13 +3432,17 @@ async function identifyCreditBalances(orgId, clientId) {
   if (clientId) { q += ` AND c.client_id = $${params.length + 1}`; params.push(clientId); }
   q += ' ORDER BY (c.total_paid - (c.total_charge - COALESCE(c.adjustment_amount, 0))) DESC';
   const r = await pool.query(q, params);
+  // Batch-load existing unresolved credit balances to avoid N+1 queries
+  const existingR = await pool.query(
+    'SELECT DISTINCT claim_id FROM credit_balances WHERE org_id = $1 AND status != $2', [orgId, 'resolved']);
+  const existingClaimIds = new Set(existingR.rows.map(r => r.claim_id));
   let newCount = 0;
   for (const row of r.rows) {
     if (Number(row.overpayment) <= 0.01) continue;
-    const existing = await pool.query('SELECT id FROM credit_balances WHERE org_id = $1 AND claim_id = $2 AND status != $3', [orgId, row.claim_id, 'resolved']);
-    if (existing.rows.length === 0) {
+    if (!existingClaimIds.has(row.claim_id)) {
       await create('credit_balances', { org_id: orgId, claim_id: row.claim_id, patient_id: row.patient_id,
         payer_id: row.payer_id, amount: Number(row.overpayment).toFixed(2), source: 'overpayment', status: 'identified' }, orgId);
+      existingClaimIds.add(row.claim_id);
       newCount++;
     }
   }
@@ -3543,7 +3559,7 @@ async function calculateClientHealth(orgId, clientId) {
   const collectionScore = Math.min(100, collectionRate);
 
   const healthScore = Math.round(denialScore * 0.25 + arScore * 0.25 + cleanRate * 0.25 + collectionScore * 0.25);
-  await pool.query('UPDATE clients SET health_score = $1, health_score_updated_at = NOW() WHERE id = $2', [healthScore, cid]).catch(() => {});
+  await pool.query('UPDATE clients SET health_score = $1, health_score_updated_at = NOW() WHERE id = $2', [healthScore, cid]).catch((err) => { console.error(`Failed to update health score for client ${cid}:`, err.message); });
 
   return { client_id: cid, health_score: healthScore, calculated_at: new Date().toISOString(),
     components: {
@@ -3751,6 +3767,13 @@ async function updateOnboardingItem(onboardingId, itemNumber, body, orgId, userI
 }
 
 // ─── Provider Note Addendum Workflow ────────────────────────────────────────
+async function getNoteAddendums(orgId, soapNoteId) {
+  const r = await pool.query(
+    'SELECT na.*, u.email as provider_email FROM note_addendums na LEFT JOIN users u ON na.provider_id = u.id WHERE na.org_id = $1 AND na.soap_note_id = $2 ORDER BY na.created_at',
+    [orgId, soapNoteId]);
+  return r.rows;
+}
+
 async function createAddendum(body, orgId, userId) {
   const { soap_note_id, addendum_text, reason } = body;
   if (!soap_note_id || !addendum_text) throw new Error('soap_note_id and addendum_text required');
@@ -3944,14 +3967,14 @@ async function flagHCCCodes(patientId, orgId) {
   await pool.query(
     `UPDATE patients SET hcc_codes = $1, hcc_raf_score = $2, hcc_last_assessed = CURRENT_DATE,
      hcc_next_reassessment = $3 WHERE id = $4`,
-    [JSON.stringify(hccFlags), totalRaf.toFixed(3), nextReassessment.toISOString().slice(0, 10), patientId]).catch(() => {});
+    [JSON.stringify(hccFlags), totalRaf.toFixed(3), nextReassessment.toISOString().slice(0, 10), patientId]).catch((err) => { console.error(`Failed to update HCC flags for patient ${patientId}:`, err.message); });
 
   // Alert if reassessment needed
   if (needsReassessment && hccFlags.length > 0) {
     await createNotification(orgId, { type: 'coding', priority: 'normal',
       title: `HCC re-documentation needed: ${patient.first_name} ${patient.last_name}`,
       message: `${hccFlags.length} HCC conditions found, RAF score ${totalRaf.toFixed(3)}. Annual re-documentation required.`,
-      entity_type: 'patient', entity_id: patientId, action_url: `/patients/${patientId}` }).catch(() => {});
+      entity_type: 'patient', entity_id: patientId, action_url: `/patients/${patientId}` }).catch((err) => { console.error('HCC notification error:', err.message); });
   }
 
   return { patient_id: patientId, hcc_codes: hccFlags, total_raf_score: totalRaf.toFixed(3),
@@ -5001,8 +5024,7 @@ export const handler = async (event) => {
         return respond(201, await createAddendum(body, effectiveOrgId, userId));
       }
       if (method === 'GET' && qs.soap_note_id) {
-        const r = await pool.query('SELECT na.*, u.email as provider_email FROM note_addendums na LEFT JOIN users u ON na.provider_id = u.id WHERE na.org_id = $1 AND na.soap_note_id = $2 ORDER BY na.created_at', [effectiveOrgId, qs.soap_note_id]);
-        return respond(200, { data: r.rows, total: r.rows.length });
+        return respond(200, await getNoteAddendums(effectiveOrgId, qs.soap_note_id));
       }
       if (method === 'PUT' && pathParams.id && path.includes('/sign-off')) {
         return respond(200, await signOffAddendum(pathParams.id, effectiveOrgId, userId));
