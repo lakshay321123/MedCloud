@@ -8,13 +8,14 @@ import {
   Phone, PhoneCall, PhoneMissed, Clock, Play, X, ChevronRight,
   Plus, Edit2, Zap, BarChart2, Settings2, Radio, AlertTriangle,
   CheckCircle, XCircle, Mic, Users, RefreshCw, ExternalLink,
-  PhoneOutgoing, Activity,
+  PhoneOutgoing, Activity, Upload, FileSpreadsheet, Eye, Trash2,
 } from 'lucide-react'
 import { useApp } from '@/lib/context'
 import {
   useRetellCalls, useRetellBatches, useRetellAgents, useLaunchCall, useLaunchBatch,
   formatDuration, formatCallStatus, RetellCall, RetellBatch,
 } from '@/lib/retell'
+import { parseRetellExcel, ExcelParseResult } from '@/lib/retell-excel'
 import { demoScripts, DemoScript } from '@/lib/demo-data'
 
 // ─── Status Dot ──────────────────────────────────────────────────────────────
@@ -339,7 +340,8 @@ function CallLogTab() {
   )
 }
 
-// ─── Tab 3: Campaign Launcher ─────────────────────────────────────────────────
+
+// ─── Tab 3: Campaign Launcher (Excel Upload) ──────────────────────────────────
 function CampaignLauncherTab() {
   const { toast } = useToast()
   const { agents, apiConfigured } = useRetellAgents()
@@ -347,42 +349,80 @@ function CampaignLauncherTab() {
   const { launch: launchBatch, loading: launching } = useLaunchBatch()
   const { launch: launchCall, loading: singleLoading } = useLaunchCall()
 
-  const [mode, setMode] = useState<'batch' | 'single'>('batch')
-  const [name, setCampaignName] = useState('')
-  const [agentKey, setAgentKey] = useState<'chris' | 'cindy'>('chris')
-  const [type, setType] = useState('Payer Status Check')
+  const [mode, setMode] = useState<'excel' | 'single'>('excel')
+  const [agentKey, setAgentKey] = useState<'chris' | 'cindy'>('cindy')
+  const [parsed, setParsed] = useState<ExcelParseResult | null>(null)
+  const [parsing, setParsing] = useState(false)
+  const [previewRow, setPreviewRow] = useState<number | null>(null)
   const [singleNumber, setSingleNumber] = useState('')
-  const [csvText, setCsvText] = useState('')
+  const [filterPractice, setFilterPractice] = useState<string>('all')
+  const fileRef = React.useRef<HTMLInputElement>(null)
 
-  const selectedAgent = agents.find(a => a.id === agentKey || (agentKey === 'chris' && a.name === 'Chris') || (agentKey === 'cindy' && a.name === 'Cindy'))
+  const filteredRows = parsed
+    ? (filterPractice === 'all'
+        ? parsed.rows
+        : parsed.rows.filter(r =>
+            (r.variables['practicename'] ?? r.variables['practice_name'] ?? '') === filterPractice
+          ))
+    : []
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setParsing(true)
+    setParsed(null)
+    try {
+      const result = await parseRetellExcel(file)
+      setParsed(result)
+      // Auto-select agent based on file content
+      if (result.agentDetected) setAgentKey(result.agentDetected)
+      if (result.errors.length > 0) {
+        toast.warning(`${result.rows.length} valid rows — ${result.errors.length} skipped`)
+      } else {
+        toast.success(`${result.rows.length} contacts ready to call`)
+      }
+    } catch (err) {
+      toast.error(`Failed to parse file: ${err}`)
+    } finally {
+      setParsing(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
 
   async function handleLaunchBatch() {
-    const lines = csvText.trim().split('\n').filter(Boolean)
-    if (!lines.length) { toast.error('Add at least one phone number'); return }
-    const recipients = lines.map(l => ({ to_number: l.split(',')[0].trim() }))
+    if (!filteredRows.length) { toast.error('No rows to call'); return }
     try {
-      const r = await launchBatch({ agent_name: agentKey, batch_name: name || type, recipients })
-      toast.success(`Batch launched — ${recipients.length} calls queued`)
-      setCsvText('')
-    } catch (e) {
-      toast.error(`Failed to launch: ${e}`)
+      const recipients = filteredRows.map(r => ({
+        to_number: r.phone,
+        variables: r.variables,
+      }))
+      await launchBatch({
+        agent_name: agentKey,
+        batch_name: parsed?.fileName.replace('.xlsx', '') ?? `Campaign ${new Date().toLocaleDateString()}`,
+        recipients,
+      })
+      toast.success(`${recipients.length} calls queued via Retell`)
+      setParsed(null)
+    } catch (err) {
+      toast.error(`Launch failed: ${err}`)
     }
   }
 
   async function handleLaunchSingle() {
     if (!singleNumber) { toast.error('Enter a phone number'); return }
     try {
-      await launchCall({ agent_name: agentKey, to_number: singleNumber, variables: { campaign_type: type } })
+      await launchCall({ agent_name: agentKey, to_number: singleNumber })
       toast.success(`Call to ${singleNumber} initiated`)
       setSingleNumber('')
-    } catch (e) {
-      toast.error(`Failed to call: ${e}`)
+    } catch (err) {
+      toast.error(`Failed: ${err}`)
     }
   }
 
   return (
     <div className="grid grid-cols-5 gap-5">
-      {/* Past campaigns */}
+
+      {/* Left: Past campaigns */}
       <div className="col-span-2 space-y-3">
         <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">
           Past Campaigns {fallback && <span className="text-amber-500 normal-case font-normal">(demo)</span>}
@@ -394,36 +434,37 @@ function CampaignLauncherTab() {
         ) : batches.map(b => (
           <div key={b.batch_id} className="card p-4">
             <div className="flex items-start justify-between mb-1.5">
-              <p className="text-sm font-semibold text-content-primary truncate">{b.name}</p>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ml-2 ${
+              <p className="text-sm font-semibold text-content-primary truncate pr-2">{b.name}</p>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium ${
                 b.status === 'running' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
                 b.status === 'completed' ? 'bg-brand/10 text-brand' :
-                'bg-amber-500/10 text-amber-500'
+                b.status === 'paused' ? 'bg-amber-500/10 text-amber-500' :
+                'bg-red-500/10 text-red-500'
               }`}>{b.status}</span>
             </div>
-            <div className="flex items-center gap-3 text-[10px] text-content-secondary mt-2">
+            <div className="flex items-center gap-3 text-[10px] text-content-secondary mt-1">
               <span>{b.completed_count}/{b.total_count} completed</span>
               {b.failed_count > 0 && <span className="text-red-500">{b.failed_count} failed</span>}
             </div>
-            {b.status === 'running' && (
-              <div className="mt-2 h-1.5 bg-surface-elevated rounded-full overflow-hidden">
-                <div className="h-full bg-brand rounded-full transition-all"
-                  style={{ width: `${Math.round((b.completed_count / b.total_count) * 100)}%` }} />
+            {(b.status === 'running' || b.status === 'completed') && (
+              <div className="mt-2.5 h-1.5 bg-surface-elevated rounded-full overflow-hidden">
+                <div className="h-full bg-brand rounded-full transition-all duration-500"
+                  style={{ width: `${b.total_count > 0 ? Math.round((b.completed_count / b.total_count) * 100) : 0}%` }} />
               </div>
             )}
           </div>
         ))}
       </div>
 
-      {/* Builder */}
+      {/* Right: Launch panel */}
       <div className="col-span-3 card p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-content-primary">Launch Calls</h3>
           <div className="flex gap-1 bg-surface-elevated rounded-lg p-0.5">
-            {(['batch', 'single'] as const).map(m => (
+            {(['excel', 'single'] as const).map(m => (
               <button key={m} onClick={() => setMode(m)}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${mode === m ? 'bg-surface-secondary text-content-primary shadow-sm' : 'text-content-secondary'}`}>
-                {m === 'batch' ? 'Batch Campaign' : 'Single Call'}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${mode === m ? 'bg-surface-secondary text-content-primary shadow-sm' : 'text-content-secondary hover:text-content-primary'}`}>
+                {m === 'excel' ? '📊 Excel Upload' : '📞 Single Call'}
               </button>
             ))}
           </div>
@@ -431,93 +472,213 @@ function CampaignLauncherTab() {
 
         {!apiConfigured && (
           <div className="px-3 py-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-600 dark:text-amber-400">
-            Add <code className="font-mono bg-amber-500/10 px-1 rounded">RETELL_API_KEY</code>, <code className="font-mono bg-amber-500/10 px-1 rounded">RETELL_AGENT_CHRIS</code>, and <code className="font-mono bg-amber-500/10 px-1 rounded">RETELL_AGENT_CINDY</code> to Vercel to go live.
+            Add <code className="font-mono bg-amber-500/10 px-1 rounded">RETELL_API_KEY</code> + agent env vars to Vercel to go live.
           </div>
         )}
 
-        {/* Agent selection */}
+        {/* Agent selector */}
         <div>
           <label className="text-xs text-content-secondary block mb-1.5">Agent</label>
           <div className="flex gap-2">
-            {agents.length > 0 ? agents.map(a => (
-              <button key={a.name} onClick={() => setAgentKey(a.name.toLowerCase() as 'chris' | 'cindy')}
-                className={`flex-1 p-3 rounded-lg border text-left transition-all ${agentKey === a.name.toLowerCase() ? 'border-brand/40 bg-brand/5' : 'border-separator hover:border-brand/20'}`}>
-                <div className="flex items-center gap-2 mb-0.5">
-                  <div className={`w-2 h-2 rounded-full ${a.configured ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-                  <span className="text-xs font-semibold text-content-primary">{a.name}</span>
-                </div>
-                <p className="text-[10px] text-content-tertiary">{a.role}</p>
-                <p className="text-[10px] font-mono text-content-tertiary">{a.phone}</p>
-              </button>
-            )) : (
-              <>
-                {(['chris', 'cindy'] as const).map(n => (
-                  <button key={n} onClick={() => setAgentKey(n)}
-                    className={`flex-1 p-3 rounded-lg border text-left transition-all ${agentKey === n ? 'border-brand/40 bg-brand/5' : 'border-separator'}`}>
-                    <p className="text-xs font-semibold text-content-primary capitalize">{n}</p>
-                    <p className="text-[10px] text-content-tertiary">{n === 'chris' ? 'Payer Follow-up' : 'AR Collections'}</p>
-                  </button>
-                ))}
-              </>
-            )}
+            {[
+              { key: 'cindy' as const, name: 'Cindy', role: 'Patient AR Collections', desc: 'Balance reminders, payment plans' },
+              { key: 'chris' as const, name: 'Chris', role: 'Payer Follow-up', desc: 'Claim status, appeals, auth' },
+            ].map(a => {
+              const liveAgent = agents.find(ag => ag.name.toLowerCase() === a.key)
+              return (
+                <button key={a.key} onClick={() => { setAgentKey(a.key); setParsed(null) }}
+                  className={`flex-1 p-3 rounded-lg border text-left transition-all ${agentKey === a.key ? 'border-brand/40 bg-brand/5' : 'border-separator hover:border-brand/20'}`}>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <div className={`w-2 h-2 rounded-full ${liveAgent?.configured ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                    <span className="text-xs font-semibold text-content-primary">{a.name}</span>
+                  </div>
+                  <p className="text-[10px] text-content-secondary">{a.role}</p>
+                  <p className="text-[10px] text-content-tertiary mt-0.5 italic">{a.desc}</p>
+                </button>
+              )
+            })}
           </div>
         </div>
 
-        {/* Campaign type */}
-        <div>
-          <label className="text-xs text-content-secondary block mb-1">Campaign Type</label>
-          <select value={type} onChange={e => setType(e.target.value)}
-            className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
-            {['Payer Status Check', 'Payer Appeal Follow-up', 'Patient Balance Reminder', 'Appointment Reminder'].map(t => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-        </div>
-
-        {mode === 'single' ? (
-          <div>
-            <label className="text-xs text-content-secondary block mb-1">Phone Number</label>
-            <div className="flex gap-2">
-              <input value={singleNumber} onChange={e => setSingleNumber(e.target.value)}
-                placeholder="+1 (555) 000-0000"
-                className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40" />
-              <button onClick={handleLaunchSingle} disabled={singleLoading || !singleNumber}
-                className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-deep disabled:opacity-40 transition-colors whitespace-nowrap">
-                <PhoneOutgoing size={14} className="inline mr-1.5" />
-                {singleLoading ? 'Calling…' : 'Call Now'}
-              </button>
-            </div>
-          </div>
-        ) : (
+        {mode === 'excel' ? (
           <>
-            <div>
-              <label className="text-xs text-content-secondary block mb-1">Campaign Name</label>
-              <input value={name} onChange={e => setCampaignName(e.target.value)} placeholder="e.g., Weekly Payer Status Check"
-                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40" />
+            {/* Excel expected format hint */}
+            <div className="bg-surface-elevated rounded-lg p-3">
+              <p className="text-[10px] font-semibold text-content-secondary mb-1.5 uppercase tracking-wide">
+                Expected columns — {agentKey === 'cindy' ? 'Cindy (Patient Collections)' : 'Chris (Payer Follow-up)'}
+              </p>
+              <p className="text-[10px] text-content-tertiary leading-relaxed font-mono">
+                {agentKey === 'cindy'
+                  ? 'phone number, practicename, patientfirstname, patientlastname, patientbalance, aginggroup, primaryinsurance…'
+                  : 'phone number, Practice_Name, NPI, Tax_ID, Patient_Name, Primary_Carrier_Name, Service_Date, Total_Charge…'}
+              </p>
             </div>
-            <div>
-              <label className="text-xs text-content-secondary flex items-center justify-between mb-1">
-                <span>Phone Numbers (one per line)</span>
-                <span className="font-normal text-brand">{csvText.trim().split('\n').filter(Boolean).length} numbers</span>
-              </label>
-              <textarea value={csvText} onChange={e => setCsvText(e.target.value)}
-                placeholder={"+12125551234\n+13105557890\n+17185554321"}
-                rows={5}
-                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40 font-mono resize-y" />
-            </div>
-            <button onClick={handleLaunchBatch} disabled={launching || !csvText.trim()}
-              className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-brand-deep disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-              <Zap size={14} className="inline mr-2" />
-              {launching ? 'Launching…' : `Launch Campaign`}
-            </button>
+
+            {/* Drop zone */}
+            {!parsed ? (
+              <div
+                onClick={() => fileRef.current?.click()}
+                className="border-2 border-dashed border-brand/30 rounded-xl p-8 text-center cursor-pointer hover:border-brand/60 hover:bg-brand/5 transition-all group">
+                <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFile} />
+                <FileSpreadsheet size={32} className="mx-auto mb-3 text-brand/40 group-hover:text-brand/60 transition-colors" />
+                {parsing ? (
+                  <p className="text-sm text-content-secondary">Parsing…</p>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-content-primary mb-1">Drop Excel file or click to browse</p>
+                    <p className="text-xs text-content-tertiary">.xlsx, .xls, .csv — same format as existing Retell campaigns</p>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* File summary */}
+                <div className="flex items-center justify-between bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <FileSpreadsheet size={18} className="text-emerald-500" />
+                    <div>
+                      <p className="text-xs font-semibold text-content-primary">{parsed.fileName}</p>
+                      <p className="text-[10px] text-content-secondary">
+                        {parsed.rows.length} contacts · {parsed.columns.length} columns
+                        {parsed.agentDetected && <span className="ml-1 text-brand">· {parsed.agentDetected === 'cindy' ? 'Cindy format' : 'Chris format'} detected</span>}
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={() => setParsed(null)} className="p-1 hover:bg-surface-elevated rounded text-content-tertiary hover:text-red-500 transition-colors">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+
+                {/* Practice filter if multiple */}
+                {parsed.practiceNames.length > 1 && (
+                  <div>
+                    <label className="text-xs text-content-secondary block mb-1">Filter by Practice</label>
+                    <select value={filterPractice} onChange={e => setFilterPractice(e.target.value)}
+                      className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
+                      <option value="all">All Practices ({parsed.rows.length} contacts)</option>
+                      {parsed.practiceNames.map(p => {
+                        const count = parsed.rows.filter(r => (r.variables['practicename'] ?? r.variables['practice_name'] ?? '') === p).length
+                        return <option key={p} value={p}>{p} ({count})</option>
+                      })}
+                    </select>
+                  </div>
+                )}
+
+                {/* Preview table */}
+                <div className="border border-separator rounded-lg overflow-hidden">
+                  <div className="px-3 py-2 bg-surface-elevated border-b border-separator flex items-center justify-between">
+                    <span className="text-[10px] font-semibold text-content-secondary uppercase tracking-wide">
+                      Preview — {filteredRows.length} calls
+                    </span>
+                    <Eye size={12} className="text-content-tertiary" />
+                  </div>
+                  <div className="max-h-40 overflow-y-auto">
+                    <table className="w-full text-[11px]">
+                      <thead className="sticky top-0 bg-surface-secondary">
+                        <tr className="border-b border-separator text-content-tertiary">
+                          <th className="text-left px-3 py-1.5">#</th>
+                          <th className="text-left px-3 py-1.5">Phone</th>
+                          {agentKey === 'cindy' ? (
+                            <>
+                              <th className="text-left px-3 py-1.5">Patient</th>
+                              <th className="text-left px-3 py-1.5">Balance</th>
+                              <th className="text-left px-3 py-1.5">Aging</th>
+                            </>
+                          ) : (
+                            <>
+                              <th className="text-left px-3 py-1.5">Patient</th>
+                              <th className="text-left px-3 py-1.5">Payer</th>
+                              <th className="text-left px-3 py-1.5">Charge</th>
+                            </>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredRows.slice(0, 50).map((row, i) => (
+                          <tr key={i} className="border-b border-separator last:border-0 hover:bg-surface-elevated transition-colors"
+                            onClick={() => setPreviewRow(previewRow === i ? null : i)}>
+                            <td className="px-3 py-1.5 text-content-tertiary">{i + 1}</td>
+                            <td className="px-3 py-1.5 font-mono">{row.phone}</td>
+                            {agentKey === 'cindy' ? (
+                              <>
+                                <td className="px-3 py-1.5">
+                                  {[row.variables['patientfirstname'], row.variables['patientlastname']].filter(Boolean).join(' ') || '—'}
+                                </td>
+                                <td className="px-3 py-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+                                  {row.variables['patientbalance'] ? `$${Number(row.variables['patientbalance']).toLocaleString()}` : '—'}
+                                </td>
+                                <td className="px-3 py-1.5">
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                                    row.variables['aginggroup']?.includes('180') ? 'bg-red-500/10 text-red-500' :
+                                    row.variables['aginggroup']?.includes('90') ? 'bg-amber-500/10 text-amber-500' :
+                                    'bg-surface-elevated text-content-secondary'
+                                  }`}>{row.variables['aginggroup'] || '—'}</span>
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="px-3 py-1.5">{row.variables['patient_name'] || '—'}</td>
+                                <td className="px-3 py-1.5">{row.variables['primary_carrier_name'] || '—'}</td>
+                                <td className="px-3 py-1.5 font-medium">
+                                  {row.variables['total_charge'] ? `$${Number(row.variables['total_charge']).toLocaleString()}` : '—'}
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        ))}
+                        {filteredRows.length > 50 && (
+                          <tr><td colSpan={5} className="px-3 py-2 text-center text-content-tertiary">+{filteredRows.length - 50} more rows</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Errors */}
+                {parsed.errors.length > 0 && (
+                  <div className="px-3 py-2 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                    <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium mb-1">{parsed.errors.length} rows skipped:</p>
+                    <div className="max-h-16 overflow-y-auto space-y-0.5">
+                      {parsed.errors.map((e, i) => <p key={i} className="text-[10px] text-content-tertiary">{e}</p>)}
+                    </div>
+                  </div>
+                )}
+
+                <button onClick={handleLaunchBatch} disabled={launching || filteredRows.length === 0}
+                  className="w-full bg-brand text-white rounded-lg py-3 text-sm font-semibold hover:bg-brand-deep disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                  <Zap size={14} className="inline mr-2" />
+                  {launching ? 'Queuing calls…' : `Launch ${filteredRows.length} Calls via ${agentKey === 'cindy' ? 'Cindy' : 'Chris'}`}
+                </button>
+              </div>
+            )}
           </>
+        ) : (
+          /* Single call mode */
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-content-secondary block mb-1">Phone Number</label>
+              <div className="flex gap-2">
+                <input value={singleNumber} onChange={e => setSingleNumber(e.target.value)}
+                  placeholder="+1 (702) 555-0000"
+                  className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40" />
+                <button onClick={handleLaunchSingle} disabled={singleLoading || !singleNumber}
+                  className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-deep disabled:opacity-40 transition-colors whitespace-nowrap">
+                  <PhoneOutgoing size={14} className="inline mr-1.5" />
+                  {singleLoading ? 'Calling…' : 'Call Now'}
+                </button>
+              </div>
+              <p className="text-[10px] text-content-tertiary mt-1.5">
+                Uses {agentKey === 'cindy' ? 'Cindy (AR Collections)' : 'Chris (Payer Follow-up)'} — no patient context passed
+              </p>
+            </div>
+          </div>
         )}
       </div>
     </div>
   )
 }
 
-// ─── Tab 4: Script Builder (kept from before — Retell uses LLM prompts) ───────
+
 const stepBadge: Record<string, string> = {
   DIAL: 'bg-blue-500/15 text-blue-500',
   DTMF: 'bg-amber-500/15 text-amber-500',
