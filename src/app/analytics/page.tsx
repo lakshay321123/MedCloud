@@ -192,8 +192,7 @@ export default function AnalyticsPage() {
     })
     return Object.values(byClient).map(cl => {
       const rate = cl.billed > 0 ? Math.round((cl.paid / cl.billed) * 100) : 0
-      const shortName = cl.name.split(' ').map((w: string) => w[0]).join('').toUpperCase() || cl.name.slice(0, 6)
-      return { name: shortName, rate, fill: rate >= 95 ? '#10B981' : rate >= 85 ? '#F59E0B' : '#EF4444' }
+      return { name: cl.name.split(' ')[0], rate, fill: rate >= 95 ? '#10B981' : rate >= 85 ? '#F59E0B' : '#EF4444' }
     })
   }, [claims])
 

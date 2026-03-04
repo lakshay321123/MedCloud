@@ -561,7 +561,7 @@ export default function ARManagementPage() {
   const { data: arCallLogResult } = useARCallLog()
 
   // Map real claims to AR accounts shape; fall back to seed data if API empty
-  const apiAccounts: ARAccount[] = (claimsResult?.data || [])
+  const apiAccounts: ARAccount[] = useMemo(() => (claimsResult?.data || [])
     .filter(c => !['paid', 'draft'].includes(c.status))
     .map(c => {
       const today = new Date()
@@ -570,11 +570,9 @@ export default function ARManagementPage() {
       const age = Math.max(0, Math.floor(ageMs / 86400000))
       const balance = (Number(c.total_charges) || 0) - (Number(c.paid_amount) || 0)
       const source: ARAccount['source'] =
-        c.status === 'denied' ? 'denied_claim' :
-        (balance > 0 && balance < Number(c.total_charges)) ? 'underpayment' :
-        (c.status === 'submitted' || c.status === 'accepted' || c.status === 'in_process') ? 'patient_balance' :
-        age > 90 ? 'timely_filing_risk' :
-        'denied_claim'
+        c.status === 'denied' || c.status === 'appealed' ? 'denied_claim' :
+        balance > 0 && balance < Number(c.total_charges) ? 'underpayment' :
+        'patient_balance'
       const priority: ARAccount['priority'] =
         age > 90 ? 'urgent' : age > 60 ? 'high' : age > 30 ? 'medium' : 'low'
       return {
@@ -591,7 +589,7 @@ export default function ARManagementPage() {
         source,
         dos,
       }
-    })
+    }), [claimsResult])
 
   const [accounts, setAccounts] = useState<ARAccount[]>(initialAccounts)
   const [callHistory, setCallHistory] = useState<Record<string, CallLogEntry[]>>(initialCallHistory)
