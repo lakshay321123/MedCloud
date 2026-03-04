@@ -268,7 +268,15 @@ export default function CodingPage() {
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, max_tokens: 800 }),
+        body: JSON.stringify({
+          action: 'auto_code',
+          patient: safePatient,
+          specialty: safeSpecialty,
+          dos: item.dos,
+          assessment: safeAssessment,
+          plan: safePlan,
+          codeSystem,
+        }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
@@ -303,9 +311,10 @@ export default function CodingPage() {
   async function generateCDIQuery() {
     if (!item) return
     setQueryGenerating(true)
+    // Sanitize code descriptions — these may come from a prior AI call (second-order injection defence)
     const lowCodes = [
-      ...activeCodes.icd.filter(c => (c.confidence ?? 100) < 75).map(c => `ICD ${c.code} (${c.desc})`),
-      ...activeCodes.cpt.filter(c => (c.confidence ?? 100) < 75).map(c => `CPT ${c.code} (${c.desc})`),
+      ...activeCodes.icd.filter(c => (c.confidence ?? 100) < 75).map(c => `ICD ${sanitizeForPrompt(c.code, 20)} (${sanitizeForPrompt(c.desc, 80)})`),
+      ...activeCodes.cpt.filter(c => (c.confidence ?? 100) < 75).map(c => `CPT ${sanitizeForPrompt(c.code, 20)} (${sanitizeForPrompt(c.desc, 80)})`),
     ]
     try {
       // Sanitize user-controlled fields (prompt injection defence)
@@ -325,14 +334,23 @@ export default function CodingPage() {
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: parts.join('\n'), max_tokens: 300 }),
+        body: JSON.stringify({
+          action: 'cdi_query',
+          patient: safePatient,
+          provider: safeProvider,
+          dos: item.dos,
+          assessment: safeAssessment,
+          plan: safePlan,
+          lowCodes: sanitizeForPrompt(lowCodes.join(', '), 300),
+        }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       if (data.text) setQueryText(data.text)
       toast.success('AI query generated')
-    } catch {
+    } catch (err) {
+      console.error('[CDI query] AI generation failed:', err)
       toast.error('AI generation failed')
     } finally {
       setQueryGenerating(false)

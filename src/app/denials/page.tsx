@@ -114,14 +114,26 @@ export default function DenialsPage() {
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, max_tokens: 1000 }),
+        body: JSON.stringify({
+          action: 'appeal',
+          level: appealLevel,
+          claimId: denial.id,
+          patient: safePatient,
+          payer: safePayer,
+          provider: safeClient,
+          dos: denial.dos,
+          denialReason: safeDenial,
+          carc: safeCarc,
+          rarc: safeRarc,
+        }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       setAppealTexts(prev => ({ ...prev, [key]: data.text || buildAppealLetter(denial, appealLevel) }))
       toast.success('AI appeal letter generated')
-    } catch {
+    } catch (err) {
+      console.error('[appeal generator] AI failed:', err)
       toast.error('AI generation failed — using template')
       setAppealTexts(prev => ({ ...prev, [key]: buildAppealLetter(denial, appealLevel) }))
     } finally {

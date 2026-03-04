@@ -212,6 +212,7 @@ export interface DemoClaim {
   billed: number; allowed: number; paid: number;
   status: ClaimStatus; age: number; assignedTo?: string; denialReason?: string;
   submittedDate?: string; paymentDate?: string; daysTilDeadline?: number;
+  placeOfService?: string;
   scrubErrors: ClaimScrubError[];
   timeline: ClaimTimelineEvent[];
   documents: DemoDocument[];

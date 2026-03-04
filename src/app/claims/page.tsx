@@ -45,6 +45,7 @@ function apiClaimToDemoClaim(c: ApiClaim): DemoClaim {
       : 0,
     submittedDate: c.submitted_date,
     paymentDate: c.paid_date,
+    placeOfService: c.place_of_service || '11',
     scrubErrors: [],
     timeline: [],
     documents: [],
@@ -169,6 +170,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
       const safePayer  = sanitizeForPrompt(claim.payer, 100)
       const safeCpt    = claim.cptCodes?.map(c => sanitizeForPrompt(c, 20)).join(', ') || 'N/A'
       const safeIcd    = claim.icdCodes?.map(c => sanitizeForPrompt(c, 20)).join(', ') || 'N/A'
+      const claimPOS   = sanitizeForPrompt(claim.placeOfService, 30) || '11'
 
       const prompt = [
         'You are an expert medical billing denial analyst. Predict the denial risk for this claim.',
@@ -188,7 +190,15 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, max_tokens: 200 }),
+        body: JSON.stringify({
+          action: 'denial_risk',
+          payer: safePayer,
+          cpt: safeCpt,
+          icd: safeIcd,
+          billed: claim.billed,
+          pos: claimPOS,
+          status: claim.status,
+        }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
@@ -196,7 +206,8 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
       const cleaned = (data.text || '').replace(/```json|```/g, '').trim()
       const parsed = JSON.parse(cleaned)
       setDenialRisk({ risk: parsed.risk, probability: parsed.probability, reasons: parsed.reasons || [] })
-    } catch {
+    } catch (err) {
+      console.error('[denial prediction] Failed:', err)
       toast.error('Prediction unavailable')
     } finally {
       setPredictingDenial(false)
