@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React from 'react'
 import { useApp } from '@/lib/context'
 import KPICard from '@/components/shared/KPICard'
@@ -42,6 +43,7 @@ function timeAgo(dateStr: string): string {
 
 // ── Executive (Admin/Director/Manager) Dashboard ──────────────────────────────
 function ExecutiveDashboard() {
+  const { t } = useT()
   const router = useRouter()
   const { data: metrics, loading } = useDashboardMetrics()
 
@@ -75,13 +77,13 @@ function ExecutiveDashboard() {
     <div className="space-y-6">
       <div className="grid grid-cols-4 gap-5">
         <KPICard label="Total Revenue (MTD)" value={loading ? '…' : `$${(totalCollectionsMtd / 1000000).toFixed(1)}M`} sub="+8.2% vs last month" trend="up" icon={<DollarSign size={20} />} />
-        <KPICard label="Claims Submitted" value={loading ? '…' : totalClaims.toLocaleString()} sub="+124 today" trend="up" icon={<FileText size={20} />} />
-        <KPICard label="Denial Rate" value={loading ? '…' : `${denialRate}%`} sub="-0.3% vs last month" trend="down" icon={<AlertTriangle size={20} />} />
-        <KPICard label="Avg Days in A/R" value="28.5" sub="-2.1 days" trend="down" icon={<Clock size={20} />} />
+        <KPICard label={t("dashboard","claimsSubmitted")} value={loading ? '…' : totalClaims.toLocaleString()} sub="+124 today" trend="up" icon={<FileText size={20} />} />
+        <KPICard label={t("dashboard","denialRate")} value={loading ? '…' : `${denialRate}%`} sub="-0.3% vs last month" trend="down" icon={<AlertTriangle size={20} />} />
+        <KPICard label={t("dashboard","daysInAR")} value="28.5" sub="-2.1 days" trend="down" icon={<Clock size={20} />} />
       </div>
       <div className="grid grid-cols-4 gap-5">
         <KPICard label="Collection Rate" value="96.8%" sub="+0.4%" trend="up" icon={<TrendingUp size={20} />} />
-        <KPICard label="Active Patients" value={loading ? '…' : totalPatients.toLocaleString()} icon={<Users size={20} />} />
+        <KPICard label={t("dashboard","activePatients")} value={loading ? '…' : totalPatients.toLocaleString()} icon={<Users size={20} />} />
         <KPICard label="AI Calls Today" value="127" icon={<Phone size={20} />} />
         <KPICard label="AI Coding Accuracy" value="94.2%" icon={<BrainCircuit size={20} />} />
       </div>
@@ -341,6 +343,7 @@ function ProviderDashboard() {
 
 // ── Client Dashboard ──────────────────────────────────────────────────────────
 function ClientDashboard() {
+  const { t } = useT()
   const { selectedClient } = useApp()
   const { data: metrics } = useDashboardMetrics()
   const mtdCollections = 84200
@@ -369,7 +372,7 @@ function ClientDashboard() {
           <p className="text-3xl font-bold text-content-primary">${mtdCollections.toLocaleString()}</p>
           <p className="text-[12px] text-emerald-500 mt-1">↑ 12% vs last month</p>
         </div>
-        <KPICard label="Denial Rate" value={`${denialRate}%`} icon={<ShieldAlert size={20} />} />
+        <KPICard label={t("dashboard","denialRate")} value={`${denialRate}%`} icon={<ShieldAlert size={20} />} />
         <KPICard label="Days in A/R" value={28} icon={<TrendingUp size={20} />} />
       </div>
       <div className="grid grid-cols-2 gap-4">
@@ -461,6 +464,7 @@ const dashMap: Record<string, React.FC> = {
 
 export default function DashboardPage() {
   const { currentUser, selectedClient } = useApp()
+  const { t } = useT()
   const Dash = dashMap[currentUser.role] || ExecutiveDashboard
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
   return (

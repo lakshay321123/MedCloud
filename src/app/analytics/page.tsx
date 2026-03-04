@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState, useMemo } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -118,6 +119,7 @@ function HeatCell({ value }: { value: number }) {
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
   const { selectedClient, country } = useApp()
+  const { t } = useT()
   const [tab, setTab] = useState<'financial' | 'operational' | 'ai' | 'payer'>('financial')
   const [dateRange, setDateRange] = useState('last30')
 
@@ -237,7 +239,7 @@ export default function AnalyticsPage() {
   ] as const
 
   return (
-    <ModuleShell title="Analytics" subtitle="Financial and operational reporting">
+    <ModuleShell title={t("analytics","title")} subtitle={t("analytics","subtitle")}>
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
         Analytics connected — live financial reporting

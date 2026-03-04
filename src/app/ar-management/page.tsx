@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
@@ -553,6 +554,7 @@ function InboundCallPanel() {
 
 export default function ARManagementPage() {
   const { selectedClient } = useApp()
+  const { t } = useT()
   const { toast } = useToast()
   const [accounts, setAccounts] = useState<ARAccount[]>(initialAccounts)
   const [callHistory, setCallHistory] = useState<Record<string, CallLogEntry[]>>(initialCallHistory)
@@ -619,15 +621,15 @@ export default function ARManagementPage() {
     .filter(c => c.date?.startsWith(new Date().toISOString().slice(0,10))).length
 
   return (
-    <ModuleShell title="A/R Management" subtitle="Accounts receivable follow-up and collections">
+    <ModuleShell title={t("ar","title")} subtitle={t("ar","subtitle")}>
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
         A/R Management connected — live account tracking
       </div>
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Total A/R" value={`$${(totalAR/1000).toFixed(0)}K`} icon={<TrendingUp size={20} />} />
-        <KPICard label="Worked Today" value={String(workedToday)} trend="up" />
-        <KPICard label="Follow-ups Due" value={String(followupsDue)} />
+        <KPICard label={t("ar","totalAR")} value={`$${(totalAR/1000).toFixed(0)}K`} icon={<TrendingUp size={20} />} />
+        <KPICard label={t("ar","workedToday")} value={String(workedToday)} trend="up" />
+        <KPICard label={t("ar","followupsDue")} value={String(followupsDue)} />
         <KPICard label="Avg Days Outstanding" value={`${avgAge}`} />
       </div>
 

@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
 import type { DemoPatient } from '@/lib/demo-data'
@@ -608,6 +609,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
 
 export default function PatientsPage() {
   const { currentUser, selectedClient } = useApp()
+  const { t } = useT()
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [selected, setSelected] = useState<DemoPatient | null>(null)
@@ -628,7 +630,7 @@ export default function PatientsPage() {
     : []
 
   return (
-    <ModuleShell title="Patients" subtitle="Manage patient records"
+    <ModuleShell title={t("patients","title")} subtitle="Manage patient records"
       actions={<button onClick={() => setShowAdd(true)} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep"><Plus size={16}/>Add Patient</button>}>
       {apiError && <ErrorBanner error={apiError} onRetry={refetch} />}
       <div className="mb-4 relative max-w-sm">

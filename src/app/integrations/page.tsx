@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -127,6 +128,7 @@ function LogDrawer({ integration, onClose }: { integration: Integration; onClose
 
 export default function IntegrationsPage() {
   const { toast } = useToast()
+  const { t } = useT()
   const [configFor, setConfigFor] = useState<Integration | null>(null)
   const [logsFor, setLogsFor] = useState<Integration | null>(null)
 
@@ -143,9 +145,9 @@ export default function IntegrationsPage() {
     <ModuleShell title="Integration Hub" subtitle="External system connections and data pipes">
       <div className="grid grid-cols-4 gap-4 mb-6">
         <KPICard label="Connected" value={stats.connected} icon={<CheckCircle2 size={20}/>}/>
-        <KPICard label="Errors" value={stats.errors} icon={<AlertTriangle size={20}/>}/>
-        <KPICard label="Pending" value={stats.pending} icon={<Clock size={20}/>}/>
-        <KPICard label="Total" value={stats.total} icon={<Plug size={20}/>}/>
+        <KPICard label={t("misc","errors")} value={stats.errors} icon={<AlertTriangle size={20}/>}/>
+        <KPICard label={t("status","pending")} value={stats.pending} icon={<Clock size={20}/>}/>
+        <KPICard label={t("misc","total")} value={stats.total} icon={<Plug size={20}/>}/>
       </div>
 
       {categories.map(cat=>(

@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useEffect, useMemo, useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -12,6 +13,7 @@ import { useERAFiles, useAutoPostPayments, useParse835, useReconcilePayments, us
 
 export default function PaymentPostingPage() {
   const { selectedClient } = useApp()
+  const { t } = useT()
   const { toast } = useToast()
   const { data: apiERAResult } = useERAFiles({ limit: 50 })
   const { mutate: autoPost } = useAutoPostPayments()
@@ -63,7 +65,7 @@ export default function PaymentPostingPage() {
 
   if (!selectedEra) {
     return (
-      <ModuleShell title="Payment Posting" subtitle="Process ERAs and post payments">
+      <ModuleShell title={t("posting","title")} subtitle="Process ERAs and post payments">
         <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
           <AlertTriangle size={13} className='shrink-0' />
           Payment posting connected — processing live ERAs
@@ -214,7 +216,7 @@ export default function PaymentPostingPage() {
   }
 
   return (
-    <ModuleShell title="Payment Posting" subtitle="Process ERAs and post payments">
+    <ModuleShell title={t("posting","title")} subtitle="Process ERAs and post payments">
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
         Payment posting connected — processing live ERAs

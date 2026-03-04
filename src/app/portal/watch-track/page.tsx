@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useClaims } from '@/lib/hooks'
 import { demoClaims } from '@/lib/demo-data'
@@ -12,6 +13,7 @@ import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 export default function WatchTrackPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [search, setSearch] = useState('')
+  const { t } = useT()
   const [expanded, setExpanded] = useState<string | null>(null)
   const { currentUser, selectedClient, country } = useApp()
   const { data: apiResult } = useClaims({ limit: 200 })
@@ -42,14 +44,15 @@ export default function WatchTrackPage() {
 
   return (
     <ModuleShell title="Watch & Track" subtitle="Track your claims and revenue">
-      {!apiClaims.length && <div className='mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2.5 text-xs text-amber-400'>API connecting…</div>}      <div className="grid grid-cols-4 gap-4 mb-6">
+      {!apiClaims.length && <div className='mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2.5 text-xs text-amber-400'>API connecting…</div>}
+      <div className="grid grid-cols-4 gap-4 mb-6">
         <KPICard label="Total Claims" value={myClaims.length} icon={<FileText size={20}/>}/>
         <KPICard label="Total Charges" value={`$${totalCharges.toLocaleString()}`} icon={<DollarSign size={20}/>}/>
         <KPICard label="Collected" value={`$${totalPaid.toLocaleString()}`} sub={`${((totalPaid/totalCharges)*100).toFixed(1)}% rate`} trend="up"/>
         <KPICard label="Avg Days to Pay" value="22" icon={<Clock size={20}/>}/>
       </div>
       <div className="flex gap-2 mb-4">
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search claims..." className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary max-w-xs"/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t("watch","searchClaims")} className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary max-w-xs"/>
         <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
           <option value="">All Statuses</option>
           {['submitted','in_process','paid','partial_pay','denied','appealed'].map(s=><option key={s} value={s}>{s.replace(/_/g,' ')}</option>)}

@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
 import { getClientName } from '@/lib/demo-data'
@@ -242,6 +243,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
 
 export default function AppointmentsPage() {
   const { currentUser, selectedClient } = useApp()
+  const { t } = useT()
   const { toast } = useToast()
   const isStaff = staffRoles.includes(currentUser.role)
   const isClinic = currentUser.role === 'client' || currentUser.role === 'provider'
@@ -295,7 +297,7 @@ export default function AppointmentsPage() {
   }
 
   return (
-    <ModuleShell title="Appointments" subtitle={isStaff ? 'View client appointments and visit status' : 'Manage your schedule'}
+    <ModuleShell title={t("appointments","title")} subtitle={isStaff ? 'View client appointments and visit status' : 'Manage your schedule'}
       actions={isClinic ? <button onClick={()=>setShowAdd(true)} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep"><Plus size={16}/>Book Appointment</button> : undefined}>
 
       {/* Stats */}

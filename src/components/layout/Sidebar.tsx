@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -7,6 +8,7 @@ import { getModulesBySection, getSectionLabel } from '@/lib/modules'
 import * as Icons from 'lucide-react'
 
 export default function Sidebar() {
+  const { t } = useT()
   const { sidebarCollapsed, currentUser, toggleSidebar, portalType } = useApp()
   const pathname = usePathname()
   const sections = getModulesBySection(currentUser.role, portalType)
@@ -31,7 +33,7 @@ export default function Sidebar() {
           <div key={section} className="mb-2">
             {!sidebarCollapsed && (
               <div className="text-[11px] font-semibold text-content-tertiary uppercase tracking-wider px-3 pt-5 pb-2">
-                {getSectionLabel(currentUser.role, section, portalType)}
+                {(section in {operations:1,ai:1,management:1,portal:1,system:1,clinical:1,myportal:1} ? t('sections', section as 'operations'|'ai'|'management'|'portal'|'system'|'clinical'|'myportal') : getSectionLabel(currentUser.role, section, portalType))}
               </div>
             )}
             {mods.map(mod => {
