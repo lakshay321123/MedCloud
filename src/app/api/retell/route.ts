@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const RETELL_API_KEY = process.env.RETELL_API_KEY
 const RETELL_BASE = 'https://api.retellai.com'
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 
 const RETELL_AGENTS = {
   chris: process.env.RETELL_AGENT_CHRIS ?? '',
@@ -25,30 +24,9 @@ async function retellFetch(path: string, options: RequestInit = {}) {
   })
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`Retell API ${res.status}: ${err}`)
+    throw new Error(`Retell ${res.status}: ${err}`)
   }
   return res.json()
-}
-
-async function claudeAnalyze(systemPrompt: string, userMessage: string): Promise<string> {
-  if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY not configured')
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }],
-    }),
-  })
-  if (!res.ok) throw new Error(`Claude API ${res.status}: ${await res.text()}`)
-  const data = await res.json()
-  return data.content?.[0]?.text ?? ''
 }
 
 export async function GET(req: NextRequest) {
@@ -56,24 +34,52 @@ export async function GET(req: NextRequest) {
   const action = searchParams.get('action')
 
   try {
-    // ── List calls with agent + payer filtering ──────────────────────────────
+    // ── Active / live calls ──────────────────────────────────────────────
     if (action === 'list-calls') {
-      const limit = Number(searchParams.get('limit') ?? '100')
-      const agentId = searchParams.get('agent_id')
-      const paginationKey = searchParams.get('pagination_key')
+      const limit = Number(searchParams.get('limit') ?? '200')
+      const agentFilter = searchParams.get('agent') // 'chris' | 'cindy' | null
+      const payer = searchParams.get('payer')
+      const startDate = searchParams.get('start_date')
+      const endDate = searchParams.get('end_date')
 
+      const body: Record<string, unknown> = { limit }
       const filterCriteria: Record<string, unknown> = {}
-      if (agentId) filterCriteria.agent_id = [agentId]
 
-      const reqBody: Record<string, unknown> = { limit }
-      if (Object.keys(filterCriteria).length > 0) reqBody.filter_criteria = filterCriteria
-      if (paginationKey) reqBody.pagination_key = paginationKey
+      if (agentFilter && RETELL_AGENTS[agentFilter as 'chris' | 'cindy']) {
+        filterCriteria.agent_id = [RETELL_AGENTS[agentFilter as 'chris' | 'cindy']]
+      } else if (!agentFilter) {
+        // Return all known agents
+        const ids = [RETELL_AGENTS.chris, RETELL_AGENTS.cindy].filter(Boolean)
+        if (ids.length > 0) filterCriteria.agent_id = ids
+      }
+      if (startDate) filterCriteria.start_timestamp = new Date(startDate).getTime()
+      if (endDate) filterCriteria.end_timestamp = new Date(endDate).getTime() + 86400000
 
-      const data = await retellFetch('/v2/list-calls', { method: 'POST', body: JSON.stringify(reqBody) })
-      return NextResponse.json(data)
+      if (Object.keys(filterCriteria).length > 0) body.filter_criteria = filterCriteria
+
+      const data = await retellFetch('/v2/list-calls', { method: 'POST', body: JSON.stringify(body) })
+
+      // Client-side payer filter (from dynamic variables)
+      let calls = data.call_list ?? []
+      if (payer && payer !== 'all') {
+        calls = calls.filter((c: Record<string, unknown>) => {
+          const vars = (c.retell_llm_dynamic_variables ?? {}) as Record<string, string>
+          const p = (vars['primary_carrier_name'] ?? vars['primaryinsurance'] ?? '').toLowerCase()
+          return p.includes(payer.toLowerCase())
+        })
+      }
+
+      // Tag each call with agent name
+      calls = calls.map((c: Record<string, unknown>) => ({
+        ...c,
+        _agent_name: c.agent_id === RETELL_AGENTS.chris ? 'chris'
+          : c.agent_id === RETELL_AGENTS.cindy ? 'cindy' : 'unknown',
+      }))
+
+      return NextResponse.json({ call_list: calls, total: calls.length })
     }
 
-    // ── Get single call ──────────────────────────────────────────────────────
+    // ── Single call detail ───────────────────────────────────────────────
     if (action === 'get-call') {
       const callId = searchParams.get('call_id')
       if (!callId) return NextResponse.json({ error: 'call_id required' }, { status: 400 })
@@ -81,13 +87,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(data)
     }
 
-    // ── List batches ─────────────────────────────────────────────────────────
+    // ── Batch campaigns ──────────────────────────────────────────────────
     if (action === 'list-batches') {
-      const data = await retellFetch('/v2/list-batches', { method: 'POST', body: JSON.stringify({ limit: 50 }) })
+      const data = await retellFetch('/v2/list-batches', { method: 'POST', body: JSON.stringify({ limit: 100 }) })
       return NextResponse.json(data)
     }
 
-    // ── Agents info ──────────────────────────────────────────────────────────
+    // ── Agent config (prompt, name, etc.) ───────────────────────────────
+    if (action === 'get-agent') {
+      const agentName = searchParams.get('agent') as 'chris' | 'cindy'
+      const agentId = RETELL_AGENTS[agentName]
+      if (!agentId) return NextResponse.json({ error: `Agent ${agentName} not configured` }, { status: 400 })
+      const data = await retellFetch(`/v2/get-agent/${agentId}`)
+      return NextResponse.json(data)
+    }
+
+    // ── Agents info ──────────────────────────────────────────────────────
     if (action === 'agents') {
       return NextResponse.json({
         agents: [
@@ -98,61 +113,9 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // ── Get agent prompt ─────────────────────────────────────────────────────
-    if (action === 'get-agent') {
-      const agentName = searchParams.get('agent') as 'chris' | 'cindy'
-      const agentId = agentName === 'cindy' ? RETELL_AGENTS.cindy : RETELL_AGENTS.chris
-      if (!agentId) throw new Error(`Agent ${agentName} not configured`)
-      const data = await retellFetch(`/v2/get-agent/${agentId}`)
-      return NextResponse.json(data)
-    }
-
-    // ── Payer analytics — success rate by payer from call history ────────────
-    if (action === 'payer-analytics') {
-      const agentId = RETELL_AGENTS.chris
-      if (!agentId) return NextResponse.json({ payers: [], fallback: true })
-
-      // Fetch last 200 ended calls for Chris
-      const data = await retellFetch('/v2/list-calls', {
-        method: 'POST',
-        body: JSON.stringify({
-          limit: 200,
-          filter_criteria: { agent_id: [agentId] },
-        }),
-      })
-
-      const calls = data.call_list ?? []
-      const payerMap: Record<string, { total: number; success: number; failed: number; transcripts: string[] }> = {}
-
-      for (const call of calls) {
-        const vars = call.retell_llm_dynamic_variables ?? {}
-        const payer = vars['Primary_Carrier_Name'] ?? vars['primary_carrier_name'] ?? 'Unknown'
-        if (!payerMap[payer]) payerMap[payer] = { total: 0, success: 0, failed: 0, transcripts: [] }
-        payerMap[payer].total++
-        if (call.call_analysis?.call_successful) payerMap[payer].success++
-        else payerMap[payer].failed++
-        if (call.transcript && payerMap[payer].transcripts.length < 10) {
-          payerMap[payer].transcripts.push(call.transcript.slice(0, 500))
-        }
-      }
-
-      const payers = Object.entries(payerMap)
-        .map(([name, stats]) => ({
-          name,
-          total: stats.total,
-          success: stats.success,
-          failed: stats.failed,
-          successRate: stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : 0,
-          hasPlaybookData: stats.transcripts.length >= 3,
-        }))
-        .sort((a, b) => b.total - a.total)
-
-      return NextResponse.json({ payers })
-    }
-
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   } catch (err) {
-    console.error('[Retell API]', err)
+    console.error('[Retell GET]', err)
     return NextResponse.json({ error: String(err), fallback: true }, { status: 502 })
   }
 }
@@ -162,11 +125,11 @@ export async function POST(req: NextRequest) {
   const { action } = body
 
   try {
-    // ── Single call ──────────────────────────────────────────────────────────
+    // ── Single outbound call ─────────────────────────────────────────────
     if (action === 'create-call') {
       const { agent_name, to_number, retell_llm_dynamic_variables } = body
-      const agentId = agent_name === 'cindy' ? RETELL_AGENTS.cindy : RETELL_AGENTS.chris
-      const fromNumber = agent_name === 'cindy' ? RETELL_PHONES.cindy : RETELL_PHONES.chris
+      const agentId = RETELL_AGENTS[agent_name as 'chris' | 'cindy']
+      const fromNumber = RETELL_PHONES[agent_name as 'chris' | 'cindy']
       if (!agentId) throw new Error(`Agent ${agent_name} not configured`)
       const data = await retellFetch('/v2/create-phone-call', {
         method: 'POST',
@@ -175,11 +138,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(data)
     }
 
-    // ── Batch campaign ───────────────────────────────────────────────────────
+    // ── Batch campaign ───────────────────────────────────────────────────
     if (action === 'create-batch') {
       const { agent_name, recipients, batch_name } = body
-      const agentId = agent_name === 'cindy' ? RETELL_AGENTS.cindy : RETELL_AGENTS.chris
-      const fromNumber = agent_name === 'cindy' ? RETELL_PHONES.cindy : RETELL_PHONES.chris
+      const agentId = RETELL_AGENTS[agent_name as 'chris' | 'cindy']
+      const fromNumber = RETELL_PHONES[agent_name as 'chris' | 'cindy']
       if (!agentId) throw new Error(`Agent ${agent_name} not configured`)
       const data = await retellFetch('/v2/create-batch-call', {
         method: 'POST',
@@ -196,75 +159,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(data)
     }
 
-    // ── Update agent prompt ───────────────────────────────────────────────────
-    if (action === 'update-prompt') {
-      const { agent_name, prompt } = body
-      const agentId = agent_name === 'cindy' ? RETELL_AGENTS.cindy : RETELL_AGENTS.chris
+    // ── Update agent prompt ──────────────────────────────────────────────
+    if (action === 'update-agent') {
+      const { agent_name, general_prompt, agent_name_label } = body
+      const agentId = RETELL_AGENTS[agent_name as 'chris' | 'cindy']
       if (!agentId) throw new Error(`Agent ${agent_name} not configured`)
-      // Retell: PATCH /v2/update-agent/:id with general_prompt
+      const payload: Record<string, unknown> = {}
+      if (general_prompt !== undefined) payload.general_prompt = general_prompt
+      if (agent_name_label !== undefined) payload.agent_name = agent_name_label
       const data = await retellFetch(`/v2/update-agent/${agentId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ general_prompt: prompt }),
+        body: JSON.stringify(payload),
       })
       return NextResponse.json(data)
     }
 
-    // ── AI: Analyze calls and suggest prompt improvements ────────────────────
-    if (action === 'analyze-calls') {
-      const { agent_name, current_prompt, call_transcripts, focus } = body
-      // focus: 'general' | 'payer' (with payer_name)
-      const payerName = body.payer_name ?? null
-
-      const systemPrompt = `You are an expert medical billing AI prompt engineer.
-You analyze real call transcripts from an AI billing agent and suggest specific, actionable improvements to the agent's prompt.
-You understand Retell AI's prompt format, IVR navigation, medical billing terminology, and payer-specific behavior.
-Return ONLY valid JSON matching the schema specified. No markdown, no explanation outside the JSON.`
-
-      const transcriptBlock = call_transcripts
-        .slice(0, 20)
-        .map((t: string, i: number) => `--- Call ${i + 1} ---\n${t}`)
-        .join('\n\n')
-
-      const userMessage = `Here is the current prompt for agent "${agent_name}":
-
-<current_prompt>
-${current_prompt}
-</current_prompt>
-
-Here are real call transcripts${payerName ? ` for payer: ${payerName}` : ''}:
-
-<transcripts>
-${transcriptBlock}
-</transcripts>
-
-${payerName
-  ? `Focus specifically on how the agent handles ${payerName}'s IVR and reps. Identify exactly where it gets stuck or fails.`
-  : `Analyze overall call performance. Identify patterns in failures vs successes.`}
-
-Return a JSON object with this exact structure:
-{
-  "summary": "2-3 sentence analysis of what's working and what's failing",
-  "issues": [
-    { "title": "Short issue title", "description": "What's going wrong", "severity": "high|medium|low", "evidence": "Quote from a transcript showing this" }
-  ],
-  "suggestions": [
-    { "section": "Which section of prompt to change e.g. IVR Navigation", "current": "Current text if applicable", "suggested": "New text to use", "rationale": "Why this improves performance" }
-  ],
-  ${payerName ? `"playbook": "Full payer-specific section to append to the prompt for ${payerName}. Include IVR steps, known pitfalls, what to say/avoid. Written in same style as existing prompt.",` : ''}
-  "confidence": "high|medium|low"
-}`
-
-      const result = await claudeAnalyze(systemPrompt, userMessage)
-
-      // Parse JSON safely
-      const clean = result.replace(/```json\n?|\n?```/g, '').trim()
-      const parsed = JSON.parse(clean)
-      return NextResponse.json(parsed)
-    }
-
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   } catch (err) {
-    console.error('[Retell API]', err)
+    console.error('[Retell POST]', err)
     return NextResponse.json({ error: String(err), fallback: true }, { status: 502 })
   }
 }

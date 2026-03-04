@@ -5,23 +5,28 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import {
-  Phone, PhoneCall, PhoneMissed, Clock, X, Zap, BarChart2, Settings2,
-  AlertTriangle, CheckCircle, XCircle, RefreshCw, PhoneOutgoing, Activity,
-  FileSpreadsheet, Eye, Trash2, Brain, TrendingUp, ChevronDown, ChevronUp,
-  Save, RotateCcw, Sparkles, Target,
+  Phone, PhoneCall, PhoneMissed, Clock, X, ChevronRight, ChevronDown,
+  Plus, Edit2, Zap, BarChart2, Settings2, AlertTriangle,
+  CheckCircle, XCircle, RefreshCw, ExternalLink,
+  PhoneOutgoing, Activity, Upload, FileSpreadsheet, Trash2, Eye,
+  Brain, Sparkles, TrendingUp, TrendingDown, Save, RotateCcw,
+  AlertCircle, Filter, Calendar, User, Building2,
 } from 'lucide-react'
+import { useApp } from '@/lib/context'
 import {
   useRetellCalls, useRetellBatches, useRetellAgents, useLaunchCall, useLaunchBatch,
-  useCallsByAgent, usePayerAnalytics, useAgentPrompt, useUpdatePrompt, useAnalyzeCalls,
+  useAgentPrompt, useUpdateAgentPrompt, computePayerStats,
   formatDuration, formatCallStatus, RetellCall, PayerStat,
 } from '@/lib/retell'
 import { parseRetellExcel, ExcelParseResult } from '@/lib/retell-excel'
-import { demoScripts } from '@/lib/demo-data'
 
+// ─── Shared: Status Dot ──────────────────────────────────────────────────────
 function StatusDot({ status }: { status: RetellCall['call_status'] }) {
   const map: Record<string, string> = {
-    ongoing: 'bg-emerald-500 animate-pulse', registered: 'bg-blue-500 animate-pulse',
-    ended: 'bg-gray-400', error: 'bg-red-500',
+    ongoing: 'bg-emerald-500 animate-pulse',
+    registered: 'bg-blue-500 animate-pulse',
+    ended: 'bg-gray-400',
+    error: 'bg-red-500',
   }
   return <span className={`inline-block w-2.5 h-2.5 rounded-full ${map[status] ?? 'bg-gray-400'}`} />
 }
@@ -29,21 +34,41 @@ function StatusDot({ status }: { status: RetellCall['call_status'] }) {
 function SentimentBadge({ sentiment }: { sentiment?: string }) {
   if (!sentiment || sentiment === 'Unknown') return null
   const c = sentiment === 'Positive' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-    : sentiment === 'Negative' ? 'bg-red-500/10 text-red-500' : 'bg-gray-500/10 text-content-secondary'
+    : sentiment === 'Negative' ? 'bg-red-500/10 text-red-500'
+    : 'bg-gray-500/10 text-content-secondary'
   return <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${c}`}>{sentiment}</span>
 }
 
+function AgentBadge({ agent }: { agent?: string }) {
+  if (!agent) return null
+  return (
+    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+      agent === 'chris' ? 'bg-blue-500/10 text-blue-500' : 'bg-purple-500/10 text-purple-500'
+    }`}>
+      {agent === 'chris' ? 'Chris' : 'Cindy'}
+    </span>
+  )
+}
+
+// ─── Call Detail Drawer ───────────────────────────────────────────────────────
 function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => void }) {
   const transcriptRef = useRef<HTMLDivElement>(null)
   const isActive = call.call_status === 'ongoing' || call.call_status === 'registered'
   const { label: statusLabel, color: statusColor } = formatCallStatus(call.call_status)
-  useEffect(() => { if (transcriptRef.current) transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight }, [call.transcript])
-  const lines = call.transcript_object ?? (call.transcript
-    ? call.transcript.split('\n').filter(Boolean).map(l => ({ role: (l.startsWith('Agent:') ? 'agent' : 'user') as 'agent' | 'user', content: l.replace(/^(Agent|User):/, '').trim() }))
-    : [])
-  const vars = call.retell_llm_dynamic_variables ?? {}
-  const payer = vars['Primary_Carrier_Name'] ?? vars['primary_carrier_name'] ?? ''
   const analysis = call.call_analysis
+  const vars = call.retell_llm_dynamic_variables ?? {}
+
+  useEffect(() => {
+    if (transcriptRef.current) transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight
+  }, [])
+
+  const lines = call.transcript_object ?? (call.transcript
+    ? call.transcript.split('\n').filter(Boolean).map(l => ({
+        role: l.startsWith('Agent:') ? 'agent' : 'user' as 'agent' | 'user',
+        content: l.replace(/^(Agent|User):/, '').trim(),
+      }))
+    : [])
+
   return (
     <div className="fixed inset-y-0 right-0 w-[520px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl animate-fade-in">
       <div className="p-4 border-b border-separator flex items-start justify-between">
@@ -51,41 +76,75 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
           <div className="flex items-center gap-2 mb-1">
             <StatusDot status={call.call_status} />
             <span className={`text-sm font-semibold ${statusColor}`}>{statusLabel}</span>
+            <AgentBadge agent={call._agent_name} />
             {analysis?.call_successful === true && <CheckCircle size={13} className="text-emerald-500" />}
             {analysis?.call_successful === false && <XCircle size={13} className="text-red-500" />}
           </div>
           <p className="text-xs text-content-secondary font-mono">{call.to_number}</p>
-          {payer && <p className="text-[10px] text-brand mt-0.5">{payer}</p>}
+          {vars['patient_name'] && <p className="text-[10px] text-content-tertiary mt-0.5">{vars['patient_name']}</p>}
+          {vars['primary_carrier_name'] && <p className="text-[10px] text-brand mt-0.5">{vars['primary_carrier_name']}</p>}
         </div>
-        <button onClick={onClose} className="p-1 hover:bg-surface-elevated rounded-btn transition-colors"><X size={16} className="text-content-secondary" /></button>
+        <button onClick={onClose} className="p-1 hover:bg-surface-elevated rounded-btn transition-colors">
+          <X size={16} className="text-content-secondary" />
+        </button>
       </div>
+
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 grid grid-cols-3 gap-3 border-b border-separator">
-          {[{ label: 'Duration', value: formatDuration(call.duration_ms) }, { label: 'Sentiment', value: analysis?.user_sentiment ?? '—' }, { label: 'Outcome', value: analysis?.call_successful ? 'Resolved' : 'Ended' }].map(s => (
+          {[
+            { label: 'Duration', value: formatDuration(call.duration_ms) },
+            { label: 'Sentiment', value: analysis?.user_sentiment ?? '—' },
+            { label: 'Outcome', value: analysis?.call_successful ? 'Resolved' : call.call_status === 'ended' ? 'Ended' : '…' },
+          ].map(s => (
             <div key={s.label} className="bg-surface-elevated rounded-lg p-2.5 text-center">
               <p className="text-[10px] text-content-tertiary mb-1">{s.label}</p>
               <p className="text-xs font-semibold text-content-primary">{s.value}</p>
             </div>
           ))}
         </div>
-        {analysis?.call_summary && <div className="p-4 border-b border-separator"><h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">AI Summary</h4><p className="text-xs text-content-primary leading-relaxed">{analysis.call_summary}</p></div>}
+
+        {analysis?.call_summary && (
+          <div className="p-4 border-b border-separator">
+            <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">AI Summary</h4>
+            <p className="text-xs text-content-primary leading-relaxed">{analysis.call_summary}</p>
+          </div>
+        )}
+
         <div className="p-4 border-b border-separator">
           <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">Transcript</h4>
           <div ref={transcriptRef} className="bg-surface-elevated rounded-lg p-3 h-52 overflow-y-auto text-[11px] space-y-2">
-            {lines.length > 0 ? (
-              <>{lines.map((l, i) => <div key={i} className="flex gap-2"><span className={`shrink-0 font-semibold ${l.role === 'agent' ? 'text-brand' : 'text-content-secondary'}`}>[{l.role === 'agent' ? 'AI' : 'Rep'}]</span><span className="text-content-primary leading-relaxed">{l.content}</span></div>)}
-              {isActive && <div className="flex gap-2"><span className="shrink-0 font-semibold text-brand">[AI]</span><span className="inline-block w-2 h-3 bg-brand animate-pulse rounded-sm mt-0.5" /></div>}</>
-            ) : <span className="text-content-tertiary">{isActive ? 'In progress…' : 'No transcript'}</span>}
+            {lines.length > 0 ? lines.map((line, i) => (
+              <div key={i} className="flex gap-2">
+                <span className={`shrink-0 font-semibold w-8 ${line.role === 'agent' ? 'text-brand' : 'text-content-secondary'}`}>
+                  [{line.role === 'agent' ? 'AI' : 'Rep'}]
+                </span>
+                <span className="text-content-primary leading-relaxed">{line.content}</span>
+              </div>
+            )) : (
+              <span className="text-content-tertiary">{isActive ? 'Call in progress…' : 'No transcript available'}</span>
+            )}
+            {isActive && <div className="flex gap-2"><span className="text-brand font-semibold">[AI]</span><span className="w-2 h-3 bg-brand animate-pulse rounded-sm inline-block mt-0.5" /></div>}
           </div>
         </div>
+
         {Object.keys(vars).length > 0 && (
-          <div className="p-4">
+          <div className="p-4 border-b border-separator">
             <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">Call Context</h4>
-            <div className="space-y-1.5 max-h-40 overflow-y-auto">
-              {Object.entries(vars).slice(0, 20).map(([k, v]) => (
-                <div key={k} className="flex justify-between text-xs"><span className="text-content-tertiary capitalize">{k.replace(/_/g, ' ')}</span><span className="text-content-primary font-medium ml-4 max-w-[200px] truncate">{String(v)}</span></div>
+            <div className="space-y-1.5 max-h-32 overflow-y-auto">
+              {Object.entries(vars).slice(0, 15).map(([k, v]) => (
+                <div key={k} className="flex justify-between text-xs gap-2">
+                  <span className="text-content-tertiary capitalize shrink-0">{k.replace(/_/g, ' ')}</span>
+                  <span className="text-content-primary font-medium text-right truncate">{String(v)}</span>
+                </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {call.disconnection_reason && (
+          <div className="p-4">
+            <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-1">Disconnection</h4>
+            <p className="text-xs text-content-secondary">{call.disconnection_reason}</p>
           </div>
         )}
       </div>
@@ -93,140 +152,228 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
   )
 }
 
-// ── Tab 1: Live Calls ─────────────────────────────────────────────────────────
+// ─── TAB 1: Live Calls ────────────────────────────────────────────────────────
 function ActiveCallsTab() {
-  const { calls, loading, fallback, refetch } = useRetellCalls('ongoing')
-  const { calls: allCalls } = useRetellCalls()
-  const [sel, setSel] = useState<RetellCall | null>(null)
-  const today = allCalls.filter(c => c.start_timestamp && Date.now() - c.start_timestamp < 86400000)
-  const sr = today.length > 0 ? Math.round(today.filter(c => c.call_analysis?.call_successful).length / today.length * 100) : 0
-  const avgDur = today.length > 0 ? formatDuration(today.reduce((s, c) => s + (c.duration_ms ?? 0), 0) / today.length) : '—'
+  const { calls, loading, fallback, refetch } = useRetellCalls({ status: 'ongoing' })
+  const { calls: allCalls } = useRetellCalls({ limit: 500 })
+  const [selected, setSelected] = useState<RetellCall | null>(null)
+
+  const todayCalls = allCalls.filter(c => c.start_timestamp && Date.now() - c.start_timestamp < 86400000)
+  const successRate = todayCalls.length > 0 ? Math.round(todayCalls.filter(c => c.call_analysis?.call_successful).length / todayCalls.length * 100) : 0
+  const avgDuration = todayCalls.length > 0 ? formatDuration(todayCalls.reduce((s, c) => s + (c.duration_ms ?? 0), 0) / todayCalls.length) : '—'
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <div className="grid grid-cols-4 gap-4 flex-1">
-          <KPICard label="Today" value={today.length} icon={<Phone size={20} />} />
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex-1 grid grid-cols-4 gap-4">
+          <KPICard label="Calls Today" value={todayCalls.length} icon={<Phone size={20} />} />
           <KPICard label="Live Now" value={calls.length} icon={<Activity size={20} />} />
-          <KPICard label="Avg Duration" value={avgDur} icon={<Clock size={20} />} />
-          <KPICard label="Success Rate" value={`${sr}%`} icon={<CheckCircle size={20} />} />
+          <KPICard label="Avg Duration" value={avgDuration} icon={<Clock size={20} />} />
+          <KPICard label="Success Rate" value={`${successRate}%`} icon={<CheckCircle size={20} />} />
         </div>
-        <button onClick={refetch} className="ml-4 p-2 hover:bg-surface-elevated rounded-btn text-content-secondary transition-colors"><RefreshCw size={15} /></button>
+        <button onClick={refetch} className="p-2 hover:bg-surface-elevated rounded-btn text-content-secondary transition-colors"><RefreshCw size={15} /></button>
       </div>
-      {fallback && <div className="mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400"><AlertTriangle size={13} />Demo data — add RETELL_API_KEY to Vercel</div>}
+
+      {fallback && <div className="mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400"><AlertTriangle size={13} />Demo mode — add RETELL_API_KEY to Vercel</div>}
+
       {loading ? <div className="card p-12 text-center text-sm text-content-tertiary">Loading…</div>
-      : calls.length === 0 ? <div className="card p-12 text-center"><Phone size={32} className="mx-auto mb-3 text-content-tertiary opacity-40" /><p className="text-sm text-content-secondary">No active calls</p></div>
-      : <div className="card overflow-hidden"><table className="w-full text-sm">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary"><th className="text-left px-4 py-3 w-8"></th><th className="text-left px-4 py-3">Number</th><th className="text-left px-4 py-3">Payer</th><th className="text-left px-4 py-3">Duration</th><th className="text-left px-4 py-3">Status</th></tr></thead>
-          <tbody>{calls.map(c => { const { label, color } = formatCallStatus(c.call_status); const payer = c.retell_llm_dynamic_variables?.['Primary_Carrier_Name'] ?? '—'; return (
-            <tr key={c.call_id} onClick={() => setSel(c)} className="border-b border-separator last:border-0 cursor-pointer hover:bg-surface-elevated transition-colors">
-              <td className="px-4 py-3"><StatusDot status={c.call_status} /></td>
-              <td className="px-4 py-3 font-mono text-xs">{c.to_number}</td>
-              <td className="px-4 py-3 text-xs text-brand">{payer}</td>
-              <td className="px-4 py-3 font-mono text-xs">{formatDuration(c.duration_ms)}</td>
-              <td className="px-4 py-3"><span className={`text-[11px] font-medium ${color}`}>{label}</span></td>
-            </tr>
-          )})}</tbody>
-        </table></div>}
-      {sel && <><div className="fixed inset-0 bg-black/20 z-30" onClick={() => setSel(null)} /><CallDetailDrawer call={sel} onClose={() => setSel(null)} /></>}
+        : calls.length === 0 ? (
+          <div className="card p-12 text-center">
+            <Phone size={32} className="mx-auto mb-3 text-content-tertiary opacity-40" />
+            <p className="text-sm text-content-secondary">No active calls right now</p>
+          </div>
+        ) : (
+          <div className="card overflow-hidden">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-separator text-xs text-content-secondary">
+                <th className="text-left px-4 py-3 w-8"></th>
+                <th className="text-left px-4 py-3">Agent</th>
+                <th className="text-left px-4 py-3">To</th>
+                <th className="text-left px-4 py-3">Duration</th>
+                <th className="text-left px-4 py-3">Status</th>
+              </tr></thead>
+              <tbody>
+                {calls.map(call => {
+                  const { label, color } = formatCallStatus(call.call_status)
+                  return (
+                    <tr key={call.call_id} onClick={() => setSelected(call)} className="border-b border-separator last:border-0 cursor-pointer hover:bg-surface-elevated transition-colors">
+                      <td className="px-4 py-3"><StatusDot status={call.call_status} /></td>
+                      <td className="px-4 py-3"><AgentBadge agent={call._agent_name} /></td>
+                      <td className="px-4 py-3 font-mono text-xs">{call.to_number}</td>
+                      <td className="px-4 py-3 font-mono text-xs">{formatDuration(call.duration_ms)}</td>
+                      <td className="px-4 py-3 text-xs font-medium"><span className={color}>{label}</span></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      {selected && <><div className="fixed inset-0 bg-black/20 z-30" onClick={() => setSelected(null)} /><CallDetailDrawer call={selected} onClose={() => setSelected(null)} /></>}
     </div>
   )
 }
 
-// ── Tab 2: Call Log — Chris & Cindy, payer filter, pagination ─────────────────
+// ─── TAB 2: Call Log ──────────────────────────────────────────────────────────
 function CallLogTab() {
-  const [agent, setAgent] = useState<'chris' | 'cindy'>('chris')
-  const [payerFilter, setPayerFilter] = useState('')
+  const [agentFilter, setAgentFilter] = useState<'all' | 'chris' | 'cindy'>('all')
   const [outcomeFilter, setOutcomeFilter] = useState('')
-  const [sel, setSel] = useState<RetellCall | null>(null)
-  const { calls, loading, loadMore, hasMore, refetch } = useCallsByAgent(agent, 'ended')
+  const [payerFilter, setPayerFilter] = useState('')
+  const [dateRange, setDateRange] = useState({ start: '', end: '' })
+  const [selected, setSelected] = useState<RetellCall | null>(null)
+  const [page, setPage] = useState(0)
+  const PAGE_SIZE = 25
 
-  const payers = Array.from(new Set(calls.map(c => c.retell_llm_dynamic_variables?.['Primary_Carrier_Name'] ?? c.retell_llm_dynamic_variables?.['primaryinsurance'] ?? '').filter(Boolean))).sort()
+  const { calls, loading, fallback, refetch } = useRetellCalls({
+    status: 'ended',
+    agent: agentFilter === 'all' ? undefined : agentFilter,
+    limit: 500,
+  })
+
+  // Extract unique payers
+  const payers = Array.from(new Set(
+    calls.map(c => c.retell_llm_dynamic_variables?.['primary_carrier_name'] ?? c.retell_llm_dynamic_variables?.['primaryinsurance'] ?? '').filter(Boolean)
+  )).sort()
+
   const filtered = calls.filter(c => {
-    const p = c.retell_llm_dynamic_variables?.['Primary_Carrier_Name'] ?? ''
-    if (payerFilter && p !== payerFilter) return false
     if (outcomeFilter === 'success' && !c.call_analysis?.call_successful) return false
     if (outcomeFilter === 'failed' && c.call_analysis?.call_successful !== false) return false
+    if (payerFilter) {
+      const p = (c.retell_llm_dynamic_variables?.['primary_carrier_name'] ?? c.retell_llm_dynamic_variables?.['primaryinsurance'] ?? '').toLowerCase()
+      if (!p.includes(payerFilter.toLowerCase())) return false
+    }
+    if (dateRange.start && c.start_timestamp) {
+      if (c.start_timestamp < new Date(dateRange.start).getTime()) return false
+    }
+    if (dateRange.end && c.start_timestamp) {
+      if (c.start_timestamp > new Date(dateRange.end).getTime() + 86400000) return false
+    }
     return true
   })
-  const successCount = calls.filter(c => c.call_analysis?.call_successful).length
-  const avgDur = calls.length > 0 ? formatDuration(calls.reduce((s, c) => s + (c.duration_ms ?? 0), 0) / calls.length) : '—'
+
+  const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+
+  // Reset page on filter change
+  useEffect(() => setPage(0), [agentFilter, outcomeFilter, payerFilter, dateRange.start, dateRange.end])
+
+  const chrisCount = calls.filter(c => c._agent_name === 'chris').length
+  const cindyCount = calls.filter(c => c._agent_name === 'cindy').length
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex gap-1 bg-surface-elevated rounded-lg p-1">
-          {(['chris', 'cindy'] as const).map(a => (
-            <button key={a} onClick={() => { setAgent(a); setPayerFilter('') }}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${agent === a ? 'bg-surface-secondary text-content-primary shadow-sm' : 'text-content-secondary hover:text-content-primary'}`}>
-              {a === 'chris' ? '📞 Chris — Payer' : '💰 Cindy — AR'}
-            </button>
-          ))}
+    <div className="space-y-4">
+      {/* Agent tabs */}
+      <div className="flex items-center gap-1 border-b border-separator pb-0">
+        {[
+          { key: 'all', label: `All (${calls.length})` },
+          { key: 'chris', label: `Chris (${chrisCount})` },
+          { key: 'cindy', label: `Cindy (${cindyCount})` },
+        ].map(t => (
+          <button key={t.key} onClick={() => setAgentFilter(t.key as typeof agentFilter)}
+            className={`px-4 py-2 text-xs font-medium border-b-2 -mb-px transition-colors ${
+              agentFilter === t.key ? 'border-brand text-brand' : 'border-transparent text-content-secondary hover:text-content-primary'
+            }`}>{t.label}</button>
+        ))}
+        <div className="ml-auto flex items-center gap-2 pb-2">
+          <button onClick={refetch} className="p-1.5 hover:bg-surface-elevated rounded text-content-secondary transition-colors"><RefreshCw size={13} /></button>
+          {fallback && <span className="text-[10px] text-amber-500 flex items-center gap-1"><AlertTriangle size={11} />Demo</span>}
         </div>
-        <button onClick={() => refetch()} className="p-2 hover:bg-surface-elevated rounded-btn text-content-secondary transition-colors"><RefreshCw size={15} /></button>
       </div>
-      <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Total Loaded" value={calls.length} icon={<Phone size={20} />} />
-        <KPICard label="Resolved" value={successCount} icon={<CheckCircle size={20} />} />
-        <KPICard label="Success Rate" value={calls.length > 0 ? `${Math.round(successCount / calls.length * 100)}%` : '—'} icon={<TrendingUp size={20} />} />
-        <KPICard label="Avg Duration" value={avgDur} icon={<Clock size={20} />} />
-      </div>
-      <div className="flex gap-3 mb-4">
-        <select value={payerFilter} onChange={e => setPayerFilter(e.target.value)} className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
-          <option value="">All Payers ({calls.length})</option>
+
+      {/* Filters */}
+      <div className="flex gap-2 flex-wrap">
+        <select value={outcomeFilter} onChange={e => setOutcomeFilter(e.target.value)}
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
+          <option value="">All Outcomes</option>
+          <option value="success">Resolved</option>
+          <option value="failed">Failed</option>
+        </select>
+        <select value={payerFilter} onChange={e => setPayerFilter(e.target.value)}
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
+          <option value="">All Payers</option>
           {payers.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
-        <select value={outcomeFilter} onChange={e => setOutcomeFilter(e.target.value)} className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
-          <option value="">All Outcomes</option><option value="success">Resolved</option><option value="failed">Failed</option>
-        </select>
-        <span className="ml-auto text-xs text-content-tertiary self-center">{filtered.length} shown{hasMore ? ' — more available' : ''}</span>
+        <input type="date" value={dateRange.start} onChange={e => setDateRange(d => ({ ...d, start: e.target.value }))}
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary" />
+        <input type="date" value={dateRange.end} onChange={e => setDateRange(d => ({ ...d, end: e.target.value }))}
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary" />
+        {(outcomeFilter || payerFilter || dateRange.start || dateRange.end) && (
+          <button onClick={() => { setOutcomeFilter(''); setPayerFilter(''); setDateRange({ start: '', end: '' }) }}
+            className="text-xs text-content-tertiary hover:text-red-500 px-2 transition-colors">✕ Clear</button>
+        )}
+        <span className="ml-auto text-xs text-content-tertiary self-center">{filtered.length} calls</span>
       </div>
+
       {loading ? <div className="card p-12 text-center text-sm text-content-tertiary">Loading…</div> : (
         <>
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
               <thead><tr className="border-b border-separator text-xs text-content-secondary">
-                <th className="text-left px-4 py-3">Date</th><th className="text-left px-4 py-3">To</th>
-                <th className="text-left px-4 py-3">{agent === 'chris' ? 'Payer' : 'Patient'}</th>
-                <th className="text-left px-4 py-3">Duration</th><th className="text-left px-4 py-3">Outcome</th>
-                <th className="text-left px-4 py-3">Sentiment</th><th className="text-left px-4 py-3">Summary</th>
+                <th className="text-left px-4 py-3">Date</th>
+                <th className="text-left px-4 py-3">Agent</th>
+                <th className="text-left px-4 py-3">To</th>
+                <th className="text-left px-4 py-3">Payer</th>
+                <th className="text-left px-4 py-3">Duration</th>
+                <th className="text-left px-4 py-3">Outcome</th>
+                <th className="text-left px-4 py-3">Sentiment</th>
+                <th className="text-left px-4 py-3 max-w-[200px]">Summary</th>
               </tr></thead>
               <tbody>
-                {filtered.map(c => {
-                  const v = c.retell_llm_dynamic_variables ?? {}
-                  const lbl = agent === 'chris' ? (v['Primary_Carrier_Name'] ?? '—') : ([v['patientfirstname'], v['patientlastname']].filter(Boolean).join(' ') || '—')
+                {paginated.map(call => {
+                  const vars = call.retell_llm_dynamic_variables ?? {}
+                  const payer = vars['primary_carrier_name'] ?? vars['primaryinsurance'] ?? '—'
                   return (
-                    <tr key={c.call_id} onClick={() => setSel(c)} className="border-b border-separator last:border-0 cursor-pointer hover:bg-surface-elevated transition-colors">
-                      <td className="px-4 py-3 text-xs text-content-secondary">{c.start_timestamp ? new Date(c.start_timestamp).toLocaleDateString() : '—'}</td>
-                      <td className="px-4 py-3 font-mono text-xs">{c.to_number}</td>
-                      <td className="px-4 py-3 text-xs">{lbl}</td>
-                      <td className="px-4 py-3 font-mono text-xs">{formatDuration(c.duration_ms)}</td>
-                      <td className="px-4 py-3">
-                        {c.call_analysis?.call_successful === true ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium">Resolved</span>
-                        : c.call_analysis?.call_successful === false ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 font-medium">Failed</span>
-                        : <span className="text-[10px] text-content-tertiary">—</span>}
+                    <tr key={call.call_id} onClick={() => setSelected(call)}
+                      className="border-b border-separator last:border-0 cursor-pointer hover:bg-surface-elevated transition-colors">
+                      <td className="px-4 py-3 text-xs text-content-secondary whitespace-nowrap">
+                        {call.start_timestamp ? new Date(call.start_timestamp).toLocaleDateString() : '—'}
                       </td>
-                      <td className="px-4 py-3"><SentimentBadge sentiment={c.call_analysis?.user_sentiment} /></td>
-                      <td className="px-4 py-3 text-xs text-content-secondary max-w-[200px] truncate">{c.call_analysis?.call_summary ?? '—'}</td>
+                      <td className="px-4 py-3"><AgentBadge agent={call._agent_name} /></td>
+                      <td className="px-4 py-3 font-mono text-xs">{call.to_number}</td>
+                      <td className="px-4 py-3 text-xs text-content-secondary">{payer}</td>
+                      <td className="px-4 py-3 font-mono text-xs">{formatDuration(call.duration_ms)}</td>
+                      <td className="px-4 py-3">
+                        {call.call_analysis?.call_successful === true
+                          ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium">Resolved</span>
+                          : call.call_analysis?.call_successful === false
+                          ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 font-medium">Failed</span>
+                          : <span className="text-[10px] text-content-tertiary">—</span>}
+                      </td>
+                      <td className="px-4 py-3"><SentimentBadge sentiment={call.call_analysis?.user_sentiment} /></td>
+                      <td className="px-4 py-3 text-xs text-content-secondary max-w-[200px] truncate">
+                        {call.call_analysis?.call_summary ?? '—'}
+                      </td>
                     </tr>
                   )
                 })}
-                {filtered.length === 0 && <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-content-tertiary">No calls found</td></tr>}
+                {paginated.length === 0 && (
+                  <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-content-tertiary">No calls match filters</td></tr>
+                )}
               </tbody>
             </table>
           </div>
-          {hasMore && <div className="mt-4 text-center"><button onClick={loadMore} className="px-6 py-2 text-xs font-medium border border-separator rounded-lg text-content-secondary hover:text-content-primary hover:border-brand/30 transition-colors">Load More</button></div>}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+                className="text-xs px-3 py-1.5 border border-separator rounded-lg disabled:opacity-40 hover:bg-surface-elevated transition-colors">← Prev</button>
+              <span className="text-xs text-content-secondary">Page {page + 1} of {totalPages}</span>
+              <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
+                className="text-xs px-3 py-1.5 border border-separator rounded-lg disabled:opacity-40 hover:bg-surface-elevated transition-colors">Next →</button>
+            </div>
+          )}
         </>
       )}
-      {sel && <><div className="fixed inset-0 bg-black/20 z-30" onClick={() => setSel(null)} /><CallDetailDrawer call={sel} onClose={() => setSel(null)} /></>}
+      {selected && <><div className="fixed inset-0 bg-black/20 z-30" onClick={() => setSelected(null)} /><CallDetailDrawer call={selected} onClose={() => setSelected(null)} /></>}
     </div>
   )
 }
 
-// ── Tab 3: Campaign Launcher ──────────────────────────────────────────────────
+// ─── TAB 3: Campaign Launcher ─────────────────────────────────────────────────
 function CampaignLauncherTab() {
   const { toast } = useToast()
-  const { agents } = useRetellAgents()
-  const { batches, loading: batchLoading } = useRetellBatches()
+  const { agents, apiConfigured } = useRetellAgents()
+  const { batches, loading: batchLoading, fallback } = useRetellBatches()
   const { launch: launchBatch, loading: launching } = useLaunchBatch()
   const { launch: launchCall, loading: singleLoading } = useLaunchCall()
   const [mode, setMode] = useState<'excel' | 'single'>('excel')
@@ -234,136 +381,164 @@ function CampaignLauncherTab() {
   const [parsed, setParsed] = useState<ExcelParseResult | null>(null)
   const [parsing, setParsing] = useState(false)
   const [filterPractice, setFilterPractice] = useState('all')
-  const [singleNum, setSingleNum] = useState('')
+  const [singleNumber, setSingleNumber] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const rows = parsed ? (filterPractice === 'all' ? parsed.rows : parsed.rows.filter((r: {phone: string; variables: Record<string,string>; raw: Record<string,unknown>}) => (r.variables['practicename'] ?? '') === filterPractice)) : []
+  const filteredRows = parsed ? (filterPractice === 'all' ? parsed.rows
+    : parsed.rows.filter(r => (r.variables['practicename'] ?? r.variables['practice_name'] ?? '') === filterPractice)) : []
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return
     setParsing(true); setParsed(null)
     try {
-      const res = await parseRetellExcel(file); setParsed(res)
-      if (res.agentDetected) setAgentKey(res.agentDetected)
-      toast[res.errors.length > 0 ? 'warning' : 'success'](`${res.rows.length} contacts ready${res.errors.length > 0 ? ` — ${res.errors.length} skipped` : ''}`)
+      const result = await parseRetellExcel(file)
+      setParsed(result)
+      if (result.agentDetected) setAgentKey(result.agentDetected)
+      toast[result.errors.length > 0 ? 'warning' : 'success'](`${result.rows.length} contacts ready — ${result.errors.length} skipped`)
     } catch (err) { toast.error(`Parse failed: ${err}`) }
     finally { setParsing(false); if (fileRef.current) fileRef.current.value = '' }
+  }
+
+  async function handleLaunchBatch() {
+    if (!filteredRows.length) { toast.error('No rows'); return }
+    try {
+      await launchBatch({ agent_name: agentKey, batch_name: parsed?.fileName.replace(/\.xlsx?/, '') ?? 'Campaign', recipients: filteredRows.map(r => ({ to_number: r.phone, variables: r.variables })) })
+      toast.success(`${filteredRows.length} calls queued`)
+      setParsed(null)
+    } catch (err) { toast.error(`Launch failed: ${err}`) }
   }
 
   return (
     <div className="grid grid-cols-5 gap-5">
       <div className="col-span-2 space-y-3">
-        <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Past Campaigns</h3>
+        <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Past Campaigns {fallback && <span className="text-amber-500 normal-case font-normal">(demo)</span>}</h3>
         {batchLoading ? <div className="text-xs text-content-tertiary p-4">Loading…</div>
-        : batches.length === 0 ? <div className="card p-6 text-center text-xs text-content-tertiary">No campaigns yet</div>
-        : batches.map(b => (
-          <div key={b.batch_id} className="card p-4">
-            <div className="flex items-start justify-between mb-1.5">
-              <p className="text-sm font-semibold text-content-primary truncate pr-2">{b.name}</p>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium ${b.status === 'running' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : b.status === 'completed' ? 'bg-brand/10 text-brand' : 'bg-amber-500/10 text-amber-500'}`}>{b.status}</span>
+          : batches.length === 0 ? <div className="card p-6 text-center text-xs text-content-tertiary">No campaigns yet</div>
+          : batches.map(b => (
+            <div key={b.batch_id} className="card p-4">
+              <div className="flex items-start justify-between mb-1.5">
+                <p className="text-sm font-semibold text-content-primary truncate pr-2">{b.name}</p>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium ${b.status === 'running' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : b.status === 'completed' ? 'bg-brand/10 text-brand' : 'bg-amber-500/10 text-amber-500'}`}>{b.status}</span>
+              </div>
+              <p className="text-[10px] text-content-secondary">{b.completed_count}/{b.total_count} completed{b.failed_count > 0 ? ` · ${b.failed_count} failed` : ''}</p>
+              {b.status === 'running' && <div className="mt-2 h-1.5 bg-surface-elevated rounded-full overflow-hidden"><div className="h-full bg-brand rounded-full" style={{ width: `${Math.round(b.completed_count / b.total_count * 100)}%` }} /></div>}
             </div>
-            <div className="flex gap-3 text-[10px] text-content-secondary">{b.completed_count}/{b.total_count} completed{b.failed_count > 0 && <span className="text-red-500 ml-1">{b.failed_count} failed</span>}</div>
-            {b.total_count > 0 && <div className="mt-2 h-1.5 bg-surface-elevated rounded-full overflow-hidden"><div className="h-full bg-brand rounded-full" style={{ width: `${Math.round(b.completed_count / b.total_count * 100)}%` }} /></div>}
-          </div>
-        ))}
+          ))}
       </div>
 
       <div className="col-span-3 card p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-content-primary">Launch Calls</h3>
           <div className="flex gap-1 bg-surface-elevated rounded-lg p-0.5">
-            {(['excel', 'single'] as const).map(m => <button key={m} onClick={() => setMode(m)} className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${mode === m ? 'bg-surface-secondary text-content-primary shadow-sm' : 'text-content-secondary'}`}>{m === 'excel' ? '📊 Excel' : '📞 Single'}</button>)}
+            {(['excel', 'single'] as const).map(m => (
+              <button key={m} onClick={() => setMode(m)} className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${mode === m ? 'bg-surface-secondary text-content-primary shadow-sm' : 'text-content-secondary'}`}>
+                {m === 'excel' ? '📊 Excel Upload' : '📞 Single Call'}
+              </button>
+            ))}
           </div>
         </div>
 
         <div className="flex gap-2">
-          {([{ key: 'cindy' as const, name: 'Cindy', role: 'AR Collections' }, { key: 'chris' as const, name: 'Chris', role: 'Payer Follow-up' }]).map(a => (
-            <button key={a.key} onClick={() => { setAgentKey(a.key); setParsed(null) }}
-              className={`flex-1 p-3 rounded-lg border text-left transition-all ${agentKey === a.key ? 'border-brand/40 bg-brand/5' : 'border-separator hover:border-brand/20'}`}>
-              <div className="flex items-center gap-2 mb-0.5">
-                <div className={`w-2 h-2 rounded-full ${agents.find(ag => ag.name.toLowerCase() === a.key)?.configured ? 'bg-emerald-500' : 'bg-amber-400'}`} />
-                <span className="text-xs font-semibold text-content-primary">{a.name}</span>
-              </div>
-              <p className="text-[10px] text-content-tertiary">{a.role}</p>
-            </button>
-          ))}
+          {(['cindy', 'chris'] as const).map(a => {
+            const live = agents.find(ag => ag.name.toLowerCase() === a)
+            return (
+              <button key={a} onClick={() => { setAgentKey(a); setParsed(null) }}
+                className={`flex-1 p-3 rounded-lg border text-left transition-all ${agentKey === a ? 'border-brand/40 bg-brand/5' : 'border-separator hover:border-brand/20'}`}>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <div className={`w-2 h-2 rounded-full ${live?.configured ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                  <span className="text-xs font-semibold text-content-primary capitalize">{a}</span>
+                </div>
+                <p className="text-[10px] text-content-tertiary">{a === 'cindy' ? 'Patient AR Collections' : 'Payer Follow-up'}</p>
+              </button>
+            )
+          })}
         </div>
 
-        {mode === 'excel' ? (!parsed ? (
-          <div onClick={() => fileRef.current?.click()} className="border-2 border-dashed border-brand/30 rounded-xl p-8 text-center cursor-pointer hover:border-brand/60 hover:bg-brand/5 transition-all group">
-            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFile} />
-            <FileSpreadsheet size={32} className="mx-auto mb-3 text-brand/40 group-hover:text-brand/60 transition-colors" />
-            {parsing ? <p className="text-sm text-content-secondary">Parsing…</p> : <><p className="text-sm font-medium text-content-primary mb-1">Drop Excel file or click to browse</p><p className="text-xs text-content-tertiary">Same format as Retell — all columns become call variables</p></>}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-4 py-3">
-              <div className="flex items-center gap-3">
-                <FileSpreadsheet size={18} className="text-emerald-500" />
-                <div><p className="text-xs font-semibold text-content-primary">{parsed.fileName}</p><p className="text-[10px] text-content-secondary">{parsed.rows.length} contacts · {parsed.columns.length} columns{parsed.agentDetected && <span className="ml-1 text-brand">· {parsed.agentDetected}</span>}</p></div>
-              </div>
-              <button onClick={() => setParsed(null)} className="p-1 hover:bg-surface-elevated rounded text-content-tertiary hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+        {mode === 'excel' ? (
+          !parsed ? (
+            <div onClick={() => fileRef.current?.click()}
+              className="border-2 border-dashed border-brand/30 rounded-xl p-8 text-center cursor-pointer hover:border-brand/60 hover:bg-brand/5 transition-all group">
+              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFile} />
+              <FileSpreadsheet size={32} className="mx-auto mb-3 text-brand/40 group-hover:text-brand/60 transition-colors" />
+              {parsing ? <p className="text-sm text-content-secondary">Parsing…</p> : (
+                <>
+                  <p className="text-sm font-medium text-content-primary mb-1">Drop Excel file or click to browse</p>
+                  <p className="text-xs text-content-tertiary">.xlsx · same format as your existing Retell campaigns</p>
+                </>
+              )}
             </div>
-            {parsed.practiceNames.length > 1 && (
-              <select value={filterPractice} onChange={e => setFilterPractice(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
-                <option value="all">All Practices ({parsed.rows.length})</option>
-                {parsed.practiceNames.map((p: string) => { const cnt = parsed.rows.filter((r: {phone: string; variables: Record<string,string>; raw: Record<string,unknown>}) => (r.variables['practicename'] ?? '') === p).length; return <option key={p} value={p}>{p} ({cnt})</option> })}
-              </select>
-            )}
-            <div className="border border-separator rounded-lg overflow-hidden">
-              <div className="px-3 py-2 bg-surface-elevated border-b border-separator flex items-center justify-between">
-                <span className="text-[10px] font-semibold text-content-secondary uppercase tracking-wide">Preview — {rows.length} calls</span>
-                <Eye size={12} className="text-content-tertiary" />
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <FileSpreadsheet size={18} className="text-emerald-500" />
+                  <div>
+                    <p className="text-xs font-semibold text-content-primary">{parsed.fileName}</p>
+                    <p className="text-[10px] text-content-secondary">{parsed.rows.length} contacts · {parsed.columns.length} columns{parsed.agentDetected && <span className="text-brand ml-1">· {parsed.agentDetected} format</span>}</p>
+                  </div>
+                </div>
+                <button onClick={() => setParsed(null)} className="p-1 hover:bg-surface-elevated rounded text-content-tertiary hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
               </div>
-              <div className="max-h-36 overflow-y-auto">
-                <table className="w-full text-[11px]">
-                  <thead className="sticky top-0 bg-surface-secondary"><tr className="border-b border-separator text-content-tertiary">
-                    <th className="text-left px-3 py-1.5">#</th><th className="text-left px-3 py-1.5">Phone</th>
-                    {agentKey === 'cindy' ? <><th className="text-left px-3 py-1.5">Patient</th><th className="text-left px-3 py-1.5">Balance</th><th className="text-left px-3 py-1.5">Aging</th></>
-                    : <><th className="text-left px-3 py-1.5">Patient</th><th className="text-left px-3 py-1.5">Payer</th><th className="text-left px-3 py-1.5">Charge</th></>}
-                  </tr></thead>
-                  <tbody>
-                    {rows.slice(0, 50).map((r: {phone: string; variables: Record<string,string>; raw: Record<string,unknown>}, i: number) => (
-                      <tr key={i} className="border-b border-separator last:border-0 hover:bg-surface-elevated">
-                        <td className="px-3 py-1.5 text-content-tertiary">{i + 1}</td>
-                        <td className="px-3 py-1.5 font-mono">{r.phone}</td>
-                        {agentKey === 'cindy' ? (
-                          <><td className="px-3 py-1.5">{[r.variables['patientfirstname'], r.variables['patientlastname']].filter(Boolean).join(' ') || '—'}</td>
-                          <td className="px-3 py-1.5 text-emerald-600 dark:text-emerald-400 font-medium">{r.variables['patientbalance'] ? `$${Number(r.variables['patientbalance']).toLocaleString()}` : '—'}</td>
-                          <td className="px-3 py-1.5"><span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${r.variables['aginggroup']?.includes('180') ? 'bg-red-500/10 text-red-500' : 'bg-surface-elevated text-content-secondary'}`}>{r.variables['aginggroup'] || '—'}</span></td></>
-                        ) : (
-                          <><td className="px-3 py-1.5">{r.variables['patient_name'] || '—'}</td>
-                          <td className="px-3 py-1.5">{r.variables['primary_carrier_name'] || '—'}</td>
-                          <td className="px-3 py-1.5 font-medium">{r.variables['total_charge'] ? `$${Number(r.variables['total_charge']).toLocaleString()}` : '—'}</td></>
-                        )}
+
+              {parsed.practiceNames.length > 1 && (
+                <select value={filterPractice} onChange={e => setFilterPractice(e.target.value)}
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
+                  <option value="all">All Practices ({parsed.rows.length})</option>
+                  {parsed.practiceNames.map(p => { const cnt = parsed.rows.filter(r => (r.variables['practicename'] ?? '') === p).length; return <option key={p} value={p}>{p} ({cnt})</option> })}
+                </select>
+              )}
+
+              <div className="border border-separator rounded-lg overflow-hidden">
+                <div className="px-3 py-2 bg-surface-elevated border-b border-separator flex items-center justify-between">
+                  <span className="text-[10px] font-semibold text-content-secondary uppercase tracking-wide">Preview — {filteredRows.length} calls</span>
+                  <Eye size={12} className="text-content-tertiary" />
+                </div>
+                <div className="max-h-40 overflow-y-auto">
+                  <table className="w-full text-[11px]">
+                    <thead className="sticky top-0 bg-surface-secondary">
+                      <tr className="border-b border-separator text-content-tertiary">
+                        <th className="text-left px-3 py-1.5">#</th>
+                        <th className="text-left px-3 py-1.5">Phone</th>
+                        {agentKey === 'cindy' ? <><th className="text-left px-3 py-1.5">Patient</th><th className="text-left px-3 py-1.5">Balance</th><th className="text-left px-3 py-1.5">Aging</th></>
+                          : <><th className="text-left px-3 py-1.5">Patient</th><th className="text-left px-3 py-1.5">Payer</th><th className="text-left px-3 py-1.5">Charge</th></>}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {filteredRows.slice(0, 50).map((row, i) => (
+                        <tr key={i} className="border-b border-separator last:border-0 hover:bg-surface-elevated">
+                          <td className="px-3 py-1.5 text-content-tertiary">{i + 1}</td>
+                          <td className="px-3 py-1.5 font-mono">{row.phone}</td>
+                          {agentKey === 'cindy' ? (
+                            <><td className="px-3 py-1.5">{[row.variables['patientfirstname'], row.variables['patientlastname']].filter(Boolean).join(' ') || '—'}</td>
+                            <td className="px-3 py-1.5 text-emerald-600 dark:text-emerald-400 font-medium">{row.variables['patientbalance'] ? `$${Number(row.variables['patientbalance']).toLocaleString()}` : '—'}</td>
+                            <td className="px-3 py-1.5"><span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${row.variables['aginggroup']?.includes('180') ? 'bg-red-500/10 text-red-500' : 'bg-surface-elevated text-content-secondary'}`}>{row.variables['aginggroup'] || '—'}</span></td></>
+                          ) : (
+                            <><td className="px-3 py-1.5">{row.variables['patient_name'] || '—'}</td>
+                            <td className="px-3 py-1.5">{row.variables['primary_carrier_name'] || '—'}</td>
+                            <td className="px-3 py-1.5 font-medium">{row.variables['total_charge'] ? `$${Number(row.variables['total_charge']).toLocaleString()}` : '—'}</td></>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-            {parsed.errors.length > 0 && <div className="px-3 py-2 bg-amber-500/5 border border-amber-500/20 rounded-lg"><p className="text-[10px] text-amber-500 font-medium">{parsed.errors.length} rows skipped (invalid phones)</p></div>}
-            <button onClick={async () => {
-              if (!rows.length) { toast.error('No rows'); return }
-              try { await launchBatch({ agent_name: agentKey, batch_name: parsed?.fileName.replace(/\.xlsx?$/, '') ?? 'Campaign', recipients: rows.map((r: {phone: string; variables: Record<string,string>}) => ({ to_number: r.phone, variables: r.variables })) }); toast.success(`${rows.length} calls queued`); setParsed(null) }
-              catch (e) { toast.error(`Failed: ${e}`) }
-            }} disabled={launching || !rows.length} className="w-full bg-brand text-white rounded-lg py-3 text-sm font-semibold hover:bg-brand-deep disabled:opacity-40 transition-colors">
-              <Zap size={14} className="inline mr-2" />{launching ? 'Queuing…' : `Launch ${rows.length} Calls via ${agentKey === 'cindy' ? 'Cindy' : 'Chris'}`}
-            </button>
-          </div>
-        )) : (
-          <div><label className="text-xs text-content-secondary block mb-1">Phone Number</label>
-            <div className="flex gap-2">
-              <input value={singleNum} onChange={e => setSingleNum(e.target.value)} placeholder="+1 (702) 555-0000"
-                className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40" />
-              <button onClick={async () => {
-                if (!singleNum) { toast.error('Enter a number'); return }
-                try { await launchCall({ agent_name: agentKey, to_number: singleNum }); toast.success('Call initiated'); setSingleNum('') }
-                catch (e) { toast.error(`Failed: ${e}`) }
-              }} disabled={singleLoading || !singleNum} className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-deep disabled:opacity-40 transition-colors">
-                <PhoneOutgoing size={14} className="inline mr-1.5" />{singleLoading ? 'Calling…' : 'Call'}
+
+              <button onClick={handleLaunchBatch} disabled={launching || !filteredRows.length}
+                className="w-full bg-brand text-white rounded-lg py-3 text-sm font-semibold hover:bg-brand-deep disabled:opacity-40 transition-colors">
+                <Zap size={14} className="inline mr-2" />{launching ? 'Queuing…' : `Launch ${filteredRows.length} Calls via ${agentKey === 'cindy' ? 'Cindy' : 'Chris'}`}
               </button>
             </div>
+          )
+        ) : (
+          <div className="flex gap-2">
+            <input value={singleNumber} onChange={e => setSingleNumber(e.target.value)} placeholder="+1 (702) 555-0000"
+              className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40" />
+            <button onClick={async () => { try { await launchCall({ agent_name: agentKey, to_number: singleNumber }); toast.success('Call initiated'); setSingleNumber('') } catch (e) { toast.error(`${e}`) } }}
+              disabled={singleLoading || !singleNumber}
+              className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-deep disabled:opacity-40 transition-colors whitespace-nowrap">
+              <PhoneOutgoing size={14} className="inline mr-1.5" />{singleLoading ? 'Calling…' : 'Call Now'}
+            </button>
           </div>
         )}
       </div>
@@ -371,298 +546,484 @@ function CampaignLauncherTab() {
   )
 }
 
-// ── Tab 4: Payer Intelligence ─────────────────────────────────────────────────
+// ─── TAB 4: Payer Intelligence ─────────────────────────────────────────────────
 function PayerIntelligenceTab() {
-  const { payers, loading, fallback } = usePayerAnalytics()
-  const { agent: chrisAgent } = useAgentPrompt('chris')
-  const { analyze, loading: analyzing, result } = useAnalyzeCalls()
-  const { update: updatePrompt, loading: saving } = useUpdatePrompt()
   const { toast } = useToast()
-  const [sel, setSel] = useState<PayerStat | null>(null)
-  const [playbook, setPlaybook] = useState('')
-  const [saved, setSaved] = useState(false)
-  const [fetching, setFetching] = useState(false)
+  const { calls, loading } = useRetellCalls({ agent: 'chris', limit: 500 })
+  const [selectedPayer, setSelectedPayer] = useState<PayerStat | null>(null)
+  const [generating, setGenerating] = useState(false)
+  const [playbook, setPlaybook] = useState<string>('')
+  const [pushing, setPushing] = useState(false)
+  const { update: updateAgent } = useUpdateAgentPrompt()
+  const { prompt: currentPrompt, refetch: refetchPrompt } = useAgentPrompt('chris')
 
-  const rc = (r: number) => r >= 70 ? 'text-emerald-600 dark:text-emerald-400' : r >= 50 ? 'text-amber-500' : 'text-red-500'
+  const stats = computePayerStats(calls)
 
-  async function analyze_(payer: PayerStat) {
-    setSel(payer); setPlaybook(''); setSaved(false)
-    if (!chrisAgent?.general_prompt) { toast.error('Chris prompt not loaded'); return }
-    setFetching(true)
+  async function generatePlaybook(payer: PayerStat) {
+    setGenerating(true)
+    setPlaybook('')
     try {
-      const d = await fetch('/api/retell?action=list-calls&limit=100').then(r => r.json())
-      const allCalls: RetellCall[] = d.call_list ?? []
-      const t = allCalls.filter(c => (c.retell_llm_dynamic_variables?.['Primary_Carrier_Name'] ?? '') === payer.name && c.transcript).map(c => c.transcript!).slice(0, 20)
-      if (t.length < 2) { toast.warning('Not enough transcript data yet'); return }
-      const res = await analyze({ agent_name: 'chris', current_prompt: chrisAgent.general_prompt, call_transcripts: t, focus: 'payer', payer_name: payer.name })
-      if (res?.playbook) setPlaybook(res.playbook)
-    } catch (e) { toast.error(`Failed: ${e}`) }
-    finally { setFetching(false) }
+      // Sample up to 30 transcripts for this payer
+      const sampleCalls = payer.calls.slice(0, 30)
+      const transcripts = sampleCalls.map(c => {
+        const outcome = c.call_analysis?.call_successful ? 'RESOLVED' : 'FAILED'
+        const summary = c.call_analysis?.call_summary ?? ''
+        const transcript = c.transcript ?? c.transcript_object?.map(l => `${l.role.toUpperCase()}: ${l.content}`).join('\n') ?? ''
+        return `--- CALL ${outcome} (${formatDuration(c.duration_ms)}) ---\nSummary: ${summary}\n${transcript}\n`
+      }).join('\n')
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1500,
+          system: `You are an expert medical billing AI analyst. You analyze real call transcripts between an AI billing agent (Chris) and insurance company representatives to identify payer-specific patterns and create actionable IVR navigation playbooks.
+
+Output ONLY the playbook section in markdown format — no preamble, no explanation. Write it as a section to be inserted directly into Chris's system prompt.`,
+          messages: [{
+            role: 'user',
+            content: `Analyze these ${sampleCalls.length} call transcripts with ${payer.payer} (success rate: ${payer.successRate}%). 
+
+${transcripts}
+
+Based on these real calls, write a payer-specific playbook section for ${payer.payer} that covers:
+1. IVR navigation sequence (exact button presses and menu paths)
+2. What commonly causes failures / where Chris gets stuck
+3. What to do / not do when navigating ${payer.payer}'s system
+4. Any special phrases, holds, or transfers specific to this payer
+
+Format as:
+# Payer-Specific Rules → ${payer.payer}
+[your analysis here]
+
+Be specific and actionable. Reference exact patterns from the transcripts.`
+          }],
+        }),
+      })
+
+      const data = await response.json()
+      const text = data.content?.[0]?.text ?? ''
+      setPlaybook(text)
+    } catch (err) {
+      toast.error(`Generation failed: ${err}`)
+    } finally {
+      setGenerating(false)
+    }
   }
 
-  async function savePlaybook() {
-    if (!chrisAgent?.general_prompt || !playbook || !sel) return
+  async function pushPlaybook() {
+    if (!playbook || !selectedPayer) return
+    setPushing(true)
     try {
-      await updatePrompt('chris', `${chrisAgent.general_prompt}\n\n---\n\n# Payer-Specific Rules → ${sel.name}\n\n${playbook}`)
-      toast.success(`${sel.name} playbook is now live in Chris`)
-      setSaved(true)
-    } catch (e) { toast.error(`Failed: ${e}`) }
+      // Append playbook to existing prompt, replacing any existing section for this payer
+      const payerHeader = `# Payer-Specific Rules → ${selectedPayer.payer}`
+      let newPrompt = currentPrompt
+      // Remove existing section if present
+      const existingIdx = newPrompt.indexOf(payerHeader)
+      if (existingIdx !== -1) {
+        const nextSection = newPrompt.indexOf('\n# ', existingIdx + 1)
+        newPrompt = nextSection !== -1
+          ? newPrompt.slice(0, existingIdx) + newPrompt.slice(nextSection)
+          : newPrompt.slice(0, existingIdx)
+      }
+      newPrompt = newPrompt.trimEnd() + '\n\n' + playbook
+      await updateAgent('chris', newPrompt)
+      await refetchPrompt()
+      toast.success(`${selectedPayer.payer} playbook pushed to Chris live`)
+      setPlaybook('')
+    } catch (err) {
+      toast.error(`Push failed: ${err}`)
+    } finally {
+      setPushing(false)
+    }
   }
+
+  if (loading) return <div className="card p-12 text-center text-sm text-content-tertiary">Loading call data…</div>
 
   return (
     <div className="grid grid-cols-5 gap-5">
-      <div className="col-span-2 space-y-2">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Payer Performance — Chris</h3>
-          {fallback && <span className="text-[10px] text-amber-500">demo</span>}
-        </div>
-        {loading ? <div className="text-xs text-content-tertiary p-4">Loading…</div>
-        : payers.length === 0 ? <div className="card p-6 text-center text-xs text-content-tertiary">No data yet</div>
-        : payers.map(p => (
-          <button key={p.name} onClick={() => analyze_(p)}
-            className={`w-full text-left card p-4 hover:border-brand/30 transition-all ${sel?.name === p.name ? 'border-brand/40 bg-brand/5' : ''}`}>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-semibold text-content-primary truncate pr-2">{p.name}</p>
-              <span className={`text-xs font-bold ${rc(p.successRate)}`}>{p.successRate}%</span>
-            </div>
-            <div className="h-1.5 bg-surface-elevated rounded-full overflow-hidden mb-2">
-              <div className={`h-full rounded-full ${p.successRate >= 70 ? 'bg-emerald-500' : p.successRate >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${p.successRate}%` }} />
-            </div>
-            <div className="flex justify-between text-[10px] text-content-tertiary">
-              <span>{p.total} calls</span>
-              {p.hasPlaybookData && <span className="text-brand flex items-center gap-1"><Brain size={9} />Analyzable</span>}
-            </div>
-          </button>
-        ))}
-      </div>
-
-      <div className="col-span-3">
-        {!sel ? (
-          <div className="card p-12 text-center h-full flex flex-col items-center justify-center gap-3">
-            <Target size={36} className="text-content-tertiary opacity-40" />
-            <p className="text-sm font-medium text-content-secondary">Select a payer to generate a playbook</p>
-            <p className="text-xs text-content-tertiary max-w-xs">Claude reads call transcripts and identifies exactly where Chris gets stuck — then writes specific IVR instructions to fix it</p>
+      {/* Payer table */}
+      <div className="col-span-2">
+        <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Payer Performance — Chris</h3>
+        {stats.length === 0 ? (
+          <div className="card p-8 text-center text-xs text-content-tertiary">
+            No call data yet — launch Chris campaigns to see payer analytics
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div><h3 className="text-base font-semibold text-content-primary">{sel.name}</h3><p className="text-xs text-content-secondary">{sel.total} calls · {sel.successRate}% success</p></div>
-              {!analyzing && !fetching && <button onClick={() => analyze_(sel)} className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium border border-brand/30 text-brand rounded-lg hover:bg-brand/5 transition-colors"><Sparkles size={12} />Re-analyze</button>}
-            </div>
-            {(analyzing || fetching) && <div className="card p-8 text-center"><Brain size={20} className="mx-auto mb-3 text-brand animate-pulse" /><p className="text-sm text-content-secondary">{fetching ? 'Fetching transcripts…' : 'Claude analyzing IVR patterns…'}</p></div>}
-            {result && !analyzing && !fetching && (
-              <>
-                <div className="card p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Analysis</h4>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${result.confidence === 'high' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/10 text-amber-500'}`}>{result.confidence} confidence</span>
-                  </div>
-                  <p className="text-xs text-content-primary leading-relaxed">{result.summary}</p>
-                </div>
-                {result.issues.length > 0 && (
-                  <div className="card p-4">
-                    <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Issues</h4>
-                    <div className="space-y-2">
-                      {result.issues.map((issue, i) => (
-                        <div key={i} className={`rounded-lg p-3 border-l-2 ${issue.severity === 'high' ? 'bg-red-500/5 border-red-500' : issue.severity === 'medium' ? 'bg-amber-500/5 border-amber-500' : 'bg-blue-500/5 border-blue-500'}`}>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-[9px] font-bold uppercase ${issue.severity === 'high' ? 'text-red-500' : issue.severity === 'medium' ? 'text-amber-500' : 'text-blue-500'}`}>{issue.severity}</span>
-                            <span className="text-xs font-semibold text-content-primary">{issue.title}</span>
-                          </div>
-                          <p className="text-xs text-content-secondary">{issue.description}</p>
-                          {issue.evidence && <p className="text-[10px] font-mono text-content-tertiary bg-surface-elevated rounded px-2 py-1 mt-1.5 italic">"{issue.evidence}"</p>}
+          <div className="card overflow-hidden">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-separator text-[10px] text-content-secondary">
+                <th className="text-left px-4 py-2.5">Payer</th>
+                <th className="text-left px-4 py-2.5">Calls</th>
+                <th className="text-left px-4 py-2.5">Rate</th>
+                <th className="text-left px-4 py-2.5">Avg</th>
+              </tr></thead>
+              <tbody>
+                {stats.map(s => (
+                  <tr key={s.payer} onClick={() => { setSelectedPayer(s); setPlaybook('') }}
+                    className={`border-b border-separator last:border-0 cursor-pointer hover:bg-surface-elevated transition-colors ${selectedPayer?.payer === s.payer ? 'bg-brand/5' : ''}`}>
+                    <td className="px-4 py-3 text-xs font-medium">{s.payer}</td>
+                    <td className="px-4 py-3 text-xs text-content-secondary">{s.total}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-16 h-1.5 bg-surface-elevated rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${s.successRate >= 70 ? 'bg-emerald-500' : s.successRate >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
+                            style={{ width: `${s.successRate}%` }} />
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {(result.playbook || playbook) && (
-                  <div className="card p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div><h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Generated Playbook</h4><p className="text-[10px] text-content-tertiary mt-0.5">Edit if needed, then push live</p></div>
-                      {!saved
-                        ? <button onClick={savePlaybook} disabled={saving} className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold bg-brand text-white rounded-lg hover:bg-brand-deep disabled:opacity-40 transition-colors"><Save size={12} />{saving ? 'Pushing…' : 'Push to Chris'}</button>
-                        : <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium"><CheckCircle size={13} />Live in Retell</span>}
-                    </div>
-                    <textarea value={playbook || result.playbook || ''} onChange={e => setPlaybook(e.target.value)} rows={12}
-                      className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2.5 text-xs text-content-primary font-mono outline-none focus:border-brand/40 resize-y" />
-                  </div>
-                )}
-              </>
-            )}
+                        <span className={`text-[10px] font-medium ${s.successRate >= 70 ? 'text-emerald-500' : s.successRate >= 40 ? 'text-amber-500' : 'text-red-500'}`}>{s.successRate}%</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs">{formatDuration(s.avgDuration)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+        )}
+      </div>
+
+      {/* Playbook panel */}
+      <div className="col-span-3 space-y-4">
+        {!selectedPayer ? (
+          <div className="card p-12 text-center">
+            <Brain size={32} className="mx-auto mb-3 text-content-tertiary opacity-40" />
+            <p className="text-sm text-content-secondary">Select a payer to generate its IVR playbook</p>
+            <p className="text-xs text-content-tertiary mt-1">AI reads all call transcripts for that payer and writes navigation rules</p>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-content-primary">{selectedPayer.payer}</h3>
+                <p className="text-xs text-content-secondary mt-0.5">
+                  {selectedPayer.total} calls · {selectedPayer.successRate}% success · {formatDuration(selectedPayer.avgDuration)} avg
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {selectedPayer.successRate < 50 && (
+                  <span className="flex items-center gap-1 text-[10px] text-red-500 bg-red-500/10 px-2 py-1 rounded-full">
+                    <AlertCircle size={11} />Needs playbook
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Sample failures */}
+            <div className="card p-4">
+              <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-3">Recent Failures</h4>
+              <div className="space-y-2 max-h-32 overflow-y-auto">
+                {selectedPayer.calls.filter(c => c.call_analysis?.call_successful === false).slice(0, 5).map(c => (
+                  <div key={c.call_id} className="text-xs text-content-secondary bg-surface-elevated rounded p-2">
+                    <span className="text-red-500 font-medium mr-2">✗</span>
+                    {c.call_analysis?.call_summary ?? c.disconnection_reason ?? 'No summary'}
+                  </div>
+                ))}
+                {selectedPayer.calls.filter(c => c.call_analysis?.call_successful === false).length === 0 && (
+                  <p className="text-xs text-content-tertiary">No failures recorded</p>
+                )}
+              </div>
+            </div>
+
+            {!playbook ? (
+              <button onClick={() => generatePlaybook(selectedPayer)} disabled={generating}
+                className="w-full bg-brand text-white rounded-lg py-3 text-sm font-semibold hover:bg-brand-deep disabled:opacity-60 transition-colors">
+                {generating ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Analyzing {selectedPayer.total} calls…
+                  </span>
+                ) : (
+                  <span><Sparkles size={14} className="inline mr-2" />Generate {selectedPayer.payer} Playbook with AI</span>
+                )}
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider">Generated Playbook</h4>
+                  <button onClick={() => setPlaybook('')} className="text-[10px] text-content-tertiary hover:text-content-secondary transition-colors">Discard</button>
+                </div>
+                <textarea value={playbook} onChange={e => setPlaybook(e.target.value)}
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-3 text-xs text-content-primary font-mono leading-relaxed resize-none outline-none focus:border-brand/40"
+                  rows={12} />
+                <div className="flex gap-2">
+                  <button onClick={() => generatePlaybook(selectedPayer)} disabled={generating}
+                    className="px-4 py-2 border border-separator rounded-lg text-xs text-content-secondary hover:bg-surface-elevated transition-colors">
+                    <RefreshCw size={12} className="inline mr-1.5" />Regenerate
+                  </button>
+                  <button onClick={pushPlaybook} disabled={pushing}
+                    className="flex-1 bg-emerald-500 text-white rounded-lg py-2 text-sm font-semibold hover:bg-emerald-600 disabled:opacity-40 transition-colors">
+                    {pushing ? 'Pushing to Chris…' : `Push to Chris's Prompt Live`}
+                  </button>
+                </div>
+                <p className="text-[10px] text-content-tertiary">This will append the playbook to Chris's live Retell prompt. Review carefully before pushing.</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
   )
 }
 
-// ── Tab 5: Prompt Hub ─────────────────────────────────────────────────────────
-function PromptHubTab() {
+// ─── TAB 5: Prompt Editor ─────────────────────────────────────────────────────
+function PromptEditorTab() {
   const { toast } = useToast()
   const [activeAgent, setActiveAgent] = useState<'chris' | 'cindy'>('chris')
-  const { agent, loading: promptLoading, refetch } = useAgentPrompt(activeAgent)
-  const { update, loading: saving } = useUpdatePrompt()
-  const { analyze, loading: analyzing, result } = useAnalyzeCalls()
-  const { calls: agentCalls } = useCallsByAgent(activeAgent, 'ended')
-  const [editedPrompt, setEditedPrompt] = useState('')
-  const [isDirty, setIsDirty] = useState(false)
-  const [versions, setVersions] = useState<{ ts: string; prompt: string }[]>([])
+  const { prompt, loading: promptLoading, refetch: refetchPrompt, setPrompt } = useAgentPrompt(activeAgent)
+  const { update: updateAgent, loading: saving } = useUpdateAgentPrompt()
+  const [localPrompt, setLocalPrompt] = useState('')
+  const [versions, setVersions] = useState<{ label: string; prompt: string; ts: number }[]>([])
+  const [aiSuggestion, setAiSuggestion] = useState('')
+  const [analyzing, setAnalyzing] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
-  const [activeSugg, setActiveSugg] = useState<number | null>(null)
 
-  useEffect(() => { if (agent?.general_prompt) { setEditedPrompt(agent.general_prompt); setIsDirty(false) } }, [agent?.general_prompt])
+  // Sync local when prompt loads
+  useEffect(() => { if (prompt) setLocalPrompt(prompt) }, [prompt])
+
+  const isDirty = localPrompt !== prompt
 
   async function handleSave() {
-    if (!isDirty) return
-    if (agent?.general_prompt) setVersions(p => [{ ts: new Date().toLocaleTimeString(), prompt: agent.general_prompt }, ...p.slice(0, 9)])
-    try { await update(activeAgent, editedPrompt); toast.success(`${activeAgent === 'chris' ? 'Chris' : 'Cindy'} updated`); setIsDirty(false); refetch() }
-    catch (e) { toast.error(`Failed: ${e}`) }
+    try {
+      // Save version before overwriting
+      if (prompt) setVersions(v => [{ label: `Before save ${new Date().toLocaleTimeString()}`, prompt, ts: Date.now() }, ...v].slice(0, 10))
+      await updateAgent(activeAgent, localPrompt)
+      setPrompt(localPrompt)
+      toast.success(`${activeAgent === 'chris' ? 'Chris' : 'Cindy'}'s prompt updated live in Retell`)
+    } catch (err) { toast.error(`Save failed: ${err}`) }
   }
 
-  async function handleAnalyze() {
-    if (!agent?.general_prompt) { toast.error('Prompt not loaded'); return }
-    const t = agentCalls.filter(c => c.transcript).map(c => c.transcript!).slice(0, 30)
-    if (t.length < 3) { toast.warning('Need at least 3 completed calls'); return }
-    await analyze({ agent_name: activeAgent, current_prompt: editedPrompt || agent.general_prompt, call_transcripts: t, focus: 'general' })
+  async function handleAIOptimize() {
+    setAnalyzing(true)
+    setAiSuggestion('')
+    try {
+      // Load recent call data for context
+      const callsRes = await fetch(`/api/retell?action=list-calls&agent=${activeAgent}&limit=100`)
+      const callsData = await callsRes.json()
+      const calls: RetellCall[] = callsData.call_list ?? []
+
+      const ended = calls.filter(c => c.call_status === 'ended')
+      const successRate = ended.length > 0 ? Math.round(ended.filter(c => c.call_analysis?.call_successful).length / ended.length * 100) : 0
+
+      const failedSamples = ended.filter(c => !c.call_analysis?.call_successful).slice(0, 15)
+        .map(c => `FAILED: ${c.call_analysis?.call_summary ?? c.disconnection_reason ?? 'Unknown reason'}`).join('\n')
+      const successSamples = ended.filter(c => c.call_analysis?.call_successful).slice(0, 10)
+        .map(c => `SUCCESS: ${c.call_analysis?.call_summary ?? ''}`).join('\n')
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 2000,
+          system: `You are an expert AI prompt engineer specializing in medical billing voice AI agents. You analyze real call performance data and suggest targeted, specific improvements to the agent's system prompt.
+
+Be surgical — only suggest changes that are directly supported by the call data evidence. Do not rewrite the entire prompt. Output a clear diff-style suggestion showing what to add, change, or remove, and why.`,
+          messages: [{
+            role: 'user',
+            content: `Agent: ${activeAgent === 'chris' ? 'Chris (Payer Follow-up)' : 'Cindy (AR Collections)'}
+Current success rate from last ${ended.length} calls: ${successRate}%
+
+FAILED CALL PATTERNS:
+${failedSamples || 'No failure data yet'}
+
+SUCCESSFUL CALL PATTERNS:
+${successSamples || 'No success data yet'}
+
+CURRENT PROMPT:
+${localPrompt}
+
+Based on the failure patterns above, what specific changes to the prompt would improve success rate? 
+Format your response as:
+## What's Going Wrong
+[specific patterns from failed calls]
+
+## Suggested Changes
+[exact text to add/modify/remove, with rationale]
+
+## Expected Impact
+[what improvement this should drive]`
+          }],
+        }),
+      })
+
+      const data = await response.json()
+      setAiSuggestion(data.content?.[0]?.text ?? '')
+    } catch (err) {
+      toast.error(`Analysis failed: ${err}`)
+    } finally {
+      setAnalyzing(false)
+    }
   }
 
-  function apply(i: number) {
-    const s = result?.suggestions[i]; if (!s) return
-    if (s.current && editedPrompt.includes(s.current)) setEditedPrompt(p => p.replace(s.current, s.suggested))
-    else setEditedPrompt(p => `${p}\n\n${s.suggested}`)
-    setIsDirty(true); setActiveSugg(null); toast.success('Applied — push when ready')
+  function applySection(sectionText: string) {
+    setLocalPrompt(p => p.trimEnd() + '\n\n' + sectionText)
+    toast.success('Section added to prompt — review and save when ready')
   }
 
   return (
     <div className="grid grid-cols-5 gap-5">
+      {/* Left: editor */}
       <div className="col-span-3 space-y-4">
         <div className="flex items-center justify-between">
-          <div className="flex gap-1 bg-surface-elevated rounded-lg p-1">
-            {(['chris', 'cindy'] as const).map(a => <button key={a} onClick={() => setActiveAgent(a)} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeAgent === a ? 'bg-surface-secondary text-content-primary shadow-sm' : 'text-content-secondary'}`}>{a === 'chris' ? 'Chris — Payer' : 'Cindy — AR'}</button>)}
+          <div className="flex gap-1 bg-surface-elevated rounded-lg p-0.5">
+            {(['chris', 'cindy'] as const).map(a => (
+              <button key={a} onClick={() => { setActiveAgent(a); setAiSuggestion('') }}
+                className={`px-4 py-1.5 rounded-md text-xs font-medium capitalize transition-all ${activeAgent === a ? 'bg-surface-secondary text-content-primary shadow-sm' : 'text-content-secondary'}`}>
+                {a}
+              </button>
+            ))}
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowVersions(v => !v)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-separator rounded-lg text-content-secondary hover:text-content-primary transition-colors"><RotateCcw size={12} />History ({versions.length})</button>
-            {isDirty && <button onClick={handleSave} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-brand text-white rounded-lg hover:bg-brand-deep disabled:opacity-40 transition-colors"><Save size={12} />{saving ? 'Pushing…' : 'Push to Retell'}</button>}
+            {isDirty && <span className="text-[10px] text-amber-500 flex items-center gap-1"><AlertCircle size={11} />Unsaved changes</span>}
+            <button onClick={() => setShowVersions(v => !v)} className="text-[10px] text-content-tertiary hover:text-content-secondary flex items-center gap-1 transition-colors">
+              <RotateCcw size={11} />History ({versions.length})
+            </button>
+            <button onClick={refetchPrompt} className="p-1.5 hover:bg-surface-elevated rounded text-content-secondary transition-colors"><RefreshCw size={13} /></button>
           </div>
         </div>
 
+        {/* Version history dropdown */}
         {showVersions && versions.length > 0 && (
-          <div className="card p-3 space-y-2">
-            <p className="text-[11px] font-semibold text-content-secondary uppercase tracking-wide mb-1">Version History</p>
+          <div className="card p-3 space-y-1.5">
+            <p className="text-[10px] font-semibold text-content-secondary uppercase tracking-wider mb-2">Version History</p>
             {versions.map((v, i) => (
-              <div key={i} className="flex items-center justify-between px-3 py-2 bg-surface-elevated rounded-lg">
-                <div><p className="text-xs font-medium text-content-primary">Saved {v.ts}</p><p className="text-[10px] text-content-tertiary">{v.prompt.slice(0, 60)}…</p></div>
-                <button onClick={() => { setEditedPrompt(v.prompt); setIsDirty(true); setShowVersions(false); toast.info('Restored') }} className="text-[10px] px-2 py-1 border border-separator rounded text-content-secondary hover:text-brand hover:border-brand/30 transition-colors">Restore</button>
+              <div key={i} className="flex items-center justify-between bg-surface-elevated rounded p-2">
+                <span className="text-xs text-content-secondary">{v.label}</span>
+                <button onClick={() => { setLocalPrompt(v.prompt); toast.info('Version restored — save to push live') }}
+                  className="text-[10px] text-brand hover:underline">Restore</button>
               </div>
             ))}
           </div>
         )}
 
-        <div className="relative">
-          {promptLoading ? <div className="card p-12 text-center text-sm text-content-tertiary">Loading prompt from Retell…</div> : (
-            <>
-              <textarea value={editedPrompt} onChange={e => { setEditedPrompt(e.target.value); setIsDirty(true) }} rows={30}
-                placeholder="Prompt will load from Retell…"
-                className="w-full bg-surface-elevated border border-separator rounded-xl px-4 py-3 text-xs text-content-primary font-mono outline-none focus:border-brand/40 resize-y leading-relaxed" />
-              {isDirty && <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 rounded-md px-2 py-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /><span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Unsaved</span></div>}
-            </>
-          )}
-        </div>
-        {agent && <p className="text-[10px] text-content-tertiary">{editedPrompt.length} chars · {editedPrompt.split('\n').length} lines{agent.last_modification_timestamp && ` · Updated ${new Date(agent.last_modification_timestamp * 1000).toLocaleString()}`}</p>}
+        {promptLoading ? (
+          <div className="card p-12 text-center text-sm text-content-tertiary">Loading prompt from Retell…</div>
+        ) : (
+          <>
+            <textarea value={localPrompt} onChange={e => setLocalPrompt(e.target.value)}
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-4 py-3 text-xs text-content-primary font-mono leading-relaxed resize-none outline-none focus:border-brand/40 h-[500px]"
+              placeholder={`${activeAgent === 'chris' ? 'Chris' : 'Cindy'}'s prompt will load here from Retell…`} />
+
+            <div className="flex gap-2">
+              <button onClick={() => setLocalPrompt(prompt)} disabled={!isDirty}
+                className="px-4 py-2 border border-separator rounded-lg text-xs text-content-secondary hover:bg-surface-elevated disabled:opacity-40 transition-colors">
+                Discard Changes
+              </button>
+              <button onClick={handleSave} disabled={saving || !isDirty}
+                className="flex-1 bg-brand text-white rounded-lg py-2 text-sm font-semibold hover:bg-brand-deep disabled:opacity-40 transition-colors">
+                <Save size={14} className="inline mr-2" />{saving ? 'Pushing to Retell…' : `Save & Push ${activeAgent === 'chris' ? 'Chris' : 'Cindy'} Live`}
+              </button>
+            </div>
+            <p className="text-[10px] text-content-tertiary text-center">Changes go live immediately on next call. Always review before saving.</p>
+          </>
+        )}
       </div>
 
+      {/* Right: AI optimizer */}
       <div className="col-span-2 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-content-primary">AI Optimization</h3>
-          <button onClick={handleAnalyze} disabled={analyzing || agentCalls.length < 3} className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold bg-brand text-white rounded-lg hover:bg-brand-deep disabled:opacity-40 transition-colors"><Sparkles size={12} />{analyzing ? 'Analyzing…' : 'Analyze Calls'}</button>
+        <div>
+          <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-1">AI Prompt Optimizer</h3>
+          <p className="text-[10px] text-content-tertiary">Reads {activeAgent === 'chris' ? 'Chris' : 'Cindy'}'s last 100 calls and suggests specific prompt improvements based on failure patterns</p>
         </div>
-        <div className="px-3 py-2.5 bg-surface-elevated rounded-lg text-xs text-content-secondary">
-          <p className="font-medium text-content-primary mb-1">How it works</p>
-          <p>Claude reads your last {Math.min(agentCalls.length, 30)} transcripts and suggests exact prompt edits based on what's failing.</p>
-          {agentCalls.length < 3 && <p className="text-amber-500 mt-1.5">Need at least 3 completed calls.</p>}
-        </div>
-        {analyzing && <div className="card p-6 text-center"><Brain size={24} className="mx-auto mb-3 text-brand animate-pulse" /><p className="text-sm text-content-secondary">Reading transcripts…</p></div>}
-        {result && !analyzing && (
+
+        <button onClick={handleAIOptimize} disabled={analyzing}
+          className="w-full bg-gradient-to-r from-brand to-purple-600 text-white rounded-lg py-3 text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-all">
+          {analyzing ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Analyzing calls…
+            </span>
+          ) : (
+            <span><Brain size={14} className="inline mr-2" />Analyze Calls & Suggest Improvements</span>
+          )}
+        </button>
+
+        {aiSuggestion && (
           <div className="space-y-3">
-            <div className="card p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Summary</h4>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${result.confidence === 'high' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/10 text-amber-500'}`}>{result.confidence}</span>
+            <div className="card p-4 max-h-[420px] overflow-y-auto">
+              <div className="prose prose-xs text-content-primary text-xs leading-relaxed whitespace-pre-wrap font-mono">
+                {aiSuggestion}
               </div>
-              <p className="text-xs text-content-primary leading-relaxed">{result.summary}</p>
             </div>
-            {result.suggestions.length > 0 && (
-              <div className="card p-4">
-                <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Suggestions ({result.suggestions.length})</h4>
-                <div className="space-y-2">
-                  {result.suggestions.map((s, i) => (
-                    <div key={i} className={`rounded-lg border transition-all ${activeSugg === i ? 'border-brand/40 bg-brand/5' : 'border-separator'}`}>
-                      <button className="w-full text-left p-3 flex items-center justify-between" onClick={() => setActiveSugg(activeSugg === i ? null : i)}>
-                        <div className="flex items-center gap-2 flex-1 min-w-0"><span className="text-[10px] bg-brand/10 text-brand px-1.5 py-0.5 rounded font-medium shrink-0">{s.section}</span><span className="text-xs text-content-secondary truncate">{s.rationale.slice(0, 50)}…</span></div>
-                        {activeSugg === i ? <ChevronUp size={14} className="text-content-tertiary shrink-0 ml-2" /> : <ChevronDown size={14} className="text-content-tertiary shrink-0 ml-2" />}
-                      </button>
-                      {activeSugg === i && (
-                        <div className="px-3 pb-3 space-y-2">
-                          <p className="text-xs text-content-secondary">{s.rationale}</p>
-                          {s.current && <div className="bg-red-500/5 border border-red-500/20 rounded p-2"><p className="text-[10px] text-red-500 font-semibold mb-1">CURRENT</p><p className="text-[10px] font-mono text-content-secondary">{s.current}</p></div>}
-                          <div className="bg-emerald-500/5 border border-emerald-500/20 rounded p-2"><p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mb-1">SUGGESTED</p><p className="text-[10px] font-mono text-content-primary">{s.suggested}</p></div>
-                          <button onClick={() => apply(i)} className="w-full py-1.5 bg-brand/10 text-brand text-xs font-medium rounded hover:bg-brand/20 transition-colors">Apply to Prompt</button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {result.issues.length > 0 && (
-              <div className="card p-4">
-                <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Issues ({result.issues.length})</h4>
-                <div className="space-y-2">
-                  {result.issues.slice(0, 5).map((issue, i) => (
-                    <div key={i} className={`p-2.5 rounded-lg border-l-2 ${issue.severity === 'high' ? 'bg-red-500/5 border-red-500' : issue.severity === 'medium' ? 'bg-amber-500/5 border-amber-500' : 'bg-blue-500/5 border-blue-500'}`}>
-                      <div className="flex items-center gap-2 mb-0.5"><span className={`text-[9px] font-bold uppercase ${issue.severity === 'high' ? 'text-red-500' : issue.severity === 'medium' ? 'text-amber-500' : 'text-blue-500'}`}>{issue.severity}</span><span className="text-xs font-medium text-content-primary">{issue.title}</span></div>
-                      <p className="text-[11px] text-content-secondary">{issue.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <div className="flex gap-2">
+              <button onClick={() => applySection(aiSuggestion)}
+                className="flex-1 bg-emerald-500 text-white rounded-lg py-2 text-xs font-semibold hover:bg-emerald-600 transition-colors">
+                <Plus size={12} className="inline mr-1.5" />Append to Prompt
+              </button>
+              <button onClick={() => setAiSuggestion('')}
+                className="px-3 py-2 border border-separator rounded-lg text-xs text-content-secondary hover:bg-surface-elevated transition-colors">
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
+
+        {!aiSuggestion && !analyzing && (
+          <div className="card p-6 text-center">
+            <Sparkles size={24} className="mx-auto mb-2 text-content-tertiary opacity-40" />
+            <p className="text-xs text-content-secondary">Click above to analyze real call outcomes</p>
+            <p className="text-[10px] text-content-tertiary mt-1">Works best after 20+ calls</p>
+          </div>
+        )}
+
+        <div className="card p-4 space-y-2">
+          <p className="text-[10px] font-semibold text-content-secondary uppercase tracking-wider">Quick Actions</p>
+          {[
+            { label: 'Add Payer Playbooks', desc: 'Go to Payer Intelligence tab', action: null },
+            { label: 'View Retell Dashboard', desc: 'Open agent in Retell', action: () => window.open('https://app.retellai.com', '_blank') },
+          ].map((q, i) => (
+            <button key={i} onClick={() => q.action?.()}
+              className="w-full text-left flex items-center justify-between bg-surface-elevated hover:bg-surface-secondary rounded-lg px-3 py-2.5 transition-colors group">
+              <div>
+                <p className="text-xs font-medium text-content-primary">{q.label}</p>
+                <p className="text-[10px] text-content-tertiary">{q.desc}</p>
+              </div>
+              <ExternalLink size={12} className="text-content-tertiary group-hover:text-brand transition-colors" />
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'active', label: 'Live Calls', icon: PhoneCall },
   { id: 'log', label: 'Call Log', icon: PhoneMissed },
   { id: 'campaign', label: 'Campaign Launcher', icon: BarChart2 },
-  { id: 'payer', label: 'Payer Intelligence', icon: Target },
-  { id: 'prompt', label: 'Prompt Hub', icon: Brain },
+  { id: 'payer', label: 'Payer Intelligence', icon: Brain },
+  { id: 'prompt', label: 'Prompt Editor', icon: Sparkles },
 ] as const
+
 type TabId = typeof TABS[number]['id']
 
 export default function VoiceAIPage() {
   const [tab, setTab] = useState<TabId>('active')
   const { t } = useT()
+
   return (
-    <ModuleShell title={t('voice', 'title')} subtitle="Retell AI — live calls, payer intelligence, AI prompt optimization">
+    <ModuleShell title={t('voice', 'title')} subtitle="Powered by Retell AI — real outbound calls to payers and patients">
       <div className="flex gap-1 mb-5 border-b border-separator overflow-x-auto">
-        {TABS.map(tb => { const Icon = tb.icon; return (
-          <button key={tb.id} onClick={() => setTab(tb.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${tab === tb.id ? 'border-brand text-brand' : 'border-transparent text-content-secondary hover:text-content-primary'}`}>
-            <Icon size={14} />{tb.label}
-          </button>
-        )})}
+        {TABS.map(tb => {
+          const Icon = tb.icon
+          return (
+            <button key={tb.id} onClick={() => setTab(tb.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
+                tab === tb.id ? 'border-brand text-brand' : 'border-transparent text-content-secondary hover:text-content-primary'
+              }`}>
+              <Icon size={14} />
+              {tb.label}
+            </button>
+          )
+        })}
       </div>
       {tab === 'active' && <ActiveCallsTab />}
       {tab === 'log' && <CallLogTab />}
       {tab === 'campaign' && <CampaignLauncherTab />}
       {tab === 'payer' && <PayerIntelligenceTab />}
-      {tab === 'prompt' && <PromptHubTab />}
+      {tab === 'prompt' && <PromptEditorTab />}
     </ModuleShell>
   )
 }
