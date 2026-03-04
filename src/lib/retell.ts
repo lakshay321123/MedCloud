@@ -167,52 +167,15 @@ export function useAgentPrompt(agentName: 'chris' | 'cindy' | null) {
     setLoading(true)
     setError(null)
     try {
-      // First try direct fetch with configured agent ID
       const qs = new URLSearchParams({ action: 'get-agent', agent: agentName })
       const res = await fetch(`/api/retell?${qs}`)
       const data = await res.json()
-
-      if (!res.ok || data.error || data.fallback) {
-        // Server returned available_agents for debugging
-        if (data.available_agents) {
-          const list = data.available_agents
-            .map((a: Record<string, unknown>) => `${a.agent_name || '(no name)'} [${a.agent_id}]`)
-            .join(' | ')
-          setError(`Agent not found. Available in Retell: ${list}. Update RETELL_AGENT_${agentName?.toUpperCase()} in Vercel to one of these IDs.`)
-          return
-        }
-        // Fallback: list all agents and find by name
-        const listRes = await fetch('/api/retell?action=list-agents')
-        const listData = await listRes.json()
-        console.log('[Prompt Editor] list-agents raw:', JSON.stringify(listData).slice(0, 500))
-        // Retell may return array directly or wrapped: { agents: [] } or { data: [] }
-        const agents: Record<string, unknown>[] = Array.isArray(listData)
-          ? listData
-          : (listData.agents ?? listData.data ?? Object.values(listData))
-        const match = agents.find((a: Record<string, unknown>) => {
-          const name = String(a.agent_name ?? '').toLowerCase()
-          return name.includes(agentName.toLowerCase())
-        })
-        if (match) {
-          const prompt =
-            (match.general_prompt as string) ??
-            ((match.response_engine as Record<string, unknown>)?.general_prompt as string) ??
-            ''
-          setAgentData(match)
-          setPrompt(prompt)
-          return
-        }
-        const agentNames = agents.map((a: Record<string, unknown>) => a.agent_name).join(', ')
-        setError(`Agent "${agentName}" not found in Retell. Available agents: ${agentNames || 'none'}. Check RETELL_AGENT_${agentName.toUpperCase()} env var.`)
+      if (!res.ok || data.error) {
+        setError(data.error ?? `Failed to load ${agentName} prompt (${res.status})`)
         return
       }
-
       setAgentData(data)
-      const extractedPrompt =
-        data.general_prompt ??
-        (data.response_engine as Record<string, unknown>)?.general_prompt ??
-        ''
-      setPrompt(String(extractedPrompt))
+      setPrompt(String(data.general_prompt ?? ''))
     } catch (e) {
       setError(String(e))
     } finally {
