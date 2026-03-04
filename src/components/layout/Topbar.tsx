@@ -6,6 +6,7 @@ import { Search, Sun, Moon, Bell, LogOut } from 'lucide-react'
 import Dropdown, { DropdownOption } from '@/components/shared/Dropdown'
 import { useRouter } from 'next/navigation'
 import { demoPatients, demoClaims, demoDocs } from '@/lib/demo-data'
+import { useT } from '@/lib/i18n'
 
 const roleDisplayLabels: Record<UserRole, string> = {
   admin: 'Admin',
@@ -25,6 +26,7 @@ const backofficeRoles: UserRole[] = ['admin', 'director', 'supervisor', 'manager
 
 export default function Topbar() {
   const { theme, setTheme, language, setLanguage, currentUser, setRole, selectedClient, setSelectedClient, clients, country, portalType, isScribeRecording } = useApp()
+  const { t } = useT()
   const isStaff = backofficeRoles.includes(currentUser.role)
   const router = useRouter()
 
@@ -110,7 +112,7 @@ export default function Topbar() {
             }
             if (e.key === 'Escape') { setSearchOpen(false); setSearchQuery('') }
           }}
-          placeholder="Search patients, claims, docs..."
+          placeholder={t('topbar', 'searchPlaceholder')}
           className="w-full bg-surface-elevated rounded-btn pl-9 pr-4 py-2 text-[14px] text-content-primary placeholder:text-content-tertiary outline-none border border-separator focus:border-brand/40 transition-colors"
         />
         {searchOpen && searchQuery.length >= 2 && searchResults.length > 0 && (
@@ -156,9 +158,11 @@ export default function Topbar() {
         {/* Language toggle */}
         <button
           onClick={() => setLanguage(language === 'en' ? 'ar' : language === 'ar' ? 'es' : 'en')}
-          className="px-2.5 py-2 rounded-btn hover:bg-surface-elevated text-content-secondary text-[13px] font-semibold transition-colors"
+          className="px-2.5 py-2 rounded-btn hover:bg-surface-elevated text-content-secondary text-[13px] font-semibold transition-colors flex items-center gap-1.5"
+          title={t('topbar', 'language')}
         >
-          {language.toUpperCase()}
+          <span>{language === 'en' ? '🇺🇸' : language === 'ar' ? '🇦🇪' : '🇪🇸'}</span>
+          <span>{language === 'en' ? 'EN' : language === 'ar' ? 'عربي' : 'ES'}</span>
         </button>
 
         {/* Theme toggle */}

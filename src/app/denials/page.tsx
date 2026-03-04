@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState, useEffect } from 'react'
 import { useApp } from '@/lib/context'
 // removed - no longer using demoClaims
@@ -56,6 +57,7 @@ type DenialRow = {
 }
 
 export default function DenialsPage() {
+  const { t } = useT()
   const { selectedClient, country, currentUser } = useApp()
   const { toast } = useToast()
   const router = useRouter()
@@ -160,7 +162,7 @@ export default function DenialsPage() {
   }
 
   return (
-    <ModuleShell title="Denials &amp; Appeals" subtitle="Manage denied claims and appeal workflows">
+    <ModuleShell title={t("denials", "title")} subtitle={t("denials", "subtitle")}>
       {apiError && <ErrorBanner error={apiError} onRetry={refetch} />}
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KPICard label="Open Denials" value={denials.filter(d => ['denied','open','pending','new'].includes(d.status)).length} icon={<ShieldAlert size={20} />} />

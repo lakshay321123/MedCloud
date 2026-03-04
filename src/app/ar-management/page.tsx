@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
@@ -552,6 +553,7 @@ function InboundCallPanel() {
 }
 
 export default function ARManagementPage() {
+  const { t } = useT()
   const { selectedClient } = useApp()
   const { toast } = useToast()
   const [accounts, setAccounts] = useState<ARAccount[]>(initialAccounts)
@@ -619,7 +621,7 @@ export default function ARManagementPage() {
     .filter(c => c.date?.startsWith(new Date().toISOString().slice(0,10))).length
 
   return (
-    <ModuleShell title="A/R Management" subtitle="Accounts receivable follow-up and collections">
+    <ModuleShell title={t("ar", "title")} subtitle={t("ar", "subtitle")}>
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
         Demo data — live data connects in Sprint 2

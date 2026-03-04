@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState, useMemo } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -700,6 +701,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function ClaimsPage() {
+  const { t } = useT()
   const { selectedClient, country } = useApp()
   const { toast } = useToast()
   const router = useRouter()
@@ -785,7 +787,7 @@ export default function ClaimsPage() {
   }
 
   return (
-    <ModuleShell title="Claims Center" subtitle="Manage claims across all clients">
+    <ModuleShell title={t("claims", "title")} subtitle={t("claims", "subtitle")}>
       {apiError && <ErrorBanner error={apiError} onRetry={refetch} />}
       {/* KPI Bar */}
       <div className="grid grid-cols-4 gap-4 mb-5">

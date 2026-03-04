@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 // removed all demo imports from dashboard
 import { useDashboardMetrics } from '@/lib/hooks'
+import { useT } from '@/lib/i18n'
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 function QuickLinkCard({ title, subtitle, href, icon }: { title: string; subtitle: string; href: string; icon: React.ReactNode }) {
@@ -43,6 +44,7 @@ function timeAgo(dateStr: string): string {
 // ── Executive (Admin/Director/Manager) Dashboard ──────────────────────────────
 function ExecutiveDashboard() {
   const router = useRouter()
+  const { t } = useT()
   const { data: metrics, loading } = useDashboardMetrics()
 
   const totalClaims = Number(metrics?.total_claims) || 3847
@@ -74,14 +76,14 @@ function ExecutiveDashboard() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-4 gap-5">
-        <KPICard label="Total Revenue (MTD)" value={loading ? '…' : `$${(totalCollectionsMtd / 1000000).toFixed(1)}M`} sub="+8.2% vs last month" trend="up" icon={<DollarSign size={20} />} />
-        <KPICard label="Claims Submitted" value={loading ? '…' : totalClaims.toLocaleString()} sub="+124 today" trend="up" icon={<FileText size={20} />} />
-        <KPICard label="Denial Rate" value={loading ? '…' : `${denialRate}%`} sub="-0.3% vs last month" trend="down" icon={<AlertTriangle size={20} />} />
-        <KPICard label="Avg Days in A/R" value="28.5" sub="-2.1 days" trend="down" icon={<Clock size={20} />} />
+        <KPICard label={t('dashboard', 'revenueCollected')} value={loading ? '…' : `$${(totalCollectionsMtd / 1000000).toFixed(1)}M`} sub="+8.2% vs last month" trend="up" icon={<DollarSign size={20} />} />
+        <KPICard label={t('dashboard', 'claimsSubmitted')} value={loading ? '…' : totalClaims.toLocaleString()} sub="+124 today" trend="up" icon={<FileText size={20} />} />
+        <KPICard label={t('dashboard', 'denialRate')} value={loading ? '…' : `${denialRate}%`} sub="-0.3% vs last month" trend="down" icon={<AlertTriangle size={20} />} />
+        <KPICard label={t('dashboard', 'daysInAR')} value="28.5" sub="-2.1 days" trend="down" icon={<Clock size={20} />} />
       </div>
       <div className="grid grid-cols-4 gap-5">
-        <KPICard label="Collection Rate" value="96.8%" sub="+0.4%" trend="up" icon={<TrendingUp size={20} />} />
-        <KPICard label="Active Patients" value={loading ? '…' : totalPatients.toLocaleString()} icon={<Users size={20} />} />
+        <KPICard label={t('dashboard', 'collectionRate')} value="96.8%" sub="+0.4%" trend="up" icon={<TrendingUp size={20} />} />
+        <KPICard label={t('dashboard', 'pendingClaims')} value={loading ? '…' : totalPatients.toLocaleString()} icon={<Users size={20} />} />
         <KPICard label="AI Calls Today" value="127" icon={<Phone size={20} />} />
         <KPICard label="AI Coding Accuracy" value="94.2%" icon={<BrainCircuit size={20} />} />
       </div>
