@@ -32,7 +32,7 @@ export default function PaymentPostingPage() {
     receivedAt: e.created_at || '',
   })) || []
   const [selectedEra, setSelectedEra] = useState<string | null>(null)
-  const [lineItems, setLineItems] = useState<{id:string;eraId:string;claimId:string;patientName:string;patient:string;cpt:string;cptDesc:string;dos:string;billed:number;allowed:number;paid:number;denied:number;patBalance:number;action:string;note:string}[]>([])
+  const [lineItems, setLineItems] = useState<{id:string;eraId:string;claimId:string;patientName:string;patient:string;cpt:string;cptDesc:string;dos:string;billed:number;allowed:number;paid:number;denied:number;patBalance:number;adjCode:string;adjReason:string;action:string;note:string;notes:string}[]>([])
   const [editingCell, setEditingCell] = useState<{ rowId: string; field: string } | null>(null)
   const [editValue, setEditValue] = useState<string>('')
   const [showUploadModal, setShowUploadModal] = useState(false)
