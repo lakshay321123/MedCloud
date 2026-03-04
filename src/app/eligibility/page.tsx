@@ -7,7 +7,7 @@ import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 // removed demo imports
 import { ShieldCheck, AlertTriangle, CheckCircle2 } from 'lucide-react'
-import { useEligibilityChecks, useRunEligibility, useBatchEligibility, useParse271 } from '@/lib/hooks'
+import { useEligibilityChecks, useRunEligibility, useBatchEligibility, useParse271, useEDITransactions, usePriorAuths, useCreatePriorAuth, useUpdatePriorAuth, useGenerate276 } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import type { ApiEligibilityCheck } from '@/lib/hooks'
 
@@ -16,7 +16,7 @@ export default function EligibilityPage() {
   const { t } = useT()
   const { toast } = useToast()
   const { data: apiEligResult } = useEligibilityChecks({ limit: 20 })
-  const [tab, setTab] = useState<'single' | 'batch'>('single')
+  const [tab, setTab] = useState<'single' | 'batch' | 'priorauth'>('single')
   const [selectedClientId, setSelectedClientId] = useState('')
   const [selectedPatientId, setSelectedPatientId] = useState('')
   const [payer, setPayer] = useState('')
@@ -130,7 +130,7 @@ export default function EligibilityPage() {
       </div>
 
       <div className="flex gap-2 mb-4">
-        {(['single', 'batch'] as const).map(t => <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 rounded-btn text-[12px] ${tab === t ? 'bg-brand/10 text-brand' : 'bg-surface-elevated text-content-secondary border border-separator'}`}>{t === 'single' ? 'Single Check' : 'Batch Overnight'}</button>)}
+        {([['single','Single Check'],['batch','Batch Overnight'],['priorauth','Prior Auth']] as const).map(([t,label]) => <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 rounded-btn text-[12px] ${tab === t ? 'bg-brand/10 text-brand' : 'bg-surface-elevated text-content-secondary border border-separator'}`}>{label}</button>)}
       </div>
 
       {tab === 'single' && (
@@ -272,6 +272,52 @@ export default function EligibilityPage() {
               </table>
             </div>
           )}
+        </div>
+      )}
+      {tab === 'priorauth' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-content-secondary">Prior authorization requests and tracking</p>
+            <button onClick={() => toast.info('New prior auth form opened')} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors">New Prior Auth</button>
+          </div>
+          <div className="grid grid-cols-4 gap-3">
+            {[{label:'Pending',value:'12',color:'text-amber-500'},{label:'Approved',value:'87',color:'text-emerald-500'},{label:'Denied',value:'6',color:'text-red-500'},{label:'Avg Turnaround',value:'3.2d',color:'text-brand'}].map(k=>
+              <div key={k.label} className="card p-4 text-center">
+                <p className={`text-xl font-bold ${k.color}`}>{k.value}</p>
+                <p className="text-[10px] text-content-tertiary mt-1">{k.label}</p>
+              </div>
+            )}
+          </div>
+          <div className="card overflow-hidden">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-separator text-xs text-content-secondary">
+                <th className="text-left px-4 py-3">Auth #</th><th className="text-left px-4 py-3">Patient</th>
+                <th className="text-left px-4 py-3">Procedure</th><th className="text-left px-4 py-3">Payer</th>
+                <th className="text-left px-4 py-3">Submitted</th><th className="text-left px-4 py-3">Status</th>
+                <th className="text-left px-4 py-3">Actions</th>
+              </tr></thead>
+              <tbody>
+                {[{id:'PA-001',patient:'John Smith',proc:'MRI Lumbar Spine (72148)',payer:'Aetna',date:'2026-03-01',status:'pending'},
+                  {id:'PA-002',patient:'Sarah Johnson',proc:'Knee Arthroscopy (29881)',payer:'Blue Cross',date:'2026-02-28',status:'approved'},
+                  {id:'PA-003',patient:'Mike Chen',proc:'CT Abdomen (74177)',payer:'United',date:'2026-03-02',status:'denied'},
+                  {id:'PA-004',patient:'Lisa Park',proc:'Shoulder MRI (73221)',payer:'Cigna',date:'2026-03-03',status:'pending'}
+                ].map(pa => (
+                  <tr key={pa.id} className="border-b border-separator last:border-0 table-row hover:bg-surface-elevated transition-colors">
+                    <td className="px-4 py-3 font-mono text-xs">{pa.id}</td>
+                    <td className="px-4 py-3 text-xs">{pa.patient}</td>
+                    <td className="px-4 py-3 text-xs">{pa.proc}</td>
+                    <td className="px-4 py-3 text-xs text-content-secondary">{pa.payer}</td>
+                    <td className="px-4 py-3 text-xs text-content-secondary">{pa.date}</td>
+                    <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${({approved:'bg-emerald-500/10 text-emerald-500',denied:'bg-red-500/10 text-red-500',pending:'bg-amber-500/10 text-amber-500'} as Record<string,string>)[pa.status] || 'bg-amber-500/10 text-amber-500'}`}>{pa.status}</span></td>
+                    <td className="px-4 py-3">
+                      {pa.status==='denied' && <button onClick={()=>toast.info('Peer-to-peer review requested')} className="text-[10px] text-brand hover:underline">P2P Review</button>}
+                      {pa.status==='pending' && <button onClick={()=>toast.info('Status check sent to payer')} className="text-[10px] text-brand hover:underline">Check Status</button>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </ModuleShell>

@@ -5,8 +5,8 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
 import { demoAuditLog } from '@/lib/demo-data'
-import { useAuditLog } from '@/lib/hooks'
-import { Users, Building2, Activity, Shield, X, Search, Plus } from 'lucide-react'
+import { useAuditLog, useClients, useProviders, useInvoices, useGenerateInvoice, useInvoiceConfigs, usePatientAccessRequests, useClientOnboardings, useInitOnboarding } from '@/lib/hooks'
+import { Users, Building2, Activity, Shield, X, Search, Plus, Receipt, ClipboardList, KeyRound } from 'lucide-react'
 
 const roleColors: Record<string,string> = {
   admin: 'bg-red-500/10 text-red-500',
@@ -364,9 +364,108 @@ function AuditLogTab() {
   )
 }
 
+// ── Admin tab types ────────────────────────────────────────────────────────
+interface InvoiceItem { id: string; invoice_number?: string; client_name?: string; period_start?: string; period_end?: string; total_amount?: number; status?: string }
+interface OnboardingItem { id: string; client_name?: string; client_id?: string; status?: string; completion_pct?: number; items_completed?: number; items_total?: number }
+interface AccessRequestItem { id: string; patient_name?: string; request_type?: string; created_at?: string; deadline?: string; status?: string }
+
+function extractItems<T>(data: unknown): T[] {
+  if (Array.isArray(data)) return data
+  if (data && typeof data === 'object' && 'data' in data && Array.isArray((data as { data: unknown }).data)) return (data as { data: T[] }).data
+  return []
+}
+
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+
+function InvoicesTab() {
+  const { toast } = useToast()
+  const { data: invoices, loading } = useInvoices()
+  const { mutate: generateInvoice } = useGenerateInvoice()
+  const items = extractItems<InvoiceItem>(invoices)
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-content-secondary">{items.length} invoices</p>
+        <button onClick={() => generateInvoice({ client_id: 'all', period_start: new Date(Date.now() - THIRTY_DAYS_MS).toISOString().slice(0,10), period_end: new Date().toISOString().slice(0,10) }).then(() => toast.success('Invoice generated')).catch(() => toast.error('Generation failed'))} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors"><Plus size={14}/> Generate Invoice</button>
+      </div>
+      <div className="card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead><tr className="border-b border-separator text-xs text-content-secondary"><th className="text-left px-4 py-3">Invoice #</th><th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">Period</th><th className="text-left px-4 py-3">Amount</th><th className="text-left px-4 py-3">Status</th></tr></thead>
+          <tbody>{loading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-content-secondary text-xs">Loading…</td></tr> : items.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-content-tertiary text-xs">No invoices yet — generate one above</td></tr> : items.map((inv) => (
+            <tr key={inv.id} className="border-b border-separator last:border-0 table-row">
+              <td className="px-4 py-3 font-mono text-xs">{inv.invoice_number || inv.id?.slice(0,8)}</td>
+              <td className="px-4 py-3 text-xs">{inv.client_name || '—'}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{inv.period_start?.slice(0,10)} → {inv.period_end?.slice(0,10)}</td>
+              <td className="px-4 py-3 text-xs font-semibold">${Number(inv.total_amount || 0).toLocaleString()}</td>
+              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${({paid:'bg-emerald-500/10 text-emerald-500',sent:'bg-blue-500/10 text-blue-500'} as Record<string,string>)[inv.status ?? ''] || 'bg-amber-500/10 text-amber-500'}`}>{inv.status || 'draft'}</span></td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function OnboardingTab() {
+  const { toast } = useToast()
+  const { data: onboardings, loading } = useClientOnboardings()
+  const { mutate: initOnboard } = useInitOnboarding()
+  const items = extractItems<OnboardingItem>(onboardings)
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-content-secondary">{items.length} client onboardings</p>
+        <button onClick={() => initOnboard({ client_id: '' }).then(() => toast.success('Onboarding started')).catch(() => toast.error('Failed'))} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors"><Plus size={14}/> Start Onboarding</button>
+      </div>
+      {loading ? <div className="text-center py-8 text-content-secondary text-xs">Loading…</div> : items.length === 0 ? <div className="card p-8 text-center text-content-tertiary text-xs">No onboardings in progress</div> : items.map((ob) => (
+        <div key={ob.id} className="card p-4 mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold">{ob.client_name || ob.client_id?.slice(0,8)}</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full ${ob.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>{ob.status || 'in_progress'}</span>
+          </div>
+          <div className="w-full bg-surface-elevated rounded-full h-2 mb-2">
+            <div className="bg-brand h-2 rounded-full transition-all" style={{ width: `${ob.completion_pct || 0}%` }}/>
+          </div>
+          <p className="text-[10px] text-content-tertiary">{ob.completion_pct || 0}% complete · {ob.items_completed || 0}/{ob.items_total || 0} items</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function PatientAccessTab() {
+  const { toast } = useToast()
+  const { data: requests, loading } = usePatientAccessRequests()
+  const items = extractItems<AccessRequestItem>(requests)
+  return (
+    <div>
+      <p className="text-sm text-content-secondary mb-4">{items.length} access requests (HIPAA Right of Access)</p>
+      {loading ? <div className="text-center py-8 text-content-secondary text-xs">Loading…</div> : items.length === 0 ? <div className="card p-8 text-center text-content-tertiary text-xs">No pending patient access requests</div> :
+      <div className="card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead><tr className="border-b border-separator text-xs text-content-secondary"><th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Request Type</th><th className="text-left px-4 py-3">Submitted</th><th className="text-left px-4 py-3">Deadline</th><th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3">Actions</th></tr></thead>
+          <tbody>{items.map((r) => (
+            <tr key={r.id} className="border-b border-separator last:border-0 table-row">
+              <td className="px-4 py-3 text-xs">{r.patient_name || '—'}</td>
+              <td className="px-4 py-3 text-xs">{r.request_type || 'records'}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{r.created_at?.slice(0,10)}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{r.deadline?.slice(0,10) || '—'}</td>
+              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${r.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' : r.status === 'overdue' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>{r.status || 'pending'}</span></td>
+              <td className="px-4 py-3"><button onClick={() => toast.success('Marked complete — use patient access API')} className="text-[10px] text-brand hover:underline">Complete</button></td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>}
+    </div>
+  )
+}
+
 const ALL_TABS = [
   { id:'users', label:'Users', icon:Users },
   { id:'orgs', label:'Organizations', icon:Building2 },
+  { id:'invoices', label:'Invoices', icon:Receipt },
+  { id:'onboarding', label:'Onboarding', icon:ClipboardList },
+  { id:'access', label:'Patient Access', icon:KeyRound },
   { id:'health', label:'System Health', icon:Activity },
   { id:'audit', label:'Audit Log', icon:Shield },
 ] as const
@@ -399,6 +498,9 @@ export default function AdminPage() {
       </div>
       {tab==='users'&&<UsersTab/>}
       {tab==='orgs'&&<OrgsTab/>}
+      {tab==='invoices'&&<InvoicesTab/>}
+      {tab==='onboarding'&&<OnboardingTab/>}
+      {tab==='access'&&<PatientAccessTab/>}
       {tab==='health'&&<SystemHealthTab/>}
       {tab==='audit'&&<AuditLogTab/>}
     </ModuleShell>

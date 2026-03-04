@@ -115,6 +115,36 @@ export default function WatchTrackPage() {
           ))}</tbody>
         </table>
       </div>
+
+      {/* ── Claim Timeline ── */}
+      <div className="card p-4 mt-4">
+        <h3 className="text-sm font-semibold mb-3">Claim Lifecycle Timeline</h3>
+        <div className="space-y-3">
+          {[
+            {step:'Charge Captured',date:'Mar 1',status:'done',detail:'Office visit E/M 99214 — Dr. Smith'},
+            {step:'Coded & Scrubbed',date:'Mar 1',status:'done',detail:'ICD-10: M54.5, CPT: 99214 — Clean claim'},
+            {step:'Submitted to Payer',date:'Mar 2',status:'done',detail:'837P sent via Availity to Aetna'},
+            {step:'Acknowledged (277CA)',date:'Mar 2',status:'done',detail:'Claim accepted for adjudication'},
+            {step:'In Adjudication',date:'Mar 3',status:'current',detail:'Estimated completion: Mar 15–20'},
+            {step:'Payment / Denial',date:'—',status:'pending',detail:'Expected: 14–21 days from submission'},
+            {step:'Posted & Reconciled',date:'—',status:'pending',detail:'Auto-posting enabled for this payer'},
+          ].map((s,i)=>(
+            <div key={i} className="flex items-start gap-3">
+              <div className="flex flex-col items-center">
+                <div className={`w-3 h-3 rounded-full border-2 ${s.status==='done'?'bg-emerald-500 border-emerald-500':s.status==='current'?'bg-brand border-brand animate-pulse':'border-separator bg-surface-elevated'}`}/>
+                {i<6&&<div className={`w-0.5 h-8 ${s.status==='done'?'bg-emerald-500/30':'bg-separator'}`}/>}
+              </div>
+              <div className="flex-1 -mt-0.5">
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-medium ${s.status==='pending'?'text-content-tertiary':'text-content-primary'}`}>{s.step}</span>
+                  <span className="text-[10px] text-content-tertiary">{s.date}</span>
+                </div>
+                <p className="text-[10px] text-content-secondary">{s.detail}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </ModuleShell>
   )
 }
