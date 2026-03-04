@@ -309,6 +309,57 @@ export default function DenialsPage() {
           )}
         </div>
       </div>
+
+      {/* ── Appeal Templates Library ── */}
+      <div className="card p-4 mt-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold">Appeal Templates</h3>
+          <button onClick={() => toast.info('New template editor opened')} className="text-xs bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-colors">+ New Template</button>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {[{name:'Medical Necessity',cat:'Auth',winRate:72,used:145},{name:'Timely Filing Override',cat:'Timely',winRate:34,used:89},{name:'Coding Error Correction',cat:'Coding',winRate:81,used:67},
+            {name:'Duplicate Claim Resubmit',cat:'Duplicate',winRate:65,used:42},{name:'Coordination of Benefits',cat:'COB',winRate:58,used:38},{name:'Eligibility Retroactive',cat:'Eligibility',winRate:46,used:51}
+          ].map(t=>(
+            <div key={t.name} className="bg-surface-elevated rounded-lg p-3 hover:border-brand/30 border border-transparent transition-colors cursor-pointer" onClick={() => toast.info(`Template: ${t.name}`)}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium">{t.name}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface text-content-tertiary">{t.cat}</span>
+              </div>
+              <div className="flex items-center gap-3 mt-2">
+                <div className="flex-1">
+                  <div className="w-full bg-surface rounded-full h-1.5"><div className="bg-emerald-500 h-1.5 rounded-full" style={{width:`${t.winRate}%`}}/></div>
+                </div>
+                <span className="text-[10px] text-emerald-500 font-medium">{t.winRate}% win</span>
+                <span className="text-[10px] text-content-tertiary">{t.used}×</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Appeal Deadline Tracker ── */}
+      <div className="card p-4 mt-4">
+        <h3 className="text-sm font-semibold mb-3">⏰ Upcoming Appeal Deadlines</h3>
+        <div className="space-y-2">
+          {[{claim:'CLM-4511',payer:'Aetna',deadline:'2026-03-07',days:3,level:'L1'},
+            {claim:'CLM-4498',payer:'Blue Cross',deadline:'2026-03-10',days:6,level:'L2'},
+            {claim:'CLM-4523',payer:'United',deadline:'2026-03-15',days:11,level:'L1'},
+            {claim:'CLM-4489',payer:'Cigna',deadline:'2026-03-05',days:1,level:'L3'}
+          ].sort((a,b)=>a.days-b.days).map(d=>(
+            <div key={d.claim} className={`flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2 ${d.days<=3?'border border-red-500/30':''}`}>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-mono">{d.claim}</span>
+                <span className="text-xs text-content-secondary">{d.payer}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand/10 text-brand">{d.level}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-medium ${d.days<=3?'text-red-500':d.days<=7?'text-amber-500':'text-content-secondary'}`}>{d.days}d left</span>
+                <span className="text-[10px] text-content-tertiary">{d.deadline}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </ModuleShell>
   )
 }
