@@ -131,6 +131,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
   const [edi837IOutput, setEdi837IOutput] = useState<string | null>(null)
   const [underpayResult, setUnderpayResult] = useState<{ total_underpaid: number; underpayments: Array<{ cpt_code: string; expected_payment: number; actual_allowed: number; underpaid_amount: number; variance_pct: string }> } | null>(null)
   const [secondaryResult, setSecondaryResult] = useState<{ secondary_claim_id?: string; claim_number?: string } | null>(null)
+  const [statusInquiryResult, setStatusInquiryResult] = useState<string | null>(null)
 
   // Edit mode state
   const [editMode, setEditMode] = useState(false)
@@ -151,6 +152,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
   const { mutate: generate837I, loading: generating837I } = useGenerate837I(claimApiId)
   const { mutate: underpaymentCheck, loading: checkingUnderpay } = useUnderpaymentCheck(claimApiId)
   const { mutate: triggerSecondary, loading: triggeringSecondary } = useTriggerSecondaryClaim(claimApiId)
+  const { mutate: generate276, loading: generating276 } = useGenerate276(claimApiId)
   const { data: linesData, refetch: refetchLines } = useClaimLines(claimApiId || null)
   const { data: dxData, refetch: refetchDx } = useClaimDiagnoses(claimApiId || null)
   const { mutate: addLine } = useAddClaimLine(claimApiId)
@@ -283,6 +285,15 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
       setSecondaryResult(result as typeof secondaryResult)
       toast.success(`Secondary claim created: ${result.claim_number || result.secondary_claim_id}`)
       onRefetch?.()
+    }
+  }
+
+  async function handleStatusInquiry() {
+    if (!claimApiId) { toast.warning('No API ID'); return }
+    const result = await generate276({} as Record<string, never>)
+    if (result?.edi_content) {
+      setStatusInquiryResult(result.edi_content)
+      toast.success('276 Claim Status Inquiry generated')
     }
   }
 
@@ -536,7 +547,12 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                       <button onClick={handleGenerateEDI} disabled={generatingEDI} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generatingEDI ? 'Generating EDI…' : 'Generate 837P EDI'}</button>
                     </>
                   )}
-                  {claim.status === 'submitted' && <button onClick={handleGenerateEDI} disabled={generatingEDI} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generatingEDI ? 'Generating EDI…' : 'Generate 837P EDI'}</button>}
+                  {(claim.status === 'submitted' || claim.status === 'in_process' || claim.status === 'accepted') && (
+                    <>
+                      {claim.status === 'submitted' && <button onClick={handleGenerateEDI} disabled={generatingEDI} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generatingEDI ? 'Generating EDI…' : 'Generate 837P EDI'}</button>}
+                      <button onClick={handleStatusInquiry} disabled={generating276} className="w-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-600 rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generating276 ? 'Generating…' : '276 Status Inquiry'}</button>
+                    </>
+                  )}
                   {claim.status === 'denied' && (
                     <>
                       <button onClick={statusAction} className="w-full bg-amber-500 text-white rounded-btn py-2.5 text-[13px] font-medium">Route to Denials</button>
@@ -579,6 +595,12 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                     <div className="mt-2 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
                       <p className="text-[11px] uppercase tracking-wider text-blue-600 font-semibold mb-1">Secondary Claim Filed</p>
                       <p className="text-[13px] text-content-primary">Claim #{secondaryResult.claim_number || secondaryResult.secondary_claim_id}</p>
+                    </div>
+                  )}
+                  {statusInquiryResult && (
+                    <div className="mt-2">
+                      <p className="text-[11px] uppercase tracking-wider text-indigo-600 font-semibold mb-1">276 Claim Status Inquiry</p>
+                      <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[10px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{statusInquiryResult}</pre>
                     </div>
                   )}
                 </div>
@@ -791,6 +813,7 @@ export default function ClaimsPage() {
     ...(statusFilters.length === 1 ? { status: statusFilters[0] } : {}),
   })
   const { data: scrubRulesData } = useScrubRules()
+  const { data: timelyFilingData } = useTimelyFilingDeadlines()
   const apiScrubRules = scrubRulesData?.data?.map(r => ({
     id: r.rule_code,
     label: r.rule_name + ' — ' + r.description,
@@ -874,6 +897,26 @@ export default function ClaimsPage() {
         <KPICard label={t("claims","cleanClaimRate")} value={apiLoading ? '…' : `${cleanRate}%`} icon={<Activity size={20}/>} />
         <KPICard label={t("claims","avgDaysToPayment")} value={apiLoading ? '…' : `${avgDays}d`} icon={<Clock size={20}/>} />
       </div>
+
+      {/* Timely Filing Alerts */}
+      {timelyFilingData?.data && timelyFilingData.data.filter(tf => tf.days_remaining <= 14).length > 0 && (
+        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-[12px] font-semibold text-red-600">Timely Filing Deadlines Approaching</p>
+            <div className="flex flex-wrap gap-2 mt-1.5">
+              {timelyFilingData.data.filter(tf => tf.days_remaining <= 14).slice(0, 5).map(tf => (
+                <span key={tf.claim_id} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${tf.days_remaining <= 3 ? 'bg-red-500/20 text-red-600' : tf.days_remaining <= 7 ? 'bg-amber-500/20 text-amber-600' : 'bg-yellow-500/20 text-yellow-600'}`}>
+                  {tf.claim_number || tf.claim_id.slice(0,8)} · {tf.days_remaining}d left · {tf.payer_name || 'Unknown'}
+                </span>
+              ))}
+              {timelyFilingData.data.filter(tf => tf.days_remaining <= 14).length > 5 && (
+                <span className="text-[10px] text-content-tertiary">+{timelyFilingData.data.filter(tf => tf.days_remaining <= 14).length - 5} more</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-4 h-[calc(100vh-300px)]">
         {/* Filter sidebar */}
