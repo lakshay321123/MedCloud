@@ -8,7 +8,7 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import { TrendingUp, X, Phone, Bot, User, PhoneCall, Plus, AlertTriangle, FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { tfDaysRemaining } from '@/lib/utils/time'
 import { useRouter } from 'next/navigation'
-import { usePayerConfigs, useTimelyFilingDeadlines, useCreditBalances, useWriteOffs, useRequestWriteOff } from '@/lib/hooks'
+import { useLogARCall, usePayerConfigs, useTimelyFilingDeadlines, useCreditBalances, useWriteOffs, useRequestWriteOff } from '@/lib/hooks'
 
 
 
@@ -553,10 +553,12 @@ function InboundCallPanel() {
 
 export default function ARManagementPage() {
   const { selectedClient } = useApp()
+  const { toast } = useToast()
   const [accounts, setAccounts] = useState<ARAccount[]>(initialAccounts)
   const [callHistory, setCallHistory] = useState<Record<string, CallLogEntry[]>>(initialCallHistory)
   const [selected, setSelected] = useState<ARAccount | null>(null)
   const [callMode, setCallMode] = useState<'accounts' | 'inbound'>('accounts')
+  const { mutate: logCallAPI } = useLogARCall()
 
   const filtered = accounts.filter(a => !selectedClient || a.client.includes(selectedClient.name.split(' ')[0]))
 
@@ -565,17 +567,36 @@ export default function ARManagementPage() {
     if (selected?.id === id) setSelected(prev => prev ? { ...prev, ...update } : prev)
   }
 
-  function addCallEntry(accountId: string, entry: CallLogEntry, followupDate?: string, promisedDate?: string) {
+  async function addCallEntry(accountId: string, entry: CallLogEntry, followupDate?: string, promisedDate?: string) {
+    // Optimistic update first — UI feels instant
     setCallHistory(prev => ({
       ...prev,
       [accountId]: [entry, ...(prev[accountId] || [])],
     }))
-    const updates: Partial<ARAccount> = {
-      lastAction: `Manual call — ${entry.status}`,
-    }
+    const updates: Partial<ARAccount> = { lastAction: `Manual call — ${entry.status}` }
     if (followupDate) updates.nextFollowup = followupDate
     if (promisedDate) updates.paymentPromisedDate = promisedDate
     updateAccount(accountId, updates)
+
+    // Persist to API
+    try {
+      await logCallAPI({
+        claim_id: accountId,
+        call_type: 'manual',
+        outcome: entry.status,
+        reference_number: entry.ref,
+        notes: entry.note,
+        follow_up_date: followupDate,
+      })
+    } catch (err) {
+      console.error('[AR log-call] API failed:', err)
+      // Revert optimistic update so UI stays consistent with server state
+      setCallHistory(prev => ({
+        ...prev,
+        [accountId]: (prev[accountId] || []).filter(e => e.id !== entry.id),
+      }))
+      toast.error('Failed to log call — please try again')
+    }
   }
 
   const totalAR = accounts.reduce((s, a) => s + a.balance, 0)

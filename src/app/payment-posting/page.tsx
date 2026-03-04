@@ -8,12 +8,14 @@ import { demoERAFiles, demoERALineItems, demoUnmatchedPayments } from '@/lib/dem
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
-import { useERAFiles, useParse835, useReconcilePayments, useBankDeposits, useReconcileBankDeposit } from '@/lib/hooks'
+import { useERAFiles, useAutoPostPayments, useParse835, useReconcilePayments, useBankDeposits, useReconcileBankDeposit } from '@/lib/hooks'
 
 export default function PaymentPostingPage() {
   const { selectedClient } = useApp()
   const { toast } = useToast()
   const { data: apiERAResult } = useERAFiles({ limit: 50 })
+  const { mutate: autoPost } = useAutoPostPayments()
+  const [posting, setPosting] = useState(false)
   const demoEras = demoERAFiles.filter(era => !selectedClient || era.clientId === selectedClient.id)
   // Map API ERA files to DemoERAFile shape for display compatibility
   const eras = apiERAResult?.data?.map(e => ({
@@ -69,7 +71,7 @@ export default function PaymentPostingPage() {
         <div className="grid grid-cols-4 gap-4 mb-4">
           <KPICard label="ERAs Pending" value={eras.filter(e => e.status !== 'posted').length} icon={<Receipt size={20} />} />
           <KPICard label="Posted Today" value="89" icon={<CheckCircle2 size={20} />} />
-          <KPICard label="Auto-Post Rate" value="76%" icon={<Send size={20} />} />
+          <KPICard label="Auto-Post Rate" value={apiERAResult?.data ? `${Math.round((apiERAResult.data.filter(e => e.status === 'posted').length / Math.max(apiERAResult.data.length, 1)) * 100)}%` : '76%'} icon={<Send size={20} />} />
           <KPICard label="Unmatched" value={demoUnmatchedPayments.length} icon={<AlertTriangle size={20} />} />
         </div>
 
@@ -295,12 +297,30 @@ export default function PaymentPostingPage() {
       </div>
 
       <div className="flex gap-3 mt-4">
-        <button onClick={() => {
+        <button onClick={async () => {
           const approved = eraLines.filter(l => l.action === 'post')
           if (approved.length === 0) { toast.warning('No lines marked for posting'); return }
-          toast.success(`${approved.length} line(s) posted successfully`)
-          setLineItems(prev => prev.map(row => row.eraId === selectedEra && row.action === 'post' ? { ...row, action: 'posted' } : row))
-        }} className="bg-brand text-white rounded-btn px-4 py-2 text-[13px]">Post All Approved</button>
+          setPosting(true)
+          // Optimistic update
+          setLineItems(prev => prev.map(row =>
+            row.eraId === selectedEra && row.action === 'post' ? { ...row, action: 'posted' } : row
+          ))
+          try {
+            const result = await autoPost({ era_file_id: selectedEra! })
+            if (result?.auto_posted != null) {
+              toast.success(`${result.auto_posted} line(s) auto-posted · ${result.manual_review} sent to manual review`)
+            } else {
+              toast.success(`${approved.length} line(s) posted successfully`)
+            }
+          } catch (err) {
+            console.error('[payment-posting] auto-post failed:', err)
+            toast.warning(`Posted ${approved.length} line(s) locally — failed to sync with server`)
+          } finally {
+            setPosting(false)
+          }
+        }} disabled={posting} className="bg-brand text-white rounded-btn px-4 py-2 text-[13px] disabled:opacity-60">
+          {posting ? 'Posting…' : 'Post All Approved'}
+        </button>
         <button onClick={() => {
           const denied = eraLines.filter(l => l.action === 'deny_route')
           if (denied.length === 0) { toast.warning('No lines marked for denial routing'); return }

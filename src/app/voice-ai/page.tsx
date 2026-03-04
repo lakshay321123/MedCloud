@@ -13,6 +13,7 @@ import {
 } from '@/lib/demo-data'
 import { useApp } from '@/lib/context'
 import { useNotifications, useMessages } from '@/lib/hooks'
+import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 
 // ─── Status Dot ───────────────────────────────────────────────────────────
 function StatusDot({ status }: { status: DemoCall['status'] }) {
@@ -168,8 +169,8 @@ function ActiveCallsTab() {
   const [selectedCall, setSelectedCall] = useState<DemoCall | null>(null)
 
   const { selectedClient, country } = useApp()
-  const uaeOrgIds = ['org-101', 'org-104']
-  const usOrgIds = ['org-102', 'org-103']
+  const uaeOrgIds = UAE_ORG_IDS
+  const usOrgIds = US_ORG_IDS
 
   const filteredCalls = demoActiveCalls.filter(c => {
     if (selectedClient) return c.clientId === selectedClient.id
@@ -244,8 +245,8 @@ function CallLogTab() {
   const [selectedCall, setSelectedCall] = useState<DemoCall | null>(null)
 
   const { selectedClient, country } = useApp()
-  const uaeOrgIds = ['org-101', 'org-104']
-  const usOrgIds = ['org-102', 'org-103']
+  const uaeOrgIds = UAE_ORG_IDS
+  const usOrgIds = US_ORG_IDS
 
   const filtered = demoCallLog.filter(c => {
     if (selectedClient && c.clientId !== selectedClient.id) return false

@@ -6,6 +6,7 @@ import { useDocuments, usePatients } from '@/lib/hooks'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { Upload, CheckCircle2, FileText, X, Plus, ArrowRight } from 'lucide-react'
+import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 
 const MAX_FILES = 10
 

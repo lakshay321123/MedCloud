@@ -5,6 +5,7 @@ import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
 import { demoDocs, demoFaxes, DemoDocRecord } from '@/lib/demo-data'
 import { useDocuments, useTriggerTextract, useClassifyDocument } from '@/lib/hooks'
+import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import {
   Search, Upload, X, Download, AlertTriangle, FileText, CreditCard,
   DollarSign, XCircle, Stethoscope, File, Eye, Send
@@ -157,8 +158,8 @@ function AllDocsTab() {
   const filtered = (apiDocs.length ? apiDocs : demoDocs).filter(d => {
     if (d.clientId) {
       if (selectedClient && d.clientId !== selectedClient.id) return false
-      if (!selectedClient && country === 'uae' && !['org-101','org-104'].includes(d.clientId)) return false
-      if (!selectedClient && country === 'usa' && !['org-102','org-103'].includes(d.clientId)) return false
+      if (!selectedClient && country === 'uae' && !UAE_ORG_IDS.includes(d.clientId)) return false
+      if (!selectedClient && country === 'usa' && !US_ORG_IDS.includes(d.clientId)) return false
     }
     if (search && !d.name.toLowerCase().includes(search.toLowerCase()) && !d.patient.toLowerCase().includes(search.toLowerCase())) return false
     if (typeFilter.length > 0 && !typeFilter.includes(d.type)) return false
