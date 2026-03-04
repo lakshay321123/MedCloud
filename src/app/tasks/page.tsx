@@ -6,6 +6,7 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
 import { ListChecks, X, Plus } from 'lucide-react'
 import { useTasks } from '@/lib/hooks'
+import { api } from '@/lib/api-client'
 import { useApp } from '@/lib/context'
 import { UAE_CLIENT_NAMES, US_CLIENT_NAMES } from '@/lib/utils/region'
 
@@ -242,11 +243,19 @@ export default function TasksPage() {
               <textarea rows={3} placeholder="Add a note..." className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm resize-none" />
 
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (pendingStatus) {
                     setTaskList(prev => prev.map(t =>
                       t.id === selected.id ? { ...t, status: pendingStatus } : t
                     ))
+                    // Persist to API — find the live task id if available
+                    const liveTask = apiTaskResult?.data?.find(t => t.id === selected.id)
+                    const apiId = liveTask?.id || selected.id
+                    try {
+                      await api.put(`/tasks/${apiId}`, { status: pendingStatus })
+                    } catch (err) {
+                      console.error('[tasks] status update failed:', err)
+                    }
                   }
                   toast.success('Task updated')
                   setSelected(null)

@@ -5,6 +5,7 @@ import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { demoClaims, demoClients } from '@/lib/demo-data'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
+import { useAnalyticsKPIs } from '@/lib/hooks'
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine
@@ -119,6 +120,10 @@ export default function AnalyticsPage() {
   const [tab, setTab] = useState<'financial' | 'operational' | 'ai' | 'payer'>('financial')
   const [dateRange, setDateRange] = useState('last30')
 
+  // Live API — returns aggregated KPIs from Aurora
+  const { data: liveKPIs } = useAnalyticsKPIs()
+
+  // Demo claims used for chart visualisations only (time-series not in API yet)
   const claims = useMemo(() =>
     selectedClient
       ? demoClaims.filter(c => c.clientId === selectedClient.id)
@@ -266,11 +271,15 @@ export default function AnalyticsPage() {
         <div className="space-y-6">
           <div className="grid grid-cols-5 gap-4">
             <KPICard label="Revenue Collected"
-              value={`$${(revenueCollected / 1000).toFixed(0)}K`}
+              value={liveKPIs?.overview?.total_collected != null
+                ? `$${(liveKPIs.overview.total_collected / 1000).toFixed(0)}K`
+                : `$${(revenueCollected / 1000).toFixed(0)}K`}
               icon={<DollarSign size={20}/>}
               sub={<span>Sum of paid amounts <KPITooltip formula="Sum of all paid amounts for claims with status: paid or partial_pay" /></span> as unknown as string} />
             <KPICard label="Net Collection Rate"
-              value={`${netCollectionRate}%`}
+              value={liveKPIs?.overview?.collection_rate
+                ? `${liveKPIs.overview.collection_rate}%`
+                : `${netCollectionRate}%`}
               trend="up"
               icon={<TrendingUp size={20}/>}
               sub={<span>Revenue ÷ (Charges − Adj) <KPITooltip formula="Payments ÷ (Total charges − contractual adjustments) × 100. Target: > 95%" /></span> as unknown as string} />
@@ -279,7 +288,9 @@ export default function AnalyticsPage() {
               icon={<Clock size={20}/>}
               sub={<span>AR ÷ (90-day charges ÷ 90) <KPITooltip formula="Total AR balance ÷ (Charges last 90 days ÷ 90). Target: < 35 days" /></span> as unknown as string} />
             <KPICard label="Denial Rate"
-              value={`${denialRate}%`}
+              value={liveKPIs?.overview?.denial_rate
+                ? `${liveKPIs.overview.denial_rate}%`
+                : `${denialRate}%`}
               icon={<AlertTriangle size={20}/>}
               sub={<span>Denied ÷ Submitted <KPITooltip formula="Count of denied claims ÷ total submitted claims × 100. Target: < 5%" /></span> as unknown as string} />
             <KPICard label="Denial $ At Risk"
@@ -360,7 +371,9 @@ export default function AnalyticsPage() {
       {tab === 'operational' && (
         <div className="space-y-6">
           <div className="grid grid-cols-5 gap-4">
-            <KPICard label="Clean Claim Rate" value="91.3%" icon={<CheckCircle2 size={20}/>}
+            <KPICard label="Clean Claim Rate"
+              value={liveKPIs?.overview?.clean_claim_rate ? `${liveKPIs.overview.clean_claim_rate}%` : '91.3%'}
+              icon={<CheckCircle2 size={20}/>}
               sub={<span><KPITooltip formula="Claims that passed scrubbing without errors ÷ total claims × 100. Target: > 95%" />of claims pass scrub</span> as unknown as string} />
             <KPICard label="First Pass Rate" value="87.6%" icon={<Activity size={20}/>}
               sub={<span><KPITooltip formula="Claims paid on first submission ÷ total submitted × 100" />paid first try</span> as unknown as string} />

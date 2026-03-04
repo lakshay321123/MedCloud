@@ -8,6 +8,7 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import { TrendingUp, X, Phone, Bot, User, PhoneCall, Plus, AlertTriangle, FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { tfDaysRemaining } from '@/lib/utils/time'
 import { useRouter } from 'next/navigation'
+import { useLogARCall } from '@/lib/hooks'
 
 
 
@@ -552,10 +553,12 @@ function InboundCallPanel() {
 
 export default function ARManagementPage() {
   const { selectedClient } = useApp()
+  const { toast } = useToast()
   const [accounts, setAccounts] = useState<ARAccount[]>(initialAccounts)
   const [callHistory, setCallHistory] = useState<Record<string, CallLogEntry[]>>(initialCallHistory)
   const [selected, setSelected] = useState<ARAccount | null>(null)
   const [callMode, setCallMode] = useState<'accounts' | 'inbound'>('accounts')
+  const { mutate: logCallAPI } = useLogARCall()
 
   const filtered = accounts.filter(a => !selectedClient || a.client.includes(selectedClient.name.split(' ')[0]))
 
@@ -564,17 +567,31 @@ export default function ARManagementPage() {
     if (selected?.id === id) setSelected(prev => prev ? { ...prev, ...update } : prev)
   }
 
-  function addCallEntry(accountId: string, entry: CallLogEntry, followupDate?: string, promisedDate?: string) {
+  async function addCallEntry(accountId: string, entry: CallLogEntry, followupDate?: string, promisedDate?: string) {
+    // Optimistic update first — UI feels instant
     setCallHistory(prev => ({
       ...prev,
       [accountId]: [entry, ...(prev[accountId] || [])],
     }))
-    const updates: Partial<ARAccount> = {
-      lastAction: `Manual call — ${entry.status}`,
-    }
+    const updates: Partial<ARAccount> = { lastAction: `Manual call — ${entry.status}` }
     if (followupDate) updates.nextFollowup = followupDate
     if (promisedDate) updates.paymentPromisedDate = promisedDate
     updateAccount(accountId, updates)
+
+    // Persist to API
+    try {
+      await logCallAPI({
+        claim_id: accountId,
+        call_type: 'manual',
+        outcome: entry.status,
+        reference_number: entry.ref,
+        notes: entry.note,
+        follow_up_date: followupDate,
+      })
+    } catch (err) {
+      console.error('[AR log-call] API failed:', err)
+      toast.warning('Call logged locally — sync will retry')
+    }
   }
 
   const totalAR = accounts.reduce((s, a) => s + a.balance, 0)
