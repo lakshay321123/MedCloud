@@ -1129,3 +1129,71 @@ export function useCreateFeeSchedule() {
 export function useUpdateFeeSchedule(id: string) {
   return useMutation<ApiFeeSchedule, Partial<ApiFeeSchedule>>('put', `/fee-schedules/${id}`)
 }
+
+// ── Denial Prediction ───────────────────────────────────────────────────────
+
+export interface ApiDenialPrediction {
+  claim_id: string
+  claim_number: string
+  risk_score: number
+  risk_level: 'low' | 'medium' | 'high'
+  risk_factors: Array<{ category: string; score: number; detail: string }>
+  recommendation: string
+}
+
+export function usePredictDenial(claimId: string) {
+  return useMutation<ApiDenialPrediction, Record<string, never>>('post', `/claims/${claimId}/predict-denial`)
+}
+
+// ── 276/277 Claim Status ────────────────────────────────────────────────────
+
+export function useGenerate276(claimId: string) {
+  return useMutation<{ edi_content: string; claim_id: string; format: string }, Record<string, never>>('post', `/claims/${claimId}/generate-276`)
+}
+
+export interface Api277ParseResult {
+  claim_id: string
+  claim_number: string
+  new_claim_status: string | null
+  latest_status: string
+  statuses: Array<{
+    category_code: string
+    description: string
+    effective_date?: string
+    total_charge?: number
+    total_paid?: number
+    payer_claim_number?: string
+  }>
+}
+
+export function useParse277(claimId: string) {
+  return useMutation<Api277ParseResult, { edi_content: string }>('post', `/claims/${claimId}/parse-277`)
+}
+
+// ── Analytics KPIs ──────────────────────────────────────────────────────────
+
+export interface ApiAnalyticsKPIs {
+  overview: {
+    total_claims: number
+    total_billed: number
+    total_collected: number
+    collection_rate: string
+    clean_claim_rate: string
+    denial_rate: string
+  }
+  ar_aging: {
+    b0_30: number
+    b31_60: number
+    b61_90: number
+    b91_120: number
+    b120_plus: number
+  }
+  denial_breakdown: Array<{ carc: string; cnt: number; amt: number }>
+  payer_performance: Array<{ name: string; total: number; paid: number; denied: number; billed: number }>
+  coding: { total: number; completed: number; ai_coded: number }
+}
+
+export function useAnalyticsKPIs(extra?: ApiListParams & { from?: string; to?: string }) {
+  const params = useClientParams(extra)
+  return useApi<ApiAnalyticsKPIs>('/analytics', params)
+}

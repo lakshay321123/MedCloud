@@ -23,6 +23,10 @@
  *   GET   /ai-coding-suggestions/:id   — Get AI suggestions for coding item
  *   CRUD  /fee-schedules               — Contract rate management
  *   POST  /payments/auto-post          — Auto-post payments from 835
+ *   POST  /claims/:id/predict-denial   — Denial prediction (7 risk factors)
+ *   POST  /claims/:id/generate-276     — Generate 276 claim status inquiry
+ *   POST  /claims/:id/parse-277        — Parse 277 claim status response
+ *   GET   /analytics?from=&to=         — Analytics KPIs (collection rate, clean claim %, AR aging, payer perf)
  *
  * SECURITY: UUID validation on all org/user/client IDs. Audit middleware logs every PHI access.
  * SCRUBBING: 50 rules — NCCI edits, gender/age, timely filing, modifier, bilateral, add-on, UAE-specific.
@@ -1066,8 +1070,6 @@ async function autoPostPayments(eraFileId, orgId, userId) {
   return results;
 }
 
-// ─── Presigned URL Generator ───────────────────────────────────────────────────
-
 // ─── 271 Eligibility Response Parser ───────────────────────────────────────────
 async function parse271Response(eligibilityCheckId, ediContent, orgId, userId) {
   const elig = await getById('eligibility_checks', eligibilityCheckId);
@@ -1320,6 +1322,212 @@ async function batchSubmitClaims(claimIds, orgId, clientId, userId) {
   return results;
 }
 
+// ─── Denial Prediction (AI Feature #7) ─────────────────────────────────────────
+async function predictDenial(claimId, orgId, userId) {
+  const claim = await getById('claims', claimId);
+  if (!claim) throw new Error('Claim not found');
+
+  const linesR = await pool.query('SELECT * FROM claim_lines WHERE claim_id = $1', [claimId]);
+  const risks = [];
+  let riskScore = 0;
+
+  // 1. Payer denial history
+  if (claim.payer_id) {
+    const ps = await pool.query(
+      `SELECT COUNT(*)::int AS total, SUM(CASE WHEN d.id IS NOT NULL THEN 1 ELSE 0 END)::int AS denied
+       FROM claims c LEFT JOIN denials d ON d.claim_id = c.id
+       WHERE c.payer_id = $1 AND c.org_id = $2 AND c.status NOT IN ('draft','scrubbing')`, [claim.payer_id, orgId]);
+    const s = ps.rows[0];
+    if (s.total > 10) {
+      const dr = (s.denied / s.total) * 100;
+      if (dr > 20) { riskScore += 15; risks.push({ category: 'payer_history', score: 15, detail: `Payer denial rate: ${dr.toFixed(0)}% (${s.denied}/${s.total})` }); }
+    }
+  }
+
+  // 2. CPT-specific denial history
+  for (const line of linesR.rows) {
+    const cs = await pool.query(
+      `SELECT COUNT(*)::int AS denied FROM denials d JOIN claims c ON d.claim_id = c.id
+       JOIN claim_lines cl ON cl.claim_id = c.id WHERE cl.cpt_code = $1 AND c.org_id = $2`, [line.cpt_code, orgId]);
+    if (cs.rows[0]?.denied > 3) { riskScore += 10; risks.push({ category: 'cpt_history', score: 10, detail: `CPT ${line.cpt_code}: ${cs.rows[0].denied} prior denials` }); }
+  }
+
+  // 3. Missing prior auth for high-cost procedures
+  const authReq = ['27447','27130','63030','63042','22551','22612','29881','29880','23472'];
+  const needsAuth = linesR.rows.filter(l => authReq.includes(l.cpt_code) && !l.prior_auth_number);
+  if (needsAuth.length > 0) { riskScore += 25; risks.push({ category: 'prior_auth', score: 25, detail: `${needsAuth.length} CPT(s) likely need auth: ${needsAuth.map(l => l.cpt_code).join(', ')}` }); }
+
+  // 4. Timely filing risk
+  if (claim.dos_from) {
+    const days = Math.floor((new Date() - new Date(claim.dos_from)) / 86400000);
+    if (days > 60) { const sc = Math.min(20, Math.floor(days / 30) * 5); riskScore += sc; risks.push({ category: 'timely_filing', score: sc, detail: `${days} days since DOS` }); }
+  }
+
+  // 5. Eligibility status
+  if (claim.patient_id && claim.payer_id) {
+    const er = await pool.query(`SELECT result FROM eligibility_checks WHERE patient_id = $1 AND payer_id = $2 ORDER BY created_at DESC LIMIT 1`, [claim.patient_id, claim.payer_id]);
+    if (!er.rows[0]) { riskScore += 15; risks.push({ category: 'eligibility', score: 15, detail: 'No eligibility check on file' }); }
+    else if (er.rows[0].result !== 'active') { riskScore += 30; risks.push({ category: 'eligibility', score: 30, detail: `Eligibility: ${er.rows[0].result}` }); }
+  }
+
+  // 6. Duplicate claim check
+  const dupR = await pool.query(
+    `SELECT claim_number FROM claims WHERE org_id = $1 AND patient_id = $2 AND dos_from = $3 AND payer_id = $4 AND id != $5 AND status NOT IN ('write_off','draft')`,
+    [orgId, claim.patient_id, claim.dos_from, claim.payer_id, claimId]);
+  if (dupR.rows.length > 0) { riskScore += 20; risks.push({ category: 'duplicate', score: 20, detail: `Possible duplicates: ${dupR.rows.map(r => r.claim_number).join(', ')}` }); }
+
+  // 7. High-dollar flag
+  if (Number(claim.total_charge) > 10000) { riskScore += 5; risks.push({ category: 'high_dollar', score: 5, detail: `$${claim.total_charge} — payers often review manually` }); }
+
+  riskScore = Math.min(100, riskScore);
+  const riskLevel = riskScore >= 60 ? 'high' : riskScore >= 30 ? 'medium' : 'low';
+  await auditLog(orgId, userId, 'denial_prediction', 'claims', claimId, { risk_score: riskScore, risk_level: riskLevel });
+  return { claim_id: claimId, claim_number: claim.claim_number, risk_score: riskScore, risk_level: riskLevel, risk_factors: risks,
+    recommendation: riskScore >= 60 ? 'Review before submission — high denial risk' : riskScore >= 30 ? 'Proceed with caution' : 'Low risk — clear to submit' };
+}
+
+// ─── 276 Claim Status Request Generator ────────────────────────────────────────
+async function generate276(claimId, orgId) {
+  const claim = await getById('claims', claimId);
+  if (!claim) throw new Error('Claim not found');
+  const patient = claim.patient_id ? await getById('patients', claim.patient_id) : null;
+  const payer = claim.payer_id ? await getById('payers', claim.payer_id) : null;
+  const provider = claim.provider_id ? await getById('providers', claim.provider_id) : null;
+
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+  const timeStr = now.toTimeString().slice(0, 5).replace(':', '');
+  const ctrlNum = String(Math.floor(Math.random() * 900000000) + 100000000);
+
+  let edi = '';
+  edi += `ISA*00*          *00*          *ZZ*COSENTUS       *ZZ*${(payer?.name || 'PAYER').substring(0, 15).padEnd(15)}*${dateStr.slice(2)}*${timeStr}*^*00501*${ctrlNum}*0*P*:~\n`;
+  edi += `GS*HR*COSENTUS*${payer?.payer_code || 'PAYER'}*${dateStr}*${timeStr}*${ctrlNum}*X*005010X212~\n`;
+  edi += `ST*276*0001*005010X212~\n`;
+  edi += `BHT*0010*13*${claim.claim_number || claimId.slice(0, 8)}*${dateStr}*${timeStr}~\n`;
+  if (payer) edi += `NM1*PR*2*${payer.name}*****PI*${payer.payer_code || ''}~\n`;
+  if (provider) edi += `NM1*41*1*${provider.last_name || ''}*${provider.first_name || ''}****XX*${provider.npi || ''}~\n`;
+  if (patient) {
+    edi += `NM1*IL*1*${patient.last_name || ''}*${patient.first_name || ''}****MI*${patient.member_id || ''}~\n`;
+    edi += `DMG*D8*${patient.date_of_birth ? patient.date_of_birth.replace(/-/g, '') : ''}~\n`;
+  }
+  edi += `TRN*1*${claim.claim_number || claimId.slice(0, 12)}*COSENTUS~\n`;
+  if (claim.payer_claim_number) edi += `REF*1K*${claim.payer_claim_number}~\n`;
+  edi += `DTP*472*RD8*${(claim.dos_from || '').replace(/-/g, '')}-${(claim.dos_to || claim.dos_from || '').replace(/-/g, '')}~\n`;
+  edi += `AMT*T3*${claim.total_charge || 0}~\n`;
+  const segCount = edi.split('~').filter(Boolean).length;
+  edi += `SE*${segCount + 1}*0001~\n`;
+  edi += `GE*1*${ctrlNum}~\n`;
+  edi += `IEA*1*${ctrlNum}~\n`;
+
+  await update('claims', claimId, { last_status_check: new Date().toISOString() });
+  await create('edi_transactions', { org_id: orgId, transaction_type: '276', direction: 'outbound', claim_id: claimId, claim_count: 1, status: 'pending' }, orgId);
+  return { edi_content: edi, claim_id: claimId, claim_number: claim.claim_number, format: '276' };
+}
+
+// ─── 277 Claim Status Response Parser ──────────────────────────────────────────
+async function parse277Response(claimId, ediContent, orgId, userId) {
+  const claim = await getById('claims', claimId);
+  if (!claim) throw new Error('Claim not found');
+  const segments = ediContent.split('~').map(s => s.trim()).filter(Boolean);
+  const result = { claim_id: claimId, claim_number: claim.claim_number, statuses: [] };
+
+  let currentStatus = null;
+  for (const seg of segments) {
+    const els = seg.split('*');
+    if (els[0] === 'STC') {
+      const si = (els[1] || '').split(':');
+      const catMap = { 'A0':'Received','A1':'Accepted','A2':'Pending','A3':'Rejected','A6':'In Adjudication','A7':'Determined',
+        'F0':'Finalized/Payment','F1':'Finalized/Denial','F2':'Finalized/Reversed','P0':'Payment Mailed','P1':'Payment EFT',
+        'R0':'Rejected/Missing Info','R1':'Rejected/Not Covered','R3':'Rejected/Duplicate' };
+      currentStatus = { category_code: si[0], status_code: si[1], effective_date: els[2],
+        total_charge: els[4] ? parseFloat(els[4]) : null, total_paid: els[5] ? parseFloat(els[5]) : null,
+        description: catMap[si[0]] || `Code: ${si[0]}` };
+      result.statuses.push(currentStatus);
+    }
+    if (els[0] === 'REF' && currentStatus) {
+      if (els[1] === '1K') currentStatus.payer_claim_number = els[2];
+    }
+  }
+
+  // Map to claim status
+  const latest = result.statuses[result.statuses.length - 1];
+  let newStatus = null;
+  if (latest) {
+    const c = latest.category_code;
+    if (['A0','A1'].includes(c)) newStatus = 'accepted';
+    else if (['A2','A6','A8'].includes(c)) newStatus = 'in_process';
+    else if (['A3','R0','R1','R3','F1'].includes(c)) newStatus = 'denied';
+    else if (['F0','P0','P1'].includes(c)) newStatus = 'paid';
+
+    const upd = { last_status_check: new Date().toISOString() };
+    if (newStatus && ['submitted','accepted','in_process'].includes(claim.status)) upd.status = newStatus;
+    if (latest.payer_claim_number) upd.payer_claim_number = latest.payer_claim_number;
+    await update('claims', claimId, upd);
+
+    // Auto-create denial record
+    if (['A3','R0','R1','R3','F1'].includes(c)) {
+      await create('denials', { org_id: orgId, client_id: claim.client_id, claim_id: claimId,
+        amount: claim.total_charge, status: 'new', denial_date: new Date().toISOString(), source: 'claim_status_277' }, orgId);
+    }
+  }
+  result.new_claim_status = newStatus;
+  result.latest_status = latest?.description;
+
+  await create('edi_transactions', { org_id: orgId, transaction_type: '277', direction: 'inbound', claim_id: claimId, claim_count: 1, status: 'accepted', response_at: new Date().toISOString() }, orgId);
+  await auditLog(orgId, userId, 'parse_277', 'claims', claimId, { statuses: result.statuses.length, new_status: newStatus });
+  return result;
+}
+
+// ─── Analytics / KPI Endpoints ─────────────────────────────────────────────────
+async function getAnalyticsKPIs(orgId, clientId, dateRange) {
+  const params = [orgId];
+  let cf = '';
+  if (clientId) { params.push(clientId); cf = ` AND client_id = $${params.length}`; }
+  let df = '';
+  if (dateRange?.from) { params.push(dateRange.from); df += ` AND created_at >= $${params.length}`; }
+  if (dateRange?.to) { params.push(dateRange.to); df += ` AND created_at <= $${params.length}`; }
+
+  const [claimStats, denialBreak, payStats, arAging, payerPerf, codingStats] = await Promise.all([
+    pool.query(`SELECT COUNT(*)::int AS total, SUM(CASE WHEN status NOT IN ('scrub_failed','denied') THEN 1 ELSE 0 END)::int AS clean,
+      SUM(total_charge)::numeric AS billed, SUM(CASE WHEN status='paid' THEN 1 ELSE 0 END)::int AS paid_ct,
+      SUM(CASE WHEN status='denied' THEN 1 ELSE 0 END)::int AS denied_ct FROM claims WHERE org_id = $1${cf}${df}`, params),
+    pool.query(`SELECT COALESCE(carc_code,'unknown') AS carc, COUNT(*)::int AS cnt, SUM(amount)::numeric AS amt
+      FROM denials WHERE org_id = $1${cf}${df} GROUP BY carc_code ORDER BY cnt DESC LIMIT 20`, params),
+    pool.query(`SELECT COUNT(*)::int AS total, SUM(amount_paid)::numeric AS collected,
+      SUM(CASE WHEN action='posted' THEN amount_paid ELSE 0 END)::numeric AS auto_posted
+      FROM payments WHERE org_id = $1 AND status != 'line_detail'${cf}${df}`, params),
+    pool.query(`SELECT
+      SUM(CASE WHEN NOW()-dos_from <= '30 days'::interval THEN total_charge ELSE 0 END)::numeric AS b0_30,
+      SUM(CASE WHEN NOW()-dos_from > '30 days'::interval AND NOW()-dos_from <= '60 days'::interval THEN total_charge ELSE 0 END)::numeric AS b31_60,
+      SUM(CASE WHEN NOW()-dos_from > '60 days'::interval AND NOW()-dos_from <= '90 days'::interval THEN total_charge ELSE 0 END)::numeric AS b61_90,
+      SUM(CASE WHEN NOW()-dos_from > '90 days'::interval AND NOW()-dos_from <= '120 days'::interval THEN total_charge ELSE 0 END)::numeric AS b91_120,
+      SUM(CASE WHEN NOW()-dos_from > '120 days'::interval THEN total_charge ELSE 0 END)::numeric AS b120_plus
+      FROM claims WHERE org_id = $1 AND status NOT IN ('paid','write_off','draft')${cf}`, params),
+    pool.query(`SELECT py.name, COUNT(c.id)::int AS total, SUM(CASE WHEN c.status='paid' THEN 1 ELSE 0 END)::int AS paid,
+      SUM(CASE WHEN c.status='denied' THEN 1 ELSE 0 END)::int AS denied, SUM(c.total_charge)::numeric AS billed
+      FROM claims c JOIN payers py ON c.payer_id = py.id WHERE c.org_id = $1${cf}${df}
+      GROUP BY py.name ORDER BY billed DESC LIMIT 15`, params),
+    pool.query(`SELECT COUNT(*)::int AS total, SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END)::int AS completed,
+      SUM(CASE WHEN coding_method IN ('ai_auto','ai_assisted') THEN 1 ELSE 0 END)::int AS ai_coded
+      FROM coding_queue WHERE org_id = $1${cf}${df}`, params),
+  ]);
+
+  const cs = claimStats.rows[0] || {};
+  const ps = payStats.rows[0] || {};
+  return {
+    overview: {
+      total_claims: cs.total || 0, total_billed: Number(cs.billed || 0), total_collected: Number(ps.collected || 0),
+      collection_rate: cs.billed > 0 ? ((Number(ps.collected || 0) / Number(cs.billed)) * 100).toFixed(1) : '0.0',
+      clean_claim_rate: cs.total > 0 ? ((cs.clean / cs.total) * 100).toFixed(1) : '0.0',
+      denial_rate: cs.total > 0 ? ((cs.denied_ct / cs.total) * 100).toFixed(1) : '0.0',
+    },
+    ar_aging: arAging.rows[0] || {},
+    denial_breakdown: denialBreak.rows,
+    payer_performance: payerPerf.rows,
+    coding: codingStats.rows[0] || {},
+  };
+}
+
 // ─── Presigned URL Generator ───────────────────────────────────────────────────
 async function generatePresignedUrl(folder, fileName, contentType) {
   const key = `${folder}/${Date.now()}-${fileName}`;
@@ -1525,7 +1733,8 @@ export const handler = async (event) => {
     // ════ Claims ════════════════════════════════════════════════════════════
     if (path.includes('/claims') && !path.includes('/lines') && !path.includes('/diagnoses') &&
         !path.includes('/scrub') && !path.includes('/generate-edi') && !path.includes('/generate-dha') &&
-        !path.includes('/transition')) {
+        !path.includes('/transition') && !path.includes('/underpayment') && !path.includes('/predict-denial') &&
+        !path.includes('/generate-276') && !path.includes('/parse-277') && !path.includes('/batch-submit')) {
       if (method === 'GET' && !pathParams.id) return respond(200, await enrichedClaims(effectiveOrgId, clientId));
       if (method === 'GET' && pathParams.id) {
         const c = await getById('claims', pathParams.id);
@@ -1721,6 +1930,33 @@ export const handler = async (event) => {
     // ════ Contract Underpayment Detection ══════════════════════════════════
     if (path.includes('/claims') && path.includes('/underpayment-check') && method === 'POST') {
       const result = await detectUnderpayments(pathParams.id, effectiveOrgId, userId);
+      return respond(200, result);
+    }
+
+    // ════ Denial Prediction (AI Feature #7) ════════════════════════════════
+    if (path.includes('/claims') && path.includes('/predict-denial') && method === 'POST') {
+      const result = await predictDenial(pathParams.id, effectiveOrgId, userId);
+      return respond(200, result);
+    }
+
+    // ════ 276 Claim Status Request ═════════════════════════════════════════
+    if (path.includes('/claims') && path.includes('/generate-276') && method === 'POST') {
+      const result = await generate276(pathParams.id, effectiveOrgId);
+      return respond(200, result);
+    }
+
+    // ════ 277 Claim Status Response Parser ═════════════════════════════════
+    if (path.includes('/claims') && path.includes('/parse-277') && method === 'POST') {
+      const { edi_content } = body;
+      if (!edi_content) return respond(400, { error: 'edi_content required' });
+      const result = await parse277Response(pathParams.id, edi_content, effectiveOrgId, userId);
+      return respond(200, result);
+    }
+
+    // ════ Analytics KPIs ═══════════════════════════════════════════════════
+    if (path.includes('/analytics') && method === 'GET') {
+      const dateRange = { from: qs.from || null, to: qs.to || null };
+      const result = await getAnalyticsKPIs(effectiveOrgId, clientId, dateRange);
       return respond(200, result);
     }
 
