@@ -28,6 +28,7 @@ type AiAction =
   | { action: 'appeal';    level: string; claimId: string; patient: string; payer: string; provider: string; dos: string; denialReason: string; carc: string; rarc: string }
   | { action: 'cdi_query'; patient: string; provider: string; dos: string; assessment: string; plan: string; lowCodes: string }
   | { action: 'auto_code'; patient: string; specialty: string; dos: string; assessment: string; plan: string; codeSystem: string }
+  | { action: 'soap_note'; transcript: string; patient: string; dob: string; gender: string; insurance: string; allergies: string; medications: string; visitType: string; specialty: string; codeSystem: string }
   | { action: 'denial_risk'; payer: string; cpt: string; icd: string; billed: number; pos: string; status: string }
 
 function buildPrompt(params: AiAction): { prompt: string; max_tokens: number } {
@@ -54,6 +55,37 @@ Assessment: ${params.assessment}
 Plan: ${params.plan}
 ${params.lowCodes ? `Codes needing clarification: ${params.lowCodes}` : 'Request diagnostic specificity.'}
 Be concise and professional. Ask what specific documentation would support more precise coding.`,
+      }
+    }
+    case 'soap_note': {
+      return {
+        max_tokens: 1500,
+        prompt: `You are an expert medical scribe AI. Convert the following clinical encounter transcript into a structured SOAP note AND generate medical codes.
+
+Patient: ${params.patient} | DOB: ${params.dob} | Gender: ${params.gender}
+Insurance: ${params.insurance} | Visit Type: ${params.visitType} | Specialty: ${params.specialty || 'General Medicine'}
+Allergies: ${params.allergies || 'NKDA'} | Current Medications: ${params.medications || 'None'}
+Code System: ${params.codeSystem}
+
+TRANSCRIPT:
+${params.transcript}
+
+Return ONLY valid JSON (no markdown, no backticks):
+{
+  "soap": {
+    "s": "Subjective section — chief complaint, HPI, patient-reported symptoms, relevant history",
+    "o": "Objective section — vitals, physical exam findings, labs, imaging mentioned",
+    "a": "Assessment — diagnosis list with clinical reasoning",
+    "p": "Plan — treatments, medications, referrals, follow-up, patient instructions"
+  },
+  "icd": [{"code": "X00.0", "desc": "Description", "confidence": 95, "is_primary": true}],
+  "cpt": [{"code": "99213", "desc": "Description", "confidence": 90, "modifiers": [], "em_level": "3", "reasoning": "MDM rationale"}],
+  "avs_summary": "2-3 sentence plain-English after-visit summary for the patient",
+  "em_level": "3",
+  "em_rationale": "Brief MDM rationale for E/M level selection"
+}
+
+Rules: ICD max 5 codes, CPT max 4 codes, confidence 0-100. Use ${params.codeSystem} coding system. Be specific and clinically accurate.`,
       }
     }
     case 'auto_code': {
