@@ -175,7 +175,11 @@ export function useAgentPrompt(agentName: 'chris' | 'cindy' | null) {
       if (!res.ok || data.error) {
         // Fallback: list all agents and find by name
         const listRes = await fetch('/api/retell?action=list-agents')
-        const agents: Record<string, unknown>[] = await listRes.json()
+        const listData = await listRes.json()
+        // Retell may return array directly or wrapped: { agents: [] } or { data: [] }
+        const agents: Record<string, unknown>[] = Array.isArray(listData)
+          ? listData
+          : (listData.agents ?? listData.data ?? Object.values(listData))
         const match = agents.find((a: Record<string, unknown>) => {
           const name = String(a.agent_name ?? '').toLowerCase()
           return name.includes(agentName.toLowerCase())
