@@ -184,6 +184,60 @@ export default function IntegrationsPage() {
 
       {configFor&&<ConfigModal integration={configFor} onClose={()=>setConfigFor(null)}/>}
       {logsFor&&<LogDrawer integration={logsFor} onClose={()=>setLogsFor(null)}/>}
+
+      {/* ── Clearinghouse Status ── */}
+      <div className="card p-4 mt-4">
+        <h3 className="text-sm font-semibold mb-3">Clearinghouse Status — Availity</h3>
+        <div className="grid grid-cols-4 gap-3 mb-4 text-center">
+          {[{label:'Claims Sent Today',value:'234',color:'text-brand'},{label:'Accepted',value:'228',color:'text-emerald-500'},{label:'Rejected',value:'6',color:'text-red-500'},{label:'Acceptance Rate',value:'97.4%',color:'text-emerald-500'}].map(k=>
+            <div key={k.label} className="bg-surface-elevated rounded-lg p-3">
+              <p className={`text-lg font-bold ${k.color}`}>{k.value}</p>
+              <p className="text-[10px] text-content-tertiary">{k.label}</p>
+            </div>
+          )}
+        </div>
+        <div className="space-y-2">
+          {[{type:'837P (Professional)',sent:198,accepted:194,rejected:4,last:'2 min ago'},
+            {type:'837I (Institutional)',sent:36,accepted:34,rejected:2,last:'15 min ago'},
+            {type:'270/271 (Eligibility)',sent:890,accepted:885,rejected:5,last:'1 min ago'},
+            {type:'276/277 (Claim Status)',sent:124,accepted:124,rejected:0,last:'5 min ago'}
+          ].map(edi=>(
+            <div key={edi.type} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
+              <span className="text-xs font-medium w-48">{edi.type}</span>
+              <div className="flex items-center gap-4 text-[10px]">
+                <span className="text-content-secondary">{edi.sent} sent</span>
+                <span className="text-emerald-500">{edi.accepted} accepted</span>
+                {edi.rejected > 0 && <span className="text-red-500">{edi.rejected} rejected</span>}
+                <span className="text-content-tertiary">{edi.last}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Payer Enrollment Status ── */}
+      <div className="card p-4 mt-4">
+        <h3 className="text-sm font-semibold mb-3">Payer EDI Enrollment</h3>
+        <div className="space-y-2">
+          {[{payer:'Aetna',status:'enrolled',types:['837P','835','270/271','276/277'],since:'2024-06-15'},
+            {payer:'BCBS',status:'enrolled',types:['837P','835','270/271'],since:'2024-07-01'},
+            {payer:'United Healthcare',status:'enrolled',types:['837P','835','270/271','276/277','278'],since:'2024-05-20'},
+            {payer:'Cigna',status:'pending',types:['837P','835'],since:'2026-02-28'},
+            {payer:'Medicare (CMS)',status:'enrolled',types:['837P','837I','835','270/271','276/277'],since:'2024-04-01'}
+          ].map(p=>(
+            <div key={p.payer} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-medium w-36">{p.payer}</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full ${p.status==='enrolled'?'bg-emerald-500/10 text-emerald-500':'bg-amber-500/10 text-amber-500'}`}>{p.status}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {p.types.map(t=><span key={t} className="text-[9px] bg-surface px-1.5 py-0.5 rounded text-content-tertiary">{t}</span>)}
+                <span className="text-[10px] text-content-tertiary ml-2">Since {p.since}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </ModuleShell>
   )
 }
