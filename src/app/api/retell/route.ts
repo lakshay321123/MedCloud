@@ -129,7 +129,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: `RETELL_LLM_${agentName?.toUpperCase()} not set in Vercel env vars` }, { status: 400 })
       }
 
-      const data = await retellFetch(`/v2/get-retell-llm/${llmId}`)
+      const data = await retellFetch(`/v2/retell-llm/${llmId}`)
       return NextResponse.json({ general_prompt: data.general_prompt ?? '', llm_id: llmId, ...data })
     }
 
@@ -217,7 +217,7 @@ export async function POST(req: NextRequest) {
       const { agent_name, general_prompt } = body
       const llmId = RETELL_LLMS[agent_name as 'chris' | 'cindy']
       if (!llmId) throw new Error(`RETELL_LLM_${agent_name?.toUpperCase()} not set in Vercel env vars`)
-      const data = await retellFetch(`/v2/update-retell-llm/${llmId}`, {
+      const data = await retellFetch(`/v2/retell-llm/${llmId}`, {
         method: 'PATCH',
         body: JSON.stringify({ general_prompt }),
       })
