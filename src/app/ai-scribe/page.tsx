@@ -335,14 +335,22 @@ function ProviderView() {
   if (uiState === 'note' && selectedVisit) {
     const allCodes = aiResult
       ? [
-          ...aiResult.icd.map(c => ({ ...c, type: 'icd' as const })),
-          ...aiResult.cpt.map(c => ({ ...c, type: 'cpt' as const })),
+          ...aiResult.icd.map(c => ({
+            code: c.code, desc: c.desc, confidence: c.confidence,
+            type: 'icd' as const, is_primary: c.is_primary ?? false,
+            modifiers: [] as string[], reasoning: '',
+          })),
+          ...aiResult.cpt.map(c => ({
+            code: c.code, desc: c.desc, confidence: c.confidence,
+            type: 'cpt' as const, is_primary: false,
+            modifiers: c.modifiers, reasoning: c.reasoning ?? '',
+          })),
         ]
       : selectedVisit.suggestedCodes.map(c => ({
-          code: (c as any).icd || (c as any).cpt || '',
+          code: c.icd || c.cpt || '',
           desc: c.description, confidence: c.confidence,
-          type: (c as any).icd ? 'icd' as const : 'cpt' as const,
-          is_primary: false, modifiers: (c as any).modifiers || [], reasoning: '',
+          type: c.icd ? 'icd' as const : 'cpt' as const,
+          is_primary: false, modifiers: c.modifiers || [], reasoning: '',
         }))
 
     return (
@@ -395,11 +403,11 @@ function ProviderView() {
                           {code.type === 'cpt' ? `CPT ${code.code}` : `ICD ${code.code}`}
                         </span>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${code.confidence >= 90 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : code.confidence >= 75 ? 'bg-amber-500/10 text-amber-600' : 'bg-gray-500/10 text-gray-400'}`}>{code.confidence}%</span>
-                        {(code as any).is_primary && <span className="text-[10px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-full">Primary</span>}
-                        {(code as any).modifiers?.map((m: string) => <span key={m} className="text-[10px] bg-purple-500/10 text-purple-500 px-1.5 py-0.5 rounded">-{m}</span>)}
+                        {code.is_primary && <span className="text-[10px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-full">Primary</span>}
+                        {code.modifiers?.map((m: string) => <span key={m} className="text-[10px] bg-purple-500/10 text-purple-500 px-1.5 py-0.5 rounded">-{m}</span>)}
                       </div>
                       <p className="text-xs">{code.desc}</p>
-                      {(code as any).reasoning && <p className="text-[10px] text-content-tertiary mt-0.5">↳ {(code as any).reasoning}</p>}
+                      {code.reasoning && <p className="text-[10px] text-content-tertiary mt-0.5">↳ {code.reasoning}</p>}
                     </div>
                     <div className="flex gap-1 shrink-0">
                       <button onClick={() => setKeptCodes(p => ({ ...p, [code.code]: true }))} className={`text-[10px] px-2 py-1 rounded border transition-colors ${keptCodes[code.code] !== false ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'border-separator text-content-secondary'}`}>Keep</button>
@@ -576,8 +584,8 @@ function CoderView() {
             </div>
             <div className="flex flex-wrap gap-2">
               {selectedVisit.suggestedCodes.map((c, i) => (
-                <span key={i} className={`text-xs px-2.5 py-1 rounded-full border ${(c as any).cpt ? 'bg-brand/10 text-brand border-brand/20' : 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20'}`}>
-                  {(c as any).cpt ? `CPT ${(c as any).cpt}` : `ICD ${(c as any).icd}`} · {c.confidence}%
+                <span key={i} className={`text-xs px-2.5 py-1 rounded-full border ${c.cpt ? 'bg-brand/10 text-brand border-brand/20' : 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20'}`}>
+                  {c.cpt ? `CPT ${c.cpt}` : `ICD ${c.icd}`} · {c.confidence}%
                 </span>
               ))}
             </div>
