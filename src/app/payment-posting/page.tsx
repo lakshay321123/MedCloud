@@ -11,6 +11,25 @@ import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, Sticky
 import { getSLAStatus } from '@/lib/utils/time'
 import { useERAFiles, useAutoPostPayments, useParse835, useReconcilePayments, useBankDeposits, useReconcileBankDeposit, usePayments, useUpdatePayment, useCreateBankDeposit } from '@/lib/hooks'
 
+interface LineItem {
+  id: string
+  eraId: string
+  claimId: string
+  patientName: string
+  cpt: string
+  cptDesc: string
+  dos: string
+  billed: number
+  allowed: number
+  paid: number
+  denied: number
+  patBalance: number
+  adjCode?: string
+  adjReason?: string
+  action: string
+  notes: string
+}
+
 export default function PaymentPostingPage() {
   const { selectedClient, country } = useApp()
   const { t } = useT()
@@ -32,7 +51,7 @@ export default function PaymentPostingPage() {
     receivedAt: e.created_at || '',
   })) || []
   const [selectedEra, setSelectedEra] = useState<string | null>(null)
-  const [lineItems, setLineItems] = useState<{id:string;eraId:string;claimId:string;patient:string;billed:number;allowed:number;paid:number;denied:number;patBalance:number;action:string;note:string}[]>([])
+  const [lineItems, setLineItems] = useState<LineItem[]>([])
   const [editingCell, setEditingCell] = useState<{ rowId: string; field: string } | null>(null)
   const [editValue, setEditValue] = useState<string>('')
   const [showUploadModal, setShowUploadModal] = useState(false)
