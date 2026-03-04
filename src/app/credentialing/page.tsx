@@ -45,9 +45,8 @@ export default function CredentialingPage() {
         npi: '',
       }))
     : null
-  // Fall back to demo if API returned rows but none have client info (region filter would zero them out)
-  const hasClientInfo = apiRows ? apiRows.some(r => r.client !== '') : false
-  const baseProviders = (apiRows && hasClientInfo) ? apiRows : providers
+  // Use API data when available; fall back to seed providers if DB is empty
+  const baseProviders = (apiRows && apiRows.length > 0) ? apiRows : providers
 
   const filteredProviders = baseProviders.filter(p => {
     if (selectedClient) return p.client === selectedClient.name

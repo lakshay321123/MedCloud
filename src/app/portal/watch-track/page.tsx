@@ -2,7 +2,6 @@
 import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useClaims } from '@/lib/hooks'
-import { demoClaims } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -24,7 +23,7 @@ export default function WatchTrackPage() {
     cptCodes: [], icdCodes: [], clientId: c.client_id || '',
   }))
 
-  const allClaims = apiClaims.length ? apiClaims : demoClaims
+  const allClaims = apiClaims
   const myClaims = allClaims.filter(c => {
     if (selectedClient) return c.clientId === selectedClient.id
     if (currentUser.role === 'client' || currentUser.role === 'provider')

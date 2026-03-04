@@ -42,7 +42,7 @@ export default function ContractsPage() {
   const { toast } = useToast()
   const { t } = useT()
   const [search, setSearch] = useState('')
-  const [selected, setSelected] = useState<DemoContract | null>(demoContracts[0] ?? null)
+  const [selected, setSelected] = useState<DemoContract | null>(null)
   const [tab, setTab] = useState<'fee' | 'underpayments' | 'terms' | 'extract'>('fee')
   const [editingRow, setEditingRow] = useState<string | null>(null)
   const [addingCpt, setAddingCpt] = useState(false)

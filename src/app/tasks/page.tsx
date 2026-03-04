@@ -6,7 +6,7 @@ import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
 import { ListChecks, X, Plus } from 'lucide-react'
-import { useTasks, useUpdateTask } from '@/lib/hooks'
+import { useTasks, useUpdateTask, useCreateTask } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { useApp } from '@/lib/context'
 import { UAE_CLIENT_NAMES, US_CLIENT_NAMES } from '@/lib/utils/region'
@@ -122,13 +122,14 @@ export default function TasksPage() {
   const [selected, setSelected] = useState<Task | null>(null)
   const [showCreate, setShowCreate] = useState(false)
 
-  const { data: apiTaskResult } = useTasks({ limit: 50 })
+  const { data: apiTaskResult, refetch: refetchTasks } = useTasks({ limit: 50 })
+  const { mutate: createTaskAPI } = useCreateTask()
 
   const apiTasks: Task[] = apiTaskResult?.data?.map(t => ({
     id: t.id,
     type: t.task_type || 'Task',
     entity: t.title || t.description || '',
-    client: '',
+    client: t.client_name || '',
     priority: (t.priority as Task['priority']) || 'medium',
     status: (t.status as Task['status']) || 'open',
     assigned: t.assigned_to && t.assigned_to.length > 20 ? 'Staff' : (t.assigned_to || 'Unassigned'),
@@ -139,13 +140,35 @@ export default function TasksPage() {
   const [taskList, setTaskList] = useState<Task[]>(initialTasks as Task[])
   const [pendingStatus, setPendingStatus] = useState<Task['status'] | null>(null)
 
+  // Sync API tasks into local state when data arrives
+  useEffect(() => {
+    if (apiTasks.length > 0) setTaskList(apiTasks)
+  }, [apiTaskResult])
+
+  async function handleCreateTask(newTask: Task) {
+    setTaskList(prev => [newTask, ...prev]) // optimistic
+    try {
+      await createTaskAPI({
+        task_type: newTask.type,
+        title: newTask.entity,
+        priority: newTask.priority,
+        status: 'open',
+        assigned_to: newTask.assigned !== 'Unassigned' ? newTask.assigned : undefined,
+        due_date: newTask.due,
+      })
+      await refetchTasks()
+    } catch {
+      // Keep optimistic entry — will sync on next load
+    }
+  }
+
   useEffect(() => {
     setPendingStatus(null)
   }, [selected])
 
   const slaColor = (s: string) => s === 'green' ? 'bg-emerald-500' : s === 'yellow' ? 'bg-amber-500' : 'bg-red-500'
 
-  const rawTasks = apiTasks
+  const rawTasks = taskList
   const displayTasks = rawTasks.filter(t => {
     if (selectedClient) return t.client === selectedClient.name
     if (country === 'uae') return UAE_CLIENT_NAMES.includes(t.client as typeof UAE_CLIENT_NAMES[number]) || !t.client
@@ -268,7 +291,7 @@ export default function TasksPage() {
           </div>
         </>
       )}
-      {showCreate && <CreateTaskModal onClose={() => setShowCreate(false)} onSave={(t) => setTaskList(prev => [t, ...prev])}/>}
+      {showCreate && <CreateTaskModal onClose={() => setShowCreate(false)} onSave={handleCreateTask}/>}
     </ModuleShell>
   )
 }

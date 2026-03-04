@@ -2,7 +2,6 @@
 import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
-import { demoPatients, demoSubmissions } from '@/lib/demo-data'
 import { useDocuments, usePatients, useRequestUploadUrl, useCreateDocument } from '@/lib/hooks'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -33,7 +32,7 @@ export default function ScanSubmitPage() {
   const clientId = isClinic
     ? currentUser.organization_id
     : selectedClient?.id ?? (country === 'uae' ? 'org-101' : 'org-102')
-  const myPatients = (apiPatients.length ? apiPatients : demoPatients).filter(p => p.clientId === clientId)
+  const myPatients = apiPatients.filter(p => p.clientId === clientId)
 
   const [step, setStep] = useState<Step>(1)
   const [patientId, setPatientId] = useState('')
@@ -70,7 +69,7 @@ export default function ScanSubmitPage() {
   }
 
   // Submission history
-  const history = (apiSubmissions.length ? apiSubmissions : demoSubmissions).filter(s => s.clientId === clientId)
+  const history = apiSubmissions.filter(s => s.clientId === clientId)
 
   if (submitted) return (
     <ModuleShell title={t("scan","title")} subtitle="Upload documents to Cosentus for processing">
@@ -285,7 +284,7 @@ export default function ScanSubmitPage() {
   )
 }
 
-function HistorySection({ history }: { history: ReturnType<typeof demoSubmissions['filter']> }) {
+function HistorySection({ history }: { history: any[] }) {
   const statusLabels: Record<string,string> = {
     received:'Received',in_review:'In Review',coded:'Coded',claim_submitted:'Claim Submitted',paid:'Paid ✓'
   }
