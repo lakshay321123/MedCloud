@@ -361,7 +361,7 @@ function CampaignLauncherTab() {
     if (!lines.length) { toast.error('Add at least one phone number'); return }
     const recipients = lines.map(l => ({ to_number: l.split(',')[0].trim() }))
     try {
-      const r = await launchBatch({ agent_name: agentKey, batch_name: name || type, recipients })
+      await launchBatch({ agent_name: agentKey, batch_name: name || type, recipients })
       toast.success(`Batch launched — ${recipients.length} calls queued`)
       setCsvText('')
     } catch (e) {
@@ -619,12 +619,117 @@ function ScriptBuilderTab() {
   )
 }
 
+// ─── Tab 5: Call Analytics ─────────────────────────────────────────────────────
+function CallAnalyticsTab() {
+  const { calls, fallback } = useRetellCalls()
+
+  const total = calls.length
+  const successful = calls.filter(c => c.call_analysis?.call_successful).length
+  const failed = calls.filter(c => c.call_analysis?.call_successful === false).length
+  const avgDurationMs = total > 0 ? calls.reduce((s, c) => s + (c.duration_ms ?? 0), 0) / total : 0
+
+  // Group by campaign type
+  const byType: Record<string, { total: number; success: number }> = {}
+  calls.forEach(c => {
+    const t = c.retell_llm_dynamic_variables?.campaign_type || 'Unknown'
+    if (!byType[t]) byType[t] = { total: 0, success: 0 }
+    byType[t].total++
+    if (c.call_analysis?.call_successful) byType[t].success++
+  })
+
+  // Group by payer
+  const byPayer: Record<string, { total: number; success: number; totalDuration: number }> = {}
+  calls.forEach(c => {
+    const p = c.retell_llm_dynamic_variables?.payer || 'Unknown'
+    if (!byPayer[p]) byPayer[p] = { total: 0, success: 0, totalDuration: 0 }
+    byPayer[p].total++
+    byPayer[p].totalDuration += c.duration_ms ?? 0
+    if (c.call_analysis?.call_successful) byPayer[p].success++
+  })
+
+  // Sentiment breakdown
+  const sentiments = { Positive: 0, Negative: 0, Neutral: 0, Unknown: 0 }
+  calls.forEach(c => {
+    const s = c.call_analysis?.user_sentiment ?? 'Unknown'
+    sentiments[s as keyof typeof sentiments] = (sentiments[s as keyof typeof sentiments] ?? 0) + 1
+  })
+
+  return (
+    <div className="space-y-4">
+      {fallback && (
+        <div className="px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+          <AlertTriangle size={13} className="shrink-0" />
+          Analytics from demo data — connect Retell for real metrics
+        </div>
+      )}
+
+      {/* KPI Row */}
+      <div className="grid grid-cols-4 gap-4">
+        <KPICard label="Total Calls" value={total} icon={<Phone size={20} />} />
+        <KPICard label="Success Rate" value={total > 0 ? `${Math.round((successful / total) * 100)}%` : '—'} icon={<CheckCircle size={20} />} />
+        <KPICard label="Avg Duration" value={formatDuration(avgDurationMs)} icon={<Clock size={20} />} />
+        <KPICard label="Failed / Voicemail" value={failed} icon={<XCircle size={20} />} />
+      </div>
+
+      {/* Payer Performance */}
+      <div className="card p-4">
+        <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Performance by Payer</h4>
+        <div className="space-y-2">
+          {Object.entries(byPayer).sort((a, b) => b[1].total - a[1].total).map(([payer, stats]) => (
+            <div key={payer} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
+              <span className="text-xs font-medium w-28">{payer}</span>
+              <div className="flex-1 mx-4 h-2 bg-surface rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${stats.total > 0 ? (stats.success / stats.total * 100).toFixed(0) : 0}%` }} />
+              </div>
+              <span className="text-[10px] text-content-secondary w-20 text-right">{stats.success}/{stats.total} resolved</span>
+              <span className="text-[10px] text-content-tertiary w-24 text-right">Avg {formatDuration(stats.total > 0 ? stats.totalDuration / stats.total : 0)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Campaign Type Breakdown */}
+      <div className="card p-4">
+        <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">By Campaign Type</h4>
+        <div className="grid grid-cols-3 gap-3">
+          {Object.entries(byType).map(([type, stats]) => (
+            <div key={type} className="bg-surface-elevated rounded-lg p-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium">{type}</span>
+                <span className="text-xs font-bold">{stats.total}</span>
+              </div>
+              <div className="w-full h-1.5 bg-surface rounded-full overflow-hidden">
+                <div className="h-full bg-brand rounded-full" style={{ width: `${stats.total > 0 ? (stats.success / stats.total * 100) : 0}%` }} />
+              </div>
+              <p className="text-[10px] text-content-tertiary mt-1">{stats.success} resolved ({stats.total > 0 ? Math.round(stats.success / stats.total * 100) : 0}%)</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Sentiment Breakdown */}
+      <div className="card p-4">
+        <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Caller Sentiment</h4>
+        <div className="grid grid-cols-4 gap-3 text-center">
+          {([['Positive', 'text-emerald-500'], ['Neutral', 'text-content-secondary'], ['Negative', 'text-red-500'], ['Unknown', 'text-content-tertiary']] as const).map(([s, color]) => (
+            <div key={s} className="bg-surface-elevated rounded-lg p-3">
+              <p className={`text-xl font-bold ${color}`}>{sentiments[s]}</p>
+              <p className="text-[10px] text-content-tertiary mt-1">{s}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'active', label: 'Live Calls', icon: PhoneCall },
   { id: 'log', label: 'Call Log', icon: PhoneMissed },
   { id: 'campaign', label: 'Campaign Launcher', icon: BarChart2 },
   { id: 'scripts', label: 'Script Builder', icon: Settings2 },
+  { id: 'analytics', label: 'Analytics', icon: Activity },
 ] as const
 
 type TabId = typeof TABS[number]['id']
@@ -653,6 +758,7 @@ export default function VoiceAIPage() {
       {tab === 'log' && <CallLogTab />}
       {tab === 'campaign' && <CampaignLauncherTab />}
       {tab === 'scripts' && <ScriptBuilderTab />}
+      {tab === 'analytics' && <CallAnalyticsTab />}
     </ModuleShell>
   )
 }
