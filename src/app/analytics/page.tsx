@@ -5,6 +5,7 @@ import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { demoClaims, demoClients } from '@/lib/demo-data'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
+import { useAnalyticsKPIs } from '@/lib/hooks'
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine
@@ -119,6 +120,9 @@ export default function AnalyticsPage() {
   const [tab, setTab] = useState<'financial' | 'operational' | 'ai' | 'payer'>('financial')
   const [dateRange, setDateRange] = useState('last30')
 
+  // ─── Live API data ──────────────────────────────────────────────────────
+  const { data: api } = useAnalyticsKPIs()
+
   const claims = useMemo(() =>
     selectedClient
       ? demoClaims.filter(c => c.clientId === selectedClient.id)
@@ -130,26 +134,26 @@ export default function AnalyticsPage() {
     [selectedClient, country]
   )
 
-  // ─── Financial calculations ───────────────────────────────────────────────
-  const revenueCollected = useMemo(() =>
-    claims.filter(c => ['paid','partial_pay'].includes(c.status)).reduce((s, c) => s + c.paid, 0),
-    [claims]
-  )
-  const totalBilled = useMemo(() => claims.reduce((s, c) => s + c.billed, 0), [claims])
+  // ─── Financial calculations (API overrides demo) ──────────────────────────
+  const revenueCollected = api?.overview?.total_collected ?? 
+    claims.filter(c => ['paid','partial_pay'].includes(c.status)).reduce((s, c) => s + c.paid, 0)
+  const totalBilled = api?.overview?.total_billed ??
+    claims.reduce((s, c) => s + c.billed, 0)
   const totalContractualAdj = useMemo(() =>
     claims.filter(c => c.allowed > 0).reduce((s, c) => s + (c.billed - c.allowed), 0),
     [claims]
   )
-  const netCollectionRate = useMemo(() => {
-    const denom = totalBilled - totalContractualAdj
-    return denom > 0 ? ((revenueCollected / denom) * 100).toFixed(1) : '—'
-  }, [revenueCollected, totalBilled, totalContractualAdj])
+  const netCollectionRate = api?.overview?.collection_rate ??
+    (totalBilled - totalContractualAdj > 0
+      ? ((revenueCollected / (totalBilled - totalContractualAdj)) * 100).toFixed(1)
+      : '—')
 
   const deniedClaims = claims.filter(c => ['denied','appealed'].includes(c.status))
   const submittedClaims = claims.filter(c => c.status !== 'draft')
-  const denialRate = submittedClaims.length > 0
-    ? ((deniedClaims.length / submittedClaims.length) * 100).toFixed(1)
-    : '0.0'
+  const denialRate = api?.overview?.denial_rate ??
+    (submittedClaims.length > 0
+      ? ((deniedClaims.length / submittedClaims.length) * 100).toFixed(1)
+      : '0.0')
   const denialAtRisk = deniedClaims.reduce((s, c) => s + c.billed, 0)
 
   const paidClaims = claims.filter(c => c.status === 'paid' && c.submittedDate && c.paymentDate)
@@ -163,6 +167,7 @@ export default function AnalyticsPage() {
   const daysInAR = totalARBalance > 0
     ? (totalARBalance / (totalBilled / 90)).toFixed(1)
     : '28.5'
+  const cleanClaimRate = api?.overview?.clean_claim_rate ?? '91.3'
 
   // ─── Payer mix pie data ───────────────────────────────────────────────────
   const payerMix = useMemo(() => {
@@ -185,6 +190,20 @@ export default function AnalyticsPage() {
 
   // ─── Payer performance table ──────────────────────────────────────────────
   const payerPerf = useMemo(() => {
+    // Use API payer data if available
+    if (api?.payer_performance?.length) {
+      return api.payer_performance.map(p => ({
+        payer: p.name,
+        count: p.total,
+        billed: p.billed,
+        paid: p.paid,
+        denialRate: p.total > 0 ? ((p.denied / p.total) * 100).toFixed(0) : '0',
+        avgDays: '—',
+        phi: payerHassle[p.name]?.score || 40,
+        phiColor: payerHassle[p.name]?.color || 'text-amber-400',
+      }))
+    }
+    // Fallback to demo data
     const payers: Record<string, { billed: number; paid: number; denied: number; days: number[]; count: number }> = {}
     claims.forEach(c => {
       if (!payers[c.payer]) payers[c.payer] = { billed: 0, paid: 0, denied: 0, days: [], count: 0 }
@@ -207,7 +226,7 @@ export default function AnalyticsPage() {
       phi: payerHassle[payer]?.score || 40,
       phiColor: payerHassle[payer]?.color || 'text-amber-400',
     }))
-  }, [claims])
+  }, [claims, api])
 
   // ─── Denial heatmap data ─────────────────────────────────────────────────
   const heatData = useMemo(() => {
@@ -360,7 +379,7 @@ export default function AnalyticsPage() {
       {tab === 'operational' && (
         <div className="space-y-6">
           <div className="grid grid-cols-5 gap-4">
-            <KPICard label="Clean Claim Rate" value="91.3%" icon={<CheckCircle2 size={20}/>}
+            <KPICard label="Clean Claim Rate" value={`${cleanClaimRate}%`} icon={<CheckCircle2 size={20}/>}
               sub={<span><KPITooltip formula="Claims that passed scrubbing without errors ÷ total claims × 100. Target: > 95%" />of claims pass scrub</span> as unknown as string} />
             <KPICard label="First Pass Rate" value="87.6%" icon={<Activity size={20}/>}
               sub={<span><KPITooltip formula="Claims paid on first submission ÷ total submitted × 100" />paid first try</span> as unknown as string} />

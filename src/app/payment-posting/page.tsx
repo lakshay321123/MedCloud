@@ -8,12 +8,14 @@ import { demoERAFiles, demoERALineItems, demoUnmatchedPayments } from '@/lib/dem
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
-import { useERAFiles } from '@/lib/hooks'
+import { useERAFiles, usePayments, useAutoPostPayments } from '@/lib/hooks'
 
 export default function PaymentPostingPage() {
   const { selectedClient } = useApp()
   const { toast } = useToast()
   const { data: apiERAResult } = useERAFiles({ limit: 50 })
+  const { data: apiPaymentsResult } = usePayments({ limit: 100 })
+  const autoPostMutation = useAutoPostPayments()
   const demoEras = demoERAFiles.filter(era => !selectedClient || era.clientId === selectedClient.id)
   // Map API ERA files to DemoERAFile shape for display compatibility
   const eras = apiERAResult?.data?.map(e => ({
@@ -64,12 +66,12 @@ export default function PaymentPostingPage() {
       <ModuleShell title="Payment Posting" subtitle="Process ERAs and post payments">
         <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
           <AlertTriangle size={13} className='shrink-0' />
-          Demo data — live data connects in Sprint 2
+          Live API connected — demo fallback for missing data
         </div>
         <div className="grid grid-cols-4 gap-4 mb-4">
           <KPICard label="ERAs Pending" value={eras.filter(e => e.status !== 'posted').length} icon={<Receipt size={20} />} />
-          <KPICard label="Posted Today" value="89" icon={<CheckCircle2 size={20} />} />
-          <KPICard label="Auto-Post Rate" value="76%" icon={<Send size={20} />} />
+          <KPICard label="Posted Today" value={apiPaymentsResult?.data?.filter(p => p.created_at?.startsWith(new Date().toISOString().slice(0,10))).length ?? 89} icon={<CheckCircle2 size={20} />} />
+          <KPICard label="Auto-Post Rate" value={apiPaymentsResult?.data ? `${Math.round((apiPaymentsResult.data.filter(p => p.status === 'auto_posted').length / Math.max(1, apiPaymentsResult.data.length)) * 100)}%` : '76%'} icon={<Send size={20} />} />
           <KPICard label="Unmatched" value={demoUnmatchedPayments.length} icon={<AlertTriangle size={20} />} />
         </div>
 
@@ -215,7 +217,7 @@ export default function PaymentPostingPage() {
     <ModuleShell title="Payment Posting" subtitle="Process ERAs and post payments">
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
-        Demo data — live data connects in Sprint 2
+        Live API connected — demo fallback for missing data
       </div>
       <button onClick={() => setSelectedEra(null)} className="inline-flex items-center gap-2 text-[13px] text-content-secondary hover:text-content-primary mb-3"><ArrowLeft size={14} />Back to ERA Files</button>
       <div className="card p-3 mb-3 text-[13px] text-content-secondary">{era?.file} · {era?.payer} · {era?.client} · Received: <span className="font-mono">{era?.receivedAt?.slice(0, 10)}</span></div>
@@ -298,6 +300,8 @@ export default function PaymentPostingPage() {
         <button onClick={() => {
           const approved = eraLines.filter(l => l.action === 'post')
           if (approved.length === 0) { toast.warning('No lines marked for posting'); return }
+          // Call API auto-post if we have an ERA ID
+          if (selectedEra) autoPostMutation.mutate({ era_file_id: selectedEra })
           toast.success(`${approved.length} line(s) posted successfully`)
           setLineItems(prev => prev.map(row => row.eraId === selectedEra && row.action === 'post' ? { ...row, action: 'posted' } : row))
         }} className="bg-brand text-white rounded-btn px-4 py-2 text-[13px]">Post All Approved</button>

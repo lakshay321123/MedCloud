@@ -8,6 +8,7 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import { TrendingUp, X, Phone, Bot, User, PhoneCall, Plus, AlertTriangle, FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { tfDaysRemaining } from '@/lib/utils/time'
 import { useRouter } from 'next/navigation'
+import { useARCallLog, useLogARCall, useARFollowUps } from '@/lib/hooks'
 
 
 
@@ -557,6 +558,11 @@ export default function ARManagementPage() {
   const [selected, setSelected] = useState<ARAccount | null>(null)
   const [callMode, setCallMode] = useState<'accounts' | 'inbound'>('accounts')
 
+  // ─── Live API data ──────────────────────────────────────────────────────
+  const { data: apiCallLog } = useARCallLog({ limit: 100 })
+  const { data: apiFollowUps } = useARFollowUps()
+  const logARCallMutation = useLogARCall()
+
   const filtered = accounts.filter(a => !selectedClient || a.client.includes(selectedClient.name.split(' ')[0]))
 
   function updateAccount(id: string, update: Partial<ARAccount>) {
@@ -575,6 +581,15 @@ export default function ARManagementPage() {
     if (followupDate) updates.nextFollowup = followupDate
     if (promisedDate) updates.paymentPromisedDate = promisedDate
     updateAccount(accountId, updates)
+    // Also persist to backend
+    logARCallMutation.mutate({
+      claim_id: accountId,
+      call_type: entry.type === 'ai' ? 'ai_voice' : 'manual',
+      outcome: entry.status,
+      reference_number: entry.ref,
+      notes: `${entry.note}${entry.rep ? ` (Rep: ${entry.rep})` : ''}${promisedDate ? ` Payment promised: ${promisedDate}` : ''}`,
+      follow_up_date: followupDate,
+    })
   }
 
   const totalAR = accounts.reduce((s, a) => s + a.balance, 0)

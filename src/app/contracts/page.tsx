@@ -6,6 +6,7 @@ import { useToast } from '@/components/shared/Toast'
 import { demoContracts } from '@/lib/demo-data'
 import type { DemoContract } from '@/lib/demo-data'
 import { Scale, Search, AlertTriangle, Edit2, Plus } from 'lucide-react'
+import { useFeeSchedules } from '@/lib/hooks'
 
 const statusStyles: Record<DemoContract['status'], { label: string; className: string }> = {
   active: { label: 'Active', className: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' },
@@ -41,6 +42,18 @@ export default function ContractsPage() {
   const [editingRow, setEditingRow] = useState<string | null>(null)
   const [addingCpt, setAddingCpt] = useState(false)
   const [newCpt, setNewCpt] = useState({ cpt: '', description: '', contractedRate: '' })
+
+  // ─── Live API fee schedules ─────────────────────────────────────────────
+  const { data: apiFeeResult } = useFeeSchedules(
+    selected ? { payer_id: selected.payerId } : { limit: 100 }
+  )
+  const apiFeeRows = (apiFeeResult?.data || []).map(f => ({
+    cpt: f.cpt_code,
+    description: f.modifier ? `${f.cpt_code} (${f.modifier})` : f.cpt_code,
+    contractedRate: Number(f.contracted_rate),
+    medicareRate: undefined as number | undefined,
+    variance: 0,
+  }))
 
   const filtered = demoContracts.filter(c =>
     !search || c.payer.toLowerCase().includes(search.toLowerCase()) || c.client.toLowerCase().includes(search.toLowerCase())
@@ -142,7 +155,11 @@ export default function ContractsPage() {
                         ))}
                       </tr></thead>
                       <tbody>
-                        {selected.feeSchedule.map(row => (
+                        {(apiFeeRows.length > 0 ? apiFeeRows.map(r => ({
+                          cpt: r.cpt, description: r.description, contractedRate: r.contractedRate,
+                          medicarePercent: r.medicareRate ? Math.round(r.contractedRate / r.medicareRate * 100) : 0,
+                          effectiveDate: '2026-01-01',
+                        })) : selected.feeSchedule).map(row => (
                           <tr key={row.cpt} className="border-b border-separator last:border-0 group hover:bg-surface-elevated">
                             <td className="py-2.5 pr-3 font-mono font-medium text-content-primary">{row.cpt}</td>
                             <td className="py-2.5 pr-3 text-content-secondary">{row.description}</td>

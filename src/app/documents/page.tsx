@@ -4,6 +4,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
 import { demoDocs, demoFaxes, DemoDocRecord } from '@/lib/demo-data'
+import { useDocuments } from '@/lib/hooks'
 import {
   Search, Upload, X, Download, AlertTriangle, FileText, CreditCard,
   DollarSign, XCircle, Stethoscope, File, Eye, Send
@@ -137,10 +138,27 @@ function AllDocsTab() {
   const [statusFilter, setStatusFilter] = useState('')
   const [selectedDoc, setSelectedDoc] = useState<DemoDocRecord | null>(null)
 
+  // ─── Live API data ──────────────────────────────────────────────────────
+  const { data: apiDocsRaw } = useDocuments()
+  const apiDocs: DemoDocRecord[] = (Array.isArray(apiDocsRaw) ? apiDocsRaw : (apiDocsRaw as any)?.data || []).map((d: any) => ({
+    id: d.id,
+    name: d.file_name,
+    type: (d.document_type || 'Clinical Note') as DemoDocRecord['type'],
+    client: '',
+    clientId: d.client_id || '',
+    patient: d.patient_id || '—',
+    patientId: d.patient_id,
+    uploadDate: d.created_at?.split('T')[0] || '',
+    source: (d.source || 'Manual Upload') as DemoDocRecord['source'],
+    status: (d.status === 'linked' ? 'Linked' : d.status === 'processing' ? 'Processing' : 'Unlinked') as DemoDocRecord['status'],
+    aiConfidence: d.ai_confidence,
+  }))
+  const allDocs = apiDocs.length > 0 ? apiDocs : demoDocs
+
   const types = ['Superbill','Clinical Note','Insurance Card','EOB','Denial Letter','Contract','Credential','Fax']
   const toggleType = (t: string) => setTypeFilter(p => p.includes(t) ? p.filter(x=>x!==t) : [...p,t])
 
-  const filtered = demoDocs.filter(d => {
+  const filtered = allDocs.filter(d => {
     if (d.clientId) {
       if (selectedClient && d.clientId !== selectedClient.id) return false
       if (!selectedClient && country === 'uae' && !['org-101','org-104'].includes(d.clientId)) return false
