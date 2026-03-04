@@ -16,25 +16,25 @@
 }
 
 /* ── LIGHT MODE ─── */
-/* Base: #D6EBF2 (Cyan 100) · Cards: #FFFFFF · Text: #000000 / #616161 */
+/* Base: #D6EBF2 (Cyan 100) · Cards: #FFFFFF · Hover: #D6EBF2 · Text: #000 / #616161 */
 .light {
   --surface-primary: #D6EBF2;
   --surface-secondary: #FFFFFF;
-  --surface-elevated: #A1DEED;
+  --surface-elevated: #D6EBF2;               /* hover rows, elevated areas */
   --surface-overlay: rgba(214,235,242,0.92);
   --content-primary: #000000;
   --content-secondary: #616161;
   --content-tertiary: #CCCCCC;
   --content-inverse: #FFFFFF;
-  --separator: #A1DEED;
+  --separator: rgba(0,181,214,0.2);          /* softer than solid #A1DEED */
 }
 
 /* ── DARK MODE ─── */
-/* Base: #000000 · Surface: #616161 · Text: #FFFFFF / #CCCCCC */
+/* Base: #000 · Cards: #616161@18% · Sidebar: #616161@40% · Text: #FFF/#CCCCCC */
 .dark {
   --surface-primary: #000000;
-  --surface-secondary: #616161;
-  --surface-elevated: #616161;
+  --surface-secondary: rgba(97,97,97,0.18);    /* cards — subtle lift from black */
+  --surface-elevated: rgba(97,97,97,0.40);     /* sidebar, topbar, dropdowns */
   --surface-overlay: rgba(0,0,0,0.88);
   --content-primary: #FFFFFF;
   --content-secondary: #CCCCCC;
@@ -65,7 +65,7 @@ select option {
   color: #1D1D1F;
 }
 .dark select option {
-  background: #616161;
+  background: #1a1a1a;
   color: #FFFFFF;
 }
 
