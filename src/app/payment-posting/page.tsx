@@ -38,6 +38,7 @@ export default function PaymentPostingPage() {
   const [editValue, setEditValue] = useState<string>('')
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [noteModal, setNoteModal] = useState<{ rowId: string; text: string } | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const era = eras.find(e => e.id === selectedEra)
@@ -249,11 +250,11 @@ export default function PaymentPostingPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-[12px]">
             <thead><tr className="border-b border-separator text-content-secondary bg-surface-secondary">
-              <th className="text-left px-3 py-2">Patient</th><th className="text-left px-3 py-2">CPT</th><th className="text-left px-3 py-2">DOS</th><th className="text-right px-3 py-2">Billed</th><th className="text-right px-3 py-2">Allowed</th><th className="text-right px-3 py-2">Paid</th><th className="text-right px-3 py-2">Denied</th><th className="text-left px-3 py-2">Adj Code</th><th className="text-left px-3 py-2">Adj Reason</th><th className="text-right px-3 py-2">Pat Bal</th><th className="text-left px-3 py-2">Notes</th><th className="text-left px-3 py-2">Action</th>
+              <th className="text-left px-3 py-2">Patient</th><th className="text-left px-3 py-2">CPT</th><th className="text-left px-3 py-2">Mod</th><th className="text-left px-3 py-2">DOS</th><th className="text-right px-3 py-2">Billed</th><th className="text-right px-3 py-2">Allowed</th><th className="text-right px-3 py-2">Paid</th><th className="text-right px-3 py-2">Denied</th><th className="text-left px-3 py-2">Adj Code</th><th className="text-left px-3 py-2">Adj Reason</th><th className="text-right px-3 py-2">Pat Bal</th><th className="text-left px-3 py-2">Notes</th><th className="text-left px-3 py-2">Action</th>
             </tr></thead>
             <tbody>{eraLines.length === 0 ? (
               <tr>
-                <td colSpan={12} className="px-4 py-8 text-center text-sm text-content-tertiary">
+                <td colSpan={13} className="px-4 py-8 text-center text-sm text-content-tertiary">
                   No line items loaded — upload the .835 file to parse line items automatically
                 </td>
               </tr>
@@ -261,7 +262,24 @@ export default function PaymentPostingPage() {
               const bg = row.denied > 0 ? 'bg-red-500/5' : row.action === 'review' ? 'bg-amber-500/5' : row.action === 'patient_bill' ? 'bg-blue-500/5' : ''
               return <tr key={row.id} className={`border-b border-separator ${bg}`}>
                 <td className="px-3 py-2 text-[13px]">{row.patientName}</td>
-                <td className="px-3 py-2 font-mono" title={row.cptDesc}>{row.cpt}</td>
+                <td className="px-3 py-2 font-mono" title={row.cptDesc}>
+                  {editingCell?.rowId === row.id && editingCell.field === 'cpt' ? (
+                    <input autoFocus value={editValue} onChange={e => setEditValue(e.target.value)}
+                      className="w-16 bg-transparent border-b border-brand font-mono"
+                      maxLength={5}
+                      onBlur={() => { setValue(row.id, 'cpt', editValue); setEditingCell(null) }}
+                      onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
+                  ) : <button onClick={() => { setEditingCell({ rowId: row.id, field: 'cpt' }); setEditValue(row.cpt) }}>{row.cpt}</button>}
+                </td>
+                <td className="px-3 py-2 font-mono text-[11px] text-content-secondary">
+                  {editingCell?.rowId === row.id && editingCell.field === 'modifier' ? (
+                    <input autoFocus value={editValue} onChange={e => setEditValue(e.target.value)}
+                      className="w-10 bg-transparent border-b border-brand font-mono text-[11px]"
+                      maxLength={2} placeholder="—"
+                      onBlur={() => { setValue(row.id, 'modifier', editValue); setEditingCell(null) }}
+                      onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
+                  ) : <button onClick={() => { setEditingCell({ rowId: row.id, field: 'modifier' }); setEditValue(row.modifier || '') }}>{row.modifier || '—'}</button>}
+                </td>
                 <td className="px-3 py-2 font-mono">{row.dos}</td>
                 {(['billed', 'allowed', 'paid', 'denied', 'patBalance'] as const).map(field => (
                   <td key={field} className={`px-3 py-2 text-right font-mono ${field === 'denied' && row.denied > 0 ? 'text-red-600 dark:text-red-400' : ''} ${field === 'patBalance' && row.patBalance > 0 ? 'text-blue-600 dark:text-blue-400' : ''}`}>
@@ -278,9 +296,26 @@ export default function PaymentPostingPage() {
                     ) : <button onClick={() => { setEditingCell({ rowId: row.id, field }); setEditValue(String(row[field])) }}>${row[field].toFixed(2)}</button>}
                   </td>
                 ))}
-                <td className="px-3 py-2 font-mono text-[11px]">{row.adjCode}</td>
-                <td className="px-3 py-2 max-w-[180px] truncate" title={row.adjReason}>{row.adjReason}</td>
-                <td className="px-3 py-2">{row.notes ? <button onClick={() => setValue(row.id, 'notes', `${row.notes} (reviewed)`)} className="text-amber-600 dark:text-amber-400"><StickyNote size={14} /></button> : <button onClick={() => setValue(row.id, 'notes', 'Add note')} className="text-content-tertiary"><StickyNote size={14} /></button>}</td>
+                <td className="px-3 py-2 font-mono text-[11px]">
+                  {editingCell?.rowId === row.id && editingCell.field === 'adjCode' ? (
+                    <input autoFocus value={editValue} onChange={e => setEditValue(e.target.value)}
+                      className="w-16 bg-transparent border-b border-brand font-mono text-[11px]"
+                      placeholder="CO-XX"
+                      onBlur={() => { setValue(row.id, 'adjCode', editValue); setEditingCell(null) }}
+                      onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
+                  ) : <button onClick={() => { setEditingCell({ rowId: row.id, field: 'adjCode' }); setEditValue(row.adjCode) }} className="hover:text-brand">{row.adjCode}</button>}
+                </td>
+                <td className="px-3 py-2 max-w-[180px] truncate" title={row.adjReason}>
+                  {editingCell?.rowId === row.id && editingCell.field === 'adjReason' ? (
+                    <input autoFocus value={editValue} onChange={e => setEditValue(e.target.value)}
+                      className="w-full bg-transparent border-b border-brand text-[12px]"
+                      onBlur={() => { setValue(row.id, 'adjReason', editValue); setEditingCell(null) }}
+                      onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
+                  ) : <button onClick={() => { setEditingCell({ rowId: row.id, field: 'adjReason' }); setEditValue(row.adjReason) }} className="hover:text-brand text-left">{row.adjReason}</button>}
+                </td>
+                <td className="px-3 py-2">
+                  <button onClick={() => setNoteModal({ rowId: row.id, text: row.notes || '' })} className={row.notes ? 'text-amber-600 dark:text-amber-400' : 'text-content-tertiary'}><StickyNote size={14} /></button>
+                </td>
                 <td className="px-3 py-2"><select value={row.action} onChange={e => setValue(row.id, 'action', e.target.value)} className="bg-surface-elevated border border-separator rounded-btn px-2 py-1">
                   <option value="post">✓ Post</option><option value="deny_route">❌ → Denials</option><option value="patient_bill">💳 → Patient Bill</option><option value="review">👁 Review</option><option value="posted">✅ Posted</option>
                 </select></td>
@@ -365,6 +400,36 @@ export default function PaymentPostingPage() {
           </tbody>
         </table>
       </div>
+
+      {/* ── Notes Modal ── */}
+      {noteModal && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setNoteModal(null)} />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-surface-primary border border-separator rounded-xl shadow-2xl z-50 w-[400px] p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-content-primary text-sm">Line Item Note</h3>
+              <button onClick={() => setNoteModal(null)}><X size={16} className="text-content-secondary" /></button>
+            </div>
+            <textarea
+              autoFocus
+              value={noteModal.text}
+              onChange={e => setNoteModal(prev => prev ? { ...prev, text: e.target.value } : prev)}
+              rows={4}
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] resize-none focus:outline-none focus:ring-1 focus:ring-brand"
+              placeholder="Add posting note — visible in audit trail..."
+            />
+            <p className="text-[10px] text-content-tertiary mt-1 mb-3">{new Date().toLocaleString()} · {noteModal.text ? 'Modified' : 'New'}</p>
+            <div className="flex gap-2">
+              <button onClick={() => {
+                setValue(noteModal.rowId, 'notes', noteModal.text || '')
+                toast.success('Note saved')
+                setNoteModal(null)
+              }} className="flex-1 bg-brand text-white rounded-btn py-2 text-[13px] font-medium">Save Note</button>
+              <button onClick={() => setNoteModal(null)} className="px-4 py-2 bg-surface-elevated border border-separator rounded-btn text-[13px] text-content-secondary">Cancel</button>
+            </div>
+          </div>
+        </>
+      )}
     </ModuleShell>
   )
 }
