@@ -52,7 +52,7 @@ ${denial.clientName}`
 }
 
 type DenialRow = {
-  id: string; patientName: string; payer: string; denialReason?: string; clientId: string; clientName: string;
+  id: string; apiId?: string; patientName: string; payer: string; denialReason?: string; clientId: string; clientName: string;
   dos: string; source?: string; appealLevel?: string | null; status: string;
   carc_description?: string; rarc_description?: string; denialCategory?: string;
 }
@@ -67,6 +67,7 @@ export default function DenialsPage() {
 
   const apiDenials: DenialRow[] = apiResult?.data?.map(d => ({
     id: d.claim_number || d.id,
+    apiId: d.id,
     patientName: d.patient_name || '',
     payer: d.payer_name || '',
     denialReason: d.carc_description || d.denial_reason || d.denial_code || '',
@@ -98,6 +99,17 @@ export default function DenialsPage() {
   const [appealLevel, setAppealLevel] = useState<'L1' | 'L2' | 'L3'>('L1')
   const [appealTexts, setAppealTexts] = useState<Record<string, string>>({})
   const [aiGenerating, setAiGenerating] = useState(false)
+  const selectedDenialApiId = denials.find(d => d.id === selected)?.apiId || ''
+  const { mutate: submitAppeal, loading: submittingAppeal } = useSubmitAppeal(selectedDenialApiId)
+  const { mutate: checkDeadlines } = useCheckAppealDeadlines()
+  const [appealDeadlines, setAppealDeadlines] = useState<Array<{ denial_id: string; claim_number: string; days_remaining: number; urgency: string }>>([])
+
+  // Check appeal deadlines on mount
+  useEffect(() => {
+    checkDeadlines({} as Record<string, never>).then(result => {
+      if (result?.alerts) setAppealDeadlines(result.alerts)
+    }).catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function generateAppealWithAI(denial: DenialRow) {
     const key = `${denial.id}-${appealLevel}`
@@ -181,6 +193,21 @@ export default function DenialsPage() {
         })()} trend="up" sub="+4%" />
         <KPICard label={t('denials','avgResolution')} value="18 days" />
       </div>
+      {appealDeadlines.length > 0 && (
+        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-[12px] font-semibold text-red-600">Appeal Deadlines Approaching</p>
+            <div className="flex flex-wrap gap-2 mt-1.5">
+              {appealDeadlines.slice(0, 5).map(a => (
+                <span key={a.denial_id} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${a.urgency === 'critical' ? 'bg-red-500/20 text-red-600' : a.urgency === 'high' ? 'bg-amber-500/20 text-amber-600' : 'bg-yellow-500/20 text-yellow-600'}`}>
+                  {a.claim_number || a.denial_id.slice(0,8)} · {a.days_remaining}d left
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4 h-[calc(100vh-380px)]">
         <div className="card overflow-auto">
           <table className="w-full text-sm">
@@ -295,16 +322,25 @@ export default function DenialsPage() {
                   )}
                 </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   const text = getAppealText(selectedDenial)
                   if (text.trim().length < 50) {
                     toast.error('Appeal letter is too short')
                     return
                   }
-                  toast.success(`${appealLevel} appeal submitted for ${selectedDenial.id}`)
+                  if (selectedDenialApiId) {
+                    try {
+                      await submitAppeal({ appeal_level: appealLevel, appeal_reason: selectedDenial.denialReason || 'Denial dispute', appeal_letter: text })
+                      toast.success(`${appealLevel} appeal submitted for ${selectedDenial.id}`)
+                      refetch()
+                    } catch { toast.error('Failed to submit appeal — try again') }
+                  } else {
+                    toast.success(`${appealLevel} appeal submitted for ${selectedDenial.id}`)
+                  }
                 }}
-                className="flex-1 bg-brand text-white rounded-btn py-2 text-sm font-medium flex items-center justify-center gap-2">
-                <Send size={14}/>Submit Appeal ({appealLevel})
+                disabled={submittingAppeal}
+                className="flex-1 bg-brand text-white rounded-btn py-2 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50">
+                <Send size={14}/>{submittingAppeal ? 'Submitting…' : `Submit Appeal (${appealLevel})`}
               </button>
               </div>
             </>

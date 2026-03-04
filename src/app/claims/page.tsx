@@ -13,7 +13,7 @@ import { useToast } from '@/components/shared/Toast'
 import { useRouter } from 'next/navigation'
 import { useClaims, useScrubClaim, useTransitionClaim, useGenerateEDI,
          useClaimLines, useAddClaimLine, useClaimDiagnoses, useAddClaimDiagnosis,
-         useScrubRules, useCreateClaim, useUpdateClaim, usePredictDenial, useGenerate837I, useTriggerSecondaryClaim, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useParse277, useEDITransactions, useCreateEDITransaction, useScrubResults, useCARCCodes, useRARCCodes } from '@/lib/hooks'
+         useScrubRules, useCreateClaim, useUpdateClaim, usePredictDenial, useGenerate837I, useTriggerSecondaryClaim, useUnderpaymentCheck, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useParse277, useEDITransactions, useCreateEDITransaction, useScrubResults, useCARCCodes, useRARCCodes } from '@/lib/hooks'
 import type { ApiClaim } from '@/lib/hooks'
 import type { ClaimStatus } from '@/types'
 import { ErrorBanner } from '@/components/shared/ApiStates'
@@ -128,6 +128,10 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
   const [localMessages, setLocalMessages] = useState(demoMessages.filter(m => m.entityId === claim.id))
   const [msgInput, setMsgInput] = useState('')
   const [ediOutput, setEdiOutput] = useState<string | null>(null)
+  const [edi837IOutput, setEdi837IOutput] = useState<string | null>(null)
+  const [underpayResult, setUnderpayResult] = useState<{ total_underpaid: number; underpayments: Array<{ cpt_code: string; expected_payment: number; actual_allowed: number; underpaid_amount: number; variance_pct: string }> } | null>(null)
+  const [secondaryResult, setSecondaryResult] = useState<{ secondary_claim_id?: string; claim_number?: string } | null>(null)
+  const [statusInquiryResult, setStatusInquiryResult] = useState<string | null>(null)
 
   // Edit mode state
   const [editMode, setEditMode] = useState(false)
@@ -145,6 +149,10 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
   const { mutate: scrubClaim, loading: scrubbing } = useScrubClaim(claimApiId)
   const { mutate: transitionClaim, loading: transitioning } = useTransitionClaim(claimApiId)
   const { mutate: generateEDI, loading: generatingEDI } = useGenerateEDI(claimApiId)
+  const { mutate: generate837I, loading: generating837I } = useGenerate837I(claimApiId)
+  const { mutate: underpaymentCheck, loading: checkingUnderpay } = useUnderpaymentCheck(claimApiId)
+  const { mutate: triggerSecondary, loading: triggeringSecondary } = useTriggerSecondaryClaim(claimApiId)
+  const { mutate: generate276, loading: generating276 } = useGenerate276(claimApiId)
   const { data: linesData, refetch: refetchLines } = useClaimLines(claimApiId || null)
   const { data: dxData, refetch: refetchDx } = useClaimDiagnoses(claimApiId || null)
   const { mutate: addLine } = useAddClaimLine(claimApiId)
@@ -249,6 +257,43 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
     if (result?.edi) {
       setEdiOutput(result.edi)
       toast.success('837P EDI generated')
+    }
+  }
+
+  async function handleGenerate837I() {
+    if (!claimApiId) { toast.warning('No API ID — demo claim cannot generate 837I'); return }
+    const result = await generate837I({} as Record<string, never>)
+    if (result?.edi_content) {
+      setEdi837IOutput(result.edi_content)
+      toast.success('837I Institutional EDI generated')
+    }
+  }
+
+  async function handleUnderpaymentCheck() {
+    if (!claimApiId) { toast.warning('No API ID'); return }
+    const result = await underpaymentCheck({} as Record<string, never>)
+    if (result) {
+      setUnderpayResult(result as typeof underpayResult)
+      toast.success(result.total_underpaid > 0 ? `Underpayment detected: $${result.total_underpaid.toFixed(2)}` : 'No underpayment detected')
+    }
+  }
+
+  async function handleTriggerSecondary() {
+    if (!claimApiId) { toast.warning('No API ID'); return }
+    const result = await triggerSecondary({} as Record<string, never>)
+    if (result) {
+      setSecondaryResult(result as typeof secondaryResult)
+      toast.success(`Secondary claim created: ${result.claim_number || result.secondary_claim_id}`)
+      onRefetch?.()
+    }
+  }
+
+  async function handleStatusInquiry() {
+    if (!claimApiId) { toast.warning('No API ID'); return }
+    const result = await generate276({} as Record<string, never>)
+    if (result?.edi_content) {
+      setStatusInquiryResult(result.edi_content)
+      toast.success('276 Claim Status Inquiry generated')
     }
   }
 
@@ -502,7 +547,12 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                       <button onClick={handleGenerateEDI} disabled={generatingEDI} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generatingEDI ? 'Generating EDI…' : 'Generate 837P EDI'}</button>
                     </>
                   )}
-                  {claim.status === 'submitted' && <button onClick={handleGenerateEDI} disabled={generatingEDI} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generatingEDI ? 'Generating EDI…' : 'Generate 837P EDI'}</button>}
+                  {(claim.status === 'submitted' || claim.status === 'in_process' || claim.status === 'accepted') && (
+                    <>
+                      {claim.status === 'submitted' && <button onClick={handleGenerateEDI} disabled={generatingEDI} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generatingEDI ? 'Generating EDI…' : 'Generate 837P EDI'}</button>}
+                      <button onClick={handleStatusInquiry} disabled={generating276} className="w-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-600 rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generating276 ? 'Generating…' : '276 Status Inquiry'}</button>
+                    </>
+                  )}
                   {claim.status === 'denied' && (
                     <>
                       <button onClick={statusAction} className="w-full bg-amber-500 text-white rounded-btn py-2.5 text-[13px] font-medium">Route to Denials</button>
@@ -510,10 +560,47 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                     </>
                   )}
                   {claim.status === 'paid' && <button onClick={statusAction} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium">View Payment</button>}
+                  {(claim.status === 'paid' || claim.status === 'partial_pay') && (
+                    <>
+                      <button onClick={handleUnderpaymentCheck} disabled={checkingUnderpay} className="w-full bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{checkingUnderpay ? 'Checking…' : 'Check Underpayment'}</button>
+                      <button onClick={handleTriggerSecondary} disabled={triggeringSecondary} className="w-full bg-blue-500/10 border border-blue-500/30 text-blue-600 rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{triggeringSecondary ? 'Creating…' : 'File Secondary Claim'}</button>
+                    </>
+                  )}
+                  <button onClick={handleGenerate837I} disabled={generating837I} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generating837I ? 'Generating…' : 'Generate 837I Institutional'}</button>
                   {ediOutput && (
                     <div className="mt-2">
                       <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-1">Generated 837P EDI</p>
                       <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[10px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{ediOutput}</pre>
+                    </div>
+                  )}
+                  {edi837IOutput && (
+                    <div className="mt-2">
+                      <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-1">Generated 837I Institutional EDI</p>
+                      <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[10px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{edi837IOutput}</pre>
+                    </div>
+                  )}
+                  {underpayResult && (
+                    <div className="mt-2 p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                      <p className="text-[11px] uppercase tracking-wider text-amber-600 font-semibold mb-1">Underpayment Analysis</p>
+                      <p className="text-[13px] font-semibold text-content-primary">Total Underpaid: <span className={underpayResult.total_underpaid > 0 ? 'text-red-500' : 'text-emerald-500'}>${underpayResult.total_underpaid.toFixed(2)}</span></p>
+                      {underpayResult.underpayments?.map((u, i) => (
+                        <div key={i} className="flex justify-between text-[11px] text-content-secondary mt-1">
+                          <span>{u.cpt_code}</span>
+                          <span>Expected ${u.expected_payment} → Got ${u.actual_allowed} ({u.variance_pct})</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {secondaryResult && (
+                    <div className="mt-2 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
+                      <p className="text-[11px] uppercase tracking-wider text-blue-600 font-semibold mb-1">Secondary Claim Filed</p>
+                      <p className="text-[13px] text-content-primary">Claim #{secondaryResult.claim_number || secondaryResult.secondary_claim_id}</p>
+                    </div>
+                  )}
+                  {statusInquiryResult && (
+                    <div className="mt-2">
+                      <p className="text-[11px] uppercase tracking-wider text-indigo-600 font-semibold mb-1">276 Claim Status Inquiry</p>
+                      <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[10px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{statusInquiryResult}</pre>
                     </div>
                   )}
                 </div>
@@ -726,6 +813,7 @@ export default function ClaimsPage() {
     ...(statusFilters.length === 1 ? { status: statusFilters[0] } : {}),
   })
   const { data: scrubRulesData } = useScrubRules()
+  const { data: timelyFilingData } = useTimelyFilingDeadlines()
   const apiScrubRules = scrubRulesData?.data?.map(r => ({
     id: r.rule_code,
     label: r.rule_name + ' — ' + r.description,
@@ -780,9 +868,22 @@ export default function ClaimsPage() {
     else { setSortKey(key); setSortDir('desc') }
   }
 
-  const handleBatchSubmit = () => {
-    if (!allReady) return
-    toast.success(`${selectedRows.length} claim(s) submitted to Availity`)
+  const { mutate: batchSubmit, loading: batchLoading } = useBatchSubmitClaims()
+
+  const handleBatchSubmit = async () => {
+    if (!allReady || selectedRows.length === 0) return
+    // Get API IDs for selected claims
+    const apiIds = selectedRows
+      .map(rowId => allClaims.find(c => c.id === rowId)?.apiId)
+      .filter((id): id is string => !!id)
+    if (apiIds.length === 0) { toast.warning('No valid claims selected for submission'); return }
+    try {
+      const result = await batchSubmit({ claim_ids: apiIds })
+      if (result) {
+        toast.success(`${result.submitted} claim(s) submitted to Availity${result.failed > 0 ? `, ${result.failed} failed` : ''}`)
+        refetch()
+      }
+    } catch (err) { toast.error('Batch submission failed') }
     setSelectedRows([])
   }
 
@@ -796,6 +897,26 @@ export default function ClaimsPage() {
         <KPICard label={t("claims","cleanClaimRate")} value={apiLoading ? '…' : `${cleanRate}%`} icon={<Activity size={20}/>} />
         <KPICard label={t("claims","avgDaysToPayment")} value={apiLoading ? '…' : `${avgDays}d`} icon={<Clock size={20}/>} />
       </div>
+
+      {/* Timely Filing Alerts */}
+      {timelyFilingData?.data && timelyFilingData.data.filter(tf => tf.days_remaining <= 14).length > 0 && (
+        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-[12px] font-semibold text-red-600">Timely Filing Deadlines Approaching</p>
+            <div className="flex flex-wrap gap-2 mt-1.5">
+              {timelyFilingData.data.filter(tf => tf.days_remaining <= 14).slice(0, 5).map(tf => (
+                <span key={tf.claim_id} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${tf.days_remaining <= 3 ? 'bg-red-500/20 text-red-600' : tf.days_remaining <= 7 ? 'bg-amber-500/20 text-amber-600' : 'bg-yellow-500/20 text-yellow-600'}`}>
+                  {tf.claim_number || tf.claim_id.slice(0,8)} · {tf.days_remaining}d left · {tf.payer_name || 'Unknown'}
+                </span>
+              ))}
+              {timelyFilingData.data.filter(tf => tf.days_remaining <= 14).length > 5 && (
+                <span className="text-[10px] text-content-tertiary">+{timelyFilingData.data.filter(tf => tf.days_remaining <= 14).length - 5} more</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-4 h-[calc(100vh-300px)]">
         {/* Filter sidebar */}
@@ -847,7 +968,7 @@ export default function ClaimsPage() {
             <div className="flex items-center gap-3 px-4 py-2.5 bg-brand/5 border-b border-brand/20 shrink-0">
               <CheckSquare size={14} className="text-brand" />
               <span className="text-[13px] text-brand font-medium">{selectedRows.length} selected</span>
-              <button onClick={handleBatchSubmit} disabled={!allReady}
+              <button onClick={handleBatchSubmit} disabled={!allReady || batchLoading}
                 className={`px-3 py-1.5 rounded-btn text-[12px] font-medium transition-colors ${allReady ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-surface-elevated text-content-tertiary cursor-not-allowed'}`}>
                 Submit Selected
               </button>

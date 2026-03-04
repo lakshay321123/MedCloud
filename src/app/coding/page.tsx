@@ -21,14 +21,34 @@ import {
 const ICD_DEMO_LOOKUP = [
   { code: 'E11.9', description: 'Type 2 diabetes mellitus without complications' },
   { code: 'E11.65', description: 'Type 2 diabetes mellitus with hyperglycemia' },
+  { code: 'E11.21', description: 'Type 2 diabetes mellitus with diabetic nephropathy' },
+  { code: 'E11.40', description: 'Type 2 diabetes mellitus with diabetic neuropathy' },
   { code: 'I10', description: 'Essential (primary) hypertension' },
   { code: 'I25.10', description: 'Atherosclerotic heart disease of native coronary artery' },
   { code: 'I50.9', description: 'Heart failure, unspecified' },
+  { code: 'I48.91', description: 'Unspecified atrial fibrillation' },
   { code: 'M54.5', description: 'Low back pain' },
+  { code: 'M79.3', description: 'Panniculitis, unspecified' },
   { code: 'J06.9', description: 'Acute upper respiratory infection, unspecified' },
+  { code: 'J44.1', description: 'COPD with acute exacerbation' },
+  { code: 'J18.9', description: 'Pneumonia, unspecified organism' },
   { code: 'Z79.4', description: 'Long-term (current) use of insulin' },
   { code: 'Z00.00', description: 'Encounter for general adult medical examination' },
+  { code: 'Z23', description: 'Encounter for immunization' },
   { code: 'R00.0', description: 'Tachycardia, unspecified' },
+  { code: 'R05.9', description: 'Cough, unspecified' },
+  { code: 'R10.9', description: 'Unspecified abdominal pain' },
+  { code: 'K21.0', description: 'GERD with esophagitis' },
+  { code: 'F32.1', description: 'Major depressive disorder, single episode, moderate' },
+  { code: 'F41.1', description: 'Generalized anxiety disorder' },
+  { code: 'G43.909', description: 'Migraine, unspecified, not intractable' },
+  { code: 'N39.0', description: 'Urinary tract infection, site not specified' },
+  { code: 'L30.9', description: 'Dermatitis, unspecified' },
+  { code: 'E78.5', description: 'Hyperlipidemia, unspecified' },
+  { code: 'E03.9', description: 'Hypothyroidism, unspecified' },
+  { code: 'B34.9', description: 'Viral infection, unspecified' },
+  { code: 'D64.9', description: 'Anemia, unspecified' },
+  { code: 'R50.9', description: 'Fever, unspecified' },
 ]
 
 const CPT_DEMO_LOOKUP = [
@@ -37,10 +57,30 @@ const CPT_DEMO_LOOKUP = [
   { code: '99215', description: 'Office visit, established patient, high complexity' },
   { code: '99202', description: 'Office visit, new patient, straightforward' },
   { code: '99203', description: 'Office visit, new patient, low complexity' },
+  { code: '99204', description: 'Office visit, new patient, moderate complexity' },
+  { code: '99205', description: 'Office visit, new patient, high complexity' },
+  { code: '99211', description: 'Office visit, established patient, minimal' },
+  { code: '99385', description: 'Preventive visit, new patient, 18-39 years' },
+  { code: '99395', description: 'Preventive visit, established patient, 18-39 years' },
+  { code: '99396', description: 'Preventive visit, established patient, 40-64 years' },
   { code: '93000', description: 'Electrocardiogram, routine ECG with interpretation' },
   { code: '93306', description: 'Echocardiography, transthoracic, real-time' },
   { code: '90837', description: 'Psychotherapy, 60 minutes with patient' },
+  { code: '90834', description: 'Psychotherapy, 45 minutes with patient' },
   { code: '99495', description: 'Transitional care management, moderate complexity' },
+  { code: '36415', description: 'Venipuncture, routine collection' },
+  { code: '71046', description: 'Chest X-ray, 2 views' },
+  { code: '80053', description: 'Comprehensive metabolic panel' },
+  { code: '85025', description: 'CBC with automated differential' },
+  { code: '81001', description: 'Urinalysis, automated, with microscopy' },
+  { code: '87880', description: 'Rapid strep test (Group A)' },
+  { code: '90471', description: 'Immunization administration, 1st vaccine' },
+  { code: '96372', description: 'Therapeutic/diagnostic injection, subcutaneous/IM' },
+  { code: '10060', description: 'Incision and drainage of abscess, simple' },
+  { code: '17000', description: 'Destruction of premalignant lesion, first lesion' },
+  { code: '29125', description: 'Short arm splint, forearm to hand' },
+  { code: '99441', description: 'Telephone E/M service, 5-10 minutes' },
+  { code: '99421', description: 'Online digital E/M, 5-10 minutes cumulative' },
 ]
 
 const getDemoIcdMatches = (q: string) => q.length < 2 ? [] :
@@ -68,6 +108,14 @@ function validateNCCI(approvedCptCodes: string[]): Array<{ code1: string; code2:
 }
 
 // ── Priority dot colors ──────────────────────────────────────────────────────
+
+interface AISuggestedCode {
+  code: string
+  desc: string
+  confidence: number
+  modifiers?: string[]
+  reasoning?: string
+}
 const priorityColor: Record<'urgent' | 'high' | 'medium' | 'low', string> = {
   urgent: 'bg-red-500',
   high: 'bg-amber-500',
@@ -178,8 +226,8 @@ export default function CodingPage() {
       assessment: '',
       plan: '',
     },
-    aiSuggestedIcd: [] as import('@/lib/demo-data').AISuggestedCode[],
-    aiSuggestedCpt: [] as import('@/lib/demo-data').AISuggestedCode[],
+    aiSuggestedIcd: [] as AISuggestedCode[],
+    aiSuggestedCpt: [] as AISuggestedCode[],
     hasSuperbill: false,
     superbillCpt: undefined as string[] | undefined,
     priorAuthStatus: 'not_required' as string,
@@ -228,7 +276,7 @@ export default function CodingPage() {
 
   // AI Auto-Coding state
   const [aiCoding, setAiCoding] = useState(false)
-  const [aiCodeCache, setAiCodeCache] = useState<Record<string, { icd: import('@/lib/demo-data').AISuggestedCode[], cpt: import('@/lib/demo-data').AISuggestedCode[] }>>({})
+  const [aiCodeCache, setAiCodeCache] = useState<Record<string, { icd: AISuggestedCode[], cpt: AISuggestedCode[] }>>({})
   const [quickSoap, setQuickSoap] = useState<{ assessment: string; plan: string; specialty: string }>({ assessment: '', plan: '', specialty: '' })
   const [showQuickSoap, setShowQuickSoap] = useState(false)
 
