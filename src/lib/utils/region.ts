@@ -1,4 +1,3 @@
-import { demoClients } from '@/lib/demo-data'
 
 export type RegionType = 'us' | 'uae'
 
@@ -8,7 +7,7 @@ export const UAE_CLIENT_NAMES = ['Gulf Medical Center', 'Dubai Wellness Clinic']
 export const US_CLIENT_NAMES  = ['Irvine Family Practice', 'Patel Cardiology'] as const
 
 export function getOrgRegion(orgId: string): RegionType {
-  return (demoClients.find(c => c.id === orgId)?.region as RegionType) ?? 'us'
+  return 'us' // TODO: derive from JWT org claim once Cognito wired
 }
 
 /**
@@ -40,11 +39,12 @@ export function filterByRegion<T extends { clientId?: string; client_id?: string
   }
 
   if (country) {
-    const region = country === 'uae' ? 'uae' : 'us'
-    const regionOrgIds = new Set(demoClients.filter(c => c.region === region).map(c => c.id))
+    const validIds = country === 'uae'
+      ? (UAE_ORG_IDS as readonly string[])
+      : (US_ORG_IDS as readonly string[])
     return data.filter(item => {
       const cid = item.clientId ?? item.client_id
-      return !cid || regionOrgIds.has(cid)
+      return !cid || validIds.includes(cid)
     })
   }
 

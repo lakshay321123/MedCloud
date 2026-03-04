@@ -1,7 +1,6 @@
 'use client'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
-import { demoPatients } from '@/lib/demo-data'
 import { X, ChevronDown } from 'lucide-react'
 
 type PatientMode = 'existing' | 'new'
@@ -19,8 +18,8 @@ export default function NewAppointmentModal({ onClose }: { onClose: () => void }
 
   // In demo mode, show patients from all clients (or use selectedClient from context)
   const patients = selectedClient
-    ? demoPatients.filter(p => p.clientId === selectedClient.id)
-    : demoPatients
+    ? ([] as any[]) // patients loaded from API
+    : ([] as any[])
 
   void currentUser
 

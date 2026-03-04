@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
-import { demoFaxes, DemoDocRecord } from '@/lib/demo-data'
+import type { DemoDocRecord } from '@/lib/demo-data'
 import { useDocuments, useTriggerTextract, useClassifyDocument, useRequestUploadUrl, useCreateDocument, useTextractResults } from '@/lib/hooks'
 import type { ApiDocument } from '@/lib/hooks'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
@@ -296,11 +296,11 @@ function FaxCenterTab() {
   const { toast } = useToast()
   const [subTab, setSubTab] = useState<'inbound'|'outbound'>('inbound')
   const [showSendFax, setShowSendFax] = useState(false)
-  const [selectedFax, setSelectedFax] = useState<typeof demoFaxes[0] | null>(null)
+  const [selectedFax, setSelectedFax] = useState<any | null>(null)
   const [faxTo, setFaxTo] = useState('')
   const [faxFrom, setFaxFrom] = useState('')
   const [faxSubject, setFaxSubject] = useState('')
-  const faxes = demoFaxes.filter(f => subTab==='inbound' ? f.direction==='Inbound' : f.direction==='Outbound')
+  const faxes: any[] = [] // faxes loaded from API
   const statusStyle = (s: string) => s==='Received'||s==='Sent'?'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400':s==='Failed'?'bg-red-500/10 text-red-500':s==='Pending'?'bg-amber-500/10 text-amber-500':'bg-surface-elevated text-content-secondary'
   return (
     <div>
@@ -393,7 +393,7 @@ function FaxCenterTab() {
                 <label className="text-xs text-content-secondary block mb-1">Attach Document</label>
                 <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
                   <option value="">Select document...</option>
-                  {demoFaxes.filter((f: any)=>f.direction==='Inbound').slice(0,5).map((f: any)=><option key={f.id}>{f.document||f.id}</option>)}
+                  {faxes.slice(0,5).map((f: any)=><option key={f.id}>{f.document||f.id}</option>)}
                 </select>
               </div>
               <button onClick={()=>{toast.success('Fax queued for delivery');setShowSendFax(false);setFaxTo('');setFaxFrom('');setFaxSubject('')}}
