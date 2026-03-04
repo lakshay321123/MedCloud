@@ -6,7 +6,7 @@ import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import { demoContracts } from '@/lib/demo-data'
 import type { DemoContract } from '@/lib/demo-data'
-import { useFeeSchedules, usePayerConfigs, usePayers, useUnderpaymentCheck, useExtractContractRates, useCreateFeeSchedule, useUpdateFeeSchedule } from '@/lib/hooks'
+import { useFeeSchedules, usePayerConfigs, useUnderpaymentCheck, useExtractContractRates, useCreateFeeSchedule, useUpdateFeeSchedule } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import { Scale, Search, AlertTriangle, Edit2, Plus } from 'lucide-react'
@@ -50,24 +50,27 @@ export default function ContractsPage() {
 
   const { data: apiFeeResult } = useFeeSchedules({ limit: 200 })
   const { data: apiPayerCfgResult } = usePayerConfigs()
-  const { data: apiPayerResult } = usePayers()
 
   // Map API data to DemoContract format
+  // Source of truth: payer_config (seeded with 20 US payers), joined with fee-schedules
   const apiContracts: DemoContract[] = (() => {
-    const payers = apiPayerResult?.data || []
-    const fees = apiFeeResult?.data || []
     const configs = apiPayerCfgResult?.data || []
-    if (!payers.length) return []
-    return payers.map((p: any) => {
-      const payerFees = fees.filter((f: any) => f.payer_id === p.id)
-      const cfg = configs.find((c: any) => c.payer_id === p.id)
+    const fees = apiFeeResult?.data || []
+    if (!configs.length) return []
+    return configs.map((cfg: any) => {
+      const payerKey = cfg.availity_payer_id || cfg.payer_id || ''
+      const payerFees = fees.filter((f: any) => f.payer_id === cfg.payer_id || f.payer_id === cfg.id)
       return {
-        id: p.id, payer: p.name, payerId: p.name?.replace(/\s/g, '').toUpperCase().slice(0, 6) || '',
-        client: (p as any).client_name || '—', clientId: p.id, status: 'active' as const,
-        effective: cfg?.created_at?.slice(0, 10) || '2025-01-01',
-        expiry: null, paymentTerms: `${cfg?.clean_claim_days || 30} days clean claim`,
-        timelyFiling: cfg?.timely_filing_days_initial || 365,
-        appealDeadline: cfg?.timely_filing_days_appeal || 60,
+        id: cfg.id || cfg.payer_id,
+        payer: cfg.payer_name || payerKey,
+        payerId: payerKey.replace(/\s/g, '').toUpperCase().slice(0, 8),
+        client: '—', clientId: '',  // payer configs are org-level, not per client
+        status: 'active' as const,
+        effective: cfg.created_at?.slice(0, 10) || '2025-01-01',
+        expiry: null,
+        paymentTerms: `${cfg.timely_filing_days || 365} day timely filing`,
+        timelyFiling: cfg.timely_filing_days || 365,
+        appealDeadline: 60,
         feeScheduleFrequency: 'Annual',
         feeSchedule: payerFees.map((f: any) => ({
           cpt: f.cpt_code, description: f.description || '', contractedRate: Number(f.contracted_rate || 0),
@@ -80,6 +83,7 @@ export default function ContractsPage() {
   })()
 
   const allContracts = (apiContracts.length ? apiContracts : demoContracts).filter(c => {
+    if (!c.clientId) return true  // payer_config is org-level, not per client — always show
     if (selectedClient) return c.clientId === selectedClient.id
     if (country === 'uae') return UAE_ORG_IDS.includes(c.clientId)
     if (country === 'usa') return US_ORG_IDS.includes(c.clientId)
