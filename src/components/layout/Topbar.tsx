@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useApp } from '@/lib/context'
 import { UserRole } from '@/types'
@@ -24,6 +25,12 @@ const facilityRoles: UserRole[] = ['provider', 'client']
 const backofficeRoles: UserRole[] = ['admin', 'director', 'supervisor', 'manager', 'coder', 'biller', 'ar_team', 'posting_team']
 
 export default function Topbar() {
+  const { t } = useT()
+  const supportedLanguages = [
+    { lang: 'en' as const, flag: '🇺🇸', nativeName: 'EN' },
+    { lang: 'ar' as const, flag: '🇦🇪', nativeName: 'عربي' },
+    { lang: 'es' as const, flag: '🇪🇸', nativeName: 'ES' },
+  ]
   const { theme, setTheme, language, setLanguage, currentUser, setRole, selectedClient, setSelectedClient, clients, country, portalType, isScribeRecording } = useApp()
   const isStaff = backofficeRoles.includes(currentUser.role)
   const router = useRouter()
@@ -155,10 +162,12 @@ export default function Topbar() {
 
         {/* Language toggle */}
         <button
-          onClick={() => setLanguage(language === 'en' ? 'ar' : language === 'ar' ? 'es' : 'en')}
-          className="px-2.5 py-2 rounded-btn hover:bg-surface-elevated text-content-secondary text-[13px] font-semibold transition-colors"
+          onClick={() => { const idx = supportedLanguages.findIndex(l => l.lang === language); setLanguage(supportedLanguages[(idx + 1) % supportedLanguages.length].lang) }}
+          className="px-2.5 py-2 rounded-btn hover:bg-surface-elevated text-content-secondary text-[13px] font-semibold transition-colors flex items-center gap-1.5"
+          title={t('topbar', 'language')}
         >
-          {language.toUpperCase()}
+          <span>{supportedLanguages.find(l => l.lang === language)?.flag}</span>
+          <span>{supportedLanguages.find(l => l.lang === language)?.nativeName}</span>
         </button>
 
         {/* Theme toggle */}

@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -152,6 +153,7 @@ function AddCodeRow({ type, onAdd }: { type: 'ICD' | 'CPT'; onAdd: (code: string
 // ── Main Page Component ──────────────────────────────────────────────────────
 export default function CodingPage() {
   const { selectedClient, currentUser, country } = useApp()
+  const { t } = useT()
   const [reassignTarget, setReassignTarget] = useState<string | null>(null)
   const { toast } = useToast()
   const { data: apiQueueResult } = useCodingQueue({ status: 'pending', limit: 100 })
@@ -464,7 +466,7 @@ export default function CodingPage() {
   }
 
   return (
-    <ModuleShell title="AI Coding" subtitle="Review and approve AI-suggested codes">
+    <ModuleShell title={t("coding","title")} subtitle={t("coding","subtitle")}>
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KPICard label="My Queue" value={apiQueueResult?.meta?.total ?? queue.length} icon={<BrainCircuit size={20} />} />
         <KPICard label="Coded Today" value="4" icon={<CheckCircle2 size={20} />} />

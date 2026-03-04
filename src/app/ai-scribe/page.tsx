@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context'
@@ -466,8 +467,9 @@ function CoderView() {
 export default function AIScribePage() {
   const { currentUser } = useApp()
   const isProvider = currentUser.role === 'provider'
+  const { t } = useT()
   return (
-    <ModuleShell title="AI Scribe" subtitle={isProvider?'Dictate and review clinical notes':'Review AI-generated clinical notes'}>
+    <ModuleShell title={t("scribe","title")} subtitle={isProvider ? t("scribe","subtitleProvider") : t("scribe","subtitleCoder")}>
       <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
         <span className="text-lg shrink-0">🔬</span>
         <div>

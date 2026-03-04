@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -35,6 +36,7 @@ function ContractStatusBadge({ status }: { status: DemoContract['status'] }) {
 
 export default function ContractsPage() {
   const { toast } = useToast()
+  const { t } = useT()
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<DemoContract | null>(demoContracts[0] ?? null)
   const [tab, setTab] = useState<'fee' | 'underpayments' | 'terms'>('fee')
@@ -57,7 +59,7 @@ export default function ContractsPage() {
   ] as const
 
   return (
-    <ModuleShell title="Contract Manager" subtitle="Payer contracts, fee schedules, and underpayment detection">
+    <ModuleShell title={t("contracts","title")} subtitle={t("contracts","subtitle")}>
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
         Demo data — live data connects in Sprint 2

@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
 import { demoMessages, DemoMessage } from '@/lib/demo-data'
@@ -15,6 +16,7 @@ const entityIcons: Record<string, React.ReactNode> = {
 
 export default function MessagesPage() {
   const { currentUser, selectedClient } = useApp()
+  const { t } = useT()
   const { toast } = useToast()
   const { getError } = useAbuseFilter()
   const [localThreads, setLocalThreads] = useState(demoMessages)
@@ -56,7 +58,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <ModuleShell title="Messages" subtitle="Conversations about patients, claims, and submissions">
+    <ModuleShell title={t("messages","title")} subtitle="Conversations about patients, claims, and submissions">
       <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
         <span className="text-lg shrink-0">💬</span>
         <div>

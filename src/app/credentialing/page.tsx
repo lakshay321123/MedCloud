@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -21,6 +22,7 @@ type Provider = typeof providers[0]
 
 export default function CredentialingPage() {
   const { toast } = useToast()
+  const { t } = useT()
   const { selectedClient, country } = useApp()
   const [selected, setSelected] = useState<Provider | null>(null)
   const { data: apiCredResult } = useCredentialing({ limit: 50 })
@@ -57,7 +59,7 @@ export default function CredentialingPage() {
   const expiring = expiringCount
 
   return (
-    <ModuleShell title="Credentialing" subtitle="Provider credentials and payer enrollment">
+    <ModuleShell title={t("credentialing","title")} subtitle={t("credentialing","subtitle")}>
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KPICard label="Active Providers" value={activeCount} icon={<BadgeCheck size={20}/>}/>
         <KPICard label="Expiring (30 days)" value={expiringCount} trend="down"/>

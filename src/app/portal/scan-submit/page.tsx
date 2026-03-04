@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
 import { demoPatients, demoSubmissions } from '@/lib/demo-data'
@@ -15,6 +16,7 @@ type Step = 1 | 2 | 3
 
 export default function ScanSubmitPage() {
   const { selectedClient, currentUser, country } = useApp()
+  const { t } = useT()
   const isClinic = currentUser.role === 'client' || currentUser.role === 'provider'
   const clientId = isClinic
     ? currentUser.organization_id
@@ -59,7 +61,7 @@ export default function ScanSubmitPage() {
   const history = demoSubmissions.filter(s => s.clientId === clientId)
 
   if (submitted) return (
-    <ModuleShell title="Scan & Submit" subtitle="Upload documents to Cosentus for processing">
+    <ModuleShell title={t("scan","title")} subtitle="Upload documents to Cosentus for processing">
       <div className="max-w-lg mx-auto">
         <div className="card p-10 text-center mb-6">
           <CheckCircle2 size={56} className="text-emerald-500 mx-auto mb-4"/>
@@ -84,7 +86,7 @@ export default function ScanSubmitPage() {
   )
 
   return (
-    <ModuleShell title="Scan & Submit" subtitle="Upload documents to Cosentus for processing">
+    <ModuleShell title={t("scan","title")} subtitle="Upload documents to Cosentus for processing">
       <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
         <span className="text-lg shrink-0">📄</span>
         <div>
