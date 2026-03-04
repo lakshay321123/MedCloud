@@ -207,6 +207,42 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; -- only suppress duplicate constraint errors
 END $$;
 
+-- ── Fee Schedules (contract rates for underpayment detection) ──────────────────
+CREATE TABLE IF NOT EXISTS fee_schedules (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id UUID NOT NULL REFERENCES organizations(id),
+  payer_id UUID NOT NULL REFERENCES payers(id),
+  client_id UUID REFERENCES clients(id),
+  cpt_code TEXT NOT NULL,
+  modifier TEXT,
+  contracted_rate DECIMAL(12,2) NOT NULL,
+  effective_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  termination_date DATE,
+  rate_type TEXT DEFAULT 'fee_for_service' CHECK (rate_type IN ('fee_for_service','percent_of_medicare','per_diem','case_rate','capitation')),
+  medicare_pct DECIMAL(5,2),          -- if rate_type = percent_of_medicare
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (org_id, payer_id, cpt_code, modifier, effective_date)
+);
+CREATE INDEX IF NOT EXISTS idx_fee_sched_payer ON fee_schedules(payer_id, cpt_code);
+CREATE INDEX IF NOT EXISTS idx_fee_sched_org ON fee_schedules(org_id);
+
+-- ── Scrub Results (persisted from 50-rule engine) ─────────────────────────────
+CREATE TABLE IF NOT EXISTS scrub_results (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id UUID NOT NULL REFERENCES organizations(id),
+  claim_id UUID NOT NULL REFERENCES claims(id),
+  rule_code TEXT NOT NULL,
+  rule_name TEXT,
+  severity TEXT DEFAULT 'warning' CHECK (severity IN ('error','warning','info')),
+  passed BOOLEAN DEFAULT true,
+  message TEXT,
+  scrubbed_by UUID,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_scrub_results_claim ON scrub_results(claim_id);
+
 COMMIT;
 
 -- ── Verify ─────────────────────────────────────────────────────────────────────
