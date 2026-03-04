@@ -153,9 +153,8 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
 }
 
 // ─── TAB 1: Live Calls ────────────────────────────────────────────────────────
-function ActiveCallsTab() {
+function ActiveCallsTab({ allCalls }: { allCalls: RetellCall[] }) {
   const { calls, loading, fallback, refetch } = useRetellCalls({ status: 'ongoing' })
-  const { calls: allCalls } = useRetellCalls({ limit: 500 })
   const [selected, setSelected] = useState<RetellCall | null>(null)
 
   const todayCalls = allCalls.filter(c => c.start_timestamp && Date.now() - c.start_timestamp < 86400000)
@@ -215,7 +214,7 @@ function ActiveCallsTab() {
 }
 
 // ─── TAB 2: Call Log ──────────────────────────────────────────────────────────
-function CallLogTab() {
+function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { allCalls: RetellCall[]; loading: boolean; fallback: boolean }) {
   const [agentFilter, setAgentFilter] = useState<'all' | 'chris' | 'cindy'>('all')
   const [outcomeFilter, setOutcomeFilter] = useState('')
   const [payerFilter, setPayerFilter] = useState('')
@@ -236,11 +235,14 @@ function CallLogTab() {
   const [page, setPage] = useState(0)
   const PAGE_SIZE = 25
 
-  const { calls, loading, fallback, refetch } = useRetellCalls({
-    status: 'ended',
-    agent: agentFilter === 'all' ? undefined : agentFilter,
-    limit: 500,
+  // Filter locally from hoisted data — no re-fetch on tab switch
+  const endedCalls = allCalls.filter(c => c.call_status === 'ended')
+  const calls = endedCalls.filter(c => {
+    if (agentFilter !== 'all' && c._agent_name !== agentFilter) return false
+    return true
   })
+  const loading = allLoading
+  const fallback = allFallback
 
   // Extract unique payers
   const payers = Array.from(new Set(
@@ -287,7 +289,6 @@ function CallLogTab() {
             }`}>{t.label}</button>
         ))}
         <div className="ml-auto flex items-center gap-2 pb-2">
-          <button onClick={refetch} className="p-1.5 hover:bg-surface-elevated rounded text-content-secondary transition-colors"><RefreshCw size={13} /></button>
           <button onClick={runDebug} disabled={debugging} className="text-[10px] px-2 py-1 border border-separator rounded text-content-tertiary hover:text-content-secondary hover:bg-surface-elevated disabled:opacity-40 transition-colors">
             {debugging ? '…' : 'Debug API'}
           </button>
@@ -575,17 +576,16 @@ function CampaignLauncherTab() {
 }
 
 // ─── TAB 4: Payer Intelligence ─────────────────────────────────────────────────
-function PayerIntelligenceTab() {
+function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
   const { toast } = useToast()
-  const { calls, loading } = useRetellCalls({ agent: 'chris', limit: 500 })
+  // Use all calls (not just chris-filtered) — payer stats should include both agents
+  const stats = computePayerStats(allCalls.filter(c => c.call_status === 'ended'))
   const [selectedPayer, setSelectedPayer] = useState<PayerStat | null>(null)
   const [generating, setGenerating] = useState(false)
   const [playbook, setPlaybook] = useState<string>('')
   const [pushing, setPushing] = useState(false)
   const { update: updateAgent } = useUpdateAgentPrompt()
   const { prompt: currentPrompt, refetch: refetchPrompt } = useAgentPrompt('chris')
-
-  const stats = computePayerStats(calls)
 
   async function generatePlaybook(payer: PayerStat) {
     setGenerating(true)
@@ -600,39 +600,21 @@ function PayerIntelligenceTab() {
         return `--- CALL ${outcome} (${formatDuration(c.duration_ms)}) ---\nSummary: ${summary}\n${transcript}\n`
       }).join('\n')
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1500,
-          system: `You are an expert medical billing AI analyst. You analyze real call transcripts between an AI billing agent (Chris) and insurance company representatives to identify payer-specific patterns and create actionable IVR navigation playbooks.
-
-Output ONLY the playbook section in markdown format — no preamble, no explanation. Write it as a section to be inserted directly into Chris's system prompt.`,
-          messages: [{
-            role: 'user',
-            content: `Analyze these ${sampleCalls.length} call transcripts with ${payer.payer} (success rate: ${payer.successRate}%). 
-
-${transcripts}
-
-Based on these real calls, write a payer-specific playbook section for ${payer.payer} that covers:
-1. IVR navigation sequence (exact button presses and menu paths)
-2. What commonly causes failures / where Chris gets stuck
-3. What to do / not do when navigating ${payer.payer}'s system
-4. Any special phrases, holds, or transfers specific to this payer
-
-Format as:
-# Payer-Specific Rules → ${payer.payer}
-[your analysis here]
-
-Be specific and actionable. Reference exact patterns from the transcripts.`
-          }],
+          action: 'voice_playbook',
+          payer: payer.payer,
+          successRate: payer.successRate,
+          callCount: sampleCalls.length,
+          transcripts,
         }),
       })
 
       const data = await response.json()
-      const text = data.content?.[0]?.text ?? ''
-      setPlaybook(text)
+      if (!response.ok) throw new Error(data.error ?? 'AI request failed')
+      setPlaybook(data.text ?? '')
     } catch (err) {
       toast.error(`Generation failed: ${err}`)
     } finally {
@@ -667,7 +649,7 @@ Be specific and actionable. Reference exact patterns from the transcripts.`
     }
   }
 
-  if (loading) return <div className="card p-12 text-center text-sm text-content-tertiary">Loading call data…</div>
+  if (stats.length === 0 && allCalls.length === 0) return <div className="card p-12 text-center text-sm text-content-tertiary">Loading call data…</div>
 
   return (
     <div className="grid grid-cols-5 gap-5">
@@ -838,45 +820,23 @@ function PromptEditorTab() {
       const successSamples = ended.filter(c => c.call_analysis?.call_successful).slice(0, 10)
         .map(c => `SUCCESS: ${c.call_analysis?.call_summary ?? ''}`).join('\n')
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 2000,
-          system: `You are an expert AI prompt engineer specializing in medical billing voice AI agents. You analyze real call performance data and suggest targeted, specific improvements to the agent's system prompt.
-
-Be surgical — only suggest changes that are directly supported by the call data evidence. Do not rewrite the entire prompt. Output a clear diff-style suggestion showing what to add, change, or remove, and why.`,
-          messages: [{
-            role: 'user',
-            content: `Agent: ${activeAgent === 'chris' ? 'Chris (Payer Follow-up)' : 'Cindy (AR Collections)'}
-Current success rate from last ${ended.length} calls: ${successRate}%
-
-FAILED CALL PATTERNS:
-${failedSamples || 'No failure data yet'}
-
-SUCCESSFUL CALL PATTERNS:
-${successSamples || 'No success data yet'}
-
-CURRENT PROMPT:
-${localPrompt}
-
-Based on the failure patterns above, what specific changes to the prompt would improve success rate? 
-Format your response as:
-## What's Going Wrong
-[specific patterns from failed calls]
-
-## Suggested Changes
-[exact text to add/modify/remove, with rationale]
-
-## Expected Impact
-[what improvement this should drive]`
-          }],
+          action: 'voice_analyze',
+          agent: activeAgent,
+          localPrompt,
+          failedSamples: failedSamples || 'No failure data yet',
+          successSamples: successSamples || 'No success data yet',
+          callCount: ended.length,
+          successRate,
         }),
       })
 
       const data = await response.json()
-      setAiSuggestion(data.content?.[0]?.text ?? '')
+      if (!response.ok) throw new Error(data.error ?? 'AI request failed')
+      setAiSuggestion(data.text ?? '')
     } catch (err) {
       toast.error(`Analysis failed: ${err}`)
     } finally {
@@ -1036,6 +996,8 @@ type TabId = typeof TABS[number]['id']
 export default function VoiceAIPage() {
   const [tab, setTab] = useState<TabId>('active')
   const { t } = useT()
+  // Hoist all-calls fetch to parent — data persists across tab switches, no re-fetch on tab change
+  const { calls: allCalls, loading: allCallsLoading, fallback: allCallsFallback } = useRetellCalls({ limit: 500 })
 
   return (
     <ModuleShell title={t('voice', 'title')} subtitle="Powered by Retell AI — real outbound calls to payers and patients">
@@ -1053,10 +1015,10 @@ export default function VoiceAIPage() {
           )
         })}
       </div>
-      {tab === 'active' && <ActiveCallsTab />}
-      {tab === 'log' && <CallLogTab />}
+      {tab === 'active' && <ActiveCallsTab allCalls={allCalls} />}
+      {tab === 'log' && <CallLogTab allCalls={allCalls} loading={allCallsLoading} fallback={allCallsFallback} />}
       {tab === 'campaign' && <CampaignLauncherTab />}
-      {tab === 'payer' && <PayerIntelligenceTab />}
+      {tab === 'payer' && <PayerIntelligenceTab allCalls={allCalls} />}
       {tab === 'prompt' && <PromptEditorTab />}
     </ModuleShell>
   )
