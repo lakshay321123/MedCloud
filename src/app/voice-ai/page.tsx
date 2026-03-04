@@ -6,7 +6,7 @@ import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import {
   Phone, PhoneCall, PhoneMissed, Clock, Play, X, ChevronRight,
-  Plus, Edit2, Zap, BarChart2, Settings2, Radio, AlertTriangle,
+  Plus, Edit2, Zap, BarChart2, Settings2, Radio,
   CheckCircle, XCircle, Mic, Users, RefreshCw, ExternalLink,
   PhoneOutgoing, Activity, Upload, FileSpreadsheet, Eye, Trash2,
 } from 'lucide-react'
@@ -158,7 +158,7 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
 
 // ─── Tab 1: Live Calls ────────────────────────────────────────────────────────
 function ActiveCallsTab() {
-  const { calls, loading, fallback, refetch } = useRetellCalls('ongoing')
+  const { calls, loading, refetch } = useRetellCalls('ongoing')
   const { calls: allCalls } = useRetellCalls()
   const [selectedCall, setSelectedCall] = useState<RetellCall | null>(null)
   const { toast } = useToast()
@@ -187,13 +187,6 @@ function ActiveCallsTab() {
           <RefreshCw size={15} />
         </button>
       </div>
-
-      {fallback && (
-        <div className="mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
-          <AlertTriangle size={13} className="shrink-0" />
-          Showing demo data — add RETELL_API_KEY + agent IDs to Vercel env to go live
-        </div>
-      )}
 
       {loading ? (
         <div className="card p-12 text-center text-sm text-content-tertiary">Loading live calls…</div>
@@ -253,7 +246,7 @@ function ActiveCallsTab() {
 
 // ─── Tab 2: Call Log ──────────────────────────────────────────────────────────
 function CallLogTab() {
-  const { calls, loading, fallback } = useRetellCalls('ended')
+  const { calls, loading } = useRetellCalls('ended')
   const [selectedCall, setSelectedCall] = useState<RetellCall | null>(null)
   const [outcomeFilter, setOutcomeFilter] = useState<string>('')
   const [search, setSearch] = useState('')
@@ -277,11 +270,6 @@ function CallLogTab() {
           <option value="success">Resolved</option>
           <option value="failed">Failed / Voicemail</option>
         </select>
-        {fallback && (
-          <span className="ml-auto flex items-center gap-1.5 text-xs text-amber-500">
-            <AlertTriangle size={12} /> Demo mode — add Retell env vars to go live
-          </span>
-        )}
       </div>
 
       {loading ? (
@@ -345,7 +333,7 @@ function CallLogTab() {
 function CampaignLauncherTab() {
   const { toast } = useToast()
   const { agents, apiConfigured } = useRetellAgents()
-  const { batches, loading: batchLoading, fallback } = useRetellBatches()
+  const { batches, loading: batchLoading } = useRetellBatches()
   const { launch: launchBatch, loading: launching } = useLaunchBatch()
   const { launch: launchCall, loading: singleLoading } = useLaunchCall()
 
@@ -425,7 +413,7 @@ function CampaignLauncherTab() {
       {/* Left: Past campaigns */}
       <div className="col-span-2 space-y-3">
         <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">
-          Past Campaigns {fallback && <span className="text-amber-500 normal-case font-normal">(demo)</span>}
+          Past Campaigns
         </h3>
         {batchLoading ? (
           <div className="text-xs text-content-tertiary p-4">Loading…</div>
@@ -782,7 +770,7 @@ function ScriptBuilderTab() {
 
 // ─── Tab 5: Call Analytics ─────────────────────────────────────────────────────
 function CallAnalyticsTab() {
-  const { calls, fallback } = useRetellCalls()
+  const { calls } = useRetellCalls()
 
   const total = calls.length
   const successful = calls.filter(c => c.call_analysis?.call_successful).length
@@ -817,12 +805,6 @@ function CallAnalyticsTab() {
 
   return (
     <div className="space-y-4">
-      {fallback && (
-        <div className="px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
-          <AlertTriangle size={13} className="shrink-0" />
-          Analytics from demo data — connect Retell for real metrics
-        </div>
-      )}
 
       {/* KPI Row */}
       <div className="grid grid-cols-4 gap-4">
