@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
+import { demoClaims, demoClients } from '@/lib/demo-data'
 import { useClaims, useReport, useClientHealthScores, useProviders, useClients } from '@/lib/hooks'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import { useAnalyticsKPIs } from '@/lib/hooks'
@@ -126,7 +127,16 @@ export default function AnalyticsPage() {
   const { data: liveKPIs } = useAnalyticsKPIs()
 
   // Demo claims used for chart visualisations only (time-series not in API yet)
-  const claims: any[] = []
+  const claims = useMemo(() =>
+    selectedClient
+      ? demoClaims.filter(c => c.clientId === selectedClient.id)
+      : country === 'uae'
+        ? demoClaims.filter(c => (UAE_ORG_IDS as readonly string[]).includes(c.clientId))
+        : country === 'usa'
+          ? demoClaims.filter(c => (US_ORG_IDS as readonly string[]).includes(c.clientId))
+          : demoClaims,
+    [selectedClient, country]
+  )
 
   // ─── Financial calculations ───────────────────────────────────────────────
   const revenueCollected = useMemo(() =>
@@ -171,8 +181,8 @@ export default function AnalyticsPage() {
 
   // ─── Collection rate by client bar ──────────────────────────────────────
   const clientCollectionRates = useMemo(() =>
-    ([] as {id:string;name:string;region:string}[]).map(client => {
-      const cc: any[] = []
+    demoClients.map(client => {
+      const cc = demoClaims.filter(c => c.clientId === client.id)
       const billed = cc.reduce((s, c) => s + c.billed, 0)
       const paid = cc.reduce((s, c) => s + c.paid, 0)
       const rate = billed > 0 ? Math.round((paid / billed) * 100) : 0

@@ -7,11 +7,14 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          DEFAULT: '#00B5D6',  // Primary
-          hover:   '#36C2DE',  // Cyan 400
-          light:   '#68D1E6',  // Cyan 300
-          pale:    '#A1DEED',  // Cyan 200
-          ghost:   '#D6EBF2',  // Cyan 100
+          DEFAULT: '#00B5D6',
+          dark: '#047285',
+          deep: '#014E5C',
+          mid: '#069DB8',
+          light: '#36C2DE',
+          lighter: '#68D1E6',
+          pale: '#A1DEED',
+          ghost: '#D6EBF2',
         },
         surface: {
           primary: 'var(--surface-primary)',

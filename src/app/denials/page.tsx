@@ -10,6 +10,7 @@ import { ShieldAlert, FileText, AlertTriangle, Send } from 'lucide-react'
 import { useToast } from '@/components/shared/Toast'
 import { useDenials, useGenerateAppeal, useDenialCategories, useAppealsList, useBatchGenerateAppeals, useUpdateDenial, useCreateDenial, useSubmitAppeal, useAppealDetail, useUpdateAppealStatus, useAppealTemplates, useCreateAppealTemplate, useCheckAppealDeadlines } from '@/lib/hooks'
 import { filterByRegion } from '@/lib/utils/region'
+import { demoDenialsData } from '@/lib/demo-data'
 import { ErrorBanner } from '@/components/shared/ApiStates'
 import { useRouter } from 'next/navigation'
 import { sanitizeForPrompt } from '@/lib/ai-utils'
@@ -79,6 +80,7 @@ export default function DenialsPage() {
     carc_description: d.carc_description,
     rarc_description: d.rarc_description,
   })) || []
+
   const denials: DenialRow[] = filterByRegion(
     apiDenials,
     currentUser.organization_id,

@@ -5,7 +5,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useApp } from '@/lib/context'
-
+import { demoERAFiles, demoERALineItems, demoUnmatchedPayments } from '@/lib/demo-data'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
@@ -33,7 +33,7 @@ export default function PaymentPostingPage() {
     receivedAt: e.created_at || '',
   })) || []
   const [selectedEra, setSelectedEra] = useState<string | null>(null)
-  const [lineItems, setLineItems] = useState<any[]>([])
+  const [lineItems, setLineItems] = useState(demoERALineItems)
   const [editingCell, setEditingCell] = useState<{ rowId: string; field: string } | null>(null)
   const [editValue, setEditValue] = useState<string>('')
   const [showUploadModal, setShowUploadModal] = useState(false)
@@ -61,7 +61,7 @@ export default function PaymentPostingPage() {
   }
 
   // Silent denials: ERA lines with denied > 0 that have action 'post' (not yet routed)
-  const silentDenials: any[] = []
+  const silentDenials = demoERALineItems.filter(l => l.denied > 0 && l.action === 'post')
 
   if (!selectedEra) {
     return (
@@ -74,7 +74,7 @@ export default function PaymentPostingPage() {
           <KPICard label={t('posting','erasPending')} value={eras.filter(e => e.status !== 'posted').length} icon={<Receipt size={20} />} />
           <KPICard label={t('posting','postedToday')} value="89" icon={<CheckCircle2 size={20} />} />
           <KPICard label={t('posting','autoPostRate')} value={apiERAResult?.data ? `${Math.round((apiERAResult.data.filter(e => e.status === 'posted').length / Math.max(apiERAResult.data.length, 1)) * 100)}%` : '76%'} icon={<Send size={20} />} />
-          <KPICard label={t('posting','unmatched')} value={0} icon={<AlertTriangle size={20} />} />
+          <KPICard label={t('posting','unmatched')} value={demoUnmatchedPayments.length} icon={<AlertTriangle size={20} />} />
         </div>
 
         {/* Silent denial detection banner */}
@@ -149,7 +149,7 @@ export default function PaymentPostingPage() {
         <div className="card p-4">
           <h3 className="text-[12px] font-semibold text-content-tertiary uppercase tracking-wider mb-2">Unmatched Payments</h3>
           <div className="space-y-2 text-[13px]">
-            {([] as any[]).map(item => (
+            {demoUnmatchedPayments.map(item => (
               <div key={item.id} className="flex items-center justify-between bg-surface-elevated rounded-btn p-2">
                 <span>{item.payer} · {item.reason}</span>
                 <span className="font-mono">${item.amount.toFixed(2)}</span>
@@ -265,7 +265,7 @@ export default function PaymentPostingPage() {
                 <td className="px-3 py-2 font-mono">{row.dos}</td>
                 {(['billed', 'allowed', 'paid', 'denied', 'patBalance'] as const).map(field => (
                   <td key={field} className={`px-3 py-2 text-right font-mono ${field === 'denied' && row.denied > 0 ? 'text-red-600 dark:text-red-400' : ''} ${field === 'patBalance' && row.patBalance > 0 ? 'text-blue-600 dark:text-blue-400' : ''}`}>
-                    {editingCell?.rowId === row.id && editingCell?.field === field ? (
+                    {editingCell?.rowId === row.id && editingCell.field === field ? (
                       <input
                         type="number"
                         autoFocus

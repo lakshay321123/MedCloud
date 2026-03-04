@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react'
 import { Theme, Language, UserRole, User, ClientOrg, PortalType } from '@/types'
+import { demoClients } from '@/lib/demo-data'
 
 const facilityRoles: UserRole[] = ['provider', 'client']
 const backofficeRoles: UserRole[] = ['admin', 'director', 'supervisor', 'manager', 'coder', 'biller', 'ar_team', 'posting_team']
@@ -107,8 +108,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Filter clients by logged-in region
   const clients = useMemo(() => {
-    // Clients loaded from API at runtime — empty until backend returns data
-    return [] as import('@/types').ClientOrg[]
+    if (!country) return demoClients
+    const region = country === 'usa' ? 'us' : 'uae'
+    return demoClients.filter(c => c.region === region)
   }, [country])
 
   // Clear selectedClient if it doesn't match current region
