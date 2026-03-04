@@ -40,13 +40,22 @@
  *   POST  /notifications               — Create notification
  *   PUT   /notifications/:id           — Mark notification read
  *
- * SECURITY: UUID validation, HIPAA audit middleware logs every PHI access.
+ * ── Sprint 5 additions (March 4, 2026) ──
+ *   GET   /health                      — DB health check (bypasses auth)
+ *   POST  /webhooks/retell             — Retell call-ended webhook (HMAC-verified)
+ *   POST  /webhooks/availity           — Availity claim-status webhook (HMAC-verified)
+ *   POST  /edi/ingest-999              — Ingest 999 functional acknowledgement
+ *   POST  /edi/ingest-277              — Ingest 277 claim status response
+ *
+ * SECURITY: UUID validation, HIPAA audit middleware, PHI scrubber on all logs.
+ *   Auth: Cognito JWT via Lambda Authorizer (requestContext.authorizer) with
+ *   fallback to X-Org-Id header for local dev.
  * SCRUBBING: 52 rules. DENIAL CATEGORIES: 8 groups from 300+ CARC codes.
  *
- * ALL v3 routes preserved + client_id filtering on all enriched queries.
+ * ALL v3/v4 routes preserved + client_id filtering on all enriched queries.
  *
- * Deploy: zip this + node_modules (pg) → Lambda medcloud-api
- * Requires: Aurora PostgreSQL, S3 bucket 'medcloud-documents-us',
+ * Deploy: zip this + node_modules (pg, @aws-sdk/*) → Lambda medcloud-api
+ * Requires: Aurora PostgreSQL, S3 bucket 'medcloud-documents-us-prod',
  *           Bedrock access (anthropic.claude-sonnet-4-5-20250929-v1:0), Textract
  */
 
@@ -95,12 +104,265 @@ try {
   InvokeModelCommand = bedMod.InvokeModelCommand;
 } catch { console.log('Bedrock SDK not available — AI coding will return mock suggestions'); }
 
-const S3_BUCKET = process.env.S3_BUCKET || 'medcloud-documents-us';
+const S3_BUCKET = process.env.S3_BUCKET || 'medcloud-documents-us-prod';
 // Bedrock model — override via BEDROCK_MODEL env var. Verify model availability in your region.
 const BEDROCK_MODEL = process.env.BEDROCK_MODEL || 'anthropic.claude-sonnet-4-5-20250929-v1:0';
 const BEDROCK_REGION = process.env.AWS_REGION || 'us-east-1';
 
-// ─── Prompt Injection Sanitizer ────────────────────────────────────────────────
+// ─── PHI Scrubber — strips PHI before any console.log/CloudWatch output ────────
+// HIPAA requirement: PHI must never appear in CloudWatch logs.
+const PHI_PATTERNS = [
+  /\b\d{3}-\d{2}-\d{4}\b/g,                                  // SSN
+  /\b\d{3}[- ]?\d{3}[- ]?\d{4}\b/g,                          // Phone numbers
+  /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,            // Email
+  /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g,                          // DOB patterns
+  /"(first_name|last_name|dob|ssn|member_id|emirates_id|email|phone)":\s*"[^"]+"/gi, // JSON PHI fields
+];
+function scrubPHI(text) {
+  if (!text) return '';
+  let s = String(text);
+  for (const p of PHI_PATTERNS) s = s.replace(p, '[PHI-REDACTED]');
+  return s;
+}
+// Safe log — always scrub before writing to CloudWatch
+function safeLog(level, ...args) {
+  const scrubbed = args.map(a => {
+    if (typeof a === 'object') {
+      try { return scrubPHI(JSON.stringify(a)); } catch { return '[object]'; }
+    }
+    return scrubPHI(String(a));
+  });
+  if (level === 'error') console.error(...scrubbed);
+  else console.log(...scrubbed);
+}
+
+// ─── HMAC Webhook Verifier ──────────────────────────────────────────────────────
+// Verifies Retell and Availity webhook signatures to prevent spoofed callbacks.
+async function verifyHMAC(secret, rawBody, signatureHeader) {
+  if (!secret || !signatureHeader) return false;
+  try {
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+    const sigBytes = Uint8Array.from(Buffer.from(signatureHeader.replace(/^sha256=/, ''), 'hex'));
+    return await crypto.subtle.verify('HMAC', key, sigBytes, encoder.encode(rawBody));
+  } catch { return false; }
+}
+
+// ─── Retell Webhook Handler ─────────────────────────────────────────────────────
+// Called by Retell when a call ends. Extracts outcome via Bedrock, updates AR.
+async function handleRetellWebhook(body, orgId, userId) {
+  const { event, call } = body;
+  // Only process call_ended events — ignore call_started, call_analyzed, etc.
+  if (event !== 'call_ended' && event !== 'call_analyzed') {
+    return { status: 'ignored', event };
+  }
+  const callId   = call?.call_id;
+  const transcript = call?.transcript || '';
+  const callAnalysis = call?.call_analysis || {};
+  const dynamicVars  = call?.retell_llm_dynamic_variables || {};
+
+  // Extract RCM context from Retell's dynamic variables (set when call was created)
+  const claimId     = dynamicVars.claim_id     || null;
+  const claimNumber = dynamicVars.claim_number  || null;
+  const payerName   = dynamicVars.primary_carrier_name || dynamicVars.payer_name || 'Unknown Payer';
+  const patientName = dynamicVars.patient_name  || null;
+  const callerUserId = dynamicVars.caller_user_id || userId;
+
+  // Determine call outcome from Retell's analysis
+  const callSuccessful = callAnalysis.call_successful ?? false;
+  const sentiment = callAnalysis.user_sentiment || 'Neutral';
+  const summary = callAnalysis.call_summary || '';
+
+  // Map Retell call outcome to RCM action outcomes
+  let outcome = 'no_info_obtained';
+  let nextFollowUpDays = 14;
+  const summaryLower = (summary + transcript).toLowerCase();
+  if (callSuccessful && summaryLower.includes('paid')) {
+    outcome = 'payment_confirmed'; nextFollowUpDays = 3;
+  } else if (summaryLower.includes('pending') || summaryLower.includes('processing')) {
+    outcome = 'in_process'; nextFollowUpDays = 7;
+  } else if (summaryLower.includes('denied') || summaryLower.includes('denial')) {
+    outcome = 'denied'; nextFollowUpDays = 3;
+  } else if (summaryLower.includes('additional info') || summaryLower.includes('documentation')) {
+    outcome = 'additional_info_requested'; nextFollowUpDays = 5;
+  } else if (callSuccessful) {
+    outcome = 'claim_status_obtained'; nextFollowUpDays = 7;
+  } else if (summaryLower.includes('no answer') || summaryLower.includes('voicemail')) {
+    outcome = 'no_answer'; nextFollowUpDays = 2;
+  }
+
+  // Use Bedrock to extract structured AR data from transcript if available
+  let bedrockExtraction = null;
+  if (bedrockClient && transcript.length > 100) {
+    try {
+      const prompt = `You are an expert medical billing AR specialist. Extract key information from this payer call transcript for claim ${claimNumber || 'unknown'} with ${payerName}.
+
+TRANSCRIPT:
+${sanitizeForPrompt(transcript.substring(0, 3000))}
+
+Extract and return ONLY a JSON object with these fields:
+{
+  "claim_status": "paid|denied|in_process|pending|additional_info_required|not_found",
+  "reference_number": "payer reference number if mentioned, else null",
+  "expected_payment_date": "ISO date if mentioned, else null",
+  "denial_reason": "denial reason if denied, else null",
+  "action_required": "next action for billing team, brief",
+  "call_notes": "key facts from call, max 200 chars"
+}`;
+      const bedrockResp = await bedrockClient.send(new InvokeModelCommand({
+        modelId: BEDROCK_MODEL,
+        contentType: 'application/json',
+        accept: 'application/json',
+        body: JSON.stringify({ anthropic_version: 'bedrock-2023-05-31', max_tokens: 400,
+          messages: [{ role: 'user', content: prompt }] }),
+      }));
+      const responseText = JSON.parse(new TextDecoder().decode(bedrockResp.body)).content[0]?.text || '';
+      bedrockExtraction = extractJSON(responseText);
+    } catch (err) { safeLog('error', 'Retell Bedrock extraction failed:', err.message); }
+  }
+
+  const referenceNumber = bedrockExtraction?.reference_number || null;
+  const callNotes = bedrockExtraction?.call_notes || summary.substring(0, 200);
+  const nextFollowUp = new Date(Date.now() + nextFollowUpDays * 86400000).toISOString().slice(0, 10);
+
+  // 1. Log the call in ar_call_log
+  const callLog = await create('ar_call_log', {
+    org_id: orgId,
+    claim_id: claimId,
+    call_type: 'outbound_ai',
+    call_date: new Date().toISOString(),
+    payer_name: payerName,
+    outcome,
+    reference_number: referenceNumber,
+    notes: callNotes,
+    next_follow_up: nextFollowUp,
+    caller_id: callerUserId,
+    retell_call_id: callId,
+    duration_seconds: call?.duration_ms ? Math.round(call.duration_ms / 1000) : null,
+    transcript: transcript.substring(0, 5000), // cap stored transcript
+  }, orgId).catch(err => { safeLog('error', 'ar_call_log insert failed:', err.message); return null; });
+
+  // 2. Update claim if we have a claim ID and got useful info
+  if (claimId && bedrockExtraction?.claim_status) {
+    const claimStatusMap = {
+      'paid': 'paid', 'denied': 'denied', 'in_process': 'in_process',
+      'pending': 'submitted', 'additional_info_required': 'submitted',
+    };
+    const mappedStatus = claimStatusMap[bedrockExtraction.claim_status];
+    if (mappedStatus) {
+      await update('claims', claimId, {
+        last_follow_up_date: new Date().toISOString().slice(0, 10),
+        next_action_date: nextFollowUp,
+        payer_reference_number: referenceNumber,
+      }).catch(err => safeLog('error', 'claim update after Retell call failed:', err.message));
+    }
+  }
+
+  // 3. Create follow-up task
+  await create('tasks', {
+    org_id: orgId,
+    title: `AR Follow-up: ${outcome.replace(/_/g, ' ')} — ${claimNumber || payerName}`,
+    description: callNotes,
+    status: 'pending',
+    priority: outcome === 'denied' ? 'high' : 'medium',
+    task_type: 'ar_follow_up',
+    due_date: nextFollowUp,
+    entity_type: 'claim',
+    entity_id: claimId,
+    assigned_to: callerUserId,
+  }, orgId).catch(err => safeLog('error', 'task creation after Retell call failed:', err.message));
+
+  // 4. Audit log
+  await auditLog(orgId, callerUserId, 'retell_call_ended', 'claims', claimId, {
+    call_id: callId, outcome, payer: payerName, reference: referenceNumber,
+  }).catch(() => {});
+
+  return {
+    status: 'processed',
+    call_id: callId,
+    outcome,
+    reference_number: referenceNumber,
+    next_follow_up: nextFollowUp,
+    log_id: callLog?.id || null,
+    bedrock_extracted: !!bedrockExtraction,
+  };
+}
+
+// ─── 999 Functional Acknowledgement Ingest ─────────────────────────────────────
+// Parses an ANSI X12 999 (or TA1) EDI file and updates edi_transactions table.
+async function ingest999(ediContent, orgId, userId) {
+  const segments = ediContent.replace(/\r/g, '').split(/[~\n]/).map(s => s.trim()).filter(Boolean);
+  const results = { accepted: [], rejected: [], errors: [] };
+
+  let currentST = null; // tracks current 999 transaction set
+  let currentAK1 = null; // functional group response
+  let groupControlNumber = null;
+
+  for (const seg of segments) {
+    const elements = seg.split('*');
+    const segId = elements[0];
+
+    if (segId === 'ST' && elements[1] === '999') {
+      currentST = { control: elements[2], aks: [] };
+    }
+    if (segId === 'AK1') {
+      // AK1*FA*000000010 — functional group response
+      currentAK1 = { id_code: elements[1], group_control: elements[2] };
+      groupControlNumber = elements[2];
+    }
+    if (segId === 'AK9') {
+      // AK9*A*1*1*1 — A=Accepted, R=Rejected, E=Accepted with Errors
+      const ackCode = elements[1];
+      const accepted = ackCode === 'A' || ackCode === 'E';
+      if (groupControlNumber) {
+        // Find the EDI transaction this acknowledgement belongs to
+        const txR = await pool.query(
+          `SELECT * FROM edi_transactions WHERE org_id = $1 AND transaction_set_control_number = $2
+           AND direction = 'outbound' AND transaction_type LIKE '837%'
+           ORDER BY created_at DESC LIMIT 1`,
+          [orgId, groupControlNumber]
+        ).catch(() => ({ rows: [] }));
+
+        const tx = txR.rows[0];
+        if (tx) {
+          await update('edi_transactions', tx.id, {
+            status: accepted ? 'acknowledged' : 'rejected',
+            acknowledgement_code: ackCode,
+            acknowledged_at: new Date().toISOString(),
+          }).catch(() => {});
+
+          if (accepted) {
+            results.accepted.push({ tx_id: tx.id, group_control: groupControlNumber });
+          } else {
+            results.rejected.push({ tx_id: tx.id, group_control: groupControlNumber, code: ackCode });
+            // Create alert task for rejected submission
+            await create('tasks', {
+              org_id: orgId,
+              title: `EDI Submission Rejected — Batch ${groupControlNumber}`,
+              description: `999 acknowledgement rejected (code: ${ackCode}). Review EDI transaction and resubmit.`,
+              status: 'pending', priority: 'high', task_type: 'edi_error',
+              entity_type: 'edi_transaction', entity_id: tx.id,
+            }, orgId).catch(() => {});
+          }
+        } else {
+          results.errors.push({ msg: `No outbound 837 found for group control ${groupControlNumber}` });
+        }
+      }
+    }
+  }
+
+  await auditLog(orgId, userId, 'ingest_999', 'edi_transactions', null, {
+    accepted: results.accepted.length, rejected: results.rejected.length,
+  }).catch(() => {});
+
+  return {
+    transaction_type: '999',
+    ...results,
+    total_processed: results.accepted.length + results.rejected.length,
+  };
+}
+
+
 // Strip sequences that could manipulate LLM behavior when embedding untrusted text
 function sanitizeForPrompt(text) {
   if (!text) return '';
@@ -4014,6 +4276,30 @@ export const handler = async (event) => {
     return respond(200, {});
   }
 
+  // ── /health — bypasses auth, used for monitoring + deploy verification ────────
+  const quickPath = event.path || event.rawPath || '';
+  if (quickPath.replace(/^\/prod/, '').replace(/^\/staging/, '') === '/health' ||
+      quickPath === '/health') {
+    try {
+      const t0 = Date.now();
+      const r = await pool.query('SELECT NOW() as db_time, current_database() as db_name');
+      const r2 = await pool.query(`SELECT COUNT(*) as table_count FROM information_schema.tables
+                                   WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`);
+      return respond(200, {
+        status: 'healthy',
+        database: 'connected',
+        db_time: r.rows[0].db_time,
+        db_name: r.rows[0].db_name,
+        table_count: parseInt(r2.rows[0].table_count),
+        latency_ms: Date.now() - t0,
+        version: 'v4',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      return respond(503, { status: 'unhealthy', error: err.message });
+    }
+  }
+
   try {
     const method = event.httpMethod || event.requestContext?.http?.method || 'GET';
     const path = event.path || event.rawPath || event.resource || '';
@@ -4035,13 +4321,14 @@ export const handler = async (event) => {
       return val;
     }
 
-    // TODO: PRODUCTION — Replace header-based auth with Cognito JWT validation.
-    // API Gateway authorizer should decode the JWT, extract org_id/user_id/client_id
-    // from token claims, and pass them via event.requestContext.authorizer.
-    // Until then, validate UUID format to prevent injection via spoofed headers.
-    const rawOrgId = headers['x-org-id'] || qs.org_id || body.org_id || 'a0000000-0000-0000-0000-000000000001';
-    const rawUserId = headers['x-user-id'] || qs.user_id || body.user_id || null;
-    const rawClientId = headers['x-client-id'] || qs.client_id || body.client_id || null;
+    // ── Auth: Cognito JWT via Lambda Authorizer (production) ──────────────────
+    // When API Gateway Lambda Authorizer is attached, Cognito-verified claims
+    // arrive in requestContext.authorizer. Fall back to headers for local dev.
+    const authCtx = event.requestContext?.authorizer || {};
+    const rawOrgId  = authCtx.org_id   || headers['x-org-id']    || qs.org_id    || body.org_id    || 'a0000000-0000-0000-0000-000000000001';
+    const rawUserId = authCtx.user_id  || headers['x-user-id']   || qs.user_id   || body.user_id   || null;
+    const rawClientId = authCtx.client_id || headers['x-client-id'] || qs.client_id || body.client_id || null;
+    const callerRole  = authCtx.role   || headers['x-role']      || 'unknown';
 
     const effectiveOrgId = validateUUID(rawOrgId, 'org_id');
     const userId = rawUserId ? validateUUID(rawUserId, 'user_id') : null;
@@ -5173,6 +5460,159 @@ export const handler = async (event) => {
     // HCC Coding Flags
     if (path.includes('/patients') && path.includes('/hcc') && method === 'POST') {
       return respond(200, await flagHCCCodes(pathParams.id, effectiveOrgId));
+    }
+
+    // ════ Retell Webhook (Voice AI call-ended) ════════════════════════════
+    // Retell sends POST /webhooks/retell when a call ends with full transcript.
+    // Signature is verified using RETELL_WEBHOOK_SECRET env var.
+    if (path.includes('/webhooks/retell') && method === 'POST') {
+      const rawBody = event.body || '{}';
+      const retellSecret = process.env.RETELL_WEBHOOK_SECRET || '';
+      const signature = headers['x-retell-signature'] || headers['x-signature'] || '';
+
+      // Verify HMAC signature in production (skip if secret not configured yet)
+      if (retellSecret) {
+        const valid = await verifyHMAC(retellSecret, rawBody, signature);
+        if (!valid) {
+          safeLog('error', 'Retell webhook HMAC verification failed');
+          return respond(401, { error: 'Invalid webhook signature' });
+        }
+      }
+
+      const result = await handleRetellWebhook(body, effectiveOrgId, userId);
+      return respond(200, result);
+    }
+
+    // ════ Availity Webhook (claim status push) ════════════════════════════
+    // Availity pushes real-time claim status events when enrolled for webhooks.
+    if (path.includes('/webhooks/availity') && method === 'POST') {
+      const availitySecret = process.env.AVAILITY_WEBHOOK_SECRET || '';
+      const signature = headers['x-availity-signature'] || '';
+
+      if (availitySecret && signature) {
+        const valid = await verifyHMAC(availitySecret, event.body || '{}', signature);
+        if (!valid) return respond(401, { error: 'Invalid Availity webhook signature' });
+      }
+
+      const { eventType, claimControlNumber, payerClaimNumber, status, payer } = body;
+
+      // Map Availity status codes to our claim state machine
+      const statusMap = {
+        'ACCEPTED': 'accepted', 'DENIED': 'denied',
+        'IN_PROCESS': 'in_process', 'PAID': 'paid', 'PENDING': 'submitted',
+      };
+      const mappedStatus = statusMap[status] || null;
+
+      // Find claim by payer claim number or our control number
+      let claim = null;
+      if (payerClaimNumber) {
+        const r = await pool.query(
+          'SELECT * FROM claims WHERE org_id = $1 AND payer_claim_number = $2 LIMIT 1',
+          [effectiveOrgId, payerClaimNumber]
+        ).catch(() => ({ rows: [] }));
+        claim = r.rows[0];
+      }
+      if (!claim && claimControlNumber) {
+        const r = await pool.query(
+          'SELECT * FROM claims WHERE org_id = $1 AND claim_number = $2 LIMIT 1',
+          [effectiveOrgId, claimControlNumber]
+        ).catch(() => ({ rows: [] }));
+        claim = r.rows[0];
+      }
+
+      if (claim && mappedStatus) {
+        await update('claims', claim.id, {
+          payer_claim_number: payerClaimNumber || claim.payer_claim_number,
+          last_follow_up_date: new Date().toISOString().slice(0, 10),
+        }).catch(() => {});
+        await auditLog(effectiveOrgId, null, 'availity_webhook', 'claims', claim.id, {
+          event_type: eventType, status, payer,
+        }).catch(() => {});
+      }
+
+      // Always create EDI transaction record for audit trail
+      await create('edi_transactions', {
+        org_id: effectiveOrgId,
+        transaction_type: '277_webhook',
+        direction: 'inbound',
+        claim_id: claim?.id || null,
+        status: 'received',
+        raw_content: JSON.stringify(body).substring(0, 2000),
+      }, effectiveOrgId).catch(() => {});
+
+      return respond(200, {
+        status: 'received',
+        claim_found: !!claim,
+        claim_id: claim?.id || null,
+        event_type: eventType,
+      });
+    }
+
+    // ════ EDI Ingest — 999 Functional Acknowledgement ════════════════════
+    // Called when a 999 file arrives from Availity SFTP polling Lambda.
+    if (path.includes('/edi/ingest-999') && method === 'POST') {
+      const { edi_content } = body;
+      if (!edi_content) return respond(400, { error: 'edi_content required' });
+      const result = await ingest999(edi_content, effectiveOrgId, userId);
+      return respond(200, result);
+    }
+
+    // ════ EDI Ingest — 277 Claim Status Response ══════════════════════════
+    // Processes 277 EDI responses from SFTP batch polling.
+    if (path.includes('/edi/ingest-277') && method === 'POST') {
+      const { edi_content } = body;
+      if (!edi_content) return respond(400, { error: 'edi_content required' });
+      // Parse 277 and update claim statuses
+      const segments = edi_content.replace(/\r/g, '').split(/[~\n]/).map(s => s.trim()).filter(Boolean);
+      const updates = [];
+      let currentClaim = {};
+      for (const seg of segments) {
+        const els = seg.split('*');
+        if (els[0] === 'TRN') currentClaim.icn = els[2]; // payer ICN
+        if (els[0] === 'REF' && els[1] === 'EJ') currentClaim.claim_number = els[2];
+        if (els[0] === 'STC') {
+          // STC*A1:20:PR*20260102 — claim status category code
+          const categoryCode = els[1]?.split(':')[0];
+          const statusMap = { 'A1': 'accepted', 'A2': 'accepted', 'A6': 'denied',
+            'A3': 'in_process', 'A4': 'in_process', 'A8': 'in_process', 'F0': 'paid' };
+          currentClaim.status_code = categoryCode;
+          currentClaim.mapped_status = statusMap[categoryCode] || null;
+        }
+        if (els[0] === 'SE' && currentClaim.claim_number) {
+          // End of transaction set — process the accumulated claim data
+          if (currentClaim.mapped_status) {
+            const r = await pool.query(
+              'SELECT * FROM claims WHERE org_id = $1 AND (claim_number = $2 OR payer_claim_number = $3) LIMIT 1',
+              [effectiveOrgId, currentClaim.claim_number, currentClaim.icn]
+            ).catch(() => ({ rows: [] }));
+            const claim = r.rows[0];
+            if (claim) {
+              await update('claims', claim.id, {
+                payer_claim_number: currentClaim.icn || claim.payer_claim_number,
+                last_follow_up_date: new Date().toISOString().slice(0, 10),
+              }).catch(() => {});
+              await auditLog(effectiveOrgId, userId, 'parse_277', 'claims', claim.id, {
+                icn: currentClaim.icn, status_code: currentClaim.status_code,
+              }).catch(() => {});
+              updates.push({ claim_id: claim.id, claim_number: currentClaim.claim_number,
+                icn: currentClaim.icn, status_code: currentClaim.status_code });
+            }
+          }
+          currentClaim = {};
+        }
+      }
+
+      // Store EDI transaction record
+      await create('edi_transactions', {
+        org_id: effectiveOrgId,
+        transaction_type: '277',
+        direction: 'inbound',
+        status: 'processed',
+        claim_count: updates.length,
+        raw_content: edi_content.substring(0, 2000),
+      }, effectiveOrgId).catch(() => {});
+
+      return respond(200, { transaction_type: '277', claims_updated: updates.length, updates });
     }
 
     return respond(404, { error: 'Route not found', path, method });

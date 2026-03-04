@@ -1,0 +1,21 @@
+{
+  "name": "medcloud-sftp-poller",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "MedCloud Availity SFTP poller — 835/999/277 EDI ingestion",
+  "main": "index.mjs",
+  "scripts": {
+    "package": "npm install --omit=dev && zip -r sftp-poller.zip index.mjs node_modules/ && echo 'Packaged: sftp-poller.zip'",
+    "deploy": "npm run package && aws lambda update-function-code --function-name medcloud-sftp-poller --zip-file fileb://sftp-poller.zip --region us-east-1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.600.0",
+    "@aws-sdk/client-secrets-manager": "^3.600.0"
+  },
+  "optionalDependencies": {
+    "ssh2": "^1.15.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
