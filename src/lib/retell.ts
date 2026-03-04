@@ -173,6 +173,14 @@ export function useAgentPrompt(agentName: 'chris' | 'cindy' | null) {
       const data = await res.json()
 
       if (!res.ok || data.error || data.fallback) {
+        // Server returned available_agents for debugging
+        if (data.available_agents) {
+          const list = data.available_agents
+            .map((a: Record<string, unknown>) => `${a.agent_name || '(no name)'} [${a.agent_id}]`)
+            .join(' | ')
+          setError(`Agent not found. Available in Retell: ${list}. Update RETELL_AGENT_${agentName?.toUpperCase()} in Vercel to one of these IDs.`)
+          return
+        }
         // Fallback: list all agents and find by name
         const listRes = await fetch('/api/retell?action=list-agents')
         const listData = await listRes.json()
