@@ -195,19 +195,45 @@ async function handleRetellWebhook(body, orgId, userId) {
   let bedrockExtraction = null;
   if (bedrockClient && transcript.length > 100) {
     try {
-      const prompt = `You are an expert medical billing AR specialist. Extract key information from this payer call transcript for claim ${claimNumber || 'unknown'} with ${payerName}.
+      const prompt = `You are a senior AR specialist who has made 10,000+ payer calls. Extract every actionable piece of information from this call transcript with precision.
+
+CLAIM CONTEXT:
+- Claim #: ${claimNumber || 'unknown'}
+- Payer: ${payerName || 'unknown'}
+- Call length: ${transcript.length} characters
 
 TRANSCRIPT:
-${sanitizeForPrompt(transcript.substring(0, 3000))}
+${sanitizeForPrompt(transcript.substring(0, 4000))}
 
-Extract and return ONLY a JSON object with these fields:
+EXTRACTION RULES:
+1. REFERENCE NUMBERS: Payers use formats like: REF#, reference number, confirmation #, TCN (Transaction Control Number), ICN (Internal Control Number), DCN (Document Control Number), authorization #. Extract ALL numbers mentioned.
+2. STATUS MAPPING:
+   - "claim was paid / processed for payment / check was issued / EFT sent" → "paid"
+   - "claim was denied / not covered / benefits not applicable" → "denied"
+   - "pending / in process / under review / being adjudicated" → "in_process"
+   - "need additional information / medical records needed / COB needed" → "additional_info_required"
+   - "claim not on file / not received / no record" → "not_found"
+3. DATES: Extract any specific dates mentioned (payment date, check date, EFT date, appeal deadline, resubmission window)
+4. DOLLAR AMOUNTS: Note any payment amounts, allowed amounts, or contractual adjustments mentioned
+5. ESCALATION TRIGGERS: Note if rep offered supervisor escalation, peer-to-peer, or formal appeal
+6. NEXT STEPS: Extract SPECIFIC instructions given by rep (e.g., "resubmit with modifier 59", "send medical records to PO Box X", "call back after date Y")
+7. REP DETAILS: Note any rep ID, name, or supervisor information mentioned
+
+Extract and return ONLY a JSON object:
 {
   "claim_status": "paid|denied|in_process|pending|additional_info_required|not_found",
-  "reference_number": "payer reference number if mentioned, else null",
-  "expected_payment_date": "ISO date if mentioned, else null",
-  "denial_reason": "denial reason if denied, else null",
-  "action_required": "next action for billing team, brief",
-  "call_notes": "key facts from call, max 200 chars"
+  "reference_number": "primary payer reference number, else null",
+  "all_reference_numbers": ["all reference/confirmation/TCN/ICN numbers mentioned"],
+  "expected_payment_date": "ISO date YYYY-MM-DD if mentioned, else null",
+  "payment_amount": number or null,
+  "denial_reason": "specific denial reason with any CARC/RARC codes mentioned, else null",
+  "carc_code_mentioned": "CARC code if payer mentioned one, else null",
+  "action_required": "SPECIFIC next action — exact instructions from rep, not generic",
+  "appeal_deadline": "ISO date if mentioned, else null",
+  "rep_id": "rep name or ID if given, else null",
+  "escalation_offered": boolean,
+  "call_notes": "key facts: what rep confirmed, amounts, dates, next steps — max 300 chars",
+  "follow_up_priority": "urgent | high | normal | resolved"
 }`;
       const bedrockResp = await bedrockClient.send(new InvokeModelCommand({
         modelId: BEDROCK_MODEL,
@@ -1206,20 +1232,137 @@ async function aiAutoCode(codingQueueId, orgId, userId) {
     if (client?.region === 'UAE') codingSystem = 'ICD-10-AM + DRG (UAE/DHA)';
   }
 
-  const prompt = `You are an expert medical coder. Analyze the following clinical documentation and suggest appropriate codes.
+  // ── Pull provider specialty + patient history for richer context ──────────
+  let providerSpecialty = 'General Practice';
+  let patientHistory = '';
+  let priorAcceptedCodes = '';
+  if (item.encounter_id) {
+    const enc = await getById('encounters', item.encounter_id);
+    if (enc?.provider_id) {
+      const prov = await getById('providers', enc.provider_id);
+      if (prov?.specialty) providerSpecialty = prov.specialty;
+    }
+    if (enc?.patient_id) {
+      const histR = await pool.query(
+        `SELECT acs.suggested_cpt, acs.suggested_icd FROM ai_coding_suggestions acs
+         JOIN coding_queue cq ON cq.id = acs.coding_queue_id
+         JOIN encounters e ON e.id = cq.encounter_id
+         WHERE e.patient_id = $1 AND acs.accepted = true
+         ORDER BY acs.created_at DESC LIMIT 3`,
+        [enc.patient_id]
+      ).catch(() => ({ rows: [] }));
+      if (histR.rows.length > 0) {
+        patientHistory = histR.rows.map((r, i) =>
+          `Visit ${i+1}: CPT ${JSON.parse(r.suggested_cpt||'[]').map(c=>c.code).join(', ')} | ICD ${JSON.parse(r.suggested_icd||'[]').map(d=>d.code).join(', ')}`
+        ).join('\n');
+      }
+      const provR = await pool.query(
+        `SELECT acs.suggested_cpt FROM ai_coding_suggestions acs
+         JOIN coding_queue cq ON cq.id = acs.coding_queue_id
+         JOIN encounters e ON e.id = cq.encounter_id
+         JOIN providers p ON p.id = e.provider_id
+         WHERE p.specialty = $1 AND acs.accepted = true AND acs.total_confidence > 85
+         ORDER BY acs.created_at DESC LIMIT 10`,
+        [providerSpecialty]
+      ).catch(() => ({ rows: [] }));
+      if (provR.rows.length > 0) {
+        const codes = provR.rows.flatMap(r => JSON.parse(r.suggested_cpt||'[]').map(c=>c.code));
+        const freq = codes.reduce((acc,c) => { acc[c]=(acc[c]||0)+1; return acc; }, {});
+        priorAcceptedCodes = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([c,n])=>`${c}(×${n})`).join(', ');
+      }
+    }
+  }
+  const isUSCoding = !codingSystem.includes('UAE');
 
-Coding System: ${codingSystem}
+  const prompt = `You are a Certified Professional Coder (CPC) and Certified Coding Specialist (CCS) with 15 years of RCM experience. You follow AMA CPT guidelines, CMS ICD-10-CM Official Coding Guidelines, and the 2021 E/M criteria using Medical Decision Making (MDM).
 
-Clinical Documentation:
-${sanitizeForPrompt(clinicalText) || 'No clinical documentation available. Return empty suggestions.'}
+CODING SYSTEM: ${codingSystem}
+PROVIDER SPECIALTY: ${providerSpecialty}
+${patientHistory ? `PATIENT PRIOR VISIT CODES (chronic condition continuity):\n${patientHistory}` : ''}
+${priorAcceptedCodes ? `HIGH-CONFIDENCE CODES FOR THIS SPECIALTY: ${priorAcceptedCodes}` : ''}
+
+MANDATORY CODING RULES:
+${isUSCoding ? `1. E/M SELECTION (2021 MDM-based):
+   - 99202/99212: Straightforward — 1 self-limited problem, minimal data, OTC drug risk
+   - 99203/99213: Low — 2+ self-limited OR 1 stable chronic, limited data, Rx drug management
+   - 99204/99214: Moderate — 1+ chronic with exacerbation OR new undiagnosed, moderate data, Rx management with monitoring
+   - 99205/99215: High — drug therapy requiring monitoring, decision limited by social determinants, hospitalization risk
+
+2. ICD-10-CM SPECIFICITY (always code to highest level):
+   - Diabetic complications: E11.xx NOT E11.9 if complication documented (e.g., E11.65 hyperglycemia, E11.40 diabetic neuropathy unspecified)
+   - Hypertension + CKD: combination code I13.xx
+   - Laterality REQUIRED: M17.11 (right knee OA) not M17.1
+   - Acute vs chronic: distinguish when documented
+   - Sequencing: primary = chief reason for visit
+
+3. MODIFIER RULES:
+   - Mod 25: ONLY for significant, separately identifiable E/M on same day as procedure
+   - Mod 59/XU/XE/XP/XS: distinct procedural service, NCCI override — document clinical basis
+   - Mod 51: secondary procedure in multi-procedure billing
+   - Mod 57: E/M where decision for major surgery was made
+
+4. NCCI BUNDLING — do NOT unbundle:
+   - Venipuncture (36415) bundles with most E/M codes — bill separately only if standalone
+   - Specimen handling (99000) bundles unless specimen sent to outside lab
+   - Joint injection (20600-20610) can be billed with E/M + mod 25 if separately documented
+
+5. HCC DIAGNOSES — flag these (they drive RAF scores for value-based contracts):
+   HCC-relevant: diabetes with complications, CHF, COPD, CKD stage 3-5, obesity+BMI, afib, depression, CAD, HIV, dementia, stroke sequelae
+
+6. LCD COMPLIANCE — flag CPT codes that commonly require diagnosis support:
+   - Labs: lipid panel requires dyslipidemia/diabetes/CAD dx
+   - Imaging: X-ray/MRI requires supporting musculoskeletal/neurological dx` :
+`1. ICD-10-AM (Australian Modification) for diagnoses
+2. ACHI procedure codes for procedures
+3. DRG assignment for inpatient episodes
+4. DHA Abu Dhabi clinical coding guidelines apply
+5. Principal diagnosis = condition established after study as chiefly responsible`}
+
+FEW-SHOT EXAMPLES:
+
+--- EXAMPLE 1: Diabetes Follow-up ---
+SOAP: "58F T2DM, A1C 8.2%, BP 142/88. Changed metformin to 1000mg BID. Ordered HbA1c, CMP, lipid panel."
+→ E/M: 99214 (Moderate MDM: chronic condition with progression — A1C worsened, medication change, lab order)
+→ CPT: 99214, 83036 (HbA1c), 80053 (CMP), 80061 (lipid panel)
+→ ICD primary: E11.65 (T2DM with hyperglycemia — A1C 8.2% = uncontrolled)
+→ ICD secondary: I10, Z79.84 (long-term oral hypoglycemic)
+→ HCC flag: E11.65 maps to HCC 19
+
+--- EXAMPLE 2: Ortho Knee Injection ---
+SOAP: "72M established, right knee OA, pain 7/10. Injected 40mg triamcinolone acetonide right knee under sterile technique."
+→ CPT: 99213-25 (Low MDM E/M) + 20610 (arthrocentesis/injection major joint, right)
+→ ICD primary: M17.11 (primary OA right knee — LATERALITY required)
+→ Note: mod 25 justified — documentation shows separate decision to inject vs. just monitoring
+
+--- EXAMPLE 3: Annual Wellness + Chronic Problems ---
+SOAP: "Medicare patient, subsequent AWV. Also reviewed and adjusted HTN meds, discussed hyperlipidemia management."
+→ CPT: G0439 (subsequent AWV) + 99213-25 (separately identifiable problem management)
+→ ICD: Z00.00 (AWV encounter), I10 (HTN), E78.5 (hyperlipidemia pure)
+→ Note: AWV + problem E/M is a compliant pair — AWV does NOT use mod 25, the problem E/M does
+
+CLINICAL DOCUMENTATION TO CODE:
+${sanitizeForPrompt(clinicalText) || 'No clinical documentation provided. Return empty arrays with detailed documentation_gaps.'}
+
+INSTRUCTIONS:
+- Think step by step before assigning codes
+- Vague documentation (e.g., "diabetes" without complication detail) → code what IS documented, flag gap
+- Do NOT upcode (confidence < 70 = flag for human review)
+- Include ALL services documented (labs ordered, injections given, procedures performed)
+- HCC diagnoses must appear in ICD list even if secondary
 
 Respond ONLY with valid JSON (no markdown, no backticks):
 {
-  "suggested_cpt": [{"code": "99214", "description": "Office visit, established, moderate complexity", "confidence": 92, "modifier": ""}],
-  "suggested_icd": [{"code": "E11.9", "description": "Type 2 diabetes mellitus without complications", "confidence": 88, "is_primary": true}],
-  "suggested_em": "99214",
-  "em_confidence": 90,
-  "reasoning": "Brief explanation of code selection"
+  "suggested_cpt": [{"code": "string", "description": "string", "confidence": number, "modifier": "string or null", "modifier_reason": "string or null", "ncci_note": "string or null"}],
+  "suggested_icd": [{"code": "string", "description": "string", "confidence": number, "is_primary": boolean, "is_hcc": boolean, "specificity_note": "string or null"}],
+  "suggested_em": "string",
+  "em_level_basis": "mdm",
+  "em_mdm_level": "straightforward | low | moderate | high",
+  "em_confidence": number,
+  "reasoning": "Step-by-step explanation of MDM level and code selection",
+  "documentation_gaps": ["Missing documentation that would support more specific or higher-level coding"],
+  "audit_flags": ["Patterns that could trigger payer audit — e.g., high modifier 25 frequency, outlier E/M for specialty"],
+  "hcc_diagnoses": ["ICD codes in this note mapping to HCC categories"],
+  "prompt_version": "v2.0"
 }`;
 
   let suggestion;
@@ -1233,7 +1376,7 @@ Respond ONLY with valid JSON (no markdown, no backticks):
         accept: 'application/json',
         body: JSON.stringify({
           anthropic_version: 'bedrock-2023-05-31',
-          max_tokens: 1024,
+          max_tokens: 2048,
           messages: [{ role: 'user', content: prompt }],
         }),
       });
@@ -1281,7 +1424,7 @@ Respond ONLY with valid JSON (no markdown, no backticks):
     suggested_em: suggestion.suggested_em,
     em_confidence: suggestion.em_confidence,
     model_id: suggestion.mock ? 'mock' : BEDROCK_MODEL,
-    prompt_version: 'v1.0',
+    prompt_version: 'v2.0',
     total_confidence: totalConf,
     processing_ms: processingMs,
   }, orgId);
@@ -1748,9 +1891,54 @@ async function predictDenial(claimId, orgId, userId) {
 
   riskScore = Math.min(100, riskScore);
   const riskLevel = riskScore >= 60 ? 'high' : riskScore >= 30 ? 'medium' : 'low';
+
+  // ── AI Analysis Layer — LLM explains risks and gives specific pre-submission actions ──
+  let aiAnalysis = null;
+  if (bedrockClient && risks.length > 0) {
+    try {
+      const riskSummary = risks.map(r => `- ${r.category.replace('_',' ').toUpperCase()} (score +${r.score}): ${r.detail}`).join('\n');
+      const claimLines = linesR.rows.map(l => `${l.cpt_code}${l.modifier ? '-'+l.modifier : ''} x${l.units||1} $${l.charge||0}`).join(', ');
+      const aiPrompt = `You are a denial prevention specialist. A claim has been flagged with a ${riskLevel.toUpperCase()} denial risk score of ${riskScore}/100.
+
+CLAIM: #${claim.claim_number || 'N/A'}, DOS: ${claim.dos_from || 'N/A'}, Total: $${claim.total_charge || 0}
+PAYER: ${claim.payer_id ? 'Payer on file' : 'Unknown'}
+PROCEDURES: ${claimLines || 'None listed'}
+
+RISK FACTORS IDENTIFIED:
+${riskSummary}
+
+Provide SPECIFIC, ACTIONABLE guidance in JSON:
+{
+  "pre_submission_checklist": ["Specific item to verify/fix before submission — be concrete, not generic"],
+  "highest_priority_fix": "The single most important thing to fix right now",
+  "estimated_fix_time": "e.g., '5 minutes — just add modifier' or '2 days — need to obtain auth'",
+  "if_submitted_as_is": "What will likely happen if submitted without fixing the issues",
+  "payer_specific_tip": "Tip specific to this type of payer/denial pattern",
+  "auto_prevention_opportunity": "Could this have been caught earlier in the workflow? How?"
+}`;
+      const aiResp = await bedrockClient.send(new InvokeModelCommand({
+        modelId: BEDROCK_MODEL,
+        contentType: 'application/json',
+        accept: 'application/json',
+        body: JSON.stringify({ anthropic_version: 'bedrock-2023-05-31', max_tokens: 800,
+          messages: [{ role: 'user', content: aiPrompt }] }),
+      }));
+      const aiText = JSON.parse(new TextDecoder().decode(aiResp.body)).content?.[0]?.text || '{}';
+      aiAnalysis = extractJSON(aiText);
+    } catch (e) { safeLog('error', 'Denial prediction AI analysis error:', e.message); }
+  }
+
   await auditLog(orgId, userId, 'denial_prediction', 'claims', claimId, { risk_score: riskScore, risk_level: riskLevel });
-  return { claim_id: claimId, claim_number: claim.claim_number, risk_score: riskScore, risk_level: riskLevel, risk_factors: risks,
-    recommendation: riskScore >= 60 ? 'Review before submission — high denial risk' : riskScore >= 30 ? 'Proceed with caution' : 'Low risk — clear to submit' };
+  return {
+    claim_id: claimId,
+    claim_number: claim.claim_number,
+    risk_score: riskScore,
+    risk_level: riskLevel,
+    risk_factors: risks,
+    recommendation: riskScore >= 60 ? 'Review before submission — high denial risk' : riskScore >= 30 ? 'Proceed with caution' : 'Low risk — clear to submit',
+    ...(aiAnalysis || {}),
+    prompt_version: 'v2.0',
+  };
 }
 
 // ─── 276 Claim Status Request Generator ────────────────────────────────────────
@@ -2134,14 +2322,21 @@ async function chargeCapture(encounterId, orgId, userId) {
     throw new Error('Bedrock SDK not available — charge capture requires AI');
   }
 
-  const prompt = `You are a medical charge capture specialist. Extract billable charges from this clinical documentation.
+  const prompt = `You are a medical charge capture specialist and Certified Professional Coder (CPC) with expertise in maximizing compliant revenue capture. Identify every billable service documented while flagging anything that could be denied.
 
-Region: ${isUAE ? 'UAE (use ICD-10-AM + DRG codes)' : 'US (use ICD-10-CM + CPT codes)'}
+REGION: \${isUAE ? 'UAE — ICD-10-AM + DRG/ACHI codes, DHA Abu Dhabi guidelines' : 'US — ICD-10-CM + CPT codes, CMS guidelines'}
+PATIENT: \${sanitizeForPrompt(encounter.patient_name) || 'Unknown'}, DOS: \${encounter.encounter_date || 'Unknown'}
 
-Clinical Documentation:
-${sanitizeForPrompt(clinicalText)}
+CHARGE CAPTURE RULES:
+1. CAPTURE EVERYTHING: E/M visits, procedures, injections, in-office labs drawn, supplies for procedures, imaging (if technical component billable)
+2. MODIFIERS: Mod 25 = E/M same day as procedure (only if separately identifiable decision); Mod 59/XU = distinct procedural service; Mod 51 = multiple procedures (lower RVU); Mod 26/TC = professional/technical split
+3. PLACE OF SERVICE: 11=office, 21=inpatient, 22=outpatient hospital, 23=ER, 02=telehealth
+4. UNITS: actual units performed (injections, therapy units, etc.)
+5. BUNDLING: Flag NCCI-bundled pairs that need modifier to bill separately
+6. MISSED CHARGES: Flag services hinted at but not fully documented
 
-Patient: ${sanitizeForPrompt(encounter.patient_name) || 'Unknown'}, DOS: ${encounter.encounter_date || 'Unknown'}
+CLINICAL DOCUMENTATION:
+\${sanitizeForPrompt(clinicalText)}
 
 Return ONLY valid JSON:
 {
@@ -2151,9 +2346,11 @@ Return ONLY valid JSON:
       "description": "string",
       "units": number,
       "modifier": "string or null",
+      "modifier_justification": "string or null",
       "charge_amount": number,
       "place_of_service": "string",
-      "confidence": number (0-100)
+      "confidence": number,
+      "ncci_bundle_note": "string or null"
     }
   ],
   "diagnoses": [
@@ -2161,13 +2358,17 @@ Return ONLY valid JSON:
       "icd_code": "string",
       "description": "string",
       "is_primary": boolean,
-      "confidence": number (0-100)
+      "is_hcc": boolean,
+      "confidence": number
     }
   ],
   "em_level": "string or null",
+  "em_mdm_basis": "straightforward | low | moderate | high | not_applicable",
   "em_rationale": "string",
   "total_estimated_charge": number,
-  "missing_documentation": ["string"]
+  "missed_charge_opportunities": ["Potential billable services hinted at but not fully documented"],
+  "missing_documentation": ["Documentation needed to support billing or avoid denial"],
+  "prompt_version": "v2.0"
 }`;
 
   try {
@@ -2275,10 +2476,52 @@ async function classifyDocument(documentId, orgId) {
   if (docText.length > 50 && (!classification || confidence < 70) && bedrockClient && InvokeModelCommand) {
     try {
 
-      const prompt = `Classify this medical document. Return ONLY JSON: {"type": "<one of: ${DOCUMENT_TYPES.join(', ')}>", "confidence": <0-100>, "key_entities": ["string"]}
+      const prompt = `You are a Health Information Management (HIM) specialist with expertise in medical document classification for revenue cycle workflows. Your classification drives routing, processing, and compliance — accuracy is critical.
 
-Document text:
-${sanitizeForPrompt(docText)}`;
+DOCUMENT TYPES AVAILABLE: ${DOCUMENT_TYPES.join(', ')}
+
+CLASSIFICATION RULES:
+- superbill: Contains CPT/procedure codes, ICD codes, provider signature, date of service, fee column — the primary charge document
+- insurance_card: Member ID, group number, payer name, phone numbers for claims/auth, copay/deductible info
+- eob: Explanation of Benefits — shows claim#, allowed amount, paid amount, patient responsibility, adjustment codes (CO/PR/OA)
+- clinical_note: SOAP notes, progress notes, H&P, office visit documentation — has S/O/A/P sections or narrative visit summary
+- lab_result: Lab values with reference ranges, specimen collection date, ordering provider, accession number
+- radiology_report: Imaging findings (X-ray/MRI/CT/US), radiologist impression, STAT vs routine designation
+- referral: Referral from PCP to specialist, authorization for specialist visit, referral number
+- prior_auth: Preauthorization request or approval letter — has auth number, approved service, date range, units approved
+- denial_letter: Claim denial notice — has denial reason, CARC/RARC codes or plain-language denial, appeal rights notice
+- appeal_letter: Letter contesting a denial — has "appeal" language, medical necessity arguments, regulatory citations
+- operative_report: Surgical/procedure report — has pre/post-op diagnosis, procedure performed, surgeon attestation
+- discharge_summary: Hospital discharge — has admission/discharge dates, discharge diagnosis, discharge instructions
+- consent_form: Patient consent — has patient signature block, HIPAA authorization, procedure consent language
+- credential: Provider license, DEA certificate, board certification, malpractice certificate
+- patient_statement: Patient billing statement — has account balance, payment due date, payment options
+- contract: Payer contract or amendment — has fee schedule, contracted rates, effective dates, signature blocks
+- driver_license: State-issued ID — has photo area, DOB, address, ID number, expiration date
+- fax: Fax cover sheet — has To/From/Date/Pages, fax number
+- other: Does not fit any above category
+
+KEY ENTITIES TO EXTRACT BY TYPE:
+- For clinical_note: Provider name, date of service, chief complaint, diagnoses mentioned
+- For eob/denial: Claim number, payer name, denial reason, DOS, dollar amounts
+- For prior_auth: Auth number, approved service, effective date range
+- For lab_result: Test names, critical values, ordering provider
+- For insurance_card: Payer name, member ID, group number, plan type
+- For superbill: Provider, date of service, CPT codes visible, total charges
+
+DOCUMENT TEXT (may contain OCR artifacts — interpret intelligently):
+${sanitizeForPrompt(docText)}
+
+Return ONLY valid JSON (no markdown):
+{
+  "type": "one of the document types listed",
+  "confidence": number (0-100),
+  "key_entities": ["specific extracted values — payer name, claim#, provider, dates, amounts"],
+  "routing_action": "what should happen with this document next — e.g., 'Route to coding queue', 'Post to patient account', 'File in provider credentials'",
+  "requires_human_review": boolean,
+  "ocr_quality": "good | fair | poor",
+  "prompt_version": "v2.0"
+}`;
 
       const resp = await bedrockClient.send(new InvokeModelCommand({
         modelId: BEDROCK_MODEL,
@@ -2286,7 +2529,7 @@ ${sanitizeForPrompt(docText)}`;
         accept: 'application/json',
         body: JSON.stringify({
           anthropic_version: 'bedrock-2023-05-31',
-          max_tokens: 300,
+          max_tokens: 800,
           messages: [{ role: 'user', content: prompt }],
         }),
       }));
@@ -2877,30 +3120,130 @@ async function generateAppeal(denialId, orgId, userId) {
 
   // Call Bedrock for appeal letter generation
 
-  const prompt = `You are a medical billing appeal specialist. Generate a professional appeal letter for a denied claim.
+  // ── Payer-specific appeal strategy lookup ─────────────────────────────────
+  const payerName = (payer?.name || '').toLowerCase();
+  const payerStrategy = payerName.includes('united') || payerName.includes('uhc') || payerName.includes('optum') ? 'UHC/Optum' :
+    payerName.includes('aetna') ? 'Aetna' :
+    payerName.includes('blue') || payerName.includes('bcbs') ? 'BCBS' :
+    payerName.includes('cigna') || payerName.includes('evernorth') ? 'Cigna' :
+    payerName.includes('humana') ? 'Humana' :
+    payerName.includes('medicare') || payerName.includes('cms') || payerName.includes('novitas') || payerName.includes('palmetto') || payerName.includes('cgs') || payerName.includes('ngsmedicare') ? 'Medicare' :
+    payerName.includes('medicaid') ? 'Medicaid' : 'Generic';
 
-DENIAL DETAILS:
-- Denial Reason (CARC ${denial.carc_code || 'N/A'}): ${sanitizeForPrompt(carcDesc)}
+  // ── CARC-based denial strategy ─────────────────────────────────────────────
+  const carc = denial.carc_code || '';
+  const denialCategory =
+    ['1','2','3','15','16','18','38','177','197','198','242','243','B7','B20'].includes(carc) ? 'authorization' :
+    ['22','23','24','25','26','27','29','31','32','33','34','39','50','51','52','56','58','109','170','180'].includes(carc) ? 'eligibility' :
+    ['4','5','6','9','10','11','12','49','97','125','140','146','147','148','149','150'].includes(carc) ? 'coding' :
+    ['29','136','N5'].includes(carc) ? 'timely_filing' :
+    ['18','19'].includes(carc) ? 'duplicate' :
+    ['50','55','56','57','58','59','150','151','196','197','198','A1','A5','A6','A7','A8'].includes(carc) ? 'medical_necessity' : 'other';
+
+  const prompt = `You are a senior medical billing appeals attorney and RCM specialist with a 94% appeal overturn rate. You write appeals that are legally precise, clinically specific, and payer-tailored.
+
+DENIAL PROFILE:
+- CARC ${denial.carc_code || 'N/A'}: ${sanitizeForPrompt(carcDesc)}
 - RARC: ${denial.rarc_code || 'N/A'}
+- Denial Category: ${denialCategory.replace('_', ' ').toUpperCase()}
 - Denied Amount: $${denial.amount || 0}
-- Claim Number: ${claim?.claim_number || 'N/A'}
-- DOS: ${claim?.dos_from || 'N/A'}
+- Claim #: ${claim?.claim_number || 'N/A'}, DOS: ${claim?.dos_from || 'N/A'}
 - Appeal Level: ${appealType} (Level ${nextLevel})
+- Payer Type: ${payerStrategy}
 
-PATIENT: ${patient ? `${sanitizeForPrompt(patient.first_name)} ${sanitizeForPrompt(patient.last_name)}, DOB: ${patient.date_of_birth}` : 'N/A'}
-PROVIDER: ${provider ? `${sanitizeForPrompt(provider.first_name || '')} ${sanitizeForPrompt(provider.last_name || '')}, NPI: ${provider.npi || ''}` : 'N/A'}
-PAYER: ${sanitizeForPrompt(payer?.name) || 'N/A'}
+PARTIES:
+- Patient: ${patient ? `${sanitizeForPrompt(patient.first_name)} ${sanitizeForPrompt(patient.last_name)}, DOB: ${patient.date_of_birth}, Member ID: ${patient.member_id || 'N/A'}` : 'N/A'}
+- Provider: ${provider ? `${sanitizeForPrompt(provider.first_name || '')} ${sanitizeForPrompt(provider.last_name || '')}, NPI: ${provider.npi || ''}, Specialty: ${provider.specialty || 'N/A'}` : 'N/A'}
+- Payer: ${sanitizeForPrompt(payer?.name) || 'N/A'}
 
 ${clinicalContext}
 
-Generate a JSON response ONLY:
+PAYER-SPECIFIC STRATEGY FOR ${payerStrategy}:
+${payerStrategy === 'UHC/Optum' ? `- UHC responds to: Clinical necessity per Milliman Care Guidelines (MCG) or InterQual criteria cited explicitly
+- Reference UHC Coverage Policies (CS-xxx) — cite the specific policy by number if known
+- UHC Level 1 turnaround: 30 days post-denial; request expedited if urgent
+- Strong language: "UnitedHealthcare's own coverage policy CS-[NUMBER] defines medical necessity as..."
+- If auth denial: Cite UHC's Utilization Management guidelines, request peer-to-peer with reviewing physician` :
+payerStrategy === 'Aetna' ? `- Aetna responds to: Clinical Policy Bulletins (CPBs) — cite CPB number by condition/procedure
+- Aetna uses MCG criteria — reference guideline edition if known
+- Level 1 (internal): 60 days from denial; Level 2 (external IPRO/Maximus): after L1 exhausted
+- Strong language: "Aetna's Clinical Policy Bulletin #[NUMBER] establishes coverage criteria that this claim meets..."
+- Request expedited peer-to-peer if clinical deterioration risk` :
+payerStrategy === 'BCBS' ? `- BCBS uses local Medical Policies — cite policy number (e.g., MED.00xxx)
+- BlueCard claims: Note the home plan vs host plan distinction if applicable
+- Federal Employee Program (FEP): Has separate appeal rights under FEHB Act
+- Strong language: "Pursuant to BCBS Medical Policy #[NUMBER], the following clinical criteria are met..."` :
+payerStrategy === 'Medicare' ? `- Medicare appeals follow strict statutory process: Redetermination → Reconsideration (QIC) → ALJ → DAB → Federal Court
+- Level ${nextLevel} of ${nextLevel === 1 ? '5 (Redetermination — 120 days from denial, MAC decision within 60 days)' : nextLevel === 2 ? '5 (QIC Reconsideration — 180 days, decision within 60 days)' : '5 (ALJ Hearing — $180+ in controversy required)'}
+- Cite: 42 CFR 405.940-405.978 (Part B), Social Security Act §1869
+- Coverage LCDs/NCDs: Cite specific LCD/NCD number and demonstrate all coverage criteria met
+- Strong language: "Pursuant to 42 CFR §405.940 and Medicare Claims Processing Manual Chapter 29..."` :
+payerStrategy === 'Cigna' ? `- Cigna uses Coverage Policies — cite by condition/procedure name
+- Cigna Level 1: 180 days from denial; expedited 72 hours for urgent
+- Request peer-to-peer within 45 days of denial
+- Strong language: "Cigna's Coverage Policy [POLICY-NAME] establishes that services are covered when..."` :
+payerStrategy === 'Humana' ? `- Humana uses Coverage Determination Guidelines — cite guideline title
+- Level 1 (Reconsideration): 60 days from denial date
+- Humana responds well to: physician attestation letters, peer-reviewed literature
+- Strong language: "In accordance with Humana's Coverage Determination Guideline for [CONDITION]..."` :
+`- Standard commercial appeal approach
+- Level 1: internal appeal per plan documents
+- Cite AMA/specialty society guidelines for medical necessity
+- Reference state insurance code if applicable (timely processing, appeal rights)`}
+
+DENIAL-CATEGORY STRATEGY — ${denialCategory.toUpperCase()}:
+${denialCategory === 'medical_necessity' ? `MEDICAL NECESSITY APPROACH:
+- Lead with: physician clinical judgment, patient-specific factors, conservative treatment failure
+- Cite: peer-reviewed literature (PubMed studies, specialty society guidelines)
+- Framework: (1) Diagnosis confirmed, (2) Treatment is evidence-based, (3) Alternative treatments trialed/contraindicated, (4) Clinical parameters met
+- Close with: risk of NOT treating (downstream costs, complications, hospitalizations)` :
+denialCategory === 'authorization' ? `AUTHORIZATION APPROACH:
+- If retro-auth: Cite medical emergency exception or plan's retroactive authorization policy
+- If missing auth: Acknowledge procedural issue, argue substantial compliance, show clinical urgency
+- Cite: plan's own utilization management program description
+- If peer-to-peer was denied: Request reconsideration with attending physician attestation letter` :
+denialCategory === 'coding' ? `CODING APPEAL APPROACH:
+- Provide: complete operative/procedure note, signed attestation from provider
+- Explain why CPT code accurately describes the service rendered
+- If unbundling issue: cite CMS NCCI policy manual, explain distinct services
+- If modifier dispute: Cite AMA CPT guidelines for modifier usage
+- Attach: superbill, charge description master entry for the code` :
+denialCategory === 'eligibility' ? `ELIGIBILITY APPEAL APPROACH:
+- Provide: eligibility verification screenshot with date/time stamp
+- If coordination of benefits: attach EOB from primary payer showing payment/denial
+- Cite: plan's own eligibility/enrollment records
+- If retroactive termination: challenge plan's notice requirements under state insurance law` :
+denialCategory === 'timely_filing' ? `TIMELY FILING APPROACH:
+- Provide: original submission proof (clearinghouse confirmation, payer acknowledgement, 999/277 transaction)
+- Document every resubmission attempt with dates
+- If payer error: cite payer's own claim processing error as exception to timely filing
+- Attach: claim submission log, ERA/EOB showing reason was not timely filing` :
+`GENERAL APPEAL APPROACH:
+- Address the specific denial reason directly
+- Provide complete clinical documentation
+- Cite applicable plan policies and regulations`}
+
+LETTER REQUIREMENTS:
+- Professional tone escalating from L1 (collegial) → L2 (firm) → L3 (formal/legal)
+- Current level ${nextLevel}: ${nextLevel === 1 ? 'Professional and collaborative — "We respectfully request..."' : nextLevel === 2 ? 'Firm and assertive — "We formally appeal and expect reconsideration..."' : 'Legal and formal — "We hereby submit this external appeal and reserve all legal rights..."'}
+- Include: date, full payer address block, RE: line with claim number, clear demand for payment
+- Length: 400-600 words for L1, 600-800 for L2, 800+ for L3
+- Close with: specific deadline for response, contact information, escalation warning for non-response
+
+Generate a JSON response ONLY (no markdown):
 {
-  "appeal_letter": "Full appeal letter text with proper formatting, medical necessity arguments, and regulatory citations",
-  "appeal_strategy": "Brief strategy description",
-  "supporting_evidence": ["List of recommended supporting documents to attach"],
-  "regulatory_citations": ["Relevant CMS/payer policy citations"],
-  "success_probability": number (0-100),
-  "recommended_actions": ["Action items before sending"]
+  "appeal_letter": "Complete professional appeal letter with all required elements",
+  "appeal_strategy": "2-sentence summary of the winning strategy used",
+  "payer_type": "${payerStrategy}",
+  "denial_category": "${denialCategory}",
+  "supporting_evidence": ["Specific documents to attach — be precise, e.g., 'Operative report for DOS X showing bilateral approach' not just 'clinical notes'"],
+  "regulatory_citations": ["Specific citations: CFR section, CMS manual chapter, payer policy number, statute"],
+  "peer_reviewed_references": ["PubMed study titles or specialty society guidelines relevant to this clinical scenario"],
+  "success_probability": number,
+  "success_probability_rationale": "Why this probability was assigned",
+  "recommended_actions": ["Ordered action items before sending — be specific"],
+  "escalation_path": "What to do if L${nextLevel} fails",
+  "peer_to_peer_script": "Key talking points if requesting peer-to-peer review with medical director"
 }`;
 
   try {
@@ -3133,20 +3476,51 @@ async function checkChartCompleteness(encounterId, orgId) {
   if (completenessScore < 60 && soap) {
     try {
 
-      const prompt = `Review this clinical note for coding readiness. What specific documentation is missing or insufficient for accurate E/M coding?
+      const prompt = `You are a Clinical Documentation Improvement (CDI) specialist and Certified Coding Specialist. Review this SOAP note for coding completeness, E/M level support, and compliance with 2021 MDM guidelines.
 
-SOAP Note:
-S: ${sanitizeForPrompt(soap.subjective)}
-O: ${sanitizeForPrompt(soap.objective)}
-A: ${sanitizeForPrompt(soap.assessment)}
-P: ${sanitizeForPrompt(soap.plan)}
+SOAP NOTE:
+SUBJECTIVE: ${sanitizeForPrompt(soap.subjective)}
+OBJECTIVE: ${sanitizeForPrompt(soap.objective)}
+ASSESSMENT: ${sanitizeForPrompt(soap.assessment)}
+PLAN: ${sanitizeForPrompt(soap.plan)}
 
-Return ONLY JSON:
+CDI REVIEW CHECKLIST:
+1. E/M LEVEL SUPPORT (2021 MDM):
+   - Number and complexity of problems addressed (documented in Assessment)
+   - Amount and complexity of data reviewed (documented in Objective — labs reviewed, imaging reviewed, records reviewed)
+   - Risk of complications/treatment (documented in Plan — new Rx, referral, imaging ordered, surgery decision)
+
+2. ICD-10 SPECIFICITY:
+   - Are diagnoses specific enough for highest-level ICD-10 code? (e.g., "diabetes" vs "T2DM with hyperglycemia")
+   - Laterality documented for bilateral conditions?
+   - Acute vs chronic distinction made?
+   - Cause documented for "other specified" conditions?
+
+3. PROCEDURE SUPPORT:
+   - If injection/procedure performed: site, technique, materials, patient tolerance documented?
+   - If labs ordered: clinical indication documented for each test?
+   - If imaging ordered: clinical rationale documented?
+
+4. HCC CAPTURE OPPORTUNITIES:
+   - Are chronic conditions (diabetes, HTN, COPD, CHF, CKD, depression, obesity) mentioned in Assessment even if not the chief complaint?
+   - BMI documented if obesity present?
+   - Tobacco/alcohol/substance use status documented?
+
+5. RISK DOCUMENTATION:
+   - Medication changes documented with rationale?
+   - Drug monitoring needs noted?
+   - Follow-up interval documented?
+
+Return ONLY JSON (no markdown):
 {
-  "missing_elements": ["specific missing documentation items"],
-  "query_message": "A brief, professional message to send to the provider requesting the missing information",
-  "estimated_em_impact": "How the missing documentation affects E/M level selection",
-  "coding_ready": boolean
+  "missing_elements": ["Specific missing items with clinical impact — e.g., 'Objective lacks review of prior labs — needed for Moderate MDM data complexity'"],
+  "hcc_opportunities": ["Chronic conditions mentioned but not coded to specificity — e.g., 'Obesity noted but BMI not documented, blocking Z68.xx code'"],
+  "em_level_as_documented": "straightforward | low | moderate | high | insufficient_to_determine",
+  "em_level_if_gaps_fixed": "what E/M level could be supported with the suggested additions",
+  "query_message": "Professional CDI query message to send to provider — specific, educational tone, not accusatory",
+  "coding_ready": boolean,
+  "estimated_revenue_impact": "e.g., '99213 currently supportable; adding data complexity element could support 99214 (+$45 avg)'",
+  "prompt_version": "v2.0"
 }`;
 
       const resp = await bedrockClient.send(new InvokeModelCommand({
@@ -3208,35 +3582,67 @@ async function extractContractRates(documentId, payerId, orgId, userId) {
   const payer = payerId ? await getById('payers', payerId) : null;
 
 
-  const prompt = `Extract fee schedule / contracted rates from this payer contract document.
+  const prompt = `You are a payer contract analyst and healthcare attorney with 20 years extracting fee schedules and contract terms from payer agreements. You understand that OCR documents are messy and require intelligent interpretation.
 
-Payer: ${sanitizeForPrompt(payer?.name) || 'Unknown'}
+PAYER: ${sanitizeForPrompt(payer?.name) || 'Unknown'}
 
-Document text (may be messy from OCR):
+EXTRACTION APPROACH:
+1. RATE TYPE IDENTIFICATION: Determine if rates are fee-for-service (fixed dollar per CPT), percent of Medicare (e.g., "110% of Medicare allowable"), per diem (daily rate for inpatient), case rate (flat per episode), or capitation (per member per month)
+2. CPT CODE EXTRACTION: Extract all CPT/HCPCS codes with their contracted rates. Handle OCR artifacts — "99Z14" is likely "99214", "2O610" is likely "20610"
+3. MODIFIER-SPECIFIC RATES: Some contracts have different rates for modifier 26 (professional), TC (technical), or bilateral procedures
+4. REVENUE CODE RATES: For facility contracts, extract revenue codes with rates
+5. CRITICAL TERMS TO FIND:
+   - Timely filing window (typically 90-365 days from DOS)
+   - Clean claim payment turnaround (typically 30-45 days)
+   - Appeal deadline (typically 60-180 days from denial)
+   - Retroactive adjustment terms
+   - Carve-outs (services excluded from this contract)
+   - Coordination of benefits terms
+   - Most Favored Nation (MFN) clause — flag if present
+   - Auto-adjudication thresholds
+6. UNDERPAYMENT FLAGS: If you see rates that appear significantly below Medicare (e.g., Medicare rate for 99214 is ~$110; if contract shows $60 flag as potential underpayment)
+7. CONTRACT DATES: Identify effective date, termination/expiration date, auto-renewal clauses
+
+KNOWN MEDICARE BENCHMARKS (2024, US national average):
+- 99213: ~$78, 99214: ~$110, 99215: ~$148
+- 99203: ~$113, 99204: ~$168, 99205: ~$214
+- 20610: ~$90, 36415: ~$15, 93000: ~$27
+Use these to flag rates that are <80% of Medicare as potential underpayment issues.
+
+CONTRACT DOCUMENT TEXT (OCR — interpret intelligently):
 ${sanitizeForPrompt(docText)}
 
-Return ONLY valid JSON:
+Return ONLY valid JSON (no markdown):
 {
   "contract_effective_date": "YYYY-MM-DD or null",
   "contract_termination_date": "YYYY-MM-DD or null",
-  "rate_type": "fee_for_service | percent_of_medicare | per_diem | case_rate | capitation",
+  "auto_renewal": boolean,
+  "rate_type": "fee_for_service | percent_of_medicare | per_diem | case_rate | capitation | mixed",
   "medicare_percentage": number or null,
   "rates": [
     {
       "cpt_code": "string",
       "description": "string",
       "contracted_rate": number,
-      "modifier": "string or null"
+      "modifier": "string or null",
+      "medicare_benchmark": number or null,
+      "pct_of_medicare": number or null,
+      "underpayment_flag": boolean
     }
   ],
   "general_terms": {
     "timely_filing_days": number or null,
     "clean_claim_days": number or null,
     "appeal_deadline_days": number or null,
-    "auto_adjudication": boolean
+    "auto_adjudication": boolean,
+    "mfn_clause": boolean,
+    "carve_outs": ["services specifically excluded"]
   },
-  "extraction_confidence": number (0-100),
-  "notes": "any important contract terms or caveats"
+  "renegotiation_opportunities": ["Specific rates or terms worth renegotiating based on extraction"],
+  "extraction_confidence": number,
+  "ocr_corrections_made": ["Cases where OCR artifact was corrected — e.g., '99Z14 → 99214'"],
+  "notes": "Important contract terms, warnings, or flags",
+  "prompt_version": "v2.0"
 }`;
 
   try {
