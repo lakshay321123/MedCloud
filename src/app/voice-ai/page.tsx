@@ -361,7 +361,7 @@ function CampaignLauncherTab() {
     if (!lines.length) { toast.error('Add at least one phone number'); return }
     const recipients = lines.map(l => ({ to_number: l.split(',')[0].trim() }))
     try {
-      const r = await launchBatch({ agent_name: agentKey, batch_name: name || type, recipients })
+      await launchBatch({ agent_name: agentKey, batch_name: name || type, recipients })
       toast.success(`Batch launched — ${recipients.length} calls queued`)
       setCsvText('')
     } catch (e) {
@@ -619,13 +619,117 @@ function ScriptBuilderTab() {
   )
 }
 
+// ─── Tab 5: Call Analytics ─────────────────────────────────────────────────────
+function CallAnalyticsTab() {
+  const { calls, fallback } = useRetellCalls()
+
+  const total = calls.length
+  const successful = calls.filter(c => c.call_analysis?.call_successful).length
+  const failed = calls.filter(c => c.call_analysis?.call_successful === false).length
+  const avgDurationMs = total > 0 ? calls.reduce((s, c) => s + (c.duration_ms ?? 0), 0) / total : 0
+
+  // Group by campaign type
+  const byType: Record<string, { total: number; success: number }> = {}
+  calls.forEach(c => {
+    const t = c.retell_llm_dynamic_variables?.campaign_type || 'Unknown'
+    if (!byType[t]) byType[t] = { total: 0, success: 0 }
+    byType[t].total++
+    if (c.call_analysis?.call_successful) byType[t].success++
+  })
+
+  // Group by payer
+  const byPayer: Record<string, { total: number; success: number; totalDuration: number }> = {}
+  calls.forEach(c => {
+    const p = c.retell_llm_dynamic_variables?.payer || 'Unknown'
+    if (!byPayer[p]) byPayer[p] = { total: 0, success: 0, totalDuration: 0 }
+    byPayer[p].total++
+    byPayer[p].totalDuration += c.duration_ms ?? 0
+    if (c.call_analysis?.call_successful) byPayer[p].success++
+  })
+
+  // Sentiment breakdown
+  const sentiments = { Positive: 0, Negative: 0, Neutral: 0, Unknown: 0 }
+  calls.forEach(c => {
+    const s = c.call_analysis?.user_sentiment ?? 'Unknown'
+    sentiments[s as keyof typeof sentiments] = (sentiments[s as keyof typeof sentiments] ?? 0) + 1
+  })
+
+  return (
+    <div className="space-y-4">
+      {fallback && (
+        <div className="px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+          <AlertTriangle size={13} className="shrink-0" />
+          Analytics from demo data — connect Retell for real metrics
+        </div>
+      )}
+
+      {/* KPI Row */}
+      <div className="grid grid-cols-4 gap-4">
+        <KPICard label="Total Calls" value={total} icon={<Phone size={20} />} />
+        <KPICard label="Success Rate" value={total > 0 ? `${Math.round((successful / total) * 100)}%` : '—'} icon={<CheckCircle size={20} />} />
+        <KPICard label="Avg Duration" value={formatDuration(avgDurationMs)} icon={<Clock size={20} />} />
+        <KPICard label="Failed / Voicemail" value={failed} icon={<XCircle size={20} />} />
+      </div>
+
+      {/* Payer Performance */}
+      <div className="card p-4">
+        <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Performance by Payer</h4>
+        <div className="space-y-2">
+          {Object.entries(byPayer).sort((a, b) => b[1].total - a[1].total).map(([payer, stats]) => (
+            <div key={payer} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
+              <span className="text-xs font-medium w-28">{payer}</span>
+              <div className="flex-1 mx-4 h-2 bg-surface rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${stats.total > 0 ? (stats.success / stats.total * 100).toFixed(0) : 0}%` }} />
+              </div>
+              <span className="text-[10px] text-content-secondary w-20 text-right">{stats.success}/{stats.total} resolved</span>
+              <span className="text-[10px] text-content-tertiary w-24 text-right">Avg {formatDuration(stats.total > 0 ? stats.totalDuration / stats.total : 0)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Campaign Type Breakdown */}
+      <div className="card p-4">
+        <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">By Campaign Type</h4>
+        <div className="grid grid-cols-3 gap-3">
+          {Object.entries(byType).map(([type, stats]) => (
+            <div key={type} className="bg-surface-elevated rounded-lg p-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium">{type}</span>
+                <span className="text-xs font-bold">{stats.total}</span>
+              </div>
+              <div className="w-full h-1.5 bg-surface rounded-full overflow-hidden">
+                <div className="h-full bg-brand rounded-full" style={{ width: `${stats.total > 0 ? (stats.success / stats.total * 100) : 0}%` }} />
+              </div>
+              <p className="text-[10px] text-content-tertiary mt-1">{stats.success} resolved ({stats.total > 0 ? Math.round(stats.success / stats.total * 100) : 0}%)</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Sentiment Breakdown */}
+      <div className="card p-4">
+        <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Caller Sentiment</h4>
+        <div className="grid grid-cols-4 gap-3 text-center">
+          {([['Positive', 'text-emerald-500'], ['Neutral', 'text-content-secondary'], ['Negative', 'text-red-500'], ['Unknown', 'text-content-tertiary']] as const).map(([s, color]) => (
+            <div key={s} className="bg-surface-elevated rounded-lg p-3">
+              <p className={`text-xl font-bold ${color}`}>{sentiments[s]}</p>
+              <p className="text-[10px] text-content-tertiary mt-1">{s}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'active', label: 'Live Calls', icon: PhoneCall },
   { id: 'log', label: 'Call Log', icon: PhoneMissed },
   { id: 'campaign', label: 'Campaign Launcher', icon: BarChart2 },
   { id: 'scripts', label: 'Script Builder', icon: Settings2 },
-  { id: 'analytics', label: 'Call Analytics', icon: PhoneCall },
+  { id: 'analytics', label: 'Analytics', icon: Activity },
 ] as const
 
 type TabId = typeof TABS[number]['id']
@@ -654,51 +758,7 @@ export default function VoiceAIPage() {
       {tab === 'log' && <CallLogTab />}
       {tab === 'campaign' && <CampaignLauncherTab />}
       {tab === 'scripts' && <ScriptBuilderTab />}
-      {tab === 'analytics' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-4 gap-4">
-            {[{label:'Total Calls Today',value:'47',color:'text-brand'},{label:'Avg Hold Time',value:'4m 32s',color:'text-amber-500'},{label:'Success Rate',value:'78%',color:'text-emerald-500'},{label:'IVR Navigation',value:'92%',color:'text-blue-500'}].map(k=>
-              <div key={k.label} className="card p-4 text-center">
-                <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
-                <p className="text-[10px] text-content-tertiary mt-1">{k.label}</p>
-              </div>
-            )}
-          </div>
-          <div className="card p-4">
-            <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Call Outcomes by Payer</h4>
-            <div className="space-y-2">
-              {[{payer:'Aetna',total:15,success:12,hold:'3:45'},{payer:'BCBS',total:12,success:9,hold:'5:12'},{payer:'United',total:10,success:7,hold:'4:58'},{payer:'Cigna',total:6,success:5,hold:'3:20'},{payer:'Medicare',total:4,success:4,hold:'2:15'}].map(p=>{
-                const successPct = (p.success / p.total * 100).toFixed(0)
-                return (
-                <div key={p.payer} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
-                  <span className="text-xs font-medium w-20">{p.payer}</span>
-                  <div className="flex-1 mx-4 h-2 bg-surface rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 rounded-full" style={{width:`${successPct}%`}}/>
-                  </div>
-                  <span className="text-[10px] text-content-secondary w-16 text-right">{p.success}/{p.total} calls</span>
-                  <span className="text-[10px] text-content-tertiary w-16 text-right">Hold: {p.hold}</span>
-                </div>
-              )})}
-            </div>
-          </div>
-          <div className="card p-4">
-            <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Call Purpose Breakdown</h4>
-            <div className="grid grid-cols-3 gap-3">
-              {[{purpose:'Claim Status',count:18,pct:38},{purpose:'Eligibility Verify',count:12,pct:26},{purpose:'Appeal Follow-up',count:8,pct:17},{purpose:'Prior Auth',count:5,pct:11},{purpose:'Payment Inquiry',count:3,pct:6},{purpose:'Other',count:1,pct:2}].map(c=>(
-                <div key={c.purpose} className="bg-surface-elevated rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs">{c.purpose}</span>
-                    <span className="text-xs font-bold">{c.count}</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-surface rounded-full overflow-hidden">
-                    <div className="h-full bg-brand rounded-full" style={{width:`${c.pct}%`}}/>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {tab === 'analytics' && <CallAnalyticsTab />}
     </ModuleShell>
   )
 }
