@@ -2,8 +2,8 @@ import { demoClients } from '@/lib/demo-data'
 
 export type RegionType = 'us' | 'uae'
 
-export const UAE_ORG_IDS: string[] = ['org-101', 'org-104']
-export const US_ORG_IDS: string[]  = ['org-102', 'org-103']
+export const UAE_ORG_IDS: readonly string[] = ['org-101', 'org-104']
+export const US_ORG_IDS: readonly string[]  = ['org-102', 'org-103']
 export const UAE_CLIENT_NAMES = ['Gulf Medical Center', 'Dubai Wellness Clinic'] as const
 export const US_CLIENT_NAMES  = ['Irvine Family Practice', 'Patel Cardiology'] as const
 
