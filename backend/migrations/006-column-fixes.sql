@@ -46,47 +46,31 @@ DO $$ BEGIN
 END $$;
 
 -- ── patients: Lambda reads 'member_id', 'emirates_id', 'address', 'city', 'state', 'zip'
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'patients' AND column_name = 'member_id') THEN
-    ALTER TABLE patients ADD COLUMN member_id TEXT;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'patients' AND column_name = 'emirates_id') THEN
-    ALTER TABLE patients ADD COLUMN emirates_id TEXT;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'patients' AND column_name = 'address') THEN
-    ALTER TABLE patients ADD COLUMN address TEXT;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'patients' AND column_name = 'city') THEN
-    ALTER TABLE patients ADD COLUMN city TEXT;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'patients' AND column_name = 'state') THEN
-    ALTER TABLE patients ADD COLUMN state TEXT;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'patients' AND column_name = 'zip') THEN
-    ALTER TABLE patients ADD COLUMN zip TEXT;
-  END IF;
+DO $$
+DECLARE
+    cols_to_add TEXT[] := ARRAY['member_id', 'emirates_id', 'address', 'city', 'state', 'zip'];
+    col TEXT;
+BEGIN
+    FOREACH col IN ARRAY cols_to_add
+    LOOP
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'patients' AND column_name = col) THEN
+            EXECUTE 'ALTER TABLE patients ADD COLUMN ' || quote_ident(col) || ' TEXT;';
+        END IF;
+    END LOOP;
 END $$;
 
 -- ── providers: Lambda reads 'tax_id', 'taxonomy_code', 'address', city/state/zip
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'providers' AND column_name = 'tax_id') THEN
-    ALTER TABLE providers ADD COLUMN tax_id TEXT;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'providers' AND column_name = 'taxonomy_code') THEN
-    ALTER TABLE providers ADD COLUMN taxonomy_code TEXT;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'providers' AND column_name = 'address') THEN
-    ALTER TABLE providers ADD COLUMN address TEXT;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'providers' AND column_name = 'city') THEN
-    ALTER TABLE providers ADD COLUMN city TEXT;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'providers' AND column_name = 'state') THEN
-    ALTER TABLE providers ADD COLUMN state TEXT;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'providers' AND column_name = 'zip') THEN
-    ALTER TABLE providers ADD COLUMN zip TEXT;
-  END IF;
+DO $$
+DECLARE
+    cols_to_add TEXT[] := ARRAY['tax_id', 'taxonomy_code', 'address', 'city', 'state', 'zip'];
+    col TEXT;
+BEGIN
+    FOREACH col IN ARRAY cols_to_add
+    LOOP
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'providers' AND column_name = col) THEN
+            EXECUTE 'ALTER TABLE providers ADD COLUMN ' || quote_ident(col) || ' TEXT;';
+        END IF;
+    END LOOP;
 END $$;
 
 -- ── payers: Lambda reads 'payer_code'

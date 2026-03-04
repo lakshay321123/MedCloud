@@ -192,7 +192,8 @@ async function update(table, id, data) {
     else console.warn(`update(${table}): rejected unsafe column name: ${k}`);
   }
   const keys = Object.keys(safeData);
-  if (keys.length === 0) return await getById(table, id);
+  // updated_at is always added, so if it's the only key there's nothing to update
+  if (keys.length <= 1) return await getById(table, id);
   const vals = Object.values(safeData);
   const sets = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
   const q = `UPDATE ${table} SET ${sets} WHERE id = $${keys.length + 1} RETURNING *`;
@@ -4163,7 +4164,8 @@ export const handler = async (event) => {
         'submitted':   ['accepted', 'denied', 'in_process'],
         'accepted':    ['in_process', 'paid', 'partial_pay', 'denied'],
         'in_process':  ['paid', 'partial_pay', 'denied'],
-        'denied':      ['corrected', 'write_off'],
+        'denied':      ['appealed', 'corrected', 'write_off'],
+        'appealed':    ['paid', 'partial_pay', 'denied', 'write_off'],
         'paid':        ['write_off'],
         'partial_pay': ['paid', 'write_off', 'denied'],
         'write_off':   [],
