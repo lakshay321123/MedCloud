@@ -798,7 +798,7 @@ Be specific and actionable. Reference exact patterns from the transcripts.`
 function PromptEditorTab() {
   const { toast } = useToast()
   const [activeAgent, setActiveAgent] = useState<'chris' | 'cindy'>('chris')
-  const { prompt, loading: promptLoading, refetch: refetchPrompt, setPrompt } = useAgentPrompt(activeAgent)
+  const { prompt, loading: promptLoading, error: promptError, refetch: refetchPrompt, setPrompt } = useAgentPrompt(activeAgent)
   const { update: updateAgent, loading: saving } = useUpdateAgentPrompt()
   const [localPrompt, setLocalPrompt] = useState('')
   const [versions, setVersions] = useState<{ label: string; prompt: string; ts: number }[]>([])
@@ -927,6 +927,12 @@ Format your response as:
 
         {promptLoading ? (
           <div className="card p-12 text-center text-sm text-content-tertiary">Loading prompt from Retell…</div>
+        ) : promptError ? (
+          <div className="card p-6 border-red-500/20 bg-red-500/5">
+            <p className="text-xs font-semibold text-red-500 mb-1">Failed to load prompt</p>
+            <p className="text-xs text-content-secondary font-mono break-all">{promptError}</p>
+            <button onClick={refetchPrompt} className="mt-3 text-xs text-brand hover:underline">Retry</button>
+          </div>
         ) : (
           <>
             <textarea value={localPrompt} onChange={e => setLocalPrompt(e.target.value)}

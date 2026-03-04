@@ -160,15 +160,29 @@ export function useAgentPrompt(agentName: 'chris' | 'cindy' | null) {
   const [prompt, setPrompt] = useState<string>('')
   const [agentData, setAgentData] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const fetch_ = useCallback(async () => {
     if (!agentName) return
     setLoading(true)
+    setError(null)
     try {
       const data = await retellGet('get-agent', { agent: agentName })
+      if (data.error) {
+        setError(data.error)
+        return
+      }
       setAgentData(data)
-      setPrompt(data.general_prompt ?? data.llm_websocket_url ?? '')
+      // Retell stores prompt in general_prompt on the agent directly
+      // or nested in response_engine for some agent types
+      const extractedPrompt =
+        data.general_prompt ??
+        (data.response_engine as Record<string, unknown>)?.general_prompt ??
+        ''
+      setPrompt(String(extractedPrompt))
     } catch (e) {
+      const msg = String(e)
+      setError(msg)
       console.error('Failed to load agent prompt:', e)
     } finally {
       setLoading(false)
@@ -176,7 +190,7 @@ export function useAgentPrompt(agentName: 'chris' | 'cindy' | null) {
   }, [agentName])
 
   useEffect(() => { fetch_() }, [fetch_])
-  return { prompt, agentData, loading, refetch: fetch_, setPrompt }
+  return { prompt, agentData, loading, error, refetch: fetch_, setPrompt }
 }
 
 export function useUpdateAgentPrompt() {
