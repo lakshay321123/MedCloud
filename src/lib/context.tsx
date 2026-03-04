@@ -29,6 +29,19 @@ interface AppState {
   setIsScribeRecording: (v: boolean) => void
 }
 
+// Role → display name used at init AND on setRole switches
+const ROLE_DISPLAY_NAMES: Record<string, string> = {
+  admin: 'Admin User', director: 'Director', supervisor: 'Supervisor',
+  manager: 'Manager', coder: 'Sarah Kim', biller: 'Mike Rodriguez',
+  ar_team: 'AR Team', posting_team: 'Posting Team',
+  provider: 'Dr. Martinez', client: 'Front Desk',
+}
+
+// Demo org_id fallback per role so messages/patients filter works without Cognito
+const DEMO_ORG_IDS: Record<string, string> = {
+  provider: 'org-102', client: 'org-102',
+}
+
 function getInitialUser(): User {
   if (typeof window !== 'undefined') {
     const pt = localStorage.getItem('cosentus_portal_type') as PortalType | null
@@ -41,11 +54,13 @@ function getInitialUser(): User {
       // for actual data access decisions (those are enforced via Aurora RLS + org_id).
       // TODO Sprint 2: replace with decoded JWT claim from /api/auth/session
       const orgIdFromToken = getCognitoOrgId()
-      const orgId = orgIdFromToken || localStorage.getItem('cosentus_org_id') || ''
-      return { id: 'demo-001', name: 'Demo Provider', email: 'provider@clinic.com', role, organization_id: orgId }
+      const orgId = orgIdFromToken || localStorage.getItem('cosentus_org_id') || DEMO_ORG_IDS[role] || 'org-102'
+      const name = ROLE_DISPLAY_NAMES[role] || 'Provider'
+      return { id: 'demo-001', name, email: 'provider@clinic.com', role, organization_id: orgId }
     }
     if (savedRole) {
-      return { id: 'demo-001', name: 'Admin User', email: 'admin@cosentus.ai', role: savedRole, organization_id: 'org-001' }
+      const name = ROLE_DISPLAY_NAMES[savedRole] || 'Admin User'
+      return { id: 'demo-001', name, email: 'admin@cosentus.ai', role: savedRole, organization_id: 'org-001' }
     }
   }
   return { id: 'demo-001', name: 'Admin User', email: 'admin@cosentus.ai', role: 'admin', organization_id: 'org-001' }
@@ -120,18 +135,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const toggleSidebar = useCallback(() => setSidebarCollapsed(prev => !prev), [])
 
-  // Role → display name: keeps the UI showing who you're acting as when role is switched
-  const roleDisplayNames: Record<UserRole, string> = {
-    admin: 'Admin User', director: 'Director', supervisor: 'Supervisor',
-    manager: 'Manager', coder: 'Sarah Kim', biller: 'Mike Rodriguez',
-    ar_team: 'AR Team', posting_team: 'Posting Team',
-    provider: 'Dr. Martinez', client: 'Front Desk',
-  }
-
   const setRole = useCallback((r: UserRole) => {
     if (typeof window !== 'undefined') localStorage.setItem('cosentus_role', r)
-    setCurrentUser(prev => ({ ...prev, role: r, name: roleDisplayNames[r] ?? prev.name }))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setCurrentUser(prev => ({
+      ...prev,
+      role: r,
+      name: ROLE_DISPLAY_NAMES[r] ?? prev.name,
+      // Update org_id for facility roles so message/patient filters work in demo mode
+      organization_id: DEMO_ORG_IDS[r] ?? prev.organization_id,
+    }))
   }, [])
   const setSelectedClient = useCallback((c: ClientOrg | null) => setSelectedClientState(c), [])
 

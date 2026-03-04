@@ -63,7 +63,9 @@ export default function MessagesPage() {
 
   const messages = mergedThreads.filter(m => {
     if (filter && m.entityType !== filter) return false
-    if (!isStaff && m.clientId !== currentUser.organization_id) return false
+    // For facility roles (provider/client): filter by org if we have a known org_id.
+    // If org_id is empty (no Cognito token yet), show all threads so the inbox isn't blank.
+    if (!isStaff && currentUser.organization_id && m.clientId !== currentUser.organization_id) return false
     if (isStaff && selectedClient && m.clientId !== selectedClient.id) return false
     return true
   })
