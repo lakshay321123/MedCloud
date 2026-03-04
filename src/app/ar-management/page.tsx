@@ -590,7 +590,12 @@ export default function ARManagementPage() {
       })
     } catch (err) {
       console.error('[AR log-call] API failed:', err)
-      toast.warning('Call logged locally — sync will retry')
+      // Revert optimistic update so UI stays consistent with server state
+      setCallHistory(prev => ({
+        ...prev,
+        [accountId]: (prev[accountId] || []).filter(e => e.id !== entry.id),
+      }))
+      toast.error('Failed to log call — please try again')
     }
   }
 

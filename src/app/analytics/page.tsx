@@ -277,7 +277,7 @@ export default function AnalyticsPage() {
               icon={<DollarSign size={20}/>}
               sub={<span>Sum of paid amounts <KPITooltip formula="Sum of all paid amounts for claims with status: paid or partial_pay" /></span> as unknown as string} />
             <KPICard label="Net Collection Rate"
-              value={liveKPIs?.overview?.collection_rate
+              value={liveKPIs?.overview?.collection_rate != null
                 ? `${liveKPIs.overview.collection_rate}%`
                 : `${netCollectionRate}%`}
               trend="up"
@@ -288,7 +288,7 @@ export default function AnalyticsPage() {
               icon={<Clock size={20}/>}
               sub={<span>AR ÷ (90-day charges ÷ 90) <KPITooltip formula="Total AR balance ÷ (Charges last 90 days ÷ 90). Target: < 35 days" /></span> as unknown as string} />
             <KPICard label="Denial Rate"
-              value={liveKPIs?.overview?.denial_rate
+              value={liveKPIs?.overview?.denial_rate != null
                 ? `${liveKPIs.overview.denial_rate}%`
                 : `${denialRate}%`}
               icon={<AlertTriangle size={20}/>}
@@ -372,7 +372,7 @@ export default function AnalyticsPage() {
         <div className="space-y-6">
           <div className="grid grid-cols-5 gap-4">
             <KPICard label="Clean Claim Rate"
-              value={liveKPIs?.overview?.clean_claim_rate ? `${liveKPIs.overview.clean_claim_rate}%` : '91.3%'}
+              value={liveKPIs?.overview?.clean_claim_rate != null ? `${liveKPIs.overview.clean_claim_rate}%` : '91.3%'}
               icon={<CheckCircle2 size={20}/>}
               sub={<span><KPITooltip formula="Claims that passed scrubbing without errors ÷ total claims × 100. Target: > 95%" />of claims pass scrub</span> as unknown as string} />
             <KPICard label="First Pass Rate" value="87.6%" icon={<Activity size={20}/>}
