@@ -55,6 +55,19 @@ export default function Sidebar() {
           </div>
         ))}
       </nav>
+
+      {/* User profile strip at bottom */}
+      <div className={`border-t border-separator px-3 py-3 flex items-center gap-3 ${sidebarCollapsed ? 'justify-center' : ''}`}>
+        <div className="w-8 h-8 rounded-full bg-brand/20 flex items-center justify-center text-brand font-bold text-xs shrink-0">
+          {currentUser.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+        </div>
+        {!sidebarCollapsed && (
+          <div className="flex flex-col leading-tight min-w-0">
+            <span className="text-[13px] font-semibold text-content-primary truncate">{currentUser.name}</span>
+            <span className="text-[10px] text-content-tertiary capitalize">{currentUser.role.replace('_', ' ')}</span>
+          </div>
+        )}
+      </div>
     </aside>
   )
 }

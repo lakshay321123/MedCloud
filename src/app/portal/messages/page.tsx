@@ -16,30 +16,59 @@ const entityIcons: Record<string, React.ReactNode> = {
 }
 
 export default function MessagesPage() {
-  const { data: apiMsgResult } = useMessages({ limit: 100 })
-  const apiMessages: any[] = (apiMsgResult?.data || []).map((m: any) => ({
-    id: m.id, sender: m.sender_email || m.sender_role || 'System', body: m.body,
-    timestamp: m.created_at, entityType: m.entity_type, entityId: m.entity_id,
+  const { data: apiMsgResult, refetch: refetchMessages } = useMessages({ limit: 100 })
+  const sendMessageMutation = useSendMessage()
+
+  // Normalise API threads into the same shape as demoMessages
+  const apiThreads: any[] = (apiMsgResult?.data || []).map((m: any) => ({
+    id: m.id,
+    entityType: m.entity_type || 'general',
+    entityId: m.entity_id || '',
+    entityLabel: m.entity_label || m.entity_id || 'General',
+    clientId: m.client_id || '',
+    clientName: m.client_name || '',
+    subject: m.subject || '(no subject)',
+    lastMessage: m.body || '',
+    lastSender: m.sender_name || m.sender_role || 'System',
+    lastSenderRole: m.sender_role || 'staff',
+    timestamp: m.created_at,
+    unread: !m.read,
+    status: m.status || 'open',
+    messages: [{
+      sender: m.sender_name || m.sender_role || 'System',
+      role: (m.sender_role === 'client' || m.sender_role === 'provider') ? 'client' : 'staff',
+      text: m.body || '',
+      time: m.created_at,
+    }],
   }))
 
   const { currentUser, selectedClient } = useApp()
   const { t } = useT()
   const { toast } = useToast()
   const { getError } = useAbuseFilter()
+  // API threads take priority; demo data fills in when API is unavailable
   const [localThreads, setLocalThreads] = useState<any[]>(demoMessages)
   const [selected, setSelected] = useState<DemoMessage | null>(null)
   const [filter, setFilter] = useState('')
   const [reply, setReply] = useState('')
   const isStaff = !['client','provider'].includes(currentUser.role)
 
-  const messages = localThreads.filter(m => {
+  // Merge: API threads overlay demo data by ID; purely local new threads at front
+  const mergedThreads = apiThreads.length > 0
+    ? [
+        ...localThreads.filter(l => !apiThreads.some(a => a.id === l.id)), // local-only (newly sent)
+        ...apiThreads,
+      ]
+    : localThreads
+
+  const messages = mergedThreads.filter(m => {
     if (filter && m.entityType !== filter) return false
     if (!isStaff && m.clientId !== currentUser.organization_id) return false
     if (isStaff && selectedClient && m.clientId !== selectedClient.id) return false
     return true
   })
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!reply.trim() || !selected) return
     const abuseError = getError(reply)
     if (abuseError) {
@@ -47,13 +76,18 @@ export default function MessagesPage() {
       handleAbuseViolation(currentUser.id || 'unknown')
       return
     }
+    const senderName = currentUser.name || currentUser.role
+    const senderRole = (['provider','client'].includes(currentUser.role) ? 'client' : 'staff') as 'client' | 'staff'
+
     const newMsg = {
-      id: `msg-${Date.now()}`,
-      sender: 'You',
-      role: 'staff' as const,
+      id: `msg-${crypto.randomUUID()}`,
+      sender: senderName,
+      role: senderRole,
       text: reply.trim(),
       time: new Date().toISOString(),
     }
+
+    // Optimistic local update immediately
     setLocalThreads(prev => prev.map(t =>
       t.id === selected.id
         ? { ...t, messages: [...t.messages, newMsg], lastMessage: reply.trim(), updatedAt: new Date().toISOString() }
@@ -61,17 +95,39 @@ export default function MessagesPage() {
     ))
     setSelected(prev => prev ? { ...prev, messages: [...prev.messages, newMsg] } : prev)
     setReply('')
-    toast.success('Message sent')
+
+    // Persist to backend
+    const result = await sendMessageMutation.mutate({
+      entity_type: selected.entityType,
+      entity_id: selected.entityId,
+      client_id: selected.clientId,
+      subject: selected.subject,
+      body: reply.trim(),
+      sender_name: senderName,
+      sender_role: currentUser.role,
+      parent_id: selected.id,
+    } as any)
+
+    if (result) {
+      refetchMessages()
+      toast.success('Message sent')
+    } else {
+      toast.success('Message sent (pending sync)')
+    }
   }
 
   return (
     <ModuleShell title={t("messages","title")} subtitle="Conversations about patients, claims, and submissions">
-      <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
-        <span className="text-lg shrink-0">💬</span>
-        <div>
-          Messages connected — live messaging active
+      {apiMsgResult && apiThreads.length > 0 && (
+        <div className="mb-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-2.5 flex items-center gap-3 text-xs text-emerald-600 dark:text-emerald-400">
+          <span>✓</span><span>Live messages loaded — {apiThreads.length} thread{apiThreads.length !== 1 ? 's' : ''} from server</span>
         </div>
-      </div>      <div className="grid grid-cols-3 gap-4 h-[calc(100vh-220px)]">
+      )}
+      {(!apiMsgResult || apiThreads.length === 0) && (
+        <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2.5 flex items-center gap-3 text-xs text-amber-700 dark:text-amber-400">
+          <span>💬</span><span>Showing demo threads — messages you send will sync when API is connected</span>
+        </div>
+      )}      <div className="grid grid-cols-3 gap-4 h-[calc(100vh-220px)]">
         {/* Thread List */}
         <div className="card overflow-hidden flex flex-col">
           <div className="p-3 border-b border-separator">

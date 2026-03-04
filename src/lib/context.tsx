@@ -119,9 +119,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const toggleSidebar = useCallback(() => setSidebarCollapsed(prev => !prev), [])
+
+  // Role → display name: keeps the UI showing who you're acting as when role is switched
+  const roleDisplayNames: Record<UserRole, string> = {
+    admin: 'Admin User', director: 'Director', supervisor: 'Supervisor',
+    manager: 'Manager', coder: 'Sarah Kim', biller: 'Mike Rodriguez',
+    ar_team: 'AR Team', posting_team: 'Posting Team',
+    provider: 'Dr. Martinez', client: 'Front Desk',
+  }
+
   const setRole = useCallback((r: UserRole) => {
     if (typeof window !== 'undefined') localStorage.setItem('cosentus_role', r)
-    setCurrentUser(prev => ({ ...prev, role: r }))
+    setCurrentUser(prev => ({ ...prev, role: r, name: roleDisplayNames[r] ?? prev.name }))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const setSelectedClient = useCallback((c: ClientOrg | null) => setSelectedClientState(c), [])
 

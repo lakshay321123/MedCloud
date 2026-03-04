@@ -7,7 +7,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
 import { Plus, Search, X, Upload, ChevronDown, Pencil, Check, Users } from 'lucide-react'
-import { usePatients, useCreatePatient, useUpdatePatient, usePatientStatements, useGenerateStatement, useUpdateStatement, useFlagHCCCodes } from '@/lib/hooks'
+import { usePatients, useCreatePatient, useUpdatePatient, usePatientStatements, useGenerateStatement, useUpdateStatement, useFlagHCCCodes, useMessages, useSendMessage } from '@/lib/hooks'
 import type { ApiPatient } from '@/lib/hooks'
 import { ErrorBanner } from '@/components/shared/ApiStates'
 import { formatDOB, toMRN, computeProfileComplete } from '@/lib/utils/region'
@@ -326,6 +326,54 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
 
 type DetailTab = 'demographics' | 'address' | 'insurance' | 'emergency' | 'employment' | 'documents' | 'visits' | 'messages'
 
+// ── Patient Messages Tab ───────────────────────────────────────────────────
+function PatientMessagesTab({ patientId, clientId, patientName }: { patientId: string; clientId: string; patientName: string }) {
+  const { currentUser } = useApp()
+  const [msgInput, setMsgInput] = React.useState('')
+  const { data: msgResult, refetch } = useMessages({ entity_id: patientId, entity_type: 'patient', limit: 50 })
+  const sendMutation = useSendMessage()
+  const apiMessages: any[] = msgResult?.data || []
+
+  const handleSend = async () => {
+    if (!msgInput.trim()) return
+    const senderName = currentUser.name || currentUser.role
+    await sendMutation.mutate({
+      entity_type: 'patient', entity_id: patientId,
+      client_id: clientId, subject: `Patient: ${patientName}`,
+      body: msgInput.trim(), sender_name: senderName, sender_role: currentUser.role,
+    } as any)
+    setMsgInput('')
+    refetch()
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {apiMessages.length === 0 ? (
+        <div className="text-center py-6 text-xs text-content-secondary">No messages yet — start a conversation below.</div>
+      ) : (
+        <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+          {apiMessages.map((m: any) => (
+            <div key={m.id} className={`flex ${['client','provider'].includes(m.sender_role) ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[75%] rounded-lg px-3 py-2 text-xs ${['client','provider'].includes(m.sender_role) ? 'bg-brand/10 border border-brand/20' : 'bg-surface-elevated border border-separator'}`}>
+                <span className="font-medium block mb-0.5 text-[10px] text-content-secondary">{m.sender_name || m.sender_role}</span>
+                <p className="text-content-primary">{m.body}</p>
+                <span className="text-[9px] text-content-tertiary mt-1 block">{new Date(m.created_at).toLocaleString()}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2 border-t border-separator pt-3">
+        <input value={msgInput} onChange={e => setMsgInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && msgInput.trim()) handleSend() }}
+          placeholder="Message back office about this patient…"
+          className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary placeholder:text-content-tertiary" />
+        <button onClick={handleSend} className="px-3 py-1.5 bg-brand text-white rounded-lg text-xs font-medium hover:bg-brand-deep transition-colors">Send</button>
+      </div>
+    </div>
+  )
+}
+
 function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClose: () => void }) {
   const { country } = useApp()
   const { toast } = useToast()
@@ -600,7 +648,9 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
 
           {tab === 'documents' && <div className="text-center py-8 text-xs text-content-secondary">No documents linked yet.</div>}
           {tab === 'visits' && <div className="text-center py-8 text-xs text-content-secondary">No visit history yet.</div>}
-          {tab === 'messages' && <div className="text-center py-8 text-xs text-content-secondary">No messages for this patient.</div>}
+          {tab === 'messages' && (
+            <PatientMessagesTab patientId={localPatient.id} clientId={localPatient.clientId} patientName={`${localPatient.firstName} ${localPatient.lastName}`} />
+          )}
         </div>
       </div>
     </>

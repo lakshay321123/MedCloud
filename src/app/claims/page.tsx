@@ -13,7 +13,7 @@ import { useToast } from '@/components/shared/Toast'
 import { useRouter } from 'next/navigation'
 import { useClaims, useScrubClaim, useTransitionClaim, useGenerateEDI,
          useClaimLines, useAddClaimLine, useClaimDiagnoses, useAddClaimDiagnosis,
-         useScrubRules, useCreateClaim, useUpdateClaim, usePredictDenial, useGenerate837I, useTriggerSecondaryClaim, useUnderpaymentCheck, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useParse277, useEDITransactions, useCreateEDITransaction, useScrubResults, useCARCCodes, useRARCCodes } from '@/lib/hooks'
+         useScrubRules, useCreateClaim, useUpdateClaim, usePredictDenial, useGenerate837I, useTriggerSecondaryClaim, useUnderpaymentCheck, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useParse277, useEDITransactions, useCreateEDITransaction, useScrubResults, useCARCCodes, useRARCCodes, useSendMessage, useMessages } from '@/lib/hooks'
 import type { ApiClaim } from '@/lib/hooks'
 import type { ClaimStatus } from '@/types'
 import { ErrorBanner } from '@/components/shared/ApiStates'
@@ -325,17 +325,29 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
   void handleAddLine
   void handleAddDiagnosis
 
-  const sendMessage = () => {
+  const sendMessageMutation = useSendMessage()
+
+  const sendMessage = async () => {
     if (!msgInput.trim()) return
-    setLocalMessages(prev => [...prev, {
-      id: `MSG-NEW-${Date.now()}`, entityType: 'claim', entityId: claim.id,
+    const senderName = currentUser?.name || 'Staff'
+    const senderRole = (['provider','client'].includes(currentUser?.role || '')) ? 'client' : 'staff'
+    const newLocal = {
+      id: `MSG-NEW-${crypto.randomUUID()}`, entityType: 'claim', entityId: claim.id,
       entityLabel: `Claim #${claim.id}`, clientId: claim.clientId, clientName: claim.clientName,
-      subject: 'New message', lastMessage: msgInput, lastSender: 'Staff', lastSenderRole: 'staff',
+      subject: `Claim ${claim.id}`, lastMessage: msgInput, lastSender: senderName, lastSenderRole: senderRole,
       timestamp: new Date().toISOString(), unread: false, status: 'open',
-      messages: [{ sender: 'Staff', role: 'staff', text: msgInput, time: new Date().toISOString() }]
-    }])
+      messages: [{ sender: senderName, role: senderRole as 'staff'|'client', text: msgInput, time: new Date().toISOString() }]
+    }
+    setLocalMessages(prev => [...prev, newLocal])
+    const body = msgInput
     setMsgInput('')
-    toast.success('Message sent')
+    // Persist to backend so Messages page picks it up
+    await sendMessageMutation.mutate({
+      entity_type: 'claim', entity_id: claim.id,
+      client_id: claim.clientId, subject: `Claim ${claim.id}`,
+      body, sender_name: senderName, sender_role: currentUser?.role || 'staff',
+    } as any)
+    toast.success('Message sent to back office')
   }
 
   const handleSaveEdit = () => {
