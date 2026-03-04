@@ -406,6 +406,38 @@ const respond = (code, body) => ({
 
 const uuid = () => crypto.randomUUID();
 
+// ─── RLS-Aware Query Wrapper ────────────────────────────────────────────────────
+// Activates PostgreSQL Row Level Security by setting app.org_id for the connection.
+// Migration 007 enables RLS on all PHI tables — this call is what ACTIVATES the policies.
+// Must be called at the start of every request context.
+async function withOrgContext(orgId, fn) {
+  const client = await pool.connect();
+  try {
+    // SET LOCAL means the setting is scoped to this transaction only — safe for pooled connections
+    await client.query('BEGIN');
+    await client.query(`SET LOCAL app.org_id = '${orgId.replace(/'/g, "''")}'`);
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// RLS-aware pool.query — uses SET LOCAL for simple non-transactional queries
+async function orgQuery(orgId, sql, params = []) {
+  const client = await pool.connect();
+  try {
+    await client.query(`SET LOCAL app.org_id = '${orgId.replace(/'/g, "''")}'`);
+    return await client.query(sql, params);
+  } finally {
+    client.release();
+  }
+}
+
 // ─── Generic CRUD ──────────────────────────────────────────────────────────────
 async function list(table, orgId, clientId, extra = '') {
   let q = `SELECT * FROM ${table} WHERE org_id = $1`;
@@ -5613,6 +5645,926 @@ export const handler = async (event) => {
       }, effectiveOrgId).catch(() => {});
 
       return respond(200, { transaction_type: '277', claims_updated: updates.length, updates });
+    }
+
+
+    // ════ PAYER CONFIG — Seed top 20 US payers ════════════════════════════════
+    // GET /payer-config/seed — one-time seed with real payer data (admin only)
+    if (path.includes('/payer-config/seed') && method === 'POST') {
+      if (callerRole !== 'admin' && callerRole !== 'director') return respond(403, { error: 'Admin only' });
+      const US_PAYERS = [
+        { payer_name: 'UnitedHealth Group / UHC', availity_payer_id: 'UHC', phone: '1-866-842-3278', timely_filing_days: 180, isvr_script: 'Press 2 for claims, then 1 for claim status. Have NPI, DOS, and claim number ready.', region: 'us' },
+        { payer_name: 'Anthem / Elevance Health', availity_payer_id: 'ANTBX', phone: '1-800-676-2583', timely_filing_days: 180, isvr_script: 'Press 1 for providers, 2 for claims. Enter your 10-digit NPI when prompted.', region: 'us' },
+        { payer_name: 'Cigna', availity_payer_id: 'CIGNA', phone: '1-800-285-4812', timely_filing_days: 180, isvr_script: 'Press 2 for claims status. Enter claim number or patient DOB + member ID.', region: 'us' },
+        { payer_name: 'Aetna / CVS Health', availity_payer_id: 'AETNA', phone: '1-800-624-0756', timely_filing_days: 180, isvr_script: 'Press 1 for providers. Press 3 for claim status. Have member ID and DOS ready.', region: 'us' },
+        { payer_name: 'Humana', availity_payer_id: 'HUMANA', phone: '1-800-448-6262', timely_filing_days: 365, isvr_script: 'Press 2 for claim status. Enter NPI then member ID.', region: 'us' },
+        { payer_name: 'Blue Cross Blue Shield (BCBS) — National', availity_payer_id: 'BCBS', phone: '1-800-624-1662', timely_filing_days: 365, isvr_script: 'Press 2 for provider services. Select your state plan when prompted.', region: 'us' },
+        { payer_name: 'Medicare (CMS)', availity_payer_id: 'MEDICARE', phone: '1-800-633-4227', timely_filing_days: 365, isvr_script: 'Press 2 for providers. Press 1 for claim status. Have HICN or MBI and DOS ready.', region: 'us' },
+        { payer_name: 'Medicaid (State — varies)', availity_payer_id: 'MEDICAID', phone: 'State-specific', timely_filing_days: 365, isvr_script: 'Contact your state Medicaid MCO directly. Phone varies by state.', region: 'us' },
+        { payer_name: 'Molina Healthcare', availity_payer_id: 'MOLINA', phone: '1-888-665-4621', timely_filing_days: 180, isvr_script: 'Press 2 for claims. Enter member ID and date of service.', region: 'us' },
+        { payer_name: 'Centene / WellCare', availity_payer_id: 'CENTENE', phone: '1-800-225-2573', timely_filing_days: 180, isvr_script: 'Press 1 for providers. Press 2 for claim status.', region: 'us' },
+        { payer_name: 'Kaiser Permanente', availity_payer_id: 'KAISER', phone: '1-800-900-3227', timely_filing_days: 180, isvr_script: 'Region-specific. Press 3 for billing inquiries.', region: 'us' },
+        { payer_name: 'Oscar Health', availity_payer_id: 'OSCAR', phone: '1-855-672-2726', timely_filing_days: 180, isvr_script: 'Online portal preferred. Phone: press 2 for claim status.', region: 'us' },
+        { payer_name: 'Bright Health', availity_payer_id: 'BRIGHT', phone: '1-844-926-3791', timely_filing_days: 180, isvr_script: 'Press 2 for providers, then 1 for claims.', region: 'us' },
+        { payer_name: 'Tricare / Defense Health Agency', availity_payer_id: 'TRICARE', phone: '1-888-874-2273', timely_filing_days: 365, isvr_script: 'Press 2 for claim status. Have TCN (transaction control number) ready.', region: 'us' },
+        { payer_name: 'Veterans Affairs (VA/CHAMPVA)', availity_payer_id: 'CHAMPVA', phone: '1-800-733-8387', timely_filing_days: 365, isvr_script: 'Press 2 for claim status. Have VA file number or SSN ready.', region: 'us' },
+        { payer_name: 'Ambetter / Centene Marketplace', availity_payer_id: 'AMBETTER', phone: '1-877-687-1196', timely_filing_days: 180, isvr_script: 'Press 2 for provider services, 1 for claims.', region: 'us' },
+        { payer_name: 'Highmark BCBS', availity_payer_id: 'HIGHMARK', phone: '1-800-241-5704', timely_filing_days: 365, isvr_script: 'Press 2 for claim status. Enter NPI and claim number.', region: 'us' },
+        { payer_name: 'Independence Blue Cross', availity_payer_id: 'IBC', phone: '1-800-ASK-BLUE', timely_filing_days: 365, isvr_script: 'Press 2 for providers. Press 1 for claim inquiry.', region: 'us' },
+        { payer_name: 'Florida Blue (BCBS FL)', availity_payer_id: 'FLORIDABLUE', phone: '1-800-727-2227', timely_filing_days: 365, isvr_script: 'Press 2 for providers. Press 2 for claim status.', region: 'us' },
+        { payer_name: 'Carefirst BCBS (MD/DC/VA)', availity_payer_id: 'CAREFIRST', phone: '1-800-842-5975', timely_filing_days: 365, isvr_script: 'Press 1 for providers. Press 3 for claim information.', region: 'us' },
+      ];
+      let seeded = 0, skipped = 0;
+      for (const p of US_PAYERS) {
+        const existing = await pool.query('SELECT id FROM payer_config WHERE org_id = $1 AND availity_payer_id = $2', [effectiveOrgId, p.availity_payer_id]).catch(() => ({ rows: [] }));
+        if (existing.rows.length === 0) {
+          await create('payer_config', {
+            ...p, org_id: effectiveOrgId,
+            prior_auth_required: ['UHC','HUMANA','ANTHEM','CIGNA'].includes(p.availity_payer_id),
+            auto_verification_enabled: false,
+            notes: 'Seeded from MedCloud payer database v1.0',
+          }, effectiveOrgId).catch(() => {});
+          seeded++;
+        } else { skipped++; }
+      }
+      await auditLog(effectiveOrgId, userId, 'seed_payers', 'payer_config', null, { seeded, skipped });
+      return respond(200, { message: `Payer config seeded`, seeded, skipped, total: US_PAYERS.length });
+    }
+
+    // ════ BAA TRACKING ════════════════════════════════════════════════════════
+    // Business Associate Agreement tracking — required before any PHI processing
+    if (resource === 'baa') {
+      // GET /baa — list all BAAs for org
+      if (method === 'GET' && !pathParams.id) {
+        const rows = await orgQuery(effectiveOrgId,
+          `SELECT b.*, c.name as client_name FROM client_onboarding b
+           LEFT JOIN clients c ON c.id = b.client_id
+           WHERE b.org_id = $1 ORDER BY b.created_at DESC LIMIT 200`, [effectiveOrgId]);
+        // Return BAA-specific fields
+        const baas = rows.rows.map(r => ({
+          id: r.id, client_id: r.client_id, client_name: r.client_name,
+          baa_signed: r.baa_signed || false,
+          baa_signed_date: r.baa_signed_date || null,
+          baa_expiry_date: r.baa_expiry_date || null,
+          baa_signatory: r.baa_signatory || null,
+          baa_version: r.baa_version || '1.0',
+          status: r.baa_signed ? (r.baa_expiry_date && new Date(r.baa_expiry_date) < new Date() ? 'expired' : 'active') : 'pending',
+        }));
+        return respond(200, baas);
+      }
+      // POST /baa — record BAA signing
+      if (method === 'POST') {
+        const { client_id, signatory_name, signatory_email, baa_version, expiry_years } = body;
+        if (!client_id) return respond(400, { error: 'client_id required' });
+        const expiryDate = new Date();
+        expiryDate.setFullYear(expiryDate.getFullYear() + (expiry_years || 3));
+        // Upsert into client_onboarding
+        const existing = await pool.query('SELECT id FROM client_onboarding WHERE org_id = $1 AND client_id = $2 LIMIT 1', [effectiveOrgId, client_id]).catch(() => ({ rows: [] }));
+        let record;
+        if (existing.rows.length > 0) {
+          record = await update('client_onboarding', existing.rows[0].id, {
+            baa_signed: true, baa_signed_date: new Date().toISOString().slice(0, 10),
+            baa_expiry_date: expiryDate.toISOString().slice(0, 10),
+            baa_signatory: signatory_name, baa_version: baa_version || '1.0',
+          });
+        } else {
+          record = await create('client_onboarding', {
+            client_id, baa_signed: true,
+            baa_signed_date: new Date().toISOString().slice(0, 10),
+            baa_expiry_date: expiryDate.toISOString().slice(0, 10),
+            baa_signatory: signatory_name, baa_signatory_email: signatory_email,
+            baa_version: baa_version || '1.0',
+          }, effectiveOrgId);
+        }
+        await auditLog(effectiveOrgId, userId, 'baa_signed', 'client_onboarding', record.id, { client_id, signatory_name });
+        return respond(201, { message: 'BAA recorded', record });
+      }
+      // GET /baa/check — check BAA status for all clients
+      if (path.includes('/baa/check') && method === 'GET') {
+        const clients = await pool.query('SELECT id, name FROM clients WHERE org_id = $1', [effectiveOrgId]).catch(() => ({ rows: [] }));
+        const baas = await pool.query('SELECT client_id, baa_signed, baa_expiry_date FROM client_onboarding WHERE org_id = $1', [effectiveOrgId]).catch(() => ({ rows: [] }));
+        const baaMap = {};
+        for (const b of baas.rows) baaMap[b.client_id] = b;
+        const today = new Date();
+        const report = clients.rows.map(c => {
+          const baa = baaMap[c.id];
+          const expiry = baa?.baa_expiry_date ? new Date(baa.baa_expiry_date) : null;
+          const daysToExpiry = expiry ? Math.floor((expiry - today) / 86400000) : null;
+          return {
+            client_id: c.id, client_name: c.name,
+            baa_signed: baa?.baa_signed || false,
+            expiry_date: baa?.baa_expiry_date || null,
+            days_to_expiry: daysToExpiry,
+            status: !baa?.baa_signed ? 'missing' : daysToExpiry !== null && daysToExpiry < 0 ? 'expired' : daysToExpiry !== null && daysToExpiry < 90 ? 'expiring_soon' : 'active',
+          };
+        });
+        const missing = report.filter(r => r.status === 'missing' || r.status === 'expired').length;
+        return respond(200, { report, missing_count: missing, compliant: missing === 0 });
+      }
+    }
+
+    // ════ SESSION MANAGEMENT ════════════════════════════════════════════════════
+    // POST /session/heartbeat — frontend calls every 5 min to stay alive
+    // POST /session/logout — explicit logout, audit logged
+    if (resource === 'session') {
+      if (path.includes('/heartbeat') && method === 'POST') {
+        await auditLog(effectiveOrgId, userId, 'session_heartbeat', 'session', userId, {});
+        return respond(200, {
+          alive: true,
+          timeout_minutes: 15,
+          message: 'Session active. Will expire after 15 minutes of inactivity.',
+        });
+      }
+      if (path.includes('/logout') && method === 'POST') {
+        await auditLog(effectiveOrgId, userId, 'user_logout', 'session', userId, {
+          source: body.source || 'explicit', reason: body.reason || 'user_action',
+        });
+        return respond(200, { message: 'Session ended', audited: true });
+      }
+      if (path.includes('/timeout') && method === 'POST') {
+        await auditLog(effectiveOrgId, userId, 'session_timeout', 'session', userId, {
+          inactive_minutes: 15, source: 'inactivity_timer',
+        });
+        return respond(200, { message: 'Session timeout logged', audited: true });
+      }
+    }
+
+    // ════ REPORTS — Internal analytics queries ════════════════════════════════
+    if (resource === 'reports') {
+      // GET /reports — list available report types
+      if (method === 'GET' && !pathParams.id && !qs.type) {
+        return respond(200, {
+          available_reports: [
+            { type: 'ar_aging', name: 'AR Aging Report', description: 'Claims by aging bucket (0-30, 31-60, 61-90, 91-120, 120+)' },
+            { type: 'denial_summary', name: 'Denial Summary', description: 'Denials by category, payer, and trend' },
+            { type: 'collection_rate', name: 'Collection Rate Report', description: 'Billed vs collected by payer and provider' },
+            { type: 'coding_accuracy', name: 'Coding Accuracy Report', description: 'AI vs manual coding accuracy rates' },
+            { type: 'payer_performance', name: 'Payer Performance', description: 'Days to pay, denial rate, clean claim rate by payer' },
+            { type: 'productivity', name: 'Staff Productivity', description: 'Claims processed, coding volume, call log by user' },
+            { type: 'outstanding_claims', name: 'Outstanding Claims', description: 'All unpaid claims with aging and next action' },
+            { type: 'era_reconciliation', name: 'ERA Reconciliation', description: 'Posted vs unposted ERA payments' },
+          ]
+        });
+      }
+      // GET /reports?type=ar_aging
+      if (method === 'GET' && qs.type === 'ar_aging') {
+        const today = new Date();
+        const buckets = await orgQuery(effectiveOrgId, `
+          SELECT
+            SUM(CASE WHEN EXTRACT(DAY FROM NOW() - submitted_at) <= 30 THEN billed_amount ELSE 0 END) as bucket_0_30,
+            SUM(CASE WHEN EXTRACT(DAY FROM NOW() - submitted_at) BETWEEN 31 AND 60 THEN billed_amount ELSE 0 END) as bucket_31_60,
+            SUM(CASE WHEN EXTRACT(DAY FROM NOW() - submitted_at) BETWEEN 61 AND 90 THEN billed_amount ELSE 0 END) as bucket_61_90,
+            SUM(CASE WHEN EXTRACT(DAY FROM NOW() - submitted_at) BETWEEN 91 AND 120 THEN billed_amount ELSE 0 END) as bucket_91_120,
+            SUM(CASE WHEN EXTRACT(DAY FROM NOW() - submitted_at) > 120 THEN billed_amount ELSE 0 END) as bucket_120_plus,
+            COUNT(*) FILTER (WHERE status NOT IN ('paid','denied','voided','written_off')) as open_claims,
+            SUM(billed_amount) FILTER (WHERE status NOT IN ('paid','denied','voided','written_off')) as total_outstanding
+          FROM claims WHERE org_id = $1 AND submitted_at IS NOT NULL
+          ${clientId ? 'AND client_id = $2' : ''}`, clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+        return respond(200, { report_type: 'ar_aging', data: buckets.rows[0], generated_at: today.toISOString() });
+      }
+      if (method === 'GET' && qs.type === 'denial_summary') {
+        const denials = await orgQuery(effectiveOrgId, `
+          SELECT denial_category, COUNT(*) as count,
+                 SUM(billed_amount) as total_billed,
+                 AVG(EXTRACT(DAY FROM NOW() - created_at)) as avg_days_outstanding
+          FROM denials WHERE org_id = $1 AND status != 'resolved'
+          ${clientId ? 'AND client_id = $2' : ''}
+          GROUP BY denial_category ORDER BY count DESC`, clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+        return respond(200, { report_type: 'denial_summary', data: denials.rows, generated_at: new Date().toISOString() });
+      }
+      if (method === 'GET' && qs.type === 'collection_rate') {
+        const data = await orgQuery(effectiveOrgId, `
+          SELECT
+            COALESCE(SUM(c.billed_amount),0) as total_billed,
+            COALESCE(SUM(p.amount_paid),0) as total_collected,
+            CASE WHEN SUM(c.billed_amount) > 0
+              THEN ROUND(SUM(p.amount_paid)::numeric / SUM(c.billed_amount)::numeric * 100, 2)
+              ELSE 0 END as collection_rate_pct,
+            COUNT(DISTINCT c.id) as total_claims,
+            COUNT(DISTINCT c.id) FILTER (WHERE c.status = 'paid') as paid_claims
+          FROM claims c LEFT JOIN payments p ON p.claim_id = c.id
+          WHERE c.org_id = $1 ${clientId ? 'AND c.client_id = $2' : ''}`,
+          clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+        return respond(200, { report_type: 'collection_rate', data: data.rows[0], generated_at: new Date().toISOString() });
+      }
+      if (method === 'GET' && qs.type === 'payer_performance') {
+        const data = await orgQuery(effectiveOrgId, `
+          SELECT
+            py.name as payer_name,
+            COUNT(c.id) as total_claims,
+            COUNT(c.id) FILTER (WHERE c.status = 'paid') as paid_claims,
+            COUNT(d.id) as total_denials,
+            CASE WHEN COUNT(c.id) > 0
+              THEN ROUND(COUNT(d.id)::numeric / COUNT(c.id)::numeric * 100, 2)
+              ELSE 0 END as denial_rate_pct,
+            ROUND(AVG(EXTRACT(DAY FROM p.payment_date - c.submitted_at))::numeric, 1) as avg_days_to_pay
+          FROM claims c
+          LEFT JOIN payers py ON py.id = c.payer_id
+          LEFT JOIN denials d ON d.claim_id = c.id
+          LEFT JOIN payments p ON p.claim_id = c.id AND p.status = 'posted'
+          WHERE c.org_id = $1 ${clientId ? 'AND c.client_id = $2' : ''}
+          GROUP BY py.name ORDER BY total_claims DESC LIMIT 20`,
+          clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+        return respond(200, { report_type: 'payer_performance', data: data.rows, generated_at: new Date().toISOString() });
+      }
+      if (method === 'GET' && qs.type === 'outstanding_claims') {
+        const data = await orgQuery(effectiveOrgId, `
+          SELECT c.id, c.claim_number, c.billed_amount, c.status,
+                 c.submitted_at, c.next_action_date, c.timely_filing_deadline,
+                 EXTRACT(DAY FROM NOW() - c.submitted_at) as days_outstanding,
+                 pt.first_name || ' ' || pt.last_name as patient_name,
+                 py.name as payer_name
+          FROM claims c
+          LEFT JOIN patients pt ON pt.id = c.patient_id
+          LEFT JOIN payers py ON py.id = c.payer_id
+          WHERE c.org_id = $1 AND c.status NOT IN ('paid','denied','voided','written_off')
+          ${clientId ? 'AND c.client_id = $2' : ''}
+          ORDER BY days_outstanding DESC LIMIT 500`,
+          clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+        return respond(200, { report_type: 'outstanding_claims', data: data.rows, count: data.rows.length, generated_at: new Date().toISOString() });
+      }
+      if (method === 'GET' && qs.type === 'coding_accuracy') {
+        const data = await orgQuery(effectiveOrgId, `
+          SELECT
+            COUNT(*) as total_coded,
+            COUNT(*) FILTER (WHERE ai_suggestion_id IS NOT NULL) as ai_coded,
+            COUNT(*) FILTER (WHERE coding_method = 'manual') as manual_coded,
+            COUNT(*) FILTER (WHERE ai_suggestion_id IS NOT NULL AND status = 'approved') as ai_approved,
+            CASE WHEN COUNT(*) FILTER (WHERE ai_suggestion_id IS NOT NULL) > 0
+              THEN ROUND(COUNT(*) FILTER (WHERE ai_suggestion_id IS NOT NULL AND status = 'approved')::numeric
+                        / COUNT(*) FILTER (WHERE ai_suggestion_id IS NOT NULL)::numeric * 100, 2)
+              ELSE 0 END as ai_accuracy_pct
+          FROM coding_queue WHERE org_id = $1 ${clientId ? 'AND client_id = $2' : ''}`,
+          clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+        return respond(200, { report_type: 'coding_accuracy', data: data.rows[0], generated_at: new Date().toISOString() });
+      }
+      if (method === 'GET' && qs.type === 'productivity') {
+        const data = await orgQuery(effectiveOrgId, `
+          SELECT
+            user_id,
+            entity_type,
+            COUNT(*) as action_count,
+            DATE_TRUNC('day', created_at) as activity_date
+          FROM audit_log
+          WHERE org_id = $1 AND action NOT IN ('get_request','post_request')
+            AND created_at >= NOW() - INTERVAL '30 days'
+          GROUP BY user_id, entity_type, DATE_TRUNC('day', created_at)
+          ORDER BY activity_date DESC, action_count DESC LIMIT 500`, [effectiveOrgId]);
+        return respond(200, { report_type: 'productivity', data: data.rows, generated_at: new Date().toISOString() });
+      }
+    }
+
+    // ════ TIMELY FILING — Auto-calculate deadlines ════════════════════════════
+    // POST /timely-filing/calculate — bulk calculate TF deadlines for open claims
+    if (path.includes('/timely-filing') && path.includes('/calculate') && method === 'POST') {
+      // Get all open claims with DOS but no TF deadline set
+      const claims = await orgQuery(effectiveOrgId, `
+        SELECT c.id, c.dos_from, c.payer_id, c.timely_filing_deadline
+        FROM claims c
+        WHERE c.org_id = $1 AND c.status NOT IN ('paid','denied','voided','written_off')
+          AND c.dos_from IS NOT NULL
+        LIMIT 1000`, [effectiveOrgId]);
+      // Get payer TF windows
+      const payerConfigs = await pool.query('SELECT payer_id, timely_filing_days FROM payer_config WHERE org_id = $1', [effectiveOrgId]).catch(() => ({ rows: [] }));
+      const tfMap = {};
+      for (const pc of payerConfigs.rows) tfMap[pc.payer_id] = pc.timely_filing_days;
+      let updated = 0;
+      for (const claim of claims.rows) {
+        const tfDays = tfMap[claim.payer_id] || 365; // default 1 year
+        const dos = new Date(claim.dos_from);
+        const deadline = new Date(dos);
+        deadline.setDate(deadline.getDate() + tfDays);
+        const daysLeft = Math.floor((deadline - new Date()) / 86400000);
+        await pool.query(
+          `UPDATE claims SET timely_filing_deadline = $1, timely_filing_risk = $2 WHERE id = $3`,
+          [deadline.toISOString().slice(0, 10), daysLeft < 30, claim.id]
+        ).catch(() => {});
+        updated++;
+      }
+      // Create alerts for at-risk claims
+      const atRisk = await orgQuery(effectiveOrgId, `
+        SELECT c.id, c.claim_number, c.timely_filing_deadline,
+               pt.first_name || ' ' || pt.last_name as patient_name
+        FROM claims c LEFT JOIN patients pt ON pt.id = c.patient_id
+        WHERE c.org_id = $1 AND c.timely_filing_risk = TRUE
+          AND c.status NOT IN ('paid','denied','voided','written_off')`, [effectiveOrgId]);
+      for (const r of atRisk.rows) {
+        await create('notifications', {
+          type: 'timely_filing_risk', priority: 'high',
+          title: `Timely Filing Risk: Claim ${r.claim_number}`,
+          message: `Claim for ${r.patient_name} expires ${r.timely_filing_deadline}. Submit immediately.`,
+          entity_type: 'claims', entity_id: r.id, read: false,
+        }, effectiveOrgId).catch(() => {});
+      }
+      return respond(200, { updated, at_risk: atRisk.rows.length, message: 'Timely filing deadlines calculated' });
+    }
+
+    // ════ WRITE-OFFS — Full tiered approval workflow ══════════════════════════
+    if (resource === 'write-offs') {
+      if (method === 'GET' && !pathParams.id) {
+        const rows = await orgQuery(effectiveOrgId,
+          `SELECT w.*, c.claim_number, c.billed_amount,
+                  pt.first_name || ' ' || pt.last_name as patient_name
+           FROM write_off_requests w
+           LEFT JOIN claims c ON c.id = w.claim_id
+           LEFT JOIN patients pt ON pt.id = c.patient_id
+           WHERE w.org_id = $1 ${clientId ? 'AND w.client_id = $2' : ''}
+           ORDER BY w.created_at DESC LIMIT 500`,
+          clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+        return respond(200, rows.rows);
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('write_off_requests', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
+      }
+      if (method === 'POST' && !path.includes('/approve') && !path.includes('/reject')) {
+        const { claim_id, amount, reason, write_off_type } = body;
+        if (!claim_id || !amount) return respond(400, { error: 'claim_id and amount required' });
+        const claim = await getById('claims', claim_id);
+        if (!claim || claim.org_id !== effectiveOrgId) return respond(404, { error: 'Claim not found' });
+        // Tiered approval: < $100 auto-approved, < $500 supervisor, >= $500 director
+        const approvalTier = amount < 100 ? 'auto' : amount < 500 ? 'supervisor' : 'director';
+        const wo = await create('write_off_requests', {
+          claim_id, amount, reason: reason || 'Not specified',
+          write_off_type: write_off_type || 'bad_debt',
+          status: approvalTier === 'auto' ? 'approved' : 'pending_approval',
+          approval_tier: approvalTier,
+          requested_by: userId,
+          client_id: claim.client_id,
+        }, effectiveOrgId);
+        if (approvalTier === 'auto') {
+          await update('claims', claim_id, { status: 'written_off' });
+          await auditLog(effectiveOrgId, userId, 'write_off_auto_approved', 'claims', claim_id, { amount, reason });
+        } else {
+          await create('notifications', {
+            type: 'write_off_approval', priority: approvalTier === 'director' ? 'urgent' : 'high',
+            title: `Write-off Approval Required: $${amount}`,
+            message: `Write-off of $${amount} for claim ${claim.claim_number} requires ${approvalTier} approval.`,
+            entity_type: 'write_off_requests', entity_id: wo.id, read: false,
+          }, effectiveOrgId).catch(() => {});
+          await auditLog(effectiveOrgId, userId, 'write_off_requested', 'write_off_requests', wo.id, { amount, reason, tier: approvalTier });
+        }
+        return respond(201, wo);
+      }
+      if (method === 'PUT' && path.includes('/approve') && pathParams.id) {
+        const wo = await getById('write_off_requests', pathParams.id);
+        if (!wo || wo.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        // Enforce approval role
+        const canApprove = (wo.approval_tier === 'supervisor' && ['supervisor','director','admin'].includes(callerRole))
+          || (wo.approval_tier === 'director' && ['director','admin'].includes(callerRole));
+        if (!canApprove) return respond(403, { error: `Requires ${wo.approval_tier} role to approve this write-off` });
+        await update('write_off_requests', pathParams.id, { status: 'approved', approved_by: userId, approved_at: new Date().toISOString() });
+        await update('claims', wo.claim_id, { status: 'written_off' });
+        await auditLog(effectiveOrgId, userId, 'write_off_approved', 'write_off_requests', pathParams.id, { amount: wo.amount });
+        return respond(200, { message: 'Write-off approved', claim_id: wo.claim_id });
+      }
+      if (method === 'PUT' && path.includes('/reject') && pathParams.id) {
+        const wo = await getById('write_off_requests', pathParams.id);
+        if (!wo || wo.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        await update('write_off_requests', pathParams.id, {
+          status: 'rejected', rejected_by: userId, rejected_at: new Date().toISOString(), reject_reason: body.reason,
+        });
+        await auditLog(effectiveOrgId, userId, 'write_off_rejected', 'write_off_requests', pathParams.id, { reason: body.reason });
+        return respond(200, { message: 'Write-off rejected' });
+      }
+    }
+
+    // ════ PATIENT STATEMENTS ════════════════════════════════════════════════════
+    if (resource === 'patient-statements') {
+      if (method === 'GET' && !pathParams.id) {
+        return respond(200, await list('patient_statements', effectiveOrgId, clientId, 'ORDER BY statement_date DESC'));
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('patient_statements', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
+      }
+      if (method === 'POST' && path.includes('/generate')) {
+        // Generate statement for a patient — aggregates their outstanding balances
+        const { patient_id, include_insurance_pending } = body;
+        if (!patient_id) return respond(400, { error: 'patient_id required' });
+        const patient = await getById('patients', patient_id);
+        if (!patient || patient.org_id !== effectiveOrgId) return respond(404, { error: 'Patient not found' });
+        // Get all claims with patient balance
+        const claimsData = await pool.query(`
+          SELECT c.id, c.claim_number, c.dos_from, c.billed_amount,
+                 COALESCE(SUM(p.amount_paid),0) as paid,
+                 COALESCE(SUM(p.patient_responsibility),0) as patient_resp,
+                 c.status
+          FROM claims c
+          LEFT JOIN payments p ON p.claim_id = c.id
+          WHERE c.org_id = $1 AND c.patient_id = $2
+            AND c.status NOT IN ('voided')
+          GROUP BY c.id ORDER BY c.dos_from DESC LIMIT 50`,
+          [effectiveOrgId, patient_id]).catch(() => ({ rows: [] }));
+        const totalBalance = claimsData.rows.reduce((sum, c) => sum + (parseFloat(c.patient_resp) || 0), 0);
+        const statement = await create('patient_statements', {
+          patient_id,
+          client_id: patient.client_id,
+          statement_date: new Date().toISOString().slice(0, 10),
+          total_balance: totalBalance,
+          line_items: JSON.stringify(claimsData.rows),
+          status: 'generated',
+          delivery_method: body.delivery_method || 'portal',
+        }, effectiveOrgId);
+        await auditLog(effectiveOrgId, userId, 'statement_generated', 'patient_statements', statement.id, { patient_id, total_balance: totalBalance });
+        return respond(201, { statement, line_items: claimsData.rows, total_balance: totalBalance });
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const r = await getById('patient_statements', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, await update('patient_statements', pathParams.id, body));
+      }
+    }
+
+    // ════ CREDIT BALANCES — Full resolution workflow ══════════════════════════
+    if (resource === 'credit-balances') {
+      if (method === 'GET' && !pathParams.id) {
+        const data = await orgQuery(effectiveOrgId, `
+          SELECT cb.*, pt.first_name || ' ' || pt.last_name as patient_name,
+                 py.name as payer_name
+          FROM credit_balances cb
+          LEFT JOIN patients pt ON pt.id = cb.patient_id
+          LEFT JOIN payers py ON py.id = cb.payer_id
+          WHERE cb.org_id = $1 ${clientId ? 'AND cb.client_id = $2' : ''}
+          ORDER BY cb.amount DESC`, clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+        return respond(200, data.rows);
+      }
+      if (path.includes('/identify') && method === 'POST') {
+        // Auto-identify credit balances from overpayments
+        const overpayments = await pool.query(`
+          SELECT c.id as claim_id, c.patient_id, c.payer_id, c.client_id,
+                 c.billed_amount,
+                 SUM(p.amount_paid) as total_paid,
+                 SUM(p.amount_paid) - c.billed_amount as credit_amount
+          FROM claims c JOIN payments p ON p.claim_id = c.id
+          WHERE c.org_id = $1
+          GROUP BY c.id HAVING SUM(p.amount_paid) > c.billed_amount`,
+          [effectiveOrgId]).catch(() => ({ rows: [] }));
+        let created = 0;
+        for (const op of overpayments.rows) {
+          const existing = await pool.query('SELECT id FROM credit_balances WHERE claim_id = $1', [op.claim_id]).catch(() => ({ rows: [] }));
+          if (existing.rows.length === 0) {
+            await create('credit_balances', {
+              claim_id: op.claim_id, patient_id: op.patient_id,
+              payer_id: op.payer_id, client_id: op.client_id,
+              amount: op.credit_amount, source: 'overpayment',
+              status: 'open', identified_at: new Date().toISOString(),
+            }, effectiveOrgId).catch(() => {});
+            created++;
+          }
+        }
+        return respond(200, { identified: created, total_overpayments: overpayments.rows.length });
+      }
+      if (path.includes('/resolve') && method === 'PUT' && pathParams.id) {
+        const cb = await getById('credit_balances', pathParams.id);
+        if (!cb || cb.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        const { resolution_type, notes } = body; // 'refund'|'apply_to_balance'|'write_off'
+        await update('credit_balances', pathParams.id, {
+          status: 'resolved', resolution_type, resolution_notes: notes,
+          resolved_at: new Date().toISOString(), resolved_by: userId,
+        });
+        await auditLog(effectiveOrgId, userId, 'credit_balance_resolved', 'credit_balances', pathParams.id, { resolution_type, notes });
+        return respond(200, { message: 'Credit balance resolved', resolution_type });
+      }
+    }
+
+    // ════ MESSAGES — Internal messaging ════════════════════════════════════════
+    if (resource === 'messages' || resource === 'portal') {
+      const msgPath = path.includes('/messages');
+      if (msgPath) {
+        if (method === 'GET' && !pathParams.id) {
+          const data = await orgQuery(effectiveOrgId, `
+            SELECT m.*, 
+                   sender.first_name || ' ' || sender.last_name as sender_name
+            FROM messages m
+            LEFT JOIN patients sender_p ON sender_p.id = m.sender_id
+            WHERE m.org_id = $1 ${clientId ? 'AND m.client_id = $2' : ''}
+              AND (m.recipient_id = $${clientId ? 3 : 2} OR m.sender_id = $${clientId ? 3 : 2} OR $${clientId ? 3 : 2} IS NULL)
+            ORDER BY m.created_at DESC LIMIT 200`,
+            clientId ? [effectiveOrgId, clientId, userId] : [effectiveOrgId, userId]);
+          return respond(200, data.rows);
+        }
+        if (method === 'POST' && !pathParams.id) {
+          const { recipient_id, subject, body: msgBody, entity_type, entity_id, message_type, priority } = body;
+          if (!msgBody) return respond(400, { error: 'body required' });
+          const msg = await create('messages', {
+            sender_id: userId, recipient_id, subject: subject || 'No Subject',
+            body: msgBody, entity_type, entity_id,
+            message_type: message_type || 'general',
+            priority: priority || 'normal',
+            client_id: clientId, read: false,
+          }, effectiveOrgId);
+          // Notify recipient
+          if (recipient_id) {
+            await create('notifications', {
+              type: 'new_message', priority: priority === 'urgent' ? 'urgent' : 'normal',
+              title: `New message: ${subject || 'No Subject'}`,
+              message: msgBody.substring(0, 200),
+              entity_type: 'messages', entity_id: msg.id,
+              user_id: recipient_id, read: false,
+            }, effectiveOrgId).catch(() => {});
+          }
+          return respond(201, msg);
+        }
+        if (method === 'PUT' && path.includes('/read') && pathParams.id) {
+          await update('messages', pathParams.id, { read: true, read_at: new Date().toISOString() });
+          return respond(200, { read: true });
+        }
+      }
+    }
+
+    // ════ NOTIFICATIONS ═════════════════════════════════════════════════════════
+    if (resource === 'notifications') {
+      if (method === 'GET' && !pathParams.id) {
+        const data = await orgQuery(effectiveOrgId, `
+          SELECT * FROM notifications
+          WHERE org_id = $1 AND (user_id = $2 OR user_id IS NULL)
+          ORDER BY created_at DESC LIMIT 100`,
+          [effectiveOrgId, userId]);
+        const unread = data.rows.filter(r => !r.read).length;
+        return respond(200, { notifications: data.rows, unread_count: unread });
+      }
+      if (method === 'POST' && !pathParams.id) {
+        const notif = await create('notifications', { ...body, user_id: body.user_id || userId, read: false }, effectiveOrgId);
+        return respond(201, notif);
+      }
+      if (method === 'PUT' && path.includes('/read') && pathParams.id) {
+        await update('notifications', pathParams.id, { read: true, read_at: new Date().toISOString() });
+        return respond(200, { read: true });
+      }
+      if (method === 'PUT' && path.includes('/mark-all-read')) {
+        await pool.query(`UPDATE notifications SET read = TRUE, read_at = NOW() WHERE org_id = $1 AND user_id = $2 AND read = FALSE`,
+          [effectiveOrgId, userId]).catch(() => {});
+        return respond(200, { message: 'All notifications marked as read' });
+      }
+    }
+
+    // ════ PRIOR AUTH ════════════════════════════════════════════════════════════
+    if (resource === 'prior-auth') {
+      if (method === 'GET' && !pathParams.id) {
+        return respond(200, await list('prior_auth_requests', effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('prior_auth_requests', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
+      }
+      if (method === 'POST' && !pathParams.id) {
+        const { patient_id, payer_id, procedure_codes, diagnosis_codes, dos, urgency } = body;
+        if (!patient_id || !payer_id) return respond(400, { error: 'patient_id and payer_id required' });
+        const pa = await create('prior_auth_requests', {
+          patient_id, payer_id, procedure_codes: JSON.stringify(procedure_codes || []),
+          diagnosis_codes: JSON.stringify(diagnosis_codes || []),
+          dos, urgency: urgency || 'routine',
+          status: 'pending_submission', client_id: clientId,
+          requested_by: userId,
+          submission_deadline: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10), // 3 days
+        }, effectiveOrgId);
+        // Create task for submission
+        await create('tasks', {
+          title: `Submit prior auth — ${procedure_codes?.join(', ') || 'see details'}`,
+          description: `Prior auth required for patient ${patient_id}. Due: ${pa.submission_deadline}`,
+          status: 'open', priority: urgency === 'urgent' ? 'critical' : 'high',
+          entity_type: 'prior_auth_requests', entity_id: pa.id,
+          due_date: pa.submission_deadline, assigned_to: userId, client_id: clientId,
+        }, effectiveOrgId).catch(() => {});
+        await auditLog(effectiveOrgId, userId, 'prior_auth_requested', 'prior_auth_requests', pa.id, { procedure_codes });
+        return respond(201, pa);
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const pa = await getById('prior_auth_requests', pathParams.id);
+        if (!pa || pa.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        const updated = await update('prior_auth_requests', pathParams.id, body);
+        if (body.status === 'approved') {
+          await auditLog(effectiveOrgId, userId, 'prior_auth_approved', 'prior_auth_requests', pathParams.id, { auth_number: body.auth_number });
+        } else if (body.status === 'denied') {
+          await create('notifications', {
+            type: 'prior_auth_denied', priority: 'urgent',
+            title: 'Prior Auth Denied', message: `Prior auth denied for patient ${pa.patient_id}. Reason: ${body.denial_reason || 'Not specified'}`,
+            entity_type: 'prior_auth_requests', entity_id: pathParams.id, read: false,
+          }, effectiveOrgId).catch(() => {});
+          await auditLog(effectiveOrgId, userId, 'prior_auth_denied', 'prior_auth_requests', pathParams.id, { denial_reason: body.denial_reason });
+        }
+        return respond(200, updated);
+      }
+    }
+
+    // ════ CREDENTIALING ═════════════════════════════════════════════════════════
+    if (resource === 'credentialing') {
+      if (path.includes('/dashboard') && method === 'GET') {
+        const data = await orgQuery(effectiveOrgId, `
+          SELECT
+            COUNT(*) as total_providers,
+            COUNT(*) FILTER (WHERE credentialing_status = 'approved') as credentialed,
+            COUNT(*) FILTER (WHERE credentialing_status = 'pending') as pending,
+            COUNT(*) FILTER (WHERE credentialing_status = 'expired' OR (expiry_date IS NOT NULL AND expiry_date < NOW())) as expired,
+            COUNT(*) FILTER (WHERE expiry_date IS NOT NULL AND expiry_date BETWEEN NOW() AND NOW() + INTERVAL '90 days') as expiring_soon
+          FROM credentialing WHERE org_id = $1 ${clientId ? 'AND client_id = $2' : ''}`,
+          clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+        const expiring = await orgQuery(effectiveOrgId, `
+          SELECT c.*, p.first_name || ' ' || p.last_name as provider_name
+          FROM credentialing c LEFT JOIN providers p ON p.id = c.provider_id
+          WHERE c.org_id = $1 AND c.expiry_date BETWEEN NOW() AND NOW() + INTERVAL '90 days'
+          ORDER BY c.expiry_date ASC LIMIT 10`, [effectiveOrgId]);
+        return respond(200, { summary: data.rows[0], expiring_soon: expiring.rows });
+      }
+      if (path.includes('/enrollment') && method === 'POST') {
+        const { provider_id, payer_id, enrollment_type } = body;
+        const enrollment = await create('credentialing', {
+          provider_id, payer_id, enrollment_type: enrollment_type || 'initial',
+          credentialing_status: 'submitted',
+          submitted_date: new Date().toISOString().slice(0, 10),
+          expected_approval_date: new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10), // 60 days
+          client_id: clientId,
+        }, effectiveOrgId);
+        // Create follow-up task at 30 days
+        await create('tasks', {
+          title: `Follow up: Credentialing enrollment ${provider_id}`,
+          description: `Check enrollment status for provider ${provider_id} with payer ${payer_id}`,
+          status: 'open', priority: 'normal',
+          due_date: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+          entity_type: 'credentialing', entity_id: enrollment.id, client_id: clientId,
+        }, effectiveOrgId).catch(() => {});
+        await auditLog(effectiveOrgId, userId, 'credentialing_submitted', 'credentialing', enrollment.id, { provider_id, payer_id });
+        return respond(201, enrollment);
+      }
+      if (method === 'GET' && !pathParams.id) {
+        return respond(200, await list('credentialing', effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('credentialing', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const r = await getById('credentialing', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        if (body.credentialing_status === 'expired') {
+          await create('notifications', {
+            type: 'credentialing_expired', priority: 'urgent',
+            title: 'Credentialing Expired',
+            message: `Provider credentialing has expired. Re-credentialing required immediately.`,
+            entity_type: 'credentialing', entity_id: pathParams.id, read: false,
+          }, effectiveOrgId).catch(() => {});
+        }
+        return respond(200, await update('credentialing', pathParams.id, body));
+      }
+    }
+
+    // ════ TASKS — Full CRUD + SLA escalation ════════════════════════════════════
+    if (resource === 'tasks') {
+      if (path.includes('/check-sla') && method === 'POST') {
+        return respond(200, await checkSLAEscalations(effectiveOrgId));
+      }
+      if (method === 'GET' && !pathParams.id) {
+        const statusFilter = qs.status ? `AND t.status = '${qs.status.replace(/'/g, "''")}'` : '';
+        const assignedFilter = qs.assigned_to ? `AND t.assigned_to = '${qs.assigned_to.replace(/'/g, "''")}'` : '';
+        const data = await orgQuery(effectiveOrgId, `
+          SELECT t.*, 
+                 EXTRACT(DAY FROM NOW() - t.created_at) as age_days,
+                 CASE WHEN t.due_date < NOW() AND t.status NOT IN ('completed','cancelled') THEN TRUE ELSE FALSE END as overdue
+          FROM tasks t
+          WHERE t.org_id = $1 ${clientId ? 'AND t.client_id = $2' : ''}
+            ${statusFilter} ${assignedFilter}
+          ORDER BY 
+            CASE t.priority WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 ELSE 4 END,
+            t.due_date ASC NULLS LAST
+          LIMIT 500`, clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+        return respond(200, data.rows);
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('tasks', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
+      }
+      if (method === 'POST' && !pathParams.id) {
+        const task = await create('tasks', { ...body, created_by: userId, status: body.status || 'open' }, effectiveOrgId);
+        await auditLog(effectiveOrgId, userId, 'task_created', 'tasks', task.id, { title: body.title });
+        return respond(201, task);
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const t = await getById('tasks', pathParams.id);
+        if (!t || t.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        if (body.status === 'completed' && t.status !== 'completed') {
+          body.completed_at = new Date().toISOString();
+          body.completed_by = userId;
+          await auditLog(effectiveOrgId, userId, 'task_completed', 'tasks', pathParams.id, { title: t.title });
+        }
+        return respond(200, await update('tasks', pathParams.id, body));
+      }
+      if (method === 'DELETE' && pathParams.id) {
+        const t = await getById('tasks', pathParams.id);
+        if (!t || t.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        await pool.query('UPDATE tasks SET status = $1, updated_at = NOW() WHERE id = $2', ['cancelled', pathParams.id]);
+        await auditLog(effectiveOrgId, userId, 'task_cancelled', 'tasks', pathParams.id, {});
+        return respond(200, { message: 'Task cancelled' });
+      }
+    }
+
+    // ════ ANALYTICS — Real DB queries (no demo data) ════════════════════════════
+    if (resource === 'analytics') {
+      if (method === 'GET') {
+        const period = qs.period || '30d';
+        const daysMap = { '7d': 7, '30d': 30, '90d': 90, '180d': 180, '1y': 365 };
+        const days = daysMap[period] || 30;
+        // Revenue trend — claims billed per day
+        const revenue = await orgQuery(effectiveOrgId, `
+          SELECT DATE_TRUNC('day', dos_from) as date, SUM(billed_amount) as billed,
+                 COUNT(*) as claim_count
+          FROM claims WHERE org_id = $1 AND dos_from >= NOW() - INTERVAL '${days} days'
+            ${clientId ? 'AND client_id = $2' : ''}
+          GROUP BY DATE_TRUNC('day', dos_from) ORDER BY date`,
+          clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+        // Denial rate trend
+        const denialRate = await orgQuery(effectiveOrgId, `
+          SELECT DATE_TRUNC('week', d.created_at) as week,
+                 COUNT(d.id) as denials,
+                 COUNT(c.id) as claims_in_period,
+                 CASE WHEN COUNT(c.id) > 0
+                   THEN ROUND(COUNT(d.id)::numeric / COUNT(c.id)::numeric * 100, 2)
+                   ELSE 0 END as rate_pct
+          FROM claims c LEFT JOIN denials d ON d.claim_id = c.id
+          WHERE c.org_id = $1 AND c.created_at >= NOW() - INTERVAL '${days} days'
+            ${clientId ? 'AND c.client_id = $2' : ''}
+          GROUP BY DATE_TRUNC('week', d.created_at) ORDER BY week`,
+          clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+        // By payer — US payers only (filter by region)
+        const byPayer = await orgQuery(effectiveOrgId, `
+          SELECT py.name as payer_name, py.region,
+                 COUNT(c.id) as claims, SUM(c.billed_amount) as billed,
+                 COUNT(d.id) as denials,
+                 CASE WHEN COUNT(c.id) > 0 THEN ROUND(COUNT(d.id)::numeric/COUNT(c.id)::numeric*100,2) ELSE 0 END as denial_pct
+          FROM claims c LEFT JOIN payers py ON py.id = c.payer_id
+          LEFT JOIN denials d ON d.claim_id = c.id
+          WHERE c.org_id = $1 ${clientId ? 'AND c.client_id = $2' : ''}
+          GROUP BY py.name, py.region ORDER BY billed DESC LIMIT 20`,
+          clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+        // Coding productivity
+        const coding = await orgQuery(effectiveOrgId, `
+          SELECT coding_method,
+                 COUNT(*) as count, COUNT(*) FILTER (WHERE status='approved') as approved,
+                 ROUND(AVG(EXTRACT(EPOCH FROM (updated_at - created_at))/60)::numeric, 1) as avg_minutes
+          FROM coding_queue WHERE org_id = $1 AND created_at >= NOW() - INTERVAL '${days} days'
+          GROUP BY coding_method`, [effectiveOrgId]);
+        return respond(200, {
+          period, days,
+          revenue_trend: revenue.rows,
+          denial_rate_trend: denialRate.rows,
+          by_payer: byPayer.rows,
+          coding_stats: coding.rows,
+          generated_at: new Date().toISOString(),
+        });
+      }
+    }
+
+    // ════ INVOICES — Auto-calculate from claims volume ═══════════════════════════
+    if (resource === 'invoices' && path.includes('/auto-generate') && method === 'POST') {
+      const { client_id: invClientId, period_start, period_end } = body;
+      if (!invClientId || !period_start || !period_end) return respond(400, { error: 'client_id, period_start, period_end required' });
+      // Get invoice config for client
+      const configR = await pool.query('SELECT * FROM invoice_configs WHERE org_id = $1 AND client_id = $2 LIMIT 1', [effectiveOrgId, invClientId]).catch(() => ({ rows: [] }));
+      const config = configR.rows[0];
+      // Count claims in period
+      const claimsCount = await pool.query(`
+        SELECT COUNT(*) as count, SUM(billed_amount) as total_billed
+        FROM claims WHERE org_id = $1 AND client_id = $2
+          AND dos_from BETWEEN $3 AND $4`, [effectiveOrgId, invClientId, period_start, period_end]).catch(() => ({ rows: [{ count: 0, total_billed: 0 }] }));
+      const count = parseInt(claimsCount.rows[0].count);
+      const perClaimRate = config?.per_claim_rate || 0;
+      const flatFee = config?.flat_monthly_fee || 0;
+      const totalAmount = flatFee + (count * perClaimRate);
+      const invoice = await create('invoices', {
+        client_id: invClientId, period_start, period_end,
+        claims_count: count, total_billed: claimsCount.rows[0].total_billed,
+        per_claim_rate: perClaimRate, flat_fee: flatFee,
+        amount: totalAmount, status: 'draft',
+        issued_date: new Date().toISOString().slice(0, 10),
+        due_date: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+        invoice_number: `INV-${Date.now()}`,
+      }, effectiveOrgId);
+      await auditLog(effectiveOrgId, userId, 'invoice_generated', 'invoices', invoice.id, { amount: totalAmount, claims_count: count });
+      return respond(201, invoice);
+    }
+
+    // ════ CODING QA AUDITS ═══════════════════════════════════════════════════════
+    if (resource === 'coding-qa') {
+      if (path.includes('/stats') && method === 'GET') {
+        const data = await orgQuery(effectiveOrgId, `
+          SELECT
+            COUNT(*) as total_audits,
+            ROUND(AVG(accuracy_score)::numeric, 2) as avg_accuracy,
+            COUNT(*) FILTER (WHERE accuracy_score >= 95) as passed,
+            COUNT(*) FILTER (WHERE accuracy_score < 95) as failed,
+            COUNT(*) FILTER (WHERE result = 'error_found') as errors_found
+          FROM coding_qa_audits WHERE org_id = $1 ${clientId ? 'AND client_id = $2' : ''}`,
+          clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+        return respond(200, data.rows[0]);
+      }
+      if (path.includes('/sample') && method === 'POST') {
+        const samplePct = parseInt(qs.percent || body.percent || 5);
+        const items = await orgQuery(effectiveOrgId, `
+          SELECT id FROM coding_queue WHERE org_id = $1 AND status = 'approved'
+            AND id NOT IN (SELECT coding_item_id FROM coding_qa_audits WHERE org_id = $1)
+          ORDER BY RANDOM() LIMIT (SELECT CEIL(COUNT(*) * $2 / 100) FROM coding_queue WHERE org_id = $1 AND status = 'approved')`,
+          [effectiveOrgId, samplePct]);
+        const audits = [];
+        for (const item of items.rows) {
+          const audit = await create('coding_qa_audits', {
+            coding_item_id: item.id, audit_date: new Date().toISOString().slice(0, 10),
+            status: 'pending_review', client_id: clientId,
+          }, effectiveOrgId).catch(() => null);
+          if (audit) audits.push(audit);
+        }
+        return respond(200, { sampled: audits.length, sample_pct: samplePct });
+      }
+      if (method === 'GET' && !pathParams.id) {
+        return respond(200, await list('coding_qa_audits', effectiveOrgId, clientId, 'ORDER BY audit_date DESC'));
+      }
+      if (method === 'POST' && !pathParams.id) {
+        return respond(201, await create('coding_qa_audits', body, effectiveOrgId));
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const r = await getById('coding_qa_audits', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, await update('coding_qa_audits', pathParams.id, body));
+      }
+    }
+
+    // ════ FEE SCHEDULES ══════════════════════════════════════════════════════════
+    if (resource === 'fee-schedules') {
+      if (method === 'GET' && !pathParams.id) {
+        const data = await orgQuery(effectiveOrgId, `
+          SELECT fs.*, py.name as payer_name
+          FROM fee_schedules fs LEFT JOIN payers py ON py.id = fs.payer_id
+          WHERE fs.org_id = $1 ${clientId ? 'AND fs.client_id = $2' : ''}
+            ${qs.payer_id ? `AND fs.payer_id = '${qs.payer_id.replace(/'/g, "''")}'` : ''}
+            ${qs.cpt_code ? `AND fs.cpt_code = '${qs.cpt_code.replace(/'/g, "''")}'` : ''}
+          ORDER BY fs.payer_id, fs.cpt_code LIMIT 1000`,
+          clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+        return respond(200, data.rows);
+      }
+      if (method === 'POST' && !pathParams.id) {
+        const fs = await create('fee_schedules', { ...body, client_id: clientId }, effectiveOrgId);
+        return respond(201, fs);
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const r = await getById('fee_schedules', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, await update('fee_schedules', pathParams.id, body));
+      }
+      if (method === 'DELETE' && pathParams.id) {
+        const r = await getById('fee_schedules', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        await pool.query('DELETE FROM fee_schedules WHERE id = $1', [pathParams.id]);
+        return respond(200, { deleted: true });
+      }
+      if (path.includes('/underpayment-check') && method === 'POST') {
+        // Compare recent ERA payments against fee schedule contracted rates
+        const underpaid = await orgQuery(effectiveOrgId, `
+          SELECT p.id, p.claim_id, p.cpt_code, p.allowed_amount,
+                 fs.contracted_rate,
+                 fs.contracted_rate - p.allowed_amount as underpaid_by,
+                 py.name as payer_name
+          FROM payments p
+          JOIN fee_schedules fs ON fs.cpt_code = p.cpt_code AND fs.payer_id = p.payer_id AND fs.org_id = $1
+          JOIN payers py ON py.id = p.payer_id
+          WHERE p.org_id = $1 AND p.allowed_amount < fs.contracted_rate
+            AND p.created_at >= NOW() - INTERVAL '90 days'
+          ORDER BY underpaid_by DESC LIMIT 100`, [effectiveOrgId]);
+        return respond(200, { underpayments: underpaid.rows, total: underpaid.rows.length });
+      }
+    }
+
+    // ════ CLIENT ONBOARDING ══════════════════════════════════════════════════════
+    if (resource === 'client-onboarding') {
+      if (method === 'GET' && !pathParams.id) {
+        return respond(200, await list('client_onboarding', effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
+      }
+      if (path.includes('/init') && method === 'POST') {
+        const { client_id: ocId } = body;
+        if (!ocId) return respond(400, { error: 'client_id required' });
+        const checklist = {
+          baa_signed: false, npi_verified: false, tax_id_verified: false,
+          payer_enrollment_submitted: false, fee_schedule_loaded: false,
+          test_claim_submitted: false, go_live_approved: false,
+        };
+        const onboarding = await create('client_onboarding', {
+          client_id: ocId, checklist: JSON.stringify(checklist),
+          status: 'in_progress', started_by: userId,
+        }, effectiveOrgId);
+        return respond(201, { onboarding, checklist });
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const r = await getById('client_onboarding', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        // Check if all checklist items complete
+        const checklist = typeof body.checklist === 'object' ? body.checklist : JSON.parse(body.checklist || '{}');
+        const allDone = Object.values(checklist).every(v => v === true);
+        if (allDone) body.status = 'completed';
+        return respond(200, await update('client_onboarding', pathParams.id, body));
+      }
     }
 
     return respond(404, { error: 'Route not found', path, method });
