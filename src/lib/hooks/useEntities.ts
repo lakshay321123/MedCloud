@@ -1048,3 +1048,84 @@ export function useCreateCredentialing() {
 export function useUpdateCredentialing(id: string) {
   return useMutation<ApiCredentialing, Partial<ApiCredentialing>>('put', `/credentialing/${id}`)
 }
+
+// ── Sprint 2 v5: New Routes ─────────────────────────────────────────────────
+
+export interface Api271ParseResult {
+  eligibility_check_id: string
+  status: string
+  plan_name?: string
+  group_number?: string
+  coinsurance_pct?: number
+  copay?: number
+  deductible?: number
+  out_of_pocket_max?: number
+  benefits: Array<{
+    info_code: string
+    coverage_level?: string
+    service_type?: string
+    amount?: number
+    percent?: number
+  }>
+}
+
+export function useParse271(eligibilityCheckId: string) {
+  return useMutation<Api271ParseResult, { edi_content: string }>('post', `/eligibility/${eligibilityCheckId}/parse-271`)
+}
+
+export interface ApiUnderpaymentResult {
+  claim_id: string
+  claim_number: string
+  total_billed: number
+  total_paid: number
+  total_underpaid: number
+  has_fee_schedule: boolean
+  underpayments: Array<{
+    cpt_code: string
+    contracted_rate: number
+    expected_payment: number
+    actual_allowed: number
+    underpaid_amount: number
+    variance_pct: string
+  }>
+}
+
+export function useUnderpaymentCheck(claimId: string) {
+  return useMutation<ApiUnderpaymentResult, Record<string, never>>('post', `/claims/${claimId}/underpayment-check`)
+}
+
+export interface ApiBatchSubmitResult {
+  submitted: number
+  failed: number
+  details: Array<{ claim_id: string; claim_number?: string; status: string; reason?: string }>
+}
+
+export function useBatchSubmitClaims() {
+  return useMutation<ApiBatchSubmitResult, { claim_ids: string[] }>('post', '/claims/batch-submit')
+}
+
+export interface ApiFeeSchedule {
+  id: string
+  org_id: string
+  payer_id: string
+  payer_name?: string
+  cpt_code: string
+  modifier?: string
+  contracted_rate: number
+  effective_date: string
+  termination_date?: string
+  rate_type: string
+}
+
+export function useFeeSchedules(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiFeeSchedule>>('/fee-schedules', params)
+}
+
+export function useCreateFeeSchedule() {
+  return useMutation<ApiFeeSchedule, Partial<ApiFeeSchedule>>('post', '/fee-schedules')
+}
+
+export function useUpdateFeeSchedule(id: string) {
+  return useMutation<ApiFeeSchedule, Partial<ApiFeeSchedule>>('put', `/fee-schedules/${id}`)
+}
