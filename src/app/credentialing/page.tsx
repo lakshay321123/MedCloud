@@ -5,7 +5,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import { BadgeCheck, AlertTriangle, X } from 'lucide-react'
-import { useCredentialing, useUpdateCredentialing, useCreateCredentialing } from '@/lib/hooks'
+import { useCredentialing, useUpdateCredentialing, useCreateCredentialing, useCredentialingDashboard, useCreateEnrollment } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
 import { UAE_CLIENT_NAMES, US_CLIENT_NAMES } from '@/lib/utils/region'
 

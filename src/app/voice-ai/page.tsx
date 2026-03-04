@@ -13,7 +13,7 @@ import {
   DemoCall, DemoCampaign, DemoScript
 } from '@/lib/demo-data'
 import { useApp } from '@/lib/context'
-import { useNotifications, useMessages } from '@/lib/hooks'
+import { useNotifications, useMessages, useCreateNotification, useMarkNotificationRead } from '@/lib/hooks'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 
 // ─── Status Dot ───────────────────────────────────────────────────────────

@@ -9,7 +9,7 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import { TrendingUp, X, Phone, Bot, User, PhoneCall, Plus, AlertTriangle, FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { tfDaysRemaining } from '@/lib/utils/time'
 import { useRouter } from 'next/navigation'
-import { useLogARCall, usePayerConfigs, useTimelyFilingDeadlines, useCreditBalances, useWriteOffs, useRequestWriteOff } from '@/lib/hooks'
+import { useLogARCall, usePayerConfigs, useTimelyFilingDeadlines, useCreditBalances, useWriteOffs, useRequestWriteOff, useARFollowUps, useARCallLog, useCheckSLAEscalations, useIdentifyCreditBalances, useResolveCreditBalance, useApproveWriteOff, useUpsertPayerConfig } from '@/lib/hooks'
 
 
 
@@ -559,7 +559,7 @@ export default function ARManagementPage() {
   const [accounts, setAccounts] = useState<ARAccount[]>(initialAccounts)
   const [callHistory, setCallHistory] = useState<Record<string, CallLogEntry[]>>(initialCallHistory)
   const [selected, setSelected] = useState<ARAccount | null>(null)
-  const [callMode, setCallMode] = useState<'accounts' | 'inbound'>('accounts')
+  const [callMode, setCallMode] = useState<'accounts' | 'inbound' | 'credits' | 'sla'>('accounts')
   const { mutate: logCallAPI } = useLogARCall()
 
   const filtered = accounts.filter(a => !selectedClient || a.client.includes(selectedClient.name.split(' ')[0]))
@@ -635,15 +635,74 @@ export default function ARManagementPage() {
 
       {/* Tab bar */}
       <div className="flex gap-1 mb-4 border-b border-separator">
-        {[{ id: 'accounts', label: 'AR Accounts' }, { id: 'inbound', label: '📞 Inbound Call' }].map(t => (
-          <button key={t.id} onClick={() => setCallMode(t.id as 'accounts' | 'inbound')}
+        {[{ id: 'accounts', label: 'AR Accounts' }, { id: 'inbound', label: '📞 Inbound Call' }, { id: 'credits', label: 'Credit Balances' }, { id: 'sla', label: 'SLA Escalations' }].map(t => (
+          <button key={t.id} onClick={() => setCallMode(t.id as any)}
             className={`px-4 py-2.5 text-[13px] font-medium transition-colors ${callMode === t.id ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>
             {t.label}
           </button>
         ))}
       </div>
 
-      {callMode === 'inbound' ? <InboundCallPanel /> : (<>
+      {callMode === 'inbound' ? <InboundCallPanel /> : callMode === 'credits' ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-content-secondary">Overpayments and credit balances requiring resolution</p>
+            <button onClick={() => toast.info('Scanning for credit balances…')} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors">Identify Credits</button>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-amber-500">$24,380</p><p className="text-[10px] text-content-tertiary mt-1">Total Credits</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand">18</p><p className="text-[10px] text-content-tertiary mt-1">Open Credits</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-emerald-500">$8,200</p><p className="text-[10px] text-content-tertiary mt-1">Resolved This Month</p></div>
+          </div>
+          <div className="card overflow-hidden">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-separator text-xs text-content-secondary"><th className="text-left px-4 py-3">Claim</th><th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Amount</th><th className="text-left px-4 py-3">Payer</th><th className="text-left px-4 py-3">Reason</th><th className="text-left px-4 py-3">Actions</th></tr></thead>
+              <tbody>
+                {[{claim:'CLM-8821',patient:'R. Martinez',amt:'$1,240',payer:'Aetna',reason:'Duplicate payment'},{claim:'CLM-9102',patient:'K. Williams',amt:'$890',payer:'BCBS',reason:'Overpayment'},{claim:'CLM-7455',patient:'J. Park',amt:'$2,100',payer:'United',reason:'COB adjustment'}].map(cr=>(
+                  <tr key={cr.claim} className="border-b border-separator last:border-0 table-row">
+                    <td className="px-4 py-3 font-mono text-xs">{cr.claim}</td>
+                    <td className="px-4 py-3 text-xs">{cr.patient}</td>
+                    <td className="px-4 py-3 text-xs font-semibold text-amber-500">{cr.amt}</td>
+                    <td className="px-4 py-3 text-xs text-content-secondary">{cr.payer}</td>
+                    <td className="px-4 py-3 text-xs">{cr.reason}</td>
+                    <td className="px-4 py-3 flex gap-2"><button onClick={()=>toast.success('Refund initiated')} className="text-[10px] text-brand hover:underline">Refund</button><button onClick={()=>toast.success('Applied to open balance')} className="text-[10px] text-emerald-500 hover:underline">Apply</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : callMode === 'sla' ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-content-secondary">SLA escalation tracking — accounts approaching or past deadlines</p>
+            <button onClick={() => toast.info('Checking SLA escalations…')} className="flex items-center gap-2 bg-red-500 text-white rounded-lg px-4 py-2 text-sm hover:bg-red-600 transition-colors">Run SLA Check</button>
+          </div>
+          <div className="grid grid-cols-4 gap-3">
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-red-500">7</p><p className="text-[10px] text-content-tertiary mt-1">Past SLA</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-amber-500">12</p><p className="text-[10px] text-content-tertiary mt-1">At Risk</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-emerald-500">94.2%</p><p className="text-[10px] text-content-tertiary mt-1">SLA Compliance</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand">48h</p><p className="text-[10px] text-content-tertiary mt-1">Avg Resolution</p></div>
+          </div>
+          <div className="card overflow-hidden">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-separator text-xs text-content-secondary"><th className="text-left px-4 py-3">Account</th><th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">SLA Target</th><th className="text-left px-4 py-3">Days Elapsed</th><th className="text-left px-4 py-3">Priority</th><th className="text-left px-4 py-3">Assigned To</th></tr></thead>
+              <tbody>
+                {[{acct:'AR-3301',client:'Valley Ortho',sla:'30 days',days:34,priority:'critical',assignee:'Team Lead'},{acct:'AR-2987',client:'Metro Health',sla:'45 days',days:42,priority:'high',assignee:'Sarah K.'},{acct:'AR-4102',client:'CityMed',sla:'30 days',days:28,priority:'medium',assignee:'John D.'}].map(s=>(
+                  <tr key={s.acct} className="border-b border-separator last:border-0 table-row">
+                    <td className="px-4 py-3 font-mono text-xs">{s.acct}</td>
+                    <td className="px-4 py-3 text-xs">{s.client}</td>
+                    <td className="px-4 py-3 text-xs text-content-secondary">{s.sla}</td>
+                    <td className="px-4 py-3 text-xs font-semibold">{s.days}d</td>
+                    <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${s.priority==='critical'?'bg-red-500/10 text-red-500':s.priority==='high'?'bg-amber-500/10 text-amber-500':'bg-blue-500/10 text-blue-500'}`}>{s.priority}</span></td>
+                    <td className="px-4 py-3 text-xs">{s.assignee}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (<>
       <div className="card p-4 mb-4">
         <h3 className="text-xs font-semibold text-content-secondary mb-2">AGING BUCKETS</h3>
         <div className="flex items-end gap-4 h-28 px-4">{computedBuckets.map(b => (

@@ -9,7 +9,7 @@ import { demoERAFiles, demoERALineItems, demoUnmatchedPayments } from '@/lib/dem
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
-import { useERAFiles, useAutoPostPayments, useParse835, useReconcilePayments, useBankDeposits, useReconcileBankDeposit } from '@/lib/hooks'
+import { useERAFiles, useAutoPostPayments, useParse835, useReconcilePayments, useBankDeposits, useReconcileBankDeposit, usePayments, useUpdatePayment, useCreateBankDeposit } from '@/lib/hooks'
 
 export default function PaymentPostingPage() {
   const { selectedClient } = useApp()

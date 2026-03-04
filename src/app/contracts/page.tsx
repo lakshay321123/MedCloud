@@ -6,7 +6,7 @@ import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import { demoContracts } from '@/lib/demo-data'
 import type { DemoContract } from '@/lib/demo-data'
-import { useFeeSchedules, usePayerConfigs, usePayers } from '@/lib/hooks'
+import { useFeeSchedules, usePayerConfigs, usePayers, useUnderpaymentCheck, useExtractContractRates, useCreateFeeSchedule, useUpdateFeeSchedule } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
 import { Scale, Search, AlertTriangle, Edit2, Plus } from 'lucide-react'
 
@@ -41,7 +41,7 @@ export default function ContractsPage() {
   const { t } = useT()
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<DemoContract | null>(demoContracts[0] ?? null)
-  const [tab, setTab] = useState<'fee' | 'underpayments' | 'terms'>('fee')
+  const [tab, setTab] = useState<'fee' | 'underpayments' | 'terms' | 'extract'>('fee')
   const [editingRow, setEditingRow] = useState<string | null>(null)
   const [addingCpt, setAddingCpt] = useState(false)
   const [newCpt, setNewCpt] = useState({ cpt: '', description: '', contractedRate: '' })
@@ -90,6 +90,7 @@ export default function ContractsPage() {
     { id: 'fee', label: 'Fee Schedule' },
     { id: 'underpayments', label: 'Underpayment Report' },
     { id: 'terms', label: 'Contract Terms' },
+    { id: 'extract', label: 'AI Rate Extract' },
   ] as const
 
   return (
