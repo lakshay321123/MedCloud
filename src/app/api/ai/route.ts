@@ -30,6 +30,8 @@ type AiAction =
   | { action: 'auto_code'; patient: string; specialty: string; dos: string; assessment: string; plan: string; codeSystem: string }
   | { action: 'soap_note'; transcript: string; patient: string; dob: string; gender: string; insurance: string; allergies: string; medications: string; visitType: string; specialty: string; codeSystem: string }
   | { action: 'denial_risk'; payer: string; cpt: string; icd: string; billed: number; pos: string; status: string }
+  | { action: 'scribe_refine_section'; section: string; text: string; patient: string; visitType: string; assessment: string }
+  | { action: 'scribe_referral'; patient: string; dob: string; insurance: string; soap: string; icd: string; specialist: string; reason: string }
 
 function buildPrompt(params: AiAction): { prompt: string; max_tokens: number } {
   switch (params.action) {
@@ -86,6 +88,37 @@ Return ONLY valid JSON (no markdown, no backticks):
 }
 
 Rules: ICD max 5 codes, CPT max 4 codes, confidence 0-100. Use ${params.codeSystem} coding system. Be specific and clinically accurate.`,
+      }
+    }
+    case 'scribe_refine_section': {
+      const sectionNames: Record<string, string> = { s: 'Subjective', o: 'Objective', a: 'Assessment', p: 'Plan' }
+      return {
+        max_tokens: 600,
+        prompt: `You are an expert medical scribe. Refine and improve the following ${sectionNames[params.section] || params.section} section of a SOAP note to be more clinically precise, complete, and professional.
+
+Patient: ${params.patient} | Visit Type: ${params.visitType}
+Assessment context: ${params.assessment}
+
+Current ${sectionNames[params.section] || params.section} text:
+${params.text}
+
+Return ONLY the improved section text. No JSON, no labels, no preamble. Just the refined clinical text ready to paste directly into the note.`,
+      }
+    }
+    case 'scribe_referral': {
+      return {
+        max_tokens: 800,
+        prompt: `You are an expert medical scribe. Generate a professional referral letter to a ${params.specialist} for the following patient.
+
+Patient: ${params.patient} | DOB: ${params.dob} | Insurance: ${params.insurance}
+Reason for Referral: ${params.reason}
+
+Clinical Summary:
+${params.soap}
+
+Primary Diagnosis: ${params.icd}
+
+Write a formal, professional referral letter. Include: date, greeting to "Dear Dr./Colleague,", brief clinical summary, reason for referral, relevant history, current medications if mentioned, and a polite closing. Return plain text only, no JSON.`,
       }
     }
     case 'auto_code': {

@@ -12,10 +12,26 @@ import { demoVisits, demoPatients, demoAppointments, DemoVisit } from '@/lib/dem
 import {
   Mic, Square, Check, ChevronLeft, BrainCircuit, Clock,
   FileText, Activity, AlertTriangle, Loader2, Sparkles,
-  Stethoscope, Clipboard, ChevronRight,
+  Stethoscope, Clipboard, ChevronRight, Zap, History,
+  Send, X, RefreshCw, BookOpen,
 } from 'lucide-react'
 import { formatDOB } from '@/lib/utils/region'
 
+// ── Voice Macros ────────────────────────────────────────────────────────────
+const VOICE_MACROS: { label: string; text: string; category: string }[] = [
+  { category: 'Vitals', label: 'Vitals Normal', text: 'Vital signs: BP 120/80, HR 72, RR 16, Temp 98.6F, SpO2 98% on room air.' },
+  { category: 'Vitals', label: 'Vitals Stable', text: 'Vital signs stable and within normal limits for age.' },
+  { category: 'Review of Systems', label: 'ROS Negative', text: 'Review of systems negative for fever, chills, nausea, vomiting, chest pain, shortness of breath, or neurological symptoms.' },
+  { category: 'Review of Systems', label: 'ROS Positive', text: 'Review of systems positive for the presenting complaint. Otherwise negative for associated symptoms.' },
+  { category: 'Exam', label: 'General Exam Normal', text: 'General: Alert and oriented x3, in no acute distress. HEENT normal. Lungs clear to auscultation bilaterally. Heart regular rate and rhythm. Abdomen soft, non-tender.' },
+  { category: 'Exam', label: 'Neuro Normal', text: 'Neurological: Cranial nerves II-XII intact. Motor strength 5/5 throughout. Sensation intact. Reflexes 2+ symmetric. Gait normal.' },
+  { category: 'Plan', label: 'Follow Up 2 Weeks', text: 'Follow up in 2 weeks or sooner if symptoms worsen.' },
+  { category: 'Plan', label: 'Labs Ordered', text: 'Laboratory studies ordered. Patient instructed to follow up once results are available.' },
+  { category: 'Plan', label: 'Imaging Ordered', text: 'Imaging studies ordered. Patient instructed to call if symptoms worsen prior to imaging appointment.' },
+  { category: 'Consent', label: 'Consent Obtained', text: 'Informed consent obtained. Risks, benefits, and alternatives discussed with patient who verbalized understanding.' },
+]
+
+// ── Waveform ────────────────────────────────────────────────────────────────
 function Waveform({ active }: { active: boolean }) {
   return (
     <div className="flex items-center justify-center gap-1 h-12">
@@ -32,6 +48,7 @@ function Waveform({ active }: { active: boolean }) {
   )
 }
 
+// ── Types ───────────────────────────────────────────────────────────────────
 interface AISoapResult {
   soap: { s: string; o: string; a: string; p: string }
   icd: Array<{ code: string; desc: string; confidence: number; is_primary?: boolean }>
@@ -43,6 +60,13 @@ interface AISoapResult {
 
 type UIState = 'queue' | 'select_patient' | 'review_patient' | 'recording' | 'processing' | 'note'
 
+const SPECIALISTS = [
+  'Cardiologist', 'Neurologist', 'Orthopedic Surgeon', 'Pulmonologist',
+  'Gastroenterologist', 'Endocrinologist', 'Rheumatologist', 'Urologist',
+  'Dermatologist', 'Oncologist', 'Physical Therapist', 'Psychiatrist',
+]
+
+// ── Provider View ───────────────────────────────────────────────────────────
 function ProviderView() {
   const { t } = useT()
   const { toast } = useToast()
@@ -72,8 +96,9 @@ function ProviderView() {
   const [selectedVisit, setSelectedVisit] = useState<DemoVisit | null>(null)
   const selectedPatient = demoPatients.find(p => p.id === selectedPatientId)
   const selectedAppt = demoAppointments.find(a => a.patientId === selectedPatientId)
-  const todayAppts = demoAppointments // show all, not date-filtered
+  const todayAppts = demoAppointments
 
+  // Recording state
   const [transcript, setTranscript] = useState('')
   const [isListening, setIsListening] = useState(false)
   const recognitionRef = useRef<any>(null)
@@ -83,11 +108,29 @@ function ProviderView() {
   const [aiError, setAiError] = useState('')
   const [keptCodes, setKeptCodes] = useState<Record<string, boolean>>({})
 
+  // Voice macros panel
+  const [showMacros, setShowMacros] = useState(false)
+  const macroCategories = Array.from(new Set(VOICE_MACROS.map(m => m.category)))
+
+  // AI section editor
+  const [refiningSections, setRefiningSections] = useState<Record<string, boolean>>({})
+
+  // Referral letter
+  const [showReferral, setShowReferral] = useState(false)
+  const [selectedSpecialist, setSelectedSpecialist] = useState(SPECIALISTS[0])
+  const [referralReason, setReferralReason] = useState('')
+  const [referralLetter, setReferralLetter] = useState('')
+  const [generatingReferral, setGeneratingReferral] = useState(false)
+
+  // Note left panel tab: 'transcript' | 'prior_visits'
+  const [noteLeftTab, setNoteLeftTab] = useState<'transcript' | 'prior_visits'>('transcript')
+
   useEffect(() => {
     if (uiState !== 'recording') { setIsScribeRecording(false); return }
     setIsScribeRecording(true)
   }, [uiState]) // eslint-disable-line
 
+  // ── Recording ────────────────────────────────────────────────────────────
   const startRecording = useCallback(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SpeechRecognition) {
@@ -132,6 +175,15 @@ function ProviderView() {
     }
   }, [])
 
+  function insertMacro(text: string) {
+    const newText = (transcriptRef.current ? transcriptRef.current.trimEnd() + ' ' : '') + text + ' '
+    transcriptRef.current = newText
+    setTranscript(newText)
+    setShowMacros(false)
+    toast.success('Macro inserted')
+  }
+
+  // ── Process Note ─────────────────────────────────────────────────────────
   async function processNote() {
     const finalTranscript = transcriptRef.current || transcript
     if (!finalTranscript.trim()) { toast.error('No speech captured yet.'); return }
@@ -170,6 +222,7 @@ function ProviderView() {
       result.icd.forEach(c => { kept[c.code] = true })
       result.cpt.forEach(c => { kept[c.code] = true })
       setKeptCodes(kept)
+      setNoteLeftTab('transcript')
 
       const fakeVisit: DemoVisit = {
         id: `ai-${Date.now()}`, patientId: selectedPatientId || '',
@@ -193,9 +246,69 @@ function ProviderView() {
     }
   }
 
-  function openVisit(v: DemoVisit) { setSelectedVisit(v); setSoap({ ...v.soap }); setAiResult(null); setUiState('note') }
+  // ── AI Section Refine ────────────────────────────────────────────────────
+  async function refineSection(section: 's' | 'o' | 'a' | 'p') {
+    if (!soap[section].trim()) { toast.error('Section is empty'); return }
+    setRefiningSections(p => ({ ...p, [section]: true }))
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'scribe_refine_section',
+          section,
+          text: soap[section],
+          patient: selectedVisit?.patientName || 'Unknown',
+          visitType: selectedVisit?.encounterType || 'Office Visit',
+          assessment: soap.a,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'AI failed')
+      setSoap(p => ({ ...p, [section]: data.text.trim() }))
+      toast.success('Section refined')
+    } catch (err: any) {
+      toast.error(`Refine failed: ${err.message}`)
+    } finally {
+      setRefiningSections(p => ({ ...p, [section]: false }))
+    }
+  }
 
-  // ── Patient selector ──────────────────────────────────────────────────────
+  // ── Referral Letter ──────────────────────────────────────────────────────
+  async function generateReferral() {
+    if (!referralReason.trim()) { toast.error('Enter reason for referral'); return }
+    setGeneratingReferral(true)
+    setReferralLetter('')
+    try {
+      const soapText = `S: ${soap.s}\nO: ${soap.o}\nA: ${soap.a}\nP: ${soap.p}`
+      const primaryIcd = aiResult?.icd[0] ? `${aiResult.icd[0].code} — ${aiResult.icd[0].desc}` : soap.a.slice(0, 120)
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'scribe_referral',
+          patient: selectedVisit?.patientName || 'Unknown',
+          dob: selectedPatient?.dob || '',
+          insurance: selectedPatient?.insurance?.payer || '',
+          soap: soapText,
+          icd: primaryIcd,
+          specialist: selectedSpecialist,
+          reason: referralReason,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'AI failed')
+      setReferralLetter(data.text.trim())
+    } catch (err: any) {
+      toast.error(`Referral failed: ${err.message}`)
+    } finally {
+      setGeneratingReferral(false)
+    }
+  }
+
+  function openVisit(v: DemoVisit) { setSelectedVisit(v); setSoap({ ...v.soap }); setAiResult(null); setNoteLeftTab('transcript'); setUiState('note') }
+
+  // ── Patient Selector ──────────────────────────────────────────────────────
   if (uiState === 'select_patient') return (
     <div className="max-w-2xl mx-auto mt-6 space-y-3">
       <div className="flex items-center gap-3 mb-5">
@@ -209,7 +322,7 @@ function ProviderView() {
             <button key={a.id} onClick={() => { setSelectedPatientId(a.patientId); setUiState('review_patient') }}
               className="w-full text-left card p-4 hover:border-brand/30 transition-all flex items-center gap-4">
               <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center text-brand font-bold text-sm shrink-0">
-                {a.patientName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                {a.patientName.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold">{a.patientName}</div>
@@ -227,7 +340,7 @@ function ProviderView() {
     </div>
   )
 
-  // ── Review patient ────────────────────────────────────────────────────────
+  // ── Review Patient ────────────────────────────────────────────────────────
   if (uiState === 'review_patient' && selectedPatient) return (
     <div className="max-w-2xl mx-auto mt-6 space-y-4">
       <div className="flex items-center gap-3 mb-3">
@@ -262,6 +375,21 @@ function ProviderView() {
           <ul className="text-sm space-y-1">{selectedPatient.medications!.map((m, i) => <li key={i}>• {m}</li>)}</ul>
         </div>
       )}
+      {/* Prior visits preview */}
+      {(() => {
+        const priorVisits = demoVisits.filter(v => v.patientId === selectedPatientId)
+        return priorVisits.length > 0 ? (
+          <div className="card p-4">
+            <div className="text-xs font-semibold text-content-secondary mb-2 uppercase tracking-wide flex items-center gap-2"><History size={12} /> Prior Visits ({priorVisits.length})</div>
+            {priorVisits.slice(0, 2).map(v => (
+              <div key={v.id} className="py-1.5 border-b border-separator last:border-0">
+                <div className="text-xs font-medium">{v.dos} · {v.encounterType}</div>
+                <div className="text-[10px] text-content-tertiary line-clamp-1">{v.soap.a || 'No assessment'}</div>
+              </div>
+            ))}
+          </div>
+        ) : null
+      })()}
       <button onClick={() => { setUiState('recording'); setTimeout(startRecording, 300) }}
         className="w-full bg-emerald-500 text-white rounded-lg py-3 text-sm font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2 transition-colors">
         <Mic size={16} /> Start Recording — {selectedPatient.firstName}
@@ -272,6 +400,7 @@ function ProviderView() {
   // ── Recording ─────────────────────────────────────────────────────────────
   if (uiState === 'recording') return (
     <div className="grid grid-cols-3 gap-4">
+      {/* Left: patient context + macros */}
       <div className="card p-4 text-xs space-y-2">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-8 h-8 rounded-full bg-brand/10 flex items-center justify-center text-brand font-bold text-sm">
@@ -288,7 +417,32 @@ function ProviderView() {
           <div className="text-content-tertiary">Meds: <span className="text-content-secondary">{selectedPatient.medications?.join(', ') || '—'}</span></div>
         </>}
         {aiError && <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded text-red-500 text-[10px]"><AlertTriangle size={10} className="inline mr-1" />{aiError}</div>}
-        <div className="pt-3 border-t border-separator space-y-2">
+
+        {/* Voice macros toggle */}
+        <div className="pt-2 border-t border-separator">
+          <button onClick={() => setShowMacros(!showMacros)}
+            className="w-full flex items-center justify-between text-[11px] text-content-secondary hover:text-content-primary py-1">
+            <span className="flex items-center gap-1.5"><Zap size={11} className="text-amber-500" /> Voice Macros</span>
+            <span className="text-[10px] text-content-tertiary">{showMacros ? '▲' : '▼'}</span>
+          </button>
+          {showMacros && (
+            <div className="mt-1.5 space-y-2">
+              {macroCategories.map(cat => (
+                <div key={cat}>
+                  <div className="text-[10px] text-content-tertiary uppercase tracking-wider mb-1">{cat}</div>
+                  {VOICE_MACROS.filter(m => m.category === cat).map(m => (
+                    <button key={m.label} onClick={() => insertMacro(m.text)}
+                      className="w-full text-left text-[11px] bg-surface-elevated hover:bg-brand/5 border border-separator hover:border-brand/20 rounded px-2 py-1.5 mb-1 transition-colors">
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="pt-2 border-t border-separator space-y-2">
           <button onClick={processNote} className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-deep transition-colors">
             <Sparkles size={13} /> Process Note
           </button>
@@ -297,6 +451,8 @@ function ProviderView() {
           </button>
         </div>
       </div>
+
+      {/* Right: live transcript */}
       <div className="col-span-2 card p-4 flex flex-col">
         <div className="flex items-center gap-2 mb-3">
           {isListening ? <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" /> : <span className="w-2 h-2 bg-amber-500 rounded-full" />}
@@ -331,7 +487,7 @@ function ProviderView() {
     </div>
   )
 
-  // ── Note view ─────────────────────────────────────────────────────────────
+  // ── Note View ─────────────────────────────────────────────────────────────
   if (uiState === 'note' && selectedVisit) {
     const allCodes = aiResult
       ? [
@@ -353,126 +509,249 @@ function ProviderView() {
           is_primary: false, modifiers: c.modifiers || [], reasoning: '',
         }))
 
+    const priorVisits = demoVisits.filter(v => v.patientId === selectedVisit.patientId && v.id !== selectedVisit.id)
+
     return (
-      <div className="grid grid-cols-5 gap-5 h-[calc(100vh-280px)]">
-        <div className="col-span-2 card flex flex-col overflow-hidden">
-          <div className="px-4 py-3 border-b border-separator flex items-center justify-between">
-            <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Transcript</h3>
-            <button onClick={() => setUiState('queue')} className="text-[10px] text-content-secondary hover:text-content-primary flex items-center gap-1"><ChevronLeft size={12} /> Back</button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap">
-            {selectedVisit.transcript || 'No transcript'}
-          </div>
-          {aiResult?.avs_summary && (
-            <div className="p-3 border-t border-separator bg-brand/5">
-              <div className="text-[10px] font-semibold text-brand uppercase tracking-wider mb-1"><Clipboard size={10} className="inline mr-1" />After-Visit Summary</div>
-              <p className="text-xs text-content-secondary leading-relaxed">{aiResult.avs_summary}</p>
+      <>
+        <div className="grid grid-cols-5 gap-5 h-[calc(100vh-300px)]">
+          {/* Left panel — transcript OR prior visits */}
+          <div className="col-span-2 card flex flex-col overflow-hidden">
+            {/* Tab switcher */}
+            <div className="flex border-b border-separator">
+              <button onClick={() => setNoteLeftTab('transcript')}
+                className={`flex-1 py-2.5 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors ${noteLeftTab === 'transcript' ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>
+                <FileText size={11} /> Transcript
+              </button>
+              <button onClick={() => setNoteLeftTab('prior_visits')}
+                className={`flex-1 py-2.5 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors ${noteLeftTab === 'prior_visits' ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>
+                <History size={11} /> Prior Visits
+                {priorVisits.length > 0 && <span className="text-[9px] bg-brand/15 text-brand px-1.5 py-0.5 rounded-full">{priorVisits.length}</span>}
+              </button>
             </div>
-          )}
-        </div>
-        <div className="col-span-3 card flex flex-col overflow-hidden">
-          <div className="px-4 py-3 border-b border-separator flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold">{selectedVisit.patientName}</h3>
-              <p className="text-[10px] text-content-secondary">{selectedVisit.provider} · {selectedVisit.dos} · {selectedVisit.encounterType}</p>
-            </div>
-            {aiResult?.em_level && <div className="text-right"><div className="text-[10px] text-content-tertiary">E/M Level</div><div className="text-sm font-bold text-brand">{aiResult.em_level}</div></div>}
-          </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {(['s', 'o', 'a', 'p'] as const).map(k => (
-              <div key={k}>
-                <label className="text-[10px] font-bold text-content-secondary uppercase tracking-wider block mb-1">
-                  {k === 's' ? 'S — Subjective' : k === 'o' ? 'O — Objective' : k === 'a' ? 'A — Assessment' : 'P — Plan'}
-                </label>
-                <textarea value={soap[k]} onChange={e => setSoap(p => ({ ...p, [k]: e.target.value }))} rows={3}
-                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs resize-none outline-none focus:border-brand/40 leading-relaxed" />
-              </div>
-            ))}
-            <div className="border-t border-separator pt-3">
-              <div className="flex items-center gap-2 mb-2">
-                <BrainCircuit size={14} className="text-brand" />
-                <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider">AI Generated Codes</h4>
-                {aiResult?.em_rationale && <span className="ml-auto text-[10px] text-content-tertiary">{aiResult.em_rationale}</span>}
-              </div>
-              {allCodes.map((code, i) => (
-                <div key={i} className={`card p-3 mb-2 transition-opacity ${keptCodes[code.code] === false ? 'opacity-40' : ''}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                        <span className={`text-[11px] font-bold ${code.type === 'cpt' ? 'text-brand' : 'text-cyan-500'}`}>
-                          {code.type === 'cpt' ? `CPT ${code.code}` : `ICD ${code.code}`}
-                        </span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${code.confidence >= 90 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : code.confidence >= 75 ? 'bg-amber-500/10 text-amber-600' : 'bg-gray-500/10 text-gray-400'}`}>{code.confidence}%</span>
-                        {code.is_primary && <span className="text-[10px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-full">Primary</span>}
-                        {code.modifiers?.map((m: string) => <span key={m} className="text-[10px] bg-purple-500/10 text-purple-500 px-1.5 py-0.5 rounded">-{m}</span>)}
-                      </div>
-                      <p className="text-xs">{code.desc}</p>
-                      {code.reasoning && <p className="text-[10px] text-content-tertiary mt-0.5">↳ {code.reasoning}</p>}
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      <button onClick={() => setKeptCodes(p => ({ ...p, [code.code]: true }))} className={`text-[10px] px-2 py-1 rounded border transition-colors ${keptCodes[code.code] !== false ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'border-separator text-content-secondary'}`}>Keep</button>
-                      <button onClick={() => setKeptCodes(p => ({ ...p, [code.code]: false }))} className={`text-[10px] px-2 py-1 rounded border transition-colors ${keptCodes[code.code] === false ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'border-separator text-content-secondary'}`}>Remove</button>
-                    </div>
+
+            {noteLeftTab === 'transcript' ? (
+              <>
+                <div className="flex-1 overflow-y-auto p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap">
+                  {selectedVisit.transcript || 'No transcript available'}
+                </div>
+                {aiResult?.avs_summary && (
+                  <div className="p-3 border-t border-separator bg-brand/5">
+                    <div className="text-[10px] font-semibold text-brand uppercase tracking-wider mb-1"><Clipboard size={10} className="inline mr-1" />After-Visit Summary</div>
+                    <p className="text-xs text-content-secondary leading-relaxed">{aiResult.avs_summary}</p>
                   </div>
+                )}
+              </>
+            ) : (
+              <div className="flex-1 overflow-y-auto">
+                {priorVisits.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-content-tertiary">
+                    <History size={24} className="mx-auto mb-2 opacity-30" />
+                    No prior visits found for this patient
+                  </div>
+                ) : priorVisits.map(v => (
+                  <div key={v.id} className="p-3 border-b border-separator">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-semibold">{v.dos}</span>
+                      <StatusBadge status={v.status === 'signed' ? 'completed' : 'in_progress'} small />
+                    </div>
+                    <div className="text-[10px] text-content-tertiary mb-2">{v.encounterType} · {v.provider}</div>
+                    {v.soap.a && (
+                      <div className="bg-surface-elevated rounded p-2 mb-1.5">
+                        <div className="text-[9px] font-bold text-content-secondary uppercase tracking-wider mb-0.5">Assessment</div>
+                        <div className="text-[11px] leading-relaxed">{v.soap.a}</div>
+                      </div>
+                    )}
+                    {v.soap.p && (
+                      <div className="bg-surface-elevated rounded p-2">
+                        <div className="text-[9px] font-bold text-content-secondary uppercase tracking-wider mb-0.5">Plan</div>
+                        <div className="text-[11px] leading-relaxed line-clamp-3">{v.soap.p}</div>
+                      </div>
+                    )}
+                    {v.suggestedCodes.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {v.suggestedCodes.slice(0, 4).map((c, i) => (
+                          <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded border ${c.cpt ? 'bg-brand/5 text-brand border-brand/15' : 'bg-cyan-500/5 text-cyan-500 border-cyan-500/15'}`}>
+                            {c.cpt ? `CPT ${c.cpt}` : `ICD ${c.icd}`}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right panel — SOAP + codes */}
+          <div className="col-span-3 card flex flex-col overflow-hidden">
+            <div className="px-4 py-3 border-b border-separator flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold">{selectedVisit.patientName}</h3>
+                <p className="text-[10px] text-content-secondary">{selectedVisit.provider} · {selectedVisit.dos} · {selectedVisit.encounterType}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {aiResult?.em_level && (
+                  <div className="text-right">
+                    <div className="text-[10px] text-content-tertiary">E/M Level</div>
+                    <div className="text-sm font-bold text-brand">{aiResult.em_level}</div>
+                  </div>
+                )}
+                {/* Referral button */}
+                {aiResult && (
+                  <button onClick={() => { setShowReferral(true); setReferralLetter('') }}
+                    className="flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg border border-separator hover:border-brand/30 hover:text-brand text-content-secondary transition-colors">
+                    <Send size={11} /> Referral
+                  </button>
+                )}
+                <button onClick={() => setUiState('queue')} className="text-[10px] text-content-secondary hover:text-content-primary flex items-center gap-1"><ChevronLeft size={12} /> Back</button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {/* SOAP sections with AI refine */}
+              {(['s', 'o', 'a', 'p'] as const).map(k => (
+                <div key={k}>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-bold text-content-secondary uppercase tracking-wider">
+                      {k === 's' ? 'S — Subjective' : k === 'o' ? 'O — Objective' : k === 'a' ? 'A — Assessment' : 'P — Plan'}
+                    </label>
+                    <button onClick={() => refineSection(k)} disabled={refiningSections[k]}
+                      className="flex items-center gap-1 text-[10px] text-content-tertiary hover:text-brand disabled:opacity-50 transition-colors">
+                      {refiningSections[k]
+                        ? <><RefreshCw size={10} className="animate-spin" /> Refining…</>
+                        : <><Sparkles size={10} /> Refine</>}
+                    </button>
+                  </div>
+                  <textarea value={soap[k]} onChange={e => setSoap(p => ({ ...p, [k]: e.target.value }))} rows={3}
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs resize-none outline-none focus:border-brand/40 leading-relaxed" />
                 </div>
               ))}
+
+              {/* AI Codes */}
+              <div className="border-t border-separator pt-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <BrainCircuit size={14} className="text-brand" />
+                  <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider">AI Generated Codes</h4>
+                  {aiResult?.em_rationale && <span className="ml-auto text-[10px] text-content-tertiary">{aiResult.em_rationale}</span>}
+                </div>
+                {allCodes.map((code, i) => (
+                  <div key={i} className={`card p-3 mb-2 transition-opacity ${keptCodes[code.code] === false ? 'opacity-40' : ''}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                          <span className={`text-[11px] font-bold ${code.type === 'cpt' ? 'text-brand' : 'text-cyan-500'}`}>
+                            {code.type === 'cpt' ? `CPT ${code.code}` : `ICD ${code.code}`}
+                          </span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${code.confidence >= 90 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : code.confidence >= 75 ? 'bg-amber-500/10 text-amber-600' : 'bg-gray-500/10 text-gray-400'}`}>{code.confidence}%</span>
+                          {code.is_primary && <span className="text-[10px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-full">Primary</span>}
+                          {code.modifiers?.map((m: string) => <span key={m} className="text-[10px] bg-purple-500/10 text-purple-500 px-1.5 py-0.5 rounded">-{m}</span>)}
+                        </div>
+                        <p className="text-xs">{code.desc}</p>
+                        {code.reasoning && <p className="text-[10px] text-content-tertiary mt-0.5">↳ {code.reasoning}</p>}
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={() => setKeptCodes(p => ({ ...p, [code.code]: true }))} className={`text-[10px] px-2 py-1 rounded border transition-colors ${keptCodes[code.code] !== false ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'border-separator text-content-secondary'}`}>Keep</button>
+                        <button onClick={() => setKeptCodes(p => ({ ...p, [code.code]: false }))} className={`text-[10px] px-2 py-1 rounded border transition-colors ${keptCodes[code.code] === false ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'border-separator text-content-secondary'}`}>Remove</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {selectedVisit.status === 'pending_signoff' && (
+              <div className="p-3 border-t border-separator flex gap-2">
+                <button onClick={async () => {
+                  try {
+                    await createSOAP.mutate({
+                      patient_id: selectedVisit.patientId || '',
+                      provider_id: currentUser?.id || '',
+                      encounter_id: `ENC-${Date.now()}`,
+                      dos: selectedVisit.dos,
+                      subjective: soap.s, objective: soap.o, assessment: soap.a, plan: soap.p,
+                      transcript: selectedVisit.transcript || '',
+                      signed_off: true,
+                      ai_suggestions: {
+                        icd: aiResult?.icd.filter(c => keptCodes[c.code] !== false) || [],
+                        cpt: aiResult?.cpt.filter(c => keptCodes[c.code] !== false) || [],
+                        em_level: aiResult?.em_level, avs_summary: aiResult?.avs_summary,
+                      },
+                    })
+                    await createCoding.mutate({
+                      patient_id: selectedVisit.patientId || '',
+                      received_at: new Date().toISOString(),
+                      priority: 'normal' as any, status: 'pending',
+                      notes: `From AI Scribe: ${selectedVisit.encounterType} on ${selectedVisit.dos}. ICD: ${aiResult?.icd.map(c => c.code).join(', ')}. CPT: ${aiResult?.cpt.map(c => c.code).join(', ')}`,
+                    })
+                    toast.success(`Note signed. Sent to coding queue — ${selectedVisit.patientName}`)
+                    setUiState('queue')
+                    setTimeout(() => router.push('/coding'), 800)
+                  } catch {
+                    toast.success(`Note signed. Navigating to coding…`)
+                    setUiState('queue')
+                    setTimeout(() => router.push('/coding'), 800)
+                  }
+                }} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep flex items-center justify-center gap-2 transition-colors">
+                  <Check size={16} /> Sign & Send to Coding
+                </button>
+                <button onClick={() => toast.info('Draft saved')} className="px-4 py-2.5 rounded-lg border border-separator text-content-secondary text-sm transition-colors">Save Draft</button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Referral Letter Modal */}
+        {showReferral && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-surface-default border border-separator rounded-xl shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-separator">
+                <div className="flex items-center gap-2">
+                  <BookOpen size={16} className="text-brand" />
+                  <h3 className="text-sm font-semibold">Generate Referral Letter</h3>
+                </div>
+                <button onClick={() => setShowReferral(false)} className="text-content-secondary hover:text-content-primary"><X size={16} /></button>
+              </div>
+              <div className="p-5 flex-1 overflow-y-auto space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-content-secondary uppercase tracking-wider block mb-1.5">Specialist Type</label>
+                  <select value={selectedSpecialist} onChange={e => setSelectedSpecialist(e.target.value)}
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm outline-none focus:border-brand/40">
+                    {SPECIALISTS.map(s => <option key={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-content-secondary uppercase tracking-wider block mb-1.5">Reason for Referral</label>
+                  <textarea value={referralReason} onChange={e => setReferralReason(e.target.value)} rows={3} placeholder="e.g. Persistent back pain with radiculopathy, recommend MRI and specialist evaluation"
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm resize-none outline-none focus:border-brand/40" />
+                </div>
+                {!referralLetter && (
+                  <button onClick={generateReferral} disabled={generatingReferral || !referralReason.trim()}
+                    className="w-full flex items-center justify-center gap-2 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-brand-deep disabled:opacity-50 transition-colors">
+                    {generatingReferral ? <><Loader2 size={14} className="animate-spin" /> Generating…</> : <><Sparkles size={14} /> Generate Letter</>}
+                  </button>
+                )}
+                {referralLetter && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Referral Letter</label>
+                      <button onClick={generateReferral} disabled={generatingReferral}
+                        className="text-[11px] text-brand hover:underline flex items-center gap-1 disabled:opacity-50">
+                        <RefreshCw size={10} /> Regenerate
+                      </button>
+                    </div>
+                    <textarea value={referralLetter} onChange={e => setReferralLetter(e.target.value)} rows={14}
+                      className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs font-mono resize-none outline-none focus:border-brand/40 leading-relaxed" />
+                    <button onClick={() => { navigator.clipboard.writeText(referralLetter); toast.success('Copied to clipboard') }}
+                      className="mt-2 w-full border border-separator rounded-lg py-2 text-xs text-content-secondary hover:text-content-primary transition-colors">
+                      Copy to Clipboard
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          {selectedVisit.status === 'pending_signoff' && (
-            <div className="p-3 border-t border-separator flex gap-2">
-              <button onClick={async () => {
-                try {
-                  // 1. Save SOAP note to backend
-                  const soapPayload = {
-                    patient_id: selectedVisit.patientId || '',
-                    provider_id: currentUser?.id || '',
-                    encounter_id: `ENC-${Date.now()}`,
-                    dos: selectedVisit.dos,
-                    subjective: soap.s,
-                    objective: soap.o,
-                    assessment: soap.a,
-                    plan: soap.p,
-                    transcript: selectedVisit.transcript || '',
-                    signed_off: true,
-                    ai_suggestions: {
-                      icd: aiResult?.icd.filter(c => keptCodes[c.code] !== false) || [],
-                      cpt: aiResult?.cpt.filter(c => keptCodes[c.code] !== false) || [],
-                      em_level: aiResult?.em_level,
-                      avs_summary: aiResult?.avs_summary,
-                    },
-                  }
-                  const soapRes = await createSOAP.mutate(soapPayload)
-
-                  // 2. Create coding queue item
-                  await createCoding.mutate({
-                    patient_id: selectedVisit.patientId || '',
-                    received_at: new Date().toISOString(),
-                    priority: 'normal' as any,
-                    status: 'pending',
-                    notes: `From AI Scribe: ${selectedVisit.encounterType} on ${selectedVisit.dos}. ICD: ${aiResult?.icd.map(c => c.code).join(', ')}. CPT: ${aiResult?.cpt.map(c => c.code).join(', ')}`,
-                  })
-
-                  toast.success(`Note signed. Sent to coding queue — ${selectedVisit.patientName}`)
-                  setUiState('queue')
-                  // Navigate to coding after short delay
-                  setTimeout(() => router.push('/coding'), 800)
-                } catch (err: any) {
-                  // If backend fails (demo mode), still navigate
-                  toast.success(`Note signed. Navigating to coding…`)
-                  setUiState('queue')
-                  setTimeout(() => router.push('/coding'), 800)
-                }
-              }}
-                className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep flex items-center justify-center gap-2 transition-colors">
-                <Check size={16} /> Sign & Send to Coding
-              </button>
-              <button onClick={() => toast.info('Draft saved')} className="px-4 py-2.5 rounded-lg border border-separator text-content-secondary text-sm transition-colors">
-                Save Draft
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+        )}
+      </>
     )
   }
 
@@ -540,9 +819,9 @@ function ProviderView() {
   )
 }
 
+// ── Coder View ───────────────────────────────────────────────────────────────
 function CoderView() {
   const [selectedVisit, setSelectedVisit] = useState<DemoVisit>(demoVisits[0])
-  const { toast } = useToast()
   const router = useRouter()
   return (
     <div className="grid grid-cols-3 gap-5 h-[calc(100vh-280px)]">
@@ -601,6 +880,7 @@ function CoderView() {
   )
 }
 
+// ── Page ─────────────────────────────────────────────────────────────────────
 export default function AIScribePage() {
   const { currentUser } = useApp()
   const isProvider = currentUser.role === 'provider'
