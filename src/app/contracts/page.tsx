@@ -97,10 +97,10 @@ export default function ContractsPage() {
     <ModuleShell title="Contract Manager" subtitle="Payer contracts, fee schedules, and underpayment detection">
       {!apiContracts.length && <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-400'><AlertTriangle size={13} className='shrink-0'/>Connecting to live contract data…</div>}
       <div className="grid grid-cols-4 gap-4 mb-5">
-        <KPICard label="Active Contracts" value={activeCount} icon={<Scale size={20}/>} />
-        <KPICard label="Expiring (90 days)" value={expiringSoon} trend="down" />
-        <KPICard label="Underpayment Alerts" value={totalUnderpayments} />
-        <KPICard label="Total Payers" value={allContracts.length} />
+        <KPICard label={t("contracts","activeContracts")} value={activeCount} icon={<Scale size={20}/>} />
+        <KPICard label={t("contracts","expiring90")} value={expiringSoon} trend="down" />
+        <KPICard label={t("contracts","underpayAlerts")} value={totalUnderpayments} />
+        <KPICard label={t("contracts","totalPayers")} value={allContracts.length} />
       </div>
 
       {expiringSoon > 0 && (

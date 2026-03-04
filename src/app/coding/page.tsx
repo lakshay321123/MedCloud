@@ -468,10 +468,10 @@ export default function CodingPage() {
   return (
     <ModuleShell title={t("coding","title")} subtitle={t("coding","subtitle")}>
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="My Queue" value={apiQueueResult?.meta?.total ?? queue.length} icon={<BrainCircuit size={20} />} />
-        <KPICard label="Coded Today" value="4" icon={<CheckCircle2 size={20} />} />
-        <KPICard label="AI Acceptance" value="89%" icon={<Activity size={20} />} />
-        <KPICard label="Avg Time/Chart" value="6.2m" icon={<Clock size={20} />} />
+        <KPICard label={t("coding","myQueue")} value={apiQueueResult?.meta?.total ?? queue.length} icon={<BrainCircuit size={20} />} />
+        <KPICard label={t("coding","codedToday")} value="4" icon={<CheckCircle2 size={20} />} />
+        <KPICard label={t("coding","aiAcceptance")} value="89%" icon={<Activity size={20} />} />
+        <KPICard label={t("coding","avgTimeChart")} value="6.2m" icon={<Clock size={20} />} />
       </div>
 
       <div className={`grid gap-4 h-[calc(100vh-280px)] ${docOpen ? 'grid-cols-12' : 'grid-cols-12'}`}>

@@ -34,6 +34,7 @@ function RecordingTimer() {
 type UIState = 'queue' | 'select_patient' | 'review_patient' | 'recording' | 'processing' | 'note'
 
 function ProviderView() {
+  const { t } = useT()
   const { toast } = useToast()
   const { setIsScribeRecording } = useApp()
   const [uiState, setUiState] = useState<UIState>('queue')
@@ -379,10 +380,10 @@ function ProviderView() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-4 mb-2">
-        <KPICard label="Notes Today" value={8} icon={<FileText size={20}/>}/>
-        <KPICard label="Pending Sign-off" value={pending.length} icon={<Clock size={20}/>}/>
-        <KPICard label="Avg AI Confidence" value="91%" icon={<BrainCircuit size={20}/>}/>
-        <KPICard label="Codes Suggested" value={24} icon={<Activity size={20}/>}/>
+        <KPICard label={t("scribe","notesToday")} value={8} icon={<FileText size={20}/>}/>
+        <KPICard label={t("scribe","pendingSignOff")} value={pending.length} icon={<Clock size={20}/>}/>
+        <KPICard label={t("scribe","avgConfidence")} value="91%" icon={<BrainCircuit size={20}/>}/>
+        <KPICard label={t("scribe","codesSuggested")} value={24} icon={<Activity size={20}/>}/>
       </div>
       <div className="grid grid-cols-3 gap-5">
         <div className="col-span-1 space-y-3">

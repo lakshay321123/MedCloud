@@ -630,7 +630,7 @@ export default function ARManagementPage() {
         <KPICard label={t("ar","totalAR")} value={`$${(totalAR/1000).toFixed(0)}K`} icon={<TrendingUp size={20} />} />
         <KPICard label={t("ar","workedToday")} value={String(workedToday)} trend="up" />
         <KPICard label={t("ar","followupsDue")} value={String(followupsDue)} />
-        <KPICard label="Avg Days Outstanding" value={`${avgAge}`} />
+        <KPICard label={t("ar","avgDaysOutstanding")} value={`${avgAge}`} />
       </div>
 
       {/* Tab bar */}

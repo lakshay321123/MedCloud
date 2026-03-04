@@ -164,10 +164,10 @@ export default function TasksPage() {
       }
     >
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Open Tasks" value={displayTasks.filter(t=>t.status!=='completed').length} icon={<ListChecks size={20}/>}/>
-        <KPICard label="In Progress" value={displayTasks.filter(t=>t.status==='in_progress').length}/>
-        <KPICard label="Blocked" value={displayTasks.filter(t=>t.status==='blocked').length} trend="down"/>
-        <KPICard label="SLA Breached" value={displayTasks.filter(t=>t.sla==='red').length} trend="down"/>
+        <KPICard label={t("tasks","openTasks")} value={displayTasks.filter(t=>t.status!=='completed').length} icon={<ListChecks size={20}/>}/>
+        <KPICard label={t("tasks","inProgress")} value={displayTasks.filter(t=>t.status==='in_progress').length}/>
+        <KPICard label={t("tasks","blocked")} value={displayTasks.filter(t=>t.status==='blocked').length} trend="down"/>
+        <KPICard label={t("tasks","slaBreached")} value={displayTasks.filter(t=>t.sla==='red').length} trend="down"/>
       </div>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">

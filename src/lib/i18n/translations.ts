@@ -142,6 +142,7 @@ const translations = {
     todayPostingSummary: { en: "Today's posting summary",  ar: 'ملخص ترحيل اليوم',              es: 'Resumen de Registros de Hoy' },
     todayAppointments:{ en: "Today's Appointments",        ar: 'مواعيد اليوم',                   es: 'Citas de Hoy' },
     pendingSignOffs:  { en: 'Pending Sign-Offs',           ar: 'بانتظار الاعتماد',              es: 'Firmas Pendientes' },
+    unsigned24h:      { en: 'Unsigned > 24h',               ar: 'غير موقّعة > 24 ساعة',          es: 'Sin Firmar > 24h' },
   },
 
   claims: {
@@ -184,6 +185,9 @@ const translations = {
     priorAuth:      { en: 'Prior Authorization',           ar: 'التفويض المسبق',               es: 'Autorización Previa' },
     batchCheck:     { en: 'Batch Check',                   ar: 'فحص دفعي',                     es: 'Verificación por Lote' },
     noBatchYet:     { en: 'No batch run yet this session', ar: 'لم تُشغَّل دفعة بعد',          es: 'Sin lote ejecutado aún' },
+    checksToday:    { en: 'Checks Today',                  ar: 'فحوصات اليوم',                  es: 'Verificaciones Hoy' },
+    active:         { en: 'Active',                        ar: 'نشط',                            es: 'Activo' },
+    inactiveIssues: { en: 'Inactive/Issues',               ar: 'غير نشط/مشاكل',                 es: 'Inactivo/Problemas' },
   },
 
   denials: {
@@ -195,6 +199,7 @@ const translations = {
     generateAppeal:    { en: 'Generate Appeal',          ar: 'توليد طعن',                  es: 'Generar Apelación' },
     appealLevel:       { en: 'Appeal Level',             ar: 'مستوى الطعن',               es: 'Nivel de Apelación' },
     appealSuccessRate: { en: 'Appeal Success Rate',      ar: 'معدل نجاح الطعن',           es: 'Tasa de Éxito de Apelación' },
+    avgResolution:     { en: 'Avg Resolution',            ar: 'متوسط مدة الحل',             es: 'Resolución Promedio' },
   },
 
   ar: {
