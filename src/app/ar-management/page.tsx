@@ -647,7 +647,7 @@ export default function ARManagementPage() {
     { l: '120+',   v: accounts.filter(a => a.age>120).reduce((s,a) => s+a.balance,0),  c: 'bg-red-500' },
   ]
   const computedMax = Math.max(...computedBuckets.map(b => b.v), 1)
-  const workedToday = Object.values(callHistory).flat()
+  const workedToday = (Object.values(callHistory).flat() as CallLogEntry[])
     .filter(c => c.date?.startsWith(new Date().toISOString().slice(0,10))).length
 
   return (

@@ -276,7 +276,7 @@ export default function ContractsPage() {
                       { label: 'Fee Schedule Update Frequency', value: selected.feeScheduleFrequency },
                       { label: 'Effective Date', value: selected.effective },
                       { label: 'Expiry Date', value: selected.expiry || 'No expiry' },
-                      { label: 'Status', value: statusStyles[selected.status].label },
+                      { label: 'Status', value: statusStyles[selected.status as DemoContract['status']]?.label ?? selected.status },
                     ].map(row => (
                       <div key={row.label} className="flex justify-between py-2.5 border-b border-separator last:border-0">
                         <span className="text-[13px] text-content-secondary">{row.label}</span>
