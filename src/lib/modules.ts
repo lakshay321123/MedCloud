@@ -8,6 +8,7 @@ export const modules: ModuleConfig[] = [
   // OPERATIONS
   { id: 'dashboard', label: 'Dashboard', icon: 'LayoutDashboard', path: '/dashboard', section: 'operations', roles: allRoles },
   { id: 'claims', label: 'Claims Center', icon: 'FileText', path: '/claims', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
+  { id: 'edi', label: 'EDI Transactions', icon: 'ArrowLeftRight', path: '/edi', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
   { id: 'coding', label: 'AI Coding', icon: 'BrainCircuit', path: '/coding', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'coder'] },
   { id: 'eligibility', label: 'Eligibility', icon: 'ShieldCheck', path: '/eligibility', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
   { id: 'denials', label: 'Denials & Appeals', icon: 'ShieldAlert', path: '/denials', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller', 'ar_team'] },

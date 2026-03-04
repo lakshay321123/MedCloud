@@ -50,6 +50,11 @@ const styles: Record<string, { bg: string; text: string }> = {
   corrected: { bg: 'bg-gray-500/10 dark:bg-gray-500/15', text: 'text-gray-600 dark:text-gray-400' },
   write_off: { bg: 'bg-gray-500/10 dark:bg-gray-500/15', text: 'text-gray-500 dark:text-gray-500' },
   low: { bg: 'bg-gray-500/10 dark:bg-gray-500/15', text: 'text-gray-600 dark:text-gray-400' },
+  // EDI-specific
+  sent: { bg: 'bg-blue-500/10 dark:bg-blue-500/15', text: 'text-blue-600 dark:text-blue-400' },
+  parsed: { bg: 'bg-emerald-500/10 dark:bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-400' },
+  error: { bg: 'bg-red-500/10 dark:bg-red-500/15', text: 'text-red-600 dark:text-red-400' },
+  rejected: { bg: 'bg-red-500/10 dark:bg-red-500/15', text: 'text-red-600 dark:text-red-400' },
 }
 
 export default function StatusBadge({ status, small }: { status: string; small?: boolean }) {

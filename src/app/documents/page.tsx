@@ -1,6 +1,6 @@
 'use client'
 import { useT } from '@/lib/i18n'
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
@@ -385,7 +385,7 @@ function FaxCenterTab() {
                 <label className="text-xs text-content-secondary block mb-1">Attach Document</label>
                 <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
                   <option value="">Select document...</option>
-                  {demoDocs.filter((d: any)=>d.status==='Linked').slice(0,5).map((d: any)=><option key={d.id}>{d.name}</option>)}
+                  {demoFaxes.filter((f: any)=>f.direction==='Inbound').slice(0,5).map((f: any)=><option key={f.id}>{f.document||f.id}</option>)}
                 </select>
               </div>
               <button onClick={()=>{toast.success('Fax queued for delivery');setShowSendFax(false);setFaxTo('');setFaxFrom('');setFaxSubject('')}}
@@ -402,49 +402,110 @@ function FaxCenterTab() {
 
 function AIProcessingTab() {
   const { toast } = useToast()
+  const { data: apiDocRaw } = useDocuments()
+  const allDocs = useMemo(() => {
+    return (Array.isArray(apiDocRaw) ? apiDocRaw : []) as ApiDocument[]
+  }, [apiDocRaw])
+
+  const textractDocs = useMemo(() =>
+    allDocs.filter(d => (d as any).textract_status || (d as any).classification || d.ai_confidence),
+    [allDocs]
+  )
+  const processed = textractDocs.filter(d => (d as any).textract_status === 'completed').length
+  const pending = textractDocs.filter(d => (d as any).textract_status === 'pending' || (d as any).textract_status === 'processing').length
+  const avgConfidence = textractDocs.length > 0
+    ? Math.round(textractDocs.reduce((s, d) => s + (d.ai_confidence || 0), 0) / textractDocs.length)
+    : 0
+
+  const [triggerDocId, setTriggerDocId] = useState<string | null>(null)
+  const triggerTextract = useTriggerTextract(triggerDocId || '')
+
+  async function handleTrigger(docId: string) {
+    setTriggerDocId(docId)
+    try {
+      await triggerTextract.mutate({} as Record<string, never>)
+      toast.success('Textract processing started')
+    } catch { toast.error('Failed to start Textract') }
+  }
+
+  // Show docs that can be processed (have s3_key but no textract result yet)
+  const unprocessed = allDocs.filter(d => d.s3_key && !(d as any).textract_status)
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-4">
         <div className="card p-4 text-center">
-          <p className="text-2xl font-bold text-brand">156</p>
+          <p className="text-2xl font-bold text-brand">{processed || textractDocs.length}</p>
           <p className="text-[10px] text-content-tertiary mt-1">Documents Processed</p>
         </div>
         <div className="card p-4 text-center">
-          <p className="text-2xl font-bold text-emerald-500">94.2%</p>
-          <p className="text-[10px] text-content-tertiary mt-1">Textract Accuracy</p>
+          <p className="text-2xl font-bold text-emerald-500">{avgConfidence || '—'}%</p>
+          <p className="text-[10px] text-content-tertiary mt-1">Avg AI Confidence</p>
         </div>
         <div className="card p-4 text-center">
-          <p className="text-2xl font-bold text-amber-500">8</p>
-          <p className="text-[10px] text-content-tertiary mt-1">Pending Review</p>
+          <p className="text-2xl font-bold text-amber-500">{pending}</p>
+          <p className="text-[10px] text-content-tertiary mt-1">Pending Processing</p>
         </div>
       </div>
-      <div className="card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold">Textract Processing Queue</h3>
-          <button onClick={() => toast.info('Upload document for AI processing')} className="text-xs bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-colors">Upload for OCR</button>
-        </div>
-        <table className="w-full text-xs">
-          <thead><tr className="border-b border-separator text-content-secondary"><th className="text-left py-2 px-3">Document</th><th className="text-left py-2 px-3">Type</th><th className="text-left py-2 px-3">Confidence</th><th className="text-left py-2 px-3">Fields Extracted</th><th className="text-left py-2 px-3">Status</th><th className="text-left py-2 px-3">Actions</th></tr></thead>
-          <tbody>
-            {[{name:'EOB_Aetna_0301.pdf',type:'EOB',confidence:97,fields:12,status:'complete'},
-              {name:'Lab_Results_Chen.pdf',type:'Lab Report',confidence:89,fields:8,status:'review'},
-              {name:'Referral_Smith.pdf',type:'Referral',confidence:94,fields:6,status:'complete'},
-              {name:'Insurance_Card_Park.jpg',type:'Insurance Card',confidence:92,fields:10,status:'complete'},
-              {name:'Op_Report_Johnson.pdf',type:'Op Report',confidence:78,fields:15,status:'review'}
-            ].map(d=>(
-              <tr key={d.name} className="border-b border-separator last:border-0">
-                <td className="py-2 px-3 font-mono">{d.name}</td>
-                <td className="py-2 px-3"><span className="text-[10px] px-2 py-0.5 rounded bg-surface-elevated">{d.type}</span></td>
-                <td className="py-2 px-3"><span className={`font-medium ${d.confidence>=90?'text-emerald-500':d.confidence>=80?'text-amber-500':'text-red-500'}`}>{d.confidence}%</span></td>
-                <td className="py-2 px-3">{d.fields} fields</td>
-                <td className="py-2 px-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${d.status==='complete'?'bg-emerald-500/10 text-emerald-500':'bg-amber-500/10 text-amber-500'}`}>{d.status}</span></td>
-                <td className="py-2 px-3">
-                  {d.status==='review'?<button onClick={()=>toast.info(`Reviewing ${d.name}`)} className="text-brand hover:underline">Review</button>:<span className="text-content-tertiary">—</span>}
-                </td>
-              </tr>
+
+      {/* Unprocessed documents that can trigger Textract */}
+      {unprocessed.length > 0 && (
+        <div className="card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold">Ready for OCR ({unprocessed.length})</h3>
+          </div>
+          <div className="space-y-2">
+            {unprocessed.slice(0, 10).map(d => (
+              <div key={d.id} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
+                <div>
+                  <p className="text-xs font-mono">{d.file_name}</p>
+                  <p className="text-[10px] text-content-tertiary">{d.document_type} · {d.content_type}</p>
+                </div>
+                <button onClick={() => handleTrigger(d.id)}
+                  className="text-[10px] bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-colors">
+                  Run Textract
+                </button>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </div>
+      )}
+
+      {/* Processed documents with results */}
+      <div className="card p-4">
+        <h3 className="text-sm font-semibold mb-3">Processed Documents</h3>
+        {textractDocs.length === 0 ? (
+          <p className="text-xs text-content-tertiary py-4 text-center">No documents have been processed yet. Upload documents and run Textract to see results here.</p>
+        ) : (
+          <table className="w-full text-xs">
+            <thead><tr className="border-b border-separator text-content-secondary">
+              <th className="text-left py-2 px-3">Document</th>
+              <th className="text-left py-2 px-3">Classification</th>
+              <th className="text-left py-2 px-3">Confidence</th>
+              <th className="text-left py-2 px-3">Status</th>
+            </tr></thead>
+            <tbody>
+              {textractDocs.slice(0, 20).map(d => (
+                <tr key={d.id} className="border-b border-separator last:border-0">
+                  <td className="py-2 px-3 font-mono">{d.file_name}</td>
+                  <td className="py-2 px-3"><span className="text-[10px] px-2 py-0.5 rounded bg-surface-elevated">{(d as any).classification || d.document_type || '—'}</span></td>
+                  <td className="py-2 px-3">
+                    <span className={`font-medium ${(d.ai_confidence||0)>=90?'text-emerald-500':(d.ai_confidence||0)>=80?'text-amber-500':'text-red-500'}`}>
+                      {d.ai_confidence ? `${d.ai_confidence}%` : '—'}
+                    </span>
+                  </td>
+                  <td className="py-2 px-3">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                      (d as any).textract_status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' :
+                      (d as any).textract_status === 'processing' ? 'bg-blue-500/10 text-blue-500' :
+                      'bg-amber-500/10 text-amber-500'
+                    }`}>{(d as any).textract_status || 'unknown'}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   )
@@ -452,7 +513,7 @@ function AIProcessingTab() {
 
 const TABS = [
   { id: 'all', label: 'All Documents' },
-  { id: 'unlinked', label: `Unlinked (${demoDocs.filter((d: any)=>d.status==='Unlinked').length})` },
+  { id: 'unlinked', label: 'Unlinked' },
   { id: 'fax', label: 'Fax Center' },
   { id: 'ai', label: 'AI Processing' },
 ] as const
@@ -462,9 +523,10 @@ export default function DocumentsPage() {
   const { toast } = useToast()
   const { t } = useT()
   const [tab, setTab] = useState<TabId>('all')
+  const [showUpload, setShowUpload] = useState(false)
   return (
     <ModuleShell title={t("documents","title")} subtitle={t("documents","subtitle")}
-      actions={<button onClick={()=>toast.info('Bulk upload opened')} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep transition-colors"><Upload size={16}/> {t("documents","bulkUpload")}</button>}>
+      actions={<button onClick={()=>setShowUpload(true)} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep transition-colors"><Upload size={16}/> {t("documents","bulkUpload")}</button>}>
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
         API connected — documents syncing live
@@ -480,6 +542,121 @@ export default function DocumentsPage() {
       {tab==='all'&&<AllDocsTab/>}
       {tab==='unlinked'&&<UnlinkedQueueTab/>}
       {tab==='fax'&&<FaxCenterTab/>}
+      {tab==='ai'&&<AIProcessingTab/>}
+      {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
     </ModuleShell>
+  )
+}
+
+function UploadModal({ onClose }: { onClose: () => void }) {
+  const { toast } = useToast()
+  const { selectedClient } = useApp()
+  const { mutate: requestUrl } = useRequestUploadUrl()
+  const { mutate: createDoc } = useCreateDocument()
+  const [files, setFiles] = useState<File[]>([])
+  const [docType, setDocType] = useState('Superbill')
+  const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState(0)
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    const dropped = Array.from(e.dataTransfer.files)
+    setFiles(prev => [...prev, ...dropped])
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files) setFiles(prev => [...prev, ...Array.from(e.target.files!)])
+  }
+
+  async function handleUpload() {
+    if (files.length === 0) { toast.warning('Select files first'); return }
+    setUploading(true)
+    let uploaded = 0
+    for (const file of files) {
+      try {
+        // Step 1: Get presigned URL
+        const urlResult = await requestUrl({ file_name: file.name, content_type: file.type || 'application/octet-stream' })
+        if (urlResult?.upload_url && urlResult?.s3_key) {
+          // Step 2: Upload to S3
+          await fetch(urlResult.upload_url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream' } })
+          // Step 3: Create document record
+          await createDoc({
+            document_type: docType,
+            file_name: file.name,
+            s3_key: urlResult.s3_key,
+            s3_bucket: urlResult.s3_bucket || 'medcloud-documents',
+            content_type: file.type || 'application/octet-stream',
+            file_size: file.size,
+            source: 'Manual Upload',
+            ...(selectedClient ? { client_id: selectedClient.id } : {}),
+          })
+        }
+        uploaded++
+        setProgress(Math.round((uploaded / files.length) * 100))
+      } catch (err) {
+        toast.error(`Failed to upload ${file.name}`)
+      }
+    }
+    toast.success(`${uploaded} of ${files.length} files uploaded`)
+    setUploading(false)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-surface rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-semibold">Upload Documents</h3>
+          <button onClick={onClose}><X size={18} className="text-content-secondary" /></button>
+        </div>
+
+        {/* Drop zone */}
+        <div onDragOver={e => e.preventDefault()} onDrop={handleDrop}
+          className="border-2 border-dashed border-separator rounded-lg p-6 text-center hover:border-brand/40 transition-colors">
+          <Upload size={24} className="mx-auto text-content-tertiary mb-2" />
+          <p className="text-xs text-content-secondary mb-1">Drag files here or click to browse</p>
+          <input type="file" multiple onChange={handleFileSelect} className="hidden" id="doc-upload" />
+          <label htmlFor="doc-upload" className="text-xs text-brand cursor-pointer hover:underline">Browse files</label>
+        </div>
+
+        {/* File list */}
+        {files.length > 0 && (
+          <div className="space-y-1 max-h-32 overflow-y-auto">
+            {files.map((f, i) => (
+              <div key={i} className="flex items-center justify-between bg-surface-elevated rounded px-3 py-1.5">
+                <span className="text-xs font-mono truncate">{f.name}</span>
+                <button onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))}>
+                  <X size={12} className="text-content-tertiary hover:text-red-500" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Document type */}
+        <div>
+          <label className="text-xs text-content-secondary mb-1 block">Document Type</label>
+          <select value={docType} onChange={e => setDocType(e.target.value)}
+            className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+            {['Superbill', 'Clinical Note', 'Insurance Card', 'EOB', 'Denial Letter', 'Contract', 'Credential', 'Lab Report', 'Referral', 'Other'].map(t =>
+              <option key={t} value={t}>{t}</option>
+            )}
+          </select>
+        </div>
+
+        {/* Progress */}
+        {uploading && (
+          <div className="w-full bg-surface-elevated rounded-full h-2">
+            <div className="bg-brand h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
+          </div>
+        )}
+
+        <button onClick={handleUpload} disabled={uploading || files.length === 0}
+          className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep disabled:opacity-50 transition-colors">
+          {uploading ? `Uploading… ${progress}%` : `Upload ${files.length} file${files.length !== 1 ? 's' : ''}`}
+        </button>
+      </div>
+    </div>
   )
 }
