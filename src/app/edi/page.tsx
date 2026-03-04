@@ -39,16 +39,6 @@ const TYPE_COLORS: Record<string, string> = {
   'DHA': 'bg-teal-500/10 text-teal-600 dark:text-teal-400',
 }
 
-const STATUS_MAP: Record<string, { label: string; variant: string }> = {
-  pending:  { label: 'Pending',  variant: 'warning' },
-  sent:     { label: 'Sent',     variant: 'info' },
-  accepted: { label: 'Accepted', variant: 'success' },
-  rejected: { label: 'Rejected', variant: 'error' },
-  error:    { label: 'Error',    variant: 'error' },
-  received: { label: 'Received', variant: 'success' },
-  parsed:   { label: 'Parsed',   variant: 'success' },
-}
-
 type TabKey = 'all' | '837' | '835' | '270' | '276' | 'dha'
 
 export default function EDITransactionsPage() {
@@ -217,7 +207,6 @@ function EDIContent() {
             </thead>
             <tbody>
               {filtered.slice(0, 100).map(tx => {
-                const sm = STATUS_MAP[tx.status] || { label: tx.status, variant: 'default' }
                 return (
                   <tr key={tx.id} onClick={() => setSelected(tx)}
                     className="border-b border-separator/50 hover:bg-surface-elevated/50 cursor-pointer transition-colors">
@@ -270,7 +259,6 @@ function EDIContent() {
 
 function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () => void }) {
   const { toast } = useToast()
-  const sm = STATUS_MAP[tx.status] || { label: tx.status, variant: 'default' }
 
   function handleCopyId() {
     navigator.clipboard.writeText(tx.id).then(() => toast.success('Transaction ID copied'))

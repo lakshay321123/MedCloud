@@ -520,7 +520,7 @@ function PriorAuthTab({ auths, loading, onRefresh }: { auths: ApiPriorAuth[]; lo
           { label: 'Pending', value: kpis.pending, color: 'text-amber-500' },
           { label: 'Approved', value: kpis.approved, color: 'text-emerald-500' },
           { label: 'Denied', value: kpis.denied, color: 'text-red-500' },
-          { label: 'Avg Turnaround', value: `${kpis.avgDays}d`, color: 'text-brand' },
+          { label: 'Avg Age of Approved', value: `${kpis.avgDays}d`, color: 'text-brand' },
         ].map(k => (
           <div key={k.label} className="card p-4 text-center">
             <p className={`text-xl font-bold ${k.color}`}>{k.value}</p>

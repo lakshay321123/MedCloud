@@ -1,6 +1,6 @@
 'use client'
 import { useT } from '@/lib/i18n'
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
@@ -430,21 +430,30 @@ function AIProcessingTab() {
   const [classifyDocId, setClassifyDocId] = useState<string | null>(null)
   const classifyDoc = useClassifyDocument(classifyDocId || '')
 
-  async function handleTrigger(docId: string) {
-    setTriggerDocId(docId)
-    try {
-      await triggerTextract.mutate({} as Record<string, never>)
-      toast.success('Textract processing started')
-    } catch { toast.error('Failed to start Textract') }
-  }
+  useEffect(() => {
+    if (!triggerDocId) return
+    const run = async () => {
+      try {
+        await triggerTextract.mutate({} as Record<string, never>)
+        toast.success('Textract processing started')
+      } catch { toast.error('Failed to start Textract') }
+    }
+    run()
+  }, [triggerDocId, triggerTextract, toast])
 
-  async function handleClassify(docId: string) {
-    setClassifyDocId(docId)
-    try {
-      const result = await classifyDoc.mutate({} as Record<string, never>)
-      toast.success(`Classified as: ${result?.classification || 'unknown'} (${result?.confidence || 0}% confidence)`)
-    } catch { toast.error('Failed to classify document') }
-  }
+  useEffect(() => {
+    if (!classifyDocId) return
+    const run = async () => {
+      try {
+        const result = await classifyDoc.mutate({} as Record<string, never>)
+        toast.success(`Classified as: ${result?.classification || 'unknown'} (${result?.confidence || 0}% confidence)`)
+      } catch { toast.error('Failed to classify document') }
+    }
+    run()
+  }, [classifyDocId, classifyDoc, toast])
+
+  function handleTrigger(docId: string) { setTriggerDocId(docId) }
+  function handleClassify(docId: string) { setClassifyDocId(docId) }
 
   // Show docs that can be processed (have s3_key but no textract result yet)
   const unprocessed = allDocs.filter(d => d.s3_key && !(d as any).textract_status)
@@ -581,6 +590,8 @@ function UploadModal({ onClose }: { onClose: () => void }) {
   const [docType, setDocType] = useState('Superbill')
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
+  const mounted = useRef(true)
+  useEffect(() => { return () => { mounted.current = false } }, [])
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
@@ -600,7 +611,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
       try {
         // Step 1: Get presigned URL
         const urlResult = await requestUrl({ file_name: file.name, content_type: file.type || 'application/octet-stream' })
-        if (urlResult?.upload_url && urlResult?.s3_key) {
+        if (urlResult?.upload_url && urlResult?.s3_key && urlResult?.s3_bucket) {
           // Step 2: Upload to S3
           await fetch(urlResult.upload_url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream' } })
           // Step 3: Create document record
@@ -608,21 +619,23 @@ function UploadModal({ onClose }: { onClose: () => void }) {
             document_type: docType,
             file_name: file.name,
             s3_key: urlResult.s3_key,
-            s3_bucket: urlResult.s3_bucket || 'medcloud-documents',
+            s3_bucket: urlResult.s3_bucket,
             content_type: file.type || 'application/octet-stream',
             file_size: file.size,
             source: 'Manual Upload',
             ...(selectedClient ? { client_id: selectedClient.id } : {}),
           })
+        } else {
+          throw new Error('Failed to get complete upload details from server.')
         }
         uploaded++
-        setProgress(Math.round((uploaded / files.length) * 100))
+        if (mounted.current) setProgress(Math.round((uploaded / files.length) * 100))
       } catch (err) {
         toast.error(`Failed to upload ${file.name}`)
       }
     }
     toast.success(`${uploaded} of ${files.length} files uploaded`)
-    setUploading(false)
+    if (mounted.current) { setUploading(false) }
     onClose()
   }
 
