@@ -16,6 +16,7 @@ import { useClaims, useScrubClaim, useTransitionClaim, useGenerateEDI,
 import type { ApiClaim } from '@/lib/hooks'
 import type { ClaimStatus } from '@/types'
 import { ErrorBanner } from '@/components/shared/ApiStates'
+import { sanitizeForPrompt } from '@/lib/ai-utils'
 import {
   FileText, CheckCircle2, Activity, Clock, Search, X, ChevronDown, ChevronUp,
   AlertTriangle, ShieldAlert, MessageCircle, DollarSign, Eye, RotateCcw,
@@ -164,11 +165,16 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
   async function predictDenialRisk() {
     setPredictingDenial(true)
     try {
+      // Sanitize user-controlled fields before interpolation (prompt injection defence)
+      const safePayer  = sanitizeForPrompt(claim.payer, 100)
+      const safeCpt    = claim.cptCodes?.map(c => sanitizeForPrompt(c, 20)).join(', ') || 'N/A'
+      const safeIcd    = claim.icdCodes?.map(c => sanitizeForPrompt(c, 20)).join(', ') || 'N/A'
+
       const prompt = [
         'You are an expert medical billing denial analyst. Predict the denial risk for this claim.',
-        `Payer: ${claim.payer}`,
-        `CPT Codes: ${claim.cptCodes?.join(', ') || 'N/A'}`,
-        `ICD Codes: ${claim.icdCodes?.join(', ') || 'N/A'}`,
+        `Payer: ${safePayer}`,
+        `CPT Codes: ${safeCpt}`,
+        `ICD Codes: ${safeIcd}`,
         `Billed Amount: $${claim.billed}`,
         `Place of Service: 11 (Office)`,
         `Claim Status: ${claim.status}`,

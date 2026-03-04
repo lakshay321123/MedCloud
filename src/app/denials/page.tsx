@@ -10,6 +10,7 @@ import { useToast } from '@/components/shared/Toast'
 import { useDenials } from '@/lib/hooks'
 import { ErrorBanner } from '@/components/shared/ApiStates'
 import { useRouter } from 'next/navigation'
+import { sanitizeForPrompt } from '@/lib/ai-utils'
 
 // ─── Dynamic appeal template ──────────────────────────────────────────────
 function buildAppealLetter(denial: DenialRow, level: 'L1' | 'L2' | 'L3'): string {
@@ -87,16 +88,24 @@ export default function DenialsPage() {
     setAiGenerating(true)
     try {
       const levelLabel = appealLevel === 'L1' ? 'First Level' : appealLevel === 'L2' ? 'Second Level' : 'External Review'
+      // Sanitize all user-controlled fields before prompt interpolation (prompt injection defence)
+      const safePatient = sanitizeForPrompt(denial.patientName, 100)
+      const safePayer   = sanitizeForPrompt(denial.payer, 100)
+      const safeClient  = sanitizeForPrompt(denial.clientName, 100)
+      const safeDenial  = sanitizeForPrompt(denial.denialReason, 300)
+      const safeCarc    = sanitizeForPrompt(denial.carc_description, 200)
+      const safeRarc    = sanitizeForPrompt(denial.rarc_description, 200)
+
       const prompt = [
         `You are an expert medical billing appeals specialist. Write a professional ${levelLabel} appeal letter.`,
         `Claim ID: ${denial.id}`,
-        `Patient: ${denial.patientName}`,
-        `Payer: ${denial.payer}`,
-        `Provider: ${denial.clientName}`,
+        `Patient: ${safePatient}`,
+        `Payer: ${safePayer}`,
+        `Provider: ${safeClient}`,
         `Date of Service: ${denial.dos}`,
-        `Denial Reason: ${denial.denialReason}`,
-        `CARC: ${denial.carc_description || 'N/A'}`,
-        `RARC: ${denial.rarc_description || 'N/A'}`,
+        `Denial Reason: ${safeDenial}`,
+        `CARC: ${safeCarc || 'N/A'}`,
+        `RARC: ${safeRarc || 'N/A'}`,
         `Appeal Level: ${appealLevel}`,
         '',
         'Write a compelling professional appeal letter addressing the denial. Cite medical necessity. Format as a business letter. Output the letter text only.',

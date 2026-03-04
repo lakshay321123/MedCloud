@@ -8,6 +8,7 @@ import { getClientName } from '@/lib/demo-data'
 import { getSLAStatus } from '@/lib/utils/time'
 import { useCodingQueue } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
+import { sanitizeForPrompt } from '@/lib/ai-utils'
 import {
   BrainCircuit, CheckCircle2, Activity, Clock, MessageCircle, Mic, FileUp,
   ChevronDown, ChevronUp, Play, FileText, AlertTriangle, Plus, PauseCircle,
@@ -234,15 +235,21 @@ export default function CodingPage() {
     const isUAE = ['org-101', 'org-104'].includes(item.clientId)
     const codeSystem = isUAE ? 'ICD-10-AM (Australian modification, used in UAE/DHA)' : 'ICD-10-CM and CPT'
     try {
+      // Sanitize all user-controlled input before prompt interpolation (prompt injection defence)
+      const safeAssessment = sanitizeForPrompt(soapAssessment, 600)
+      const safePlan       = sanitizeForPrompt(soapPlan, 400)
+      const safeSpecialty  = sanitizeForPrompt(specialty || item.providerSpecialty, 100)
+      const safePatient    = sanitizeForPrompt(item.patientName, 100)
+
       const prompt = [
         `You are an expert medical coder. Generate diagnosis and procedure codes for the following clinical encounter.`,
         `Code system: ${codeSystem}`,
-        `Patient: ${item.patientName}`,
-        `Provider specialty: ${specialty || item.providerSpecialty || 'General Medicine'}`,
+        `Patient: ${safePatient}`,
+        `Provider specialty: ${safeSpecialty || 'General Medicine'}`,
         `Date of Service: ${item.dos}`,
         ``,
-        `Assessment: ${soapAssessment}`,
-        `Plan: ${soapPlan}`,
+        `Assessment: ${safeAssessment}`,
+        `Plan: ${safePlan}`,
         ``,
         `Return ONLY valid JSON in this exact format, no markdown, no explanation:`,
         `{`,
@@ -301,11 +308,17 @@ export default function CodingPage() {
       ...activeCodes.cpt.filter(c => (c.confidence ?? 100) < 75).map(c => `CPT ${c.code} (${c.desc})`),
     ]
     try {
+      // Sanitize user-controlled fields (prompt injection defence)
+      const safePatient    = sanitizeForPrompt(item.patientName, 100)
+      const safeProvider   = sanitizeForPrompt(item.provider, 100)
+      const safeAssessment = sanitizeForPrompt(item.visitNote.assessment, 400)
+      const safePlan       = sanitizeForPrompt(item.visitNote.plan, 400)
+
       const parts = [
         'You are a CDI specialist. Write a brief physician query (2-3 sentences) asking for documentation clarification.',
-        `Patient: ${item.patientName} | Provider: ${item.provider} | DOS: ${item.dos}`,
-        `Assessment: ${item.visitNote.assessment}`,
-        `Plan: ${item.visitNote.plan}`,
+        `Patient: ${safePatient} | Provider: ${safeProvider} | DOS: ${item.dos}`,
+        `Assessment: ${safeAssessment}`,
+        `Plan: ${safePlan}`,
         lowCodes.length > 0 ? `Codes needing clarification: ${lowCodes.join(', ')}` : 'Request diagnostic specificity.',
         'Be concise and professional. Ask what specific documentation would support more precise coding.',
       ]
