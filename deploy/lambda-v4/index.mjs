@@ -473,10 +473,15 @@ async function list(table, orgId, clientId, extra = '') {
   if (extra) q += ' ' + extra;
   // Enforce default LIMIT if caller didn't specify one
   if (!/LIMIT/i.test(extra)) q += ' LIMIT 1000';
-  return (await pool.query(q, params)).rows;
+  // Use orgQuery so SET LOCAL app.org_id activates Aurora RLS policies on PHI tables
+  return (await orgQuery(orgId, q, params)).rows;
 }
 
-async function getById(table, id) {
+async function getById(table, id, orgId = null) {
+  // If orgId provided, activate RLS context; otherwise fall back to pool (non-PHI lookups)
+  if (orgId) {
+    return (await orgQuery(orgId, `SELECT * FROM ${table} WHERE id = $1`, [id])).rows[0] || null;
+  }
   return (await pool.query(`SELECT * FROM ${table} WHERE id = $1`, [id])).rows[0] || null;
 }
 
@@ -498,10 +503,11 @@ async function create(table, data, orgId) {
   const vals = Object.values(safeData);
   const ph = keys.map((_, i) => `$${i + 1}`).join(', ');
   const q = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${ph}) RETURNING *`;
-  return (await pool.query(q, vals)).rows[0];
+  // Use orgQuery so SET LOCAL app.org_id activates Aurora RLS policies on PHI tables
+  return (await orgQuery(orgId, q, vals)).rows[0];
 }
 
-async function update(table, id, data) {
+async function update(table, id, data, orgId = null) {
   data.updated_at = new Date().toISOString();
   // Never allow overwriting org_id or id via update body
   delete data.org_id;
@@ -514,10 +520,12 @@ async function update(table, id, data) {
   }
   const keys = Object.keys(safeData);
   // updated_at is always added, so if it's the only key there's nothing to update
-  if (keys.length <= 1) return await getById(table, id);
+  if (keys.length <= 1) return await getById(table, id, orgId);
   const vals = Object.values(safeData);
   const sets = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
   const q = `UPDATE ${table} SET ${sets} WHERE id = $${keys.length + 1} RETURNING *`;
+  // Use orgQuery when orgId available so RLS policies activate on PHI tables
+  if (orgId) return (await orgQuery(orgId, q, [...vals, id])).rows[0];
   return (await pool.query(q, [...vals, id])).rows[0];
 }
 
@@ -5358,9 +5366,9 @@ export const handler = async (event) => {
         return respond(201, note);
       }
       if (method === 'PUT' && pathParams.id) {
-        const note = await update('soap_notes', pathParams.id, body);
+        const note = await update('soap_notes', pathParams.id, body, effectiveOrgId);
         if (body.signed_off) {
-          await update('soap_notes', pathParams.id, { signed_off_at: new Date().toISOString(), signed_off_by: userId });
+          await update('soap_notes', pathParams.id, { signed_off_at: new Date().toISOString(), signed_off_by: userId }, effectiveOrgId);
         }
         return respond(200, note);
       }
@@ -5388,7 +5396,7 @@ export const handler = async (event) => {
       if (method === 'PUT' && pathParams.id) {
         // Prevent bypassing state machine via direct PUT — use /transition endpoint
         delete body.status;
-        const c = await update('claims', pathParams.id, body);
+        const c = await update('claims', pathParams.id, body, effectiveOrgId);
         await auditLog(effectiveOrgId, userId, 'update', 'claims', pathParams.id, { fields: Object.keys(body) });
         return respond(200, c);
       }
@@ -5424,7 +5432,7 @@ export const handler = async (event) => {
           current_status: claim.status,
         });
       }
-      const c = await update('claims', pathParams.id, { status: newStatus });
+      const c = await update('claims', pathParams.id, { status: newStatus }, effectiveOrgId);
       await auditLog(effectiveOrgId, userId, 'transition', 'claims', pathParams.id, {
         from: claim.status, to: newStatus,
       });
@@ -5522,7 +5530,7 @@ export const handler = async (event) => {
         return respond(201, d);
       }
       if (method === 'PUT' && pathParams.id) {
-        const d = await update('denials', pathParams.id, body);
+        const d = await update('denials', pathParams.id, body, effectiveOrgId);
         await auditLog(effectiveOrgId, userId, 'update', 'denials', pathParams.id, { status: body.status });
         return respond(200, d);
       }
@@ -5534,7 +5542,7 @@ export const handler = async (event) => {
       body.denial_id = denialId;
       body.status = body.status || 'submitted';
       const appeal = await create('appeals', body, effectiveOrgId);
-      await update('denials', denialId, { status: 'in_appeal' });
+      await update('denials', denialId, { status: 'in_appeal' }, effectiveOrgId);
       await auditLog(effectiveOrgId, userId, 'appeal', 'denials', denialId, { appeal_id: appeal.id });
       return respond(201, appeal);
     }
@@ -5562,7 +5570,7 @@ export const handler = async (event) => {
 
     // Coding query (send to provider)
     if (path.includes('/coding') && path.includes('/query') && method === 'POST') {
-      await update('coding_queue', pathParams.id, { status: 'query_sent' });
+      await update('coding_queue', pathParams.id, { status: 'query_sent' }, effectiveOrgId);
       // Create task for provider
       await create('tasks', {
         org_id: effectiveOrgId,
@@ -5580,7 +5588,7 @@ export const handler = async (event) => {
 
     // Coding reassign
     if (path.includes('/coding') && path.includes('/assign') && method === 'PUT') {
-      const c = await update('coding_queue', pathParams.id, { assigned_to: body.assigned_to });
+      const c = await update('coding_queue', pathParams.id, { assigned_to: body.assigned_to }, effectiveOrgId);
       return respond(200, c);
     }
 
@@ -5662,7 +5670,7 @@ export const handler = async (event) => {
         return respond(201, fs);
       }
       if (method === 'PUT' && pathParams.id) {
-        const fs = await update('fee_schedules', pathParams.id, body);
+        const fs = await update('fee_schedules', pathParams.id, body, effectiveOrgId);
         return respond(200, fs);
       }
     }
@@ -5705,7 +5713,7 @@ export const handler = async (event) => {
         return respond(200, p);
       }
       if (method === 'POST') return respond(201, await create('payments', body, effectiveOrgId));
-      if (method === 'PUT' && pathParams.id) return respond(200, await update('payments', pathParams.id, body));
+      if (method === 'PUT' && pathParams.id) return respond(200, await update('payments', pathParams.id, body), effectiveOrgId);
     }
 
     // ════ AR Management ════════════════════════════════════════════════════
@@ -5857,7 +5865,7 @@ export const handler = async (event) => {
         return respond(200, p);
       }
       if (method === 'POST') return respond(201, await create('patients', body, effectiveOrgId));
-      if (method === 'PUT' && pathParams.id) return respond(200, await update('patients', pathParams.id, body));
+      if (method === 'PUT' && pathParams.id) return respond(200, await update('patients', pathParams.id, body), effectiveOrgId);
     }
 
     // ════ CARC / RARC Reference ════════════════════════════════════════════
@@ -5908,7 +5916,7 @@ export const handler = async (event) => {
         if (method === 'PUT' && pathParams.id) {
           const existing = await getById(table, pathParams.id);
           if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
-          return respond(200, await update(table, pathParams.id, body));
+          return respond(200, await update(table, pathParams.id, body), effectiveOrgId);
         }
         if (method === 'DELETE' && pathParams.id) {
           // Block delete on immutable entities
@@ -6006,7 +6014,7 @@ export const handler = async (event) => {
       if (method === 'PUT' && pathParams.id) {
         const existing = await getById('patient_statements', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
-        const result = await update('patient_statements', pathParams.id, { ...body, updated_at: new Date().toISOString() });
+        const result = await update('patient_statements', pathParams.id, { ...body, updated_at: new Date().toISOString() }, effectiveOrgId);
         return respond(200, result);
       }
     }
@@ -6151,7 +6159,7 @@ export const handler = async (event) => {
       if (method === 'PUT' && pathParams.id) {
         const existing = await getById('appeals', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
-        const result = await update('appeals', pathParams.id, { ...body, updated_at: new Date().toISOString() });
+        const result = await update('appeals', pathParams.id, { ...body, updated_at: new Date().toISOString() }, effectiveOrgId);
         return respond(200, result);
       }
     }
@@ -6173,7 +6181,7 @@ export const handler = async (event) => {
       if (method === 'PUT' && pathParams.id) {
         const existing = await getById('messages', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
-        return respond(200, await update('messages', pathParams.id, { ...body, updated_at: new Date().toISOString() }));
+        return respond(200, await update('messages', pathParams.id, { ...body, updated_at: new Date().toISOString() }), effectiveOrgId);
       }
       if (method === 'GET' && pathParams.id) {
         const r = await getById('messages', pathParams.id);
@@ -6224,7 +6232,7 @@ export const handler = async (event) => {
       if (method === 'PUT' && pathParams.id) {
         const existing = await getById('credit_balances', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
-        return respond(200, await update('credit_balances', pathParams.id, { ...body, updated_at: new Date().toISOString() }));
+        return respond(200, await update('credit_balances', pathParams.id, { ...body, updated_at: new Date().toISOString() }), effectiveOrgId);
       }
     }
 
@@ -6247,7 +6255,7 @@ export const handler = async (event) => {
       if (method === 'PUT' && pathParams.id) {
         const existing = await getById('bank_deposits', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
-        return respond(200, await update('bank_deposits', pathParams.id, { ...body, updated_at: new Date().toISOString() }));
+        return respond(200, await update('bank_deposits', pathParams.id, { ...body, updated_at: new Date().toISOString() }), effectiveOrgId);
       }
     }
 
@@ -6262,7 +6270,7 @@ export const handler = async (event) => {
       if (method === 'PUT' && pathParams.id) {
         const existing = await getById('appeal_templates', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
-        return respond(200, await update('appeal_templates', pathParams.id, { ...body, updated_at: new Date().toISOString() }));
+        return respond(200, await update('appeal_templates', pathParams.id, { ...body, updated_at: new Date().toISOString() }), effectiveOrgId);
       }
       if (method === 'GET' && pathParams.id) {
         const r = await getById('appeal_templates', pathParams.id);
@@ -6337,7 +6345,7 @@ export const handler = async (event) => {
       if (method === 'PUT' && pathParams.id) {
         const existing = await getById('client_onboarding', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
-        return respond(200, await update('client_onboarding', pathParams.id, { ...body, updated_at: new Date().toISOString() }));
+        return respond(200, await update('client_onboarding', pathParams.id, { ...body, updated_at: new Date().toISOString() }), effectiveOrgId);
       }
     }
 
@@ -6365,7 +6373,7 @@ export const handler = async (event) => {
       if (method === 'PUT' && pathParams.id) {
         const existing = await getById('invoice_configs', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
-        return respond(200, await update('invoice_configs', pathParams.id, { ...body, updated_at: new Date().toISOString() }));
+        return respond(200, await update('invoice_configs', pathParams.id, { ...body, updated_at: new Date().toISOString() }), effectiveOrgId);
       }
     }
 
@@ -6385,7 +6393,7 @@ export const handler = async (event) => {
       if (method === 'PUT' && pathParams.id) {
         const existing = await getById('invoices', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
-        return respond(200, await update('invoices', pathParams.id, { ...body, updated_at: new Date().toISOString() }));
+        return respond(200, await update('invoices', pathParams.id, { ...body, updated_at: new Date().toISOString() }), effectiveOrgId);
       }
     }
 
@@ -6408,7 +6416,7 @@ export const handler = async (event) => {
       if (method === 'PUT' && pathParams.id) {
         const existing = await getById('patient_access_requests', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
-        return respond(200, await update('patient_access_requests', pathParams.id, { ...body, updated_at: new Date().toISOString() }));
+        return respond(200, await update('patient_access_requests', pathParams.id, { ...body, updated_at: new Date().toISOString() }), effectiveOrgId);
       }
     }
 
@@ -6917,7 +6925,7 @@ export const handler = async (event) => {
           client_id: claim.client_id,
         }, effectiveOrgId);
         if (approvalTier === 'auto') {
-          await update('claims', claim_id, { status: 'written_off' });
+          await update('claims', claim_id, { status: 'written_off' }, effectiveOrgId);
           await auditLog(effectiveOrgId, userId, 'write_off_auto_approved', 'claims', claim_id, { amount, reason });
         } else {
           await create('notifications', {
@@ -6937,8 +6945,8 @@ export const handler = async (event) => {
         const canApprove = (wo.approval_tier === 'supervisor' && ['supervisor','director','admin'].includes(callerRole))
           || (wo.approval_tier === 'director' && ['director','admin'].includes(callerRole));
         if (!canApprove) return respond(403, { error: `Requires ${wo.approval_tier} role to approve this write-off` });
-        await update('write_off_requests', pathParams.id, { status: 'approved', approved_by: userId, approved_at: new Date().toISOString() });
-        await update('claims', wo.claim_id, { status: 'written_off' });
+        await update('write_off_requests', pathParams.id, { status: 'approved', approved_by: userId, approved_at: new Date().toISOString() }, effectiveOrgId);
+        await update('claims', wo.claim_id, { status: 'written_off' }, effectiveOrgId);
         await auditLog(effectiveOrgId, userId, 'write_off_approved', 'write_off_requests', pathParams.id, { amount: wo.amount });
         return respond(200, { message: 'Write-off approved', claim_id: wo.claim_id });
       }
@@ -6997,7 +7005,7 @@ export const handler = async (event) => {
       if (method === 'PUT' && pathParams.id) {
         const r = await getById('patient_statements', pathParams.id);
         if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
-        return respond(200, await update('patient_statements', pathParams.id, body));
+        return respond(200, await update('patient_statements', pathParams.id, body), effectiveOrgId);
       }
     }
 
@@ -7092,7 +7100,7 @@ export const handler = async (event) => {
           return respond(201, msg);
         }
         if (method === 'PUT' && path.includes('/read') && pathParams.id) {
-          await update('messages', pathParams.id, { read: true, read_at: new Date().toISOString() });
+          await update('messages', pathParams.id, { read: true, read_at: new Date().toISOString() }, effectiveOrgId);
           return respond(200, { read: true });
         }
       }
@@ -7114,7 +7122,7 @@ export const handler = async (event) => {
         return respond(201, notif);
       }
       if (method === 'PUT' && path.includes('/read') && pathParams.id) {
-        await update('notifications', pathParams.id, { read: true, read_at: new Date().toISOString() });
+        await update('notifications', pathParams.id, { read: true, read_at: new Date().toISOString() }, effectiveOrgId);
         return respond(200, { read: true });
       }
       if (method === 'PUT' && path.includes('/mark-all-read')) {
@@ -7159,7 +7167,7 @@ export const handler = async (event) => {
       if (method === 'PUT' && pathParams.id) {
         const pa = await getById('prior_auth_requests', pathParams.id);
         if (!pa || pa.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
-        const updated = await update('prior_auth_requests', pathParams.id, body);
+        const updated = await update('prior_auth_requests', pathParams.id, body, effectiveOrgId);
         if (body.status === 'approved') {
           await auditLog(effectiveOrgId, userId, 'prior_auth_approved', 'prior_auth_requests', pathParams.id, { auth_number: body.auth_number });
         } else if (body.status === 'denied') {
@@ -7232,7 +7240,7 @@ export const handler = async (event) => {
             entity_type: 'credentialing', entity_id: pathParams.id, read: false,
           }, effectiveOrgId).catch(() => {});
         }
-        return respond(200, await update('credentialing', pathParams.id, body));
+        return respond(200, await update('credentialing', pathParams.id, body), effectiveOrgId);
       }
     }
 
@@ -7275,7 +7283,7 @@ export const handler = async (event) => {
           body.completed_by = userId;
           await auditLog(effectiveOrgId, userId, 'task_completed', 'tasks', pathParams.id, { title: t.title });
         }
-        return respond(200, await update('tasks', pathParams.id, body));
+        return respond(200, await update('tasks', pathParams.id, body), effectiveOrgId);
       }
       if (method === 'DELETE' && pathParams.id) {
         const t = await getById('tasks', pathParams.id);
@@ -7411,7 +7419,7 @@ export const handler = async (event) => {
       if (method === 'PUT' && pathParams.id) {
         const r = await getById('coding_qa_audits', pathParams.id);
         if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
-        return respond(200, await update('coding_qa_audits', pathParams.id, body));
+        return respond(200, await update('coding_qa_audits', pathParams.id, body), effectiveOrgId);
       }
     }
 
@@ -7435,7 +7443,7 @@ export const handler = async (event) => {
       if (method === 'PUT' && pathParams.id) {
         const r = await getById('fee_schedules', pathParams.id);
         if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
-        return respond(200, await update('fee_schedules', pathParams.id, body));
+        return respond(200, await update('fee_schedules', pathParams.id, body), effectiveOrgId);
       }
       if (method === 'DELETE' && pathParams.id) {
         const r = await getById('fee_schedules', pathParams.id);
@@ -7486,7 +7494,7 @@ export const handler = async (event) => {
         const checklist = typeof body.checklist === 'object' ? body.checklist : JSON.parse(body.checklist || '{}');
         const allDone = Object.values(checklist).every(v => v === true);
         if (allDone) body.status = 'completed';
-        return respond(200, await update('client_onboarding', pathParams.id, body));
+        return respond(200, await update('client_onboarding', pathParams.id, body), effectiveOrgId);
       }
     }
 

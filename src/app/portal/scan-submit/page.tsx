@@ -31,7 +31,7 @@ export default function ScanSubmitPage() {
   const isClinic = currentUser.role === 'client' || currentUser.role === 'provider'
   const clientId = isClinic
     ? currentUser.organization_id
-    : selectedClient?.id ?? (country === 'uae' ? 'org-101' : 'org-102')
+    : selectedClient?.id ?? ''
   const myPatients = apiPatients.filter(p => p.clientId === clientId)
 
   const [step, setStep] = useState<Step>(1)
