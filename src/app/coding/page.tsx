@@ -676,7 +676,7 @@ export default function CodingPage() {
                           <div key={f.type} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
                             <span className="text-xs">{f.type}</span>
                             <div className="flex items-center gap-2">
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full ${f.severity==='high'?'bg-red-500/10 text-red-500':f.severity==='medium'?'bg-amber-500/10 text-amber-500':'bg-blue-500/10 text-blue-500'}`}>{f.severity}</span>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full ${({high:'bg-red-500/10 text-red-500',medium:'bg-amber-500/10 text-amber-500',low:'bg-blue-500/10 text-blue-500'} as Record<string,string>)[f.severity] || 'bg-blue-500/10 text-blue-500'}`}>{f.severity}</span>
                               <span className="text-xs font-mono font-semibold">{f.count}</span>
                             </div>
                           </div>

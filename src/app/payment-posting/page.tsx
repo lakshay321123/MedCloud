@@ -359,7 +359,7 @@ export default function PaymentPostingPage() {
                 <td className="px-3 py-2">{d.date}</td><td className="px-3 py-2">{d.bank}</td>
                 <td className="px-3 py-2">{d.posted}</td>
                 <td className={`px-3 py-2 ${d.variance!=='$0'?'text-amber-500 font-medium':''}`}>{d.variance}</td>
-                <td className="px-3 py-2"><span className={`text-[10px] px-2 py-0.5 rounded-full ${d.status==='matched'?'bg-emerald-500/10 text-emerald-500':'bg-amber-500/10 text-amber-500'}`}>{d.status}</span></td>
+                <td className="px-3 py-2"><span className={`text-[10px] px-2 py-0.5 rounded-full ${({matched:'bg-emerald-500/10 text-emerald-500',unmatched:'bg-amber-500/10 text-amber-500'} as Record<string,string>)[d.status] || 'bg-amber-500/10 text-amber-500'}`}>{d.status}</span></td>
               </tr>
             ))}
           </tbody>

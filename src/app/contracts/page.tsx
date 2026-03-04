@@ -293,13 +293,15 @@ export default function ContractsPage() {
                       <tbody>
                         {[{cpt:'99213',desc:'Office Visit (Est, Low)',rate:85,medicare:76},{cpt:'99214',desc:'Office Visit (Est, Mod)',rate:125,medicare:110},
                           {cpt:'99215',desc:'Office Visit (Est, High)',rate:175,medicare:158},{cpt:'99203',desc:'Office Visit (New, Low)',rate:110,medicare:98}
-                        ].map(r=>(
+                        ].map(r=>{
+                          const pctOfMedicare = (r.rate / r.medicare) * 100
+                          return (
                           <tr key={r.cpt} className="border-b border-separator last:border-0">
                             <td className="py-2 font-mono">{r.cpt}</td><td className="py-2 text-content-secondary">{r.desc}</td>
                             <td className="py-2 font-medium">${r.rate}</td><td className="py-2 text-content-secondary">${r.medicare}</td>
-                            <td className={`py-2 font-medium ${(r.rate/r.medicare)*100>=110?'text-emerald-500':'text-amber-500'}`}>{((r.rate/r.medicare)*100).toFixed(0)}%</td>
+                            <td className={`py-2 font-medium ${pctOfMedicare >= 110 ? 'text-emerald-500' : 'text-amber-500'}`}>{pctOfMedicare.toFixed(0)}%</td>
                           </tr>
-                        ))}
+                        )})}
                       </tbody>
                     </table>
                   </div>

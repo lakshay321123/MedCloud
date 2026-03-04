@@ -772,67 +772,6 @@ export default function ARManagementPage() {
         />
       )}
 
-      {/* ── Credit Balances ── */}
-      <div className="card p-4 mt-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold">Credit Balances</h3>
-          <button onClick={() => toast.info('Scanning for credit balances…')} className="text-xs bg-emerald-500/10 text-emerald-500 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-colors">Identify Credits</button>
-        </div>
-        <div className="grid grid-cols-3 gap-3 mb-3">
-          {[{label:'Unresolved Credits',value:'$14,320',color:'text-amber-500'},{label:'Pending Refunds',value:'$3,850',color:'text-red-500'},{label:'Resolved This Month',value:'$8,210',color:'text-emerald-500'}].map(k=>
-            <div key={k.label} className="bg-surface-elevated rounded-lg p-3 text-center">
-              <p className={`text-lg font-bold ${k.color}`}>{k.value}</p>
-              <p className="text-[10px] text-content-tertiary">{k.label}</p>
-            </div>
-          )}
-        </div>
-        <div className="space-y-2">
-          {[{patient:'John Smith',payer:'Aetna',amount:'$450.00',age:'32d',reason:'Overpayment'},
-            {patient:'Sarah Lee',payer:'BCBS',amount:'$1,200.00',age:'15d',reason:'Duplicate Payment'},
-            {patient:'Mike Chen',payer:'United',amount:'$320.00',age:'45d',reason:'Patient Refund Due'}
-          ].map((cr,i)=>(
-            <div key={i} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-medium">{cr.patient}</span>
-                <span className="text-[10px] text-content-tertiary">{cr.payer}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] text-content-tertiary">{cr.reason}</span>
-                <span className="text-xs font-bold text-emerald-500">{cr.amount}</span>
-                <span className="text-[10px] text-content-tertiary">{cr.age}</span>
-                <button onClick={()=>toast.success(`Refund initiated for ${cr.patient}`)} className="text-[10px] text-brand hover:underline">Resolve</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── SLA Escalations ── */}
-      <div className="card p-4 mt-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold">SLA Escalations</h3>
-          <button onClick={() => toast.info('Checking SLA thresholds…')} className="text-xs bg-red-500/10 text-red-500 px-3 py-1.5 rounded-lg hover:bg-red-500/20 transition-colors">Run SLA Check</button>
-        </div>
-        <div className="space-y-2">
-          {[{claim:'CLM-4511',patient:'Jane Doe',days:47,sla:45,status:'breached',payer:'Aetna'},
-            {claim:'CLM-4523',patient:'Bob Martin',days:43,sla:45,status:'warning',payer:'BCBS'},
-            {claim:'CLM-4498',patient:'Amy Park',days:44,sla:45,status:'warning',payer:'United'}
-          ].map((esc,i)=>(
-            <div key={i} className={`flex items-center justify-between rounded-lg px-3 py-2 ${esc.status==='breached'?'bg-red-500/5 border border-red-500/20':'bg-amber-500/5 border border-amber-500/20'}`}>
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-xs">{esc.claim}</span>
-                <span className="text-xs">{esc.patient}</span>
-                <span className="text-[10px] text-content-tertiary">{esc.payer}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className={`text-xs font-bold ${esc.status==='breached'?'text-red-500':'text-amber-500'}`}>{esc.days}/{esc.sla}d</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full ${esc.status==='breached'?'bg-red-500/10 text-red-500':'bg-amber-500/10 text-amber-500'}`}>{esc.status}</span>
-                <button onClick={()=>toast.success(`Escalated ${esc.claim} to supervisor`)} className="text-[10px] text-brand hover:underline">Escalate</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
       </>)}
     </ModuleShell>
   )

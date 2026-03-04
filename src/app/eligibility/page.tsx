@@ -308,7 +308,7 @@ export default function EligibilityPage() {
                     <td className="px-4 py-3 text-xs">{pa.proc}</td>
                     <td className="px-4 py-3 text-xs text-content-secondary">{pa.payer}</td>
                     <td className="px-4 py-3 text-xs text-content-secondary">{pa.date}</td>
-                    <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${pa.status==='approved'?'bg-emerald-500/10 text-emerald-500':pa.status==='denied'?'bg-red-500/10 text-red-500':'bg-amber-500/10 text-amber-500'}`}>{pa.status}</span></td>
+                    <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${({approved:'bg-emerald-500/10 text-emerald-500',denied:'bg-red-500/10 text-red-500',pending:'bg-amber-500/10 text-amber-500'} as Record<string,string>)[pa.status] || 'bg-amber-500/10 text-amber-500'}`}>{pa.status}</span></td>
                     <td className="px-4 py-3">
                       {pa.status==='denied' && <button onClick={()=>toast.info('Peer-to-peer review requested')} className="text-[10px] text-brand hover:underline">P2P Review</button>}
                       {pa.status==='pending' && <button onClick={()=>toast.info('Status check sent to payer')} className="text-[10px] text-brand hover:underline">Check Status</button>}
