@@ -216,3 +216,187 @@ export function formatCallStatus(status: RetellCall['call_status']): { label: st
   }
   return map[status] ?? { label: status, color: 'text-content-tertiary' }
 }
+
+// ─── Payer Analytics ──────────────────────────────────────────────────────────
+export interface PayerStat {
+  name: string
+  total: number
+  success: number
+  failed: number
+  successRate: number
+  hasPlaybookData: boolean
+}
+
+export function usePayerAnalytics() {
+  const [payers, setPayers] = useState<PayerStat[]>([])
+  const [loading, setLoading] = useState(true)
+  const [fallback, setFallback] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/retell?action=payer-analytics')
+      .then(r => r.json())
+      .then(d => {
+        if (d.fallback) { setFallback(true); return }
+        setPayers(d.payers ?? [])
+      })
+      .catch(() => setFallback(true))
+      .finally(() => setLoading(false))
+  }, [])
+
+  return { payers, loading, fallback }
+}
+
+// ─── Agent Prompt ─────────────────────────────────────────────────────────────
+export interface RetellAgent {
+  agent_id: string
+  agent_name: string
+  general_prompt: string
+  voice_id?: string
+  language?: string
+  last_modification_timestamp?: number
+}
+
+export function useAgentPrompt(agentName: 'chris' | 'cindy' | null) {
+  const [agent, setAgent] = useState<RetellAgent | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const fetch_ = useCallback(async () => {
+    if (!agentName) return
+    setLoading(true)
+    try {
+      const r = await fetch(`/api/retell?action=get-agent&agent=${agentName}`)
+      const d = await r.json()
+      setAgent(d)
+    } catch (e) {
+      console.error('[useAgentPrompt]', e)
+    } finally {
+      setLoading(false)
+    }
+  }, [agentName])
+
+  useEffect(() => { fetch_() }, [fetch_])
+
+  return { agent, loading, refetch: fetch_ }
+}
+
+export function useUpdatePrompt() {
+  const [loading, setLoading] = useState(false)
+
+  const update = useCallback(async (agentName: 'chris' | 'cindy', prompt: string) => {
+    setLoading(true)
+    try {
+      const r = await fetch('/api/retell', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update-prompt', agent_name: agentName, prompt }),
+      })
+      if (!r.ok) throw new Error(await r.text())
+      return await r.json()
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  return { update, loading }
+}
+
+// ─── AI Analysis ──────────────────────────────────────────────────────────────
+export interface PromptIssue {
+  title: string
+  description: string
+  severity: 'high' | 'medium' | 'low'
+  evidence: string
+}
+
+export interface PromptSuggestion {
+  section: string
+  current: string
+  suggested: string
+  rationale: string
+}
+
+export interface AnalysisResult {
+  summary: string
+  issues: PromptIssue[]
+  suggestions: PromptSuggestion[]
+  playbook?: string
+  confidence: 'high' | 'medium' | 'low'
+}
+
+export function useAnalyzeCalls() {
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<AnalysisResult | null>(null)
+
+  const analyze = useCallback(async (params: {
+    agent_name: 'chris' | 'cindy'
+    current_prompt: string
+    call_transcripts: string[]
+    focus: 'general' | 'payer'
+    payer_name?: string
+  }) => {
+    setLoading(true)
+    setResult(null)
+    try {
+      const r = await fetch('/api/retell', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'analyze-calls', ...params }),
+      })
+      if (!r.ok) throw new Error(await r.text())
+      const data = await r.json()
+      setResult(data)
+      return data as AnalysisResult
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  return { analyze, loading, result }
+}
+
+// ─── Calls by agent name (wraps useRetellCalls) ────────────────────────────────
+export function useCallsByAgent(agentName: 'chris' | 'cindy' | null, status?: 'ongoing' | 'ended') {
+  const [agentId, setAgentId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!agentName) return
+    fetch('/api/retell?action=agents')
+      .then(r => r.json())
+      .then(d => {
+        const a = d.agents?.find((ag: RetellAgent & {name: string}) => ag.name.toLowerCase() === agentName)
+        setAgentId(a?.id ?? null)
+      })
+      .catch(console.error)
+  }, [agentName])
+
+  const [calls, setCalls] = useState<RetellCall[]>([])
+  const [loading, setLoading] = useState(true)
+  const [nextPageKey, setNextPageKey] = useState<string | null>(null)
+
+  const fetch_ = useCallback(async (pageKey?: string) => {
+    if (!agentId) return
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({ action: 'list-calls', limit: '100', agent_id: agentId })
+      if (status) params.set('status', status)
+      if (pageKey) params.set('pagination_key', pageKey)
+      const r = await fetch(`/api/retell?${params}`)
+      const d = await r.json()
+      const newCalls = d.call_list ?? []
+      setCalls(prev => pageKey ? [...prev, ...newCalls] : newCalls)
+      setNextPageKey(d.pagination_key ?? null)
+    } catch (e) {
+      console.error('[useCallsByAgent]', e)
+    } finally {
+      setLoading(false)
+    }
+  }, [agentId, status])
+
+  useEffect(() => { fetch_() }, [fetch_])
+
+  const loadMore = useCallback(() => {
+    if (nextPageKey) fetch_(nextPageKey)
+  }, [nextPageKey, fetch_])
+
+  return { calls, loading, loadMore, hasMore: !!nextPageKey, refetch: () => fetch_() }
+}
