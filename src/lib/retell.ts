@@ -167,23 +167,40 @@ export function useAgentPrompt(agentName: 'chris' | 'cindy' | null) {
     setLoading(true)
     setError(null)
     try {
-      const data = await retellGet('get-agent', { agent: agentName })
-      if (data.error) {
-        setError(data.error)
+      // First try direct fetch with configured agent ID
+      const qs = new URLSearchParams({ action: 'get-agent', agent: agentName })
+      const res = await fetch(`/api/retell?${qs}`)
+      const data = await res.json()
+
+      if (!res.ok || data.error) {
+        // Fallback: list all agents and find by name
+        const listRes = await fetch('/api/retell?action=list-agents')
+        const agents: Record<string, unknown>[] = await listRes.json()
+        const match = agents.find((a: Record<string, unknown>) => {
+          const name = String(a.agent_name ?? '').toLowerCase()
+          return name.includes(agentName.toLowerCase())
+        })
+        if (match) {
+          const prompt =
+            (match.general_prompt as string) ??
+            ((match.response_engine as Record<string, unknown>)?.general_prompt as string) ??
+            ''
+          setAgentData(match)
+          setPrompt(prompt)
+          return
+        }
+        setError(`Agent "${agentName}" not found. Check RETELL_AGENT_${agentName.toUpperCase()} env var.`)
         return
       }
+
       setAgentData(data)
-      // Retell stores prompt in general_prompt on the agent directly
-      // or nested in response_engine for some agent types
       const extractedPrompt =
         data.general_prompt ??
         (data.response_engine as Record<string, unknown>)?.general_prompt ??
         ''
       setPrompt(String(extractedPrompt))
     } catch (e) {
-      const msg = String(e)
-      setError(msg)
-      console.error('Failed to load agent prompt:', e)
+      setError(String(e))
     } finally {
       setLoading(false)
     }

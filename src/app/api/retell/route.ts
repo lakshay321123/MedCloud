@@ -120,7 +120,13 @@ export async function GET(req: NextRequest) {
       const agentName = searchParams.get('agent') as 'chris' | 'cindy'
       const agentId = RETELL_AGENTS[agentName]
       if (!agentId) return NextResponse.json({ error: `${agentName} not configured — add RETELL_AGENT_${agentName?.toUpperCase()} to Vercel env` }, { status: 400 })
-      const data = await retellFetch(`/v2/agent/${agentId}`)
+      const data = await retellFetch(`/v2/get-agent/${agentId}`)
+      return NextResponse.json(data)
+    }
+
+    // ── List all agents (to discover correct agent IDs) ───────────────────
+    if (action === 'list-agents') {
+      const data = await retellFetch('/v2/list-agents')
       return NextResponse.json(data)
     }
 
