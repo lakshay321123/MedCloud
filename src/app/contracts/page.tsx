@@ -6,7 +6,7 @@ import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import { demoContracts } from '@/lib/demo-data'
 import type { DemoContract } from '@/lib/demo-data'
-import { useFeeSchedules, usePayerConfigs, usePayers } from '@/lib/hooks'
+import { useFeeSchedules, usePayerConfigs, usePayers, useUnderpaymentCheck, useExtractContractRates, useCreateFeeSchedule, useUpdateFeeSchedule } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
 import { Scale, Search, AlertTriangle, Edit2, Plus } from 'lucide-react'
 
@@ -41,7 +41,7 @@ export default function ContractsPage() {
   const { t } = useT()
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<DemoContract | null>(demoContracts[0] ?? null)
-  const [tab, setTab] = useState<'fee' | 'underpayments' | 'terms'>('fee')
+  const [tab, setTab] = useState<'fee' | 'underpayments' | 'terms' | 'extract'>('fee')
   const [editingRow, setEditingRow] = useState<string | null>(null)
   const [addingCpt, setAddingCpt] = useState(false)
   const [newCpt, setNewCpt] = useState({ cpt: '', description: '', contractedRate: '' })
@@ -90,6 +90,7 @@ export default function ContractsPage() {
     { id: 'fee', label: 'Fee Schedule' },
     { id: 'underpayments', label: 'Underpayment Report' },
     { id: 'terms', label: 'Contract Terms' },
+    { id: 'extract', label: 'AI Rate Extract' },
   ] as const
 
   return (
@@ -275,6 +276,34 @@ export default function ContractsPage() {
                         <span className="text-[13px] text-content-primary font-medium">{row.value}</span>
                       </div>
                     ))}
+                  </div>
+                )}
+                {tab === 'extract' && (
+                  <div className="space-y-4">
+                    <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-4">
+                      <h4 className="text-xs font-semibold text-purple-500 mb-2">AI Contract Rate Extraction</h4>
+                      <p className="text-[11px] text-content-secondary mb-3">Upload a payer contract PDF to automatically extract fee schedule rates, payment terms, and key clauses using AI.</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => toast.info('Upload contract PDF for rate extraction')} className="bg-purple-500 text-white rounded-lg px-4 py-2 text-xs hover:bg-purple-600 transition-colors">Upload Contract PDF</button>
+                        <button onClick={() => toast.info('Re-extracting rates from current contract...')} className="bg-purple-500/10 text-purple-500 rounded-lg px-4 py-2 text-xs hover:bg-purple-500/20 transition-colors">Re-Extract Current</button>
+                      </div>
+                    </div>
+                    <table className="w-full text-[12px]">
+                      <thead><tr className="border-b border-separator text-content-secondary"><th className="text-left py-2">CPT</th><th className="text-left py-2">Description</th><th className="text-left py-2">Contract Rate</th><th className="text-left py-2">Medicare Rate</th><th className="text-left py-2">% of Medicare</th></tr></thead>
+                      <tbody>
+                        {[{cpt:'99213',desc:'Office Visit (Est, Low)',rate:85,medicare:76},{cpt:'99214',desc:'Office Visit (Est, Mod)',rate:125,medicare:110},
+                          {cpt:'99215',desc:'Office Visit (Est, High)',rate:175,medicare:158},{cpt:'99203',desc:'Office Visit (New, Low)',rate:110,medicare:98}
+                        ].map(r=>{
+                          const pctOfMedicare = (r.rate / r.medicare) * 100
+                          return (
+                          <tr key={r.cpt} className="border-b border-separator last:border-0">
+                            <td className="py-2 font-mono">{r.cpt}</td><td className="py-2 text-content-secondary">{r.desc}</td>
+                            <td className="py-2 font-medium">${r.rate}</td><td className="py-2 text-content-secondary">${r.medicare}</td>
+                            <td className={`py-2 font-medium ${pctOfMedicare >= 110 ? 'text-emerald-500' : 'text-amber-500'}`}>{pctOfMedicare.toFixed(0)}%</td>
+                          </tr>
+                        )})}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>

@@ -5,7 +5,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
 import { demoDocs, demoFaxes, DemoDocRecord } from '@/lib/demo-data'
-import { useDocuments, useTriggerTextract, useClassifyDocument } from '@/lib/hooks'
+import { useDocuments, useTriggerTextract, useClassifyDocument, useRequestUploadUrl, useCreateDocument, useTextractResults } from '@/lib/hooks'
 import type { ApiDocument } from '@/lib/hooks'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import {
@@ -400,10 +400,61 @@ function FaxCenterTab() {
   )
 }
 
+function AIProcessingTab() {
+  const { toast } = useToast()
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-4">
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-bold text-brand">156</p>
+          <p className="text-[10px] text-content-tertiary mt-1">Documents Processed</p>
+        </div>
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-bold text-emerald-500">94.2%</p>
+          <p className="text-[10px] text-content-tertiary mt-1">Textract Accuracy</p>
+        </div>
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-bold text-amber-500">8</p>
+          <p className="text-[10px] text-content-tertiary mt-1">Pending Review</p>
+        </div>
+      </div>
+      <div className="card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold">Textract Processing Queue</h3>
+          <button onClick={() => toast.info('Upload document for AI processing')} className="text-xs bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-colors">Upload for OCR</button>
+        </div>
+        <table className="w-full text-xs">
+          <thead><tr className="border-b border-separator text-content-secondary"><th className="text-left py-2 px-3">Document</th><th className="text-left py-2 px-3">Type</th><th className="text-left py-2 px-3">Confidence</th><th className="text-left py-2 px-3">Fields Extracted</th><th className="text-left py-2 px-3">Status</th><th className="text-left py-2 px-3">Actions</th></tr></thead>
+          <tbody>
+            {[{name:'EOB_Aetna_0301.pdf',type:'EOB',confidence:97,fields:12,status:'complete'},
+              {name:'Lab_Results_Chen.pdf',type:'Lab Report',confidence:89,fields:8,status:'review'},
+              {name:'Referral_Smith.pdf',type:'Referral',confidence:94,fields:6,status:'complete'},
+              {name:'Insurance_Card_Park.jpg',type:'Insurance Card',confidence:92,fields:10,status:'complete'},
+              {name:'Op_Report_Johnson.pdf',type:'Op Report',confidence:78,fields:15,status:'review'}
+            ].map(d=>(
+              <tr key={d.name} className="border-b border-separator last:border-0">
+                <td className="py-2 px-3 font-mono">{d.name}</td>
+                <td className="py-2 px-3"><span className="text-[10px] px-2 py-0.5 rounded bg-surface-elevated">{d.type}</span></td>
+                <td className="py-2 px-3"><span className={`font-medium ${d.confidence>=90?'text-emerald-500':d.confidence>=80?'text-amber-500':'text-red-500'}`}>{d.confidence}%</span></td>
+                <td className="py-2 px-3">{d.fields} fields</td>
+                <td className="py-2 px-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${d.status==='complete'?'bg-emerald-500/10 text-emerald-500':'bg-amber-500/10 text-amber-500'}`}>{d.status}</span></td>
+                <td className="py-2 px-3">
+                  {d.status==='review'?<button onClick={()=>toast.info(`Reviewing ${d.name}`)} className="text-brand hover:underline">Review</button>:<span className="text-content-tertiary">—</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 const TABS = [
   { id: 'all', label: 'All Documents' },
   { id: 'unlinked', label: `Unlinked (${demoDocs.filter((d: any)=>d.status==='Unlinked').length})` },
   { id: 'fax', label: 'Fax Center' },
+  { id: 'ai', label: 'AI Processing' },
 ] as const
 type TabId = typeof TABS[number]['id']
 

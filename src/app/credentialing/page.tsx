@@ -5,7 +5,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import { BadgeCheck, AlertTriangle, X } from 'lucide-react'
-import { useCredentialing, useUpdateCredentialing, useCreateCredentialing } from '@/lib/hooks'
+import { useCredentialing, useUpdateCredentialing, useCreateCredentialing, useCredentialingDashboard, useCreateEnrollment } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
 import { UAE_CLIENT_NAMES, US_CLIENT_NAMES } from '@/lib/utils/region'
 
@@ -170,6 +170,39 @@ export default function CredentialingPage() {
           </div>
         </>
       )}
+
+      {/* ── Payer Enrollment Pipeline ── */}
+      <div className="card p-4 mt-4">
+        <h3 className="text-sm font-semibold mb-3">Payer Enrollment Pipeline</h3>
+        <div className="grid grid-cols-5 gap-2 mb-4">
+          {[{stage:'Submitted',count:4,color:'bg-blue-500'},{stage:'In Review',count:7,color:'bg-amber-500'},{stage:'Approved',count:23,color:'bg-emerald-500'},{stage:'Denied',count:1,color:'bg-red-500'},{stage:'Re-credentialing',count:3,color:'bg-purple-500'}].map(s=>(
+            <div key={s.stage} className="text-center">
+              <div className={`${s.color} text-white rounded-lg py-3 mb-1`}>
+                <span className="text-lg font-bold">{s.count}</span>
+              </div>
+              <span className="text-[10px] text-content-secondary">{s.stage}</span>
+            </div>
+          ))}
+        </div>
+        <div className="space-y-2">
+          <h4 className="text-[10px] font-semibold text-content-secondary uppercase tracking-wider">Upcoming Expirations</h4>
+          {[{name:'Dr. Patel',item:'Malpractice Insurance',date:'2026-04-15',days:42},
+            {name:'Dr. Martinez',item:'State License',date:'2026-05-10',days:67},
+            {name:'Dr. Williams',item:'CAQH Attestation',date:'2026-04-01',days:28}
+          ].sort((a,b)=>a.days-b.days).map(e=>(
+            <div key={`${e.name}-${e.item}`} className={`flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2 ${e.days<=30?'border border-amber-500/30':''}`}>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-medium">{e.name}</span>
+                <span className="text-[10px] text-content-secondary">{e.item}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-medium ${e.days<=30?'text-amber-500':e.days<=60?'text-blue-500':'text-content-secondary'}`}>{e.days}d</span>
+                <span className="text-[10px] text-content-tertiary">{e.date}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </ModuleShell>
   )
 }

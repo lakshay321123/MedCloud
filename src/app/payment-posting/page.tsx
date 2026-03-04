@@ -9,7 +9,7 @@ import { demoERAFiles, demoERALineItems, demoUnmatchedPayments } from '@/lib/dem
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
-import { useERAFiles, useAutoPostPayments, useParse835, useReconcilePayments, useBankDeposits, useReconcileBankDeposit } from '@/lib/hooks'
+import { useERAFiles, useAutoPostPayments, useParse835, useReconcilePayments, useBankDeposits, useReconcileBankDeposit, usePayments, useUpdatePayment, useCreateBankDeposit } from '@/lib/hooks'
 
 export default function PaymentPostingPage() {
   const { selectedClient } = useApp()
@@ -332,6 +332,38 @@ export default function PaymentPostingPage() {
           const patBal = eraLines.filter(l => l.action === 'patient_bill')
           toast.success(`${patBal.length || 2} patient statement(s) queued for delivery`)
         }} className="bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-btn px-4 py-2 text-[13px] inline-flex items-center gap-1"><FileText size={14} />Generate Patient Statements</button>
+      </div>
+
+      {/* ── Bank Deposit Reconciliation ── */}
+      <div className="card p-4 mt-6">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold">Bank Deposit Reconciliation</h3>
+          <button onClick={() => toast.info('Upload bank statement to reconcile')} className="text-xs bg-emerald-500/10 text-emerald-500 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-colors">Upload Statement</button>
+        </div>
+        <div className="grid grid-cols-4 gap-3 mb-4">
+          {[{l:'Total Deposits',v:'$124,560',c:'text-emerald-500'},{l:'Matched',v:'$118,230',c:'text-brand'},{l:'Unmatched',v:'$6,330',c:'text-amber-500'},{l:'Variance',v:'$0.00',c:'text-content-secondary'}].map(k=>
+            <div key={k.l} className="bg-surface-elevated rounded-lg p-3 text-center">
+              <p className={`text-lg font-bold ${k.c}`}>{k.v}</p>
+              <p className="text-[10px] text-content-tertiary">{k.l}</p>
+            </div>
+          )}
+        </div>
+        <table className="w-full text-xs">
+          <thead><tr className="border-b border-separator text-content-secondary"><th className="text-left px-3 py-2">Deposit Date</th><th className="text-left px-3 py-2">Bank Amount</th><th className="text-left px-3 py-2">Posted Amount</th><th className="text-left px-3 py-2">Variance</th><th className="text-left px-3 py-2">Status</th></tr></thead>
+          <tbody>
+            {[{date:'2026-03-03',bank:'$45,200',posted:'$45,200',variance:'$0',status:'matched'},
+              {date:'2026-03-02',bank:'$38,100',posted:'$38,100',variance:'$0',status:'matched'},
+              {date:'2026-03-01',bank:'$41,260',posted:'$34,930',variance:'$6,330',status:'unmatched'}
+            ].map(d=>(
+              <tr key={d.date} className="border-b border-separator last:border-0">
+                <td className="px-3 py-2">{d.date}</td><td className="px-3 py-2">{d.bank}</td>
+                <td className="px-3 py-2">{d.posted}</td>
+                <td className={`px-3 py-2 ${d.variance!=='$0'?'text-amber-500 font-medium':''}`}>{d.variance}</td>
+                <td className="px-3 py-2"><span className={`text-[10px] px-2 py-0.5 rounded-full ${({matched:'bg-emerald-500/10 text-emerald-500',unmatched:'bg-amber-500/10 text-amber-500'} as Record<string,string>)[d.status] || 'bg-amber-500/10 text-amber-500'}`}>{d.status}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </ModuleShell>
   )

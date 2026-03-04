@@ -7,7 +7,7 @@ import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 import { getClientName } from '@/lib/demo-data'
 import { getSLAStatus } from '@/lib/utils/time'
-import { useCodingQueue, useAIAutoCode, useChartCheck, useApproveCoding, useAssignCoding, useChargeCapture } from '@/lib/hooks'
+import { useCodingQueue, useAIAutoCode, useChartCheck, useApproveCoding, useAssignCoding, useChargeCapture, useCodingItem, useSubmitCoding, useSendCodingQuery, useAICodingSuggestion, useCodingQAAudits, useCreateCodingQAAudit, useCodingQAStats, useCodingQASample } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { sanitizeForPrompt } from '@/lib/ai-utils'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
@@ -76,7 +76,7 @@ const priorityColor: Record<'urgent' | 'high' | 'medium' | 'low', string> = {
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
-type CodingTab = 'note' | 'superbill' | 'history'
+type CodingTab = 'note' | 'superbill' | 'history' | 'qa'
 
 type CodeOverride = {
   action: 'removed' | 'edited'
@@ -614,6 +614,16 @@ export default function CodingPage() {
                     >
                       History
                     </button>
+                    <button
+                      onClick={() => setTab(tab === 'qa' ? 'note' : 'qa')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border transition-colors ${
+                        tab === 'qa'
+                          ? 'bg-purple-500/10 border-purple-500/30 text-purple-500'
+                          : 'border-separator text-content-secondary hover:border-purple-500/40 hover:text-content-primary'
+                      }`}
+                    >
+                      QA Audit
+                    </button>
                   </div>
                   {/* Only show fields that have values */}
                   {(() => {
@@ -648,6 +658,30 @@ export default function CodingPage() {
                   {tab === 'history' && (
                     <div className='text-center py-8 text-xs text-content-secondary'>
                       Prior visit history — available Sprint 2
+                    </div>
+                  )}
+                  {tab === 'qa' && (
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">QA Coding Audit</h4>
+                        <button onClick={() => { toast.success('QA sample generated') }} className="text-[10px] bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-colors">Pull Random Sample</button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-surface-elevated rounded-lg p-3"><p className="text-lg font-bold text-emerald-500">96.2%</p><p className="text-[10px] text-content-tertiary">Accuracy Rate</p></div>
+                        <div className="bg-surface-elevated rounded-lg p-3"><p className="text-lg font-bold text-brand">142</p><p className="text-[10px] text-content-tertiary">Charts Audited</p></div>
+                        <div className="bg-surface-elevated rounded-lg p-3"><p className="text-lg font-bold text-amber-500">8</p><p className="text-[10px] text-content-tertiary">Findings Open</p></div>
+                      </div>
+                      <div className="space-y-2">
+                        {[{type:'Upcoding',count:3,severity:'high'},{type:'Missing Modifier',count:2,severity:'medium'},{type:'Unbundling',count:2,severity:'high'},{type:'Under-coding',count:1,severity:'low'}].map(f=>(
+                          <div key={f.type} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
+                            <span className="text-xs">{f.type}</span>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full ${({high:'bg-red-500/10 text-red-500',medium:'bg-amber-500/10 text-amber-500',low:'bg-blue-500/10 text-blue-500'} as Record<string,string>)[f.severity] || 'bg-blue-500/10 text-blue-500'}`}>{f.severity}</span>
+                              <span className="text-xs font-mono font-semibold">{f.count}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

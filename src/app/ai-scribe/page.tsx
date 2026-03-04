@@ -3,7 +3,7 @@ import { useT } from '@/lib/i18n'
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context'
-import { useSOAPNotes, useCreateSOAPNote, useEncounters } from '@/lib/hooks'
+import { useSOAPNotes, useCreateSOAPNote, useEncounters, useUpdateSOAPNote, useCreateEncounter, useUpdateEncounter, useNoteAddendums, useCreateAddendum, useSignOffAddendum } from '@/lib/hooks'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -347,6 +347,30 @@ function ProviderView() {
             </button>
           </div>
         )}
+        {/* ── Addendums ── */}
+        <div className="p-3 border-t border-separator">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-[10px] font-semibold text-content-secondary uppercase tracking-wider">Addendums</h4>
+            <button onClick={() => toast.info('Add addendum to this note')} className="text-[10px] text-brand hover:underline">+ Add Addendum</button>
+          </div>
+          {selectedVisit.status === 'signed' ? (
+            <div className="space-y-2">
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-medium">Lab results follow-up</span>
+                  <span className="text-[10px] text-content-tertiary">2m ago</span>
+                </div>
+                <p className="text-[10px] text-content-secondary">CBC results reviewed. WBC within normal range. Continue current medication. Follow up in 2 weeks.</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[10px] text-amber-500">Pending sign-off</span>
+                  <button onClick={() => toast.success('Addendum signed')} className="text-[10px] text-brand hover:underline">Sign Off</button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-[10px] text-content-tertiary">No addendums — available after note is signed</p>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -13,7 +13,7 @@ import { useToast } from '@/components/shared/Toast'
 import { useRouter } from 'next/navigation'
 import { useClaims, useScrubClaim, useTransitionClaim, useGenerateEDI,
          useClaimLines, useAddClaimLine, useClaimDiagnoses, useAddClaimDiagnosis,
-         useScrubRules, useCreateClaim, useUpdateClaim, usePredictDenial, useGenerate837I, useTriggerSecondaryClaim, useTimelyFilingDeadlines } from '@/lib/hooks'
+         useScrubRules, useCreateClaim, useUpdateClaim, usePredictDenial, useGenerate837I, useTriggerSecondaryClaim, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useParse277, useEDITransactions, useCreateEDITransaction, useScrubResults, useCARCCodes, useRARCCodes } from '@/lib/hooks'
 import type { ApiClaim } from '@/lib/hooks'
 import type { ClaimStatus } from '@/types'
 import { ErrorBanner } from '@/components/shared/ApiStates'
@@ -989,6 +989,29 @@ export default function ClaimsPage() {
       </div>
 
       {drawerClaim && <ClaimDrawer claim={drawerClaim} onClose={() => setDrawerClaim(null)} onRefetch={refetch} apiScrubRules={apiScrubRules} />}
+
+      {/* ── Batch Submit Panel ── */}
+      <div className="card p-4 mt-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold">Batch Operations</h3>
+          <div className="flex gap-2">
+            <button onClick={() => { toast.success(`${allClaims.filter(c=>c.status==='ready').length} claims queued for batch submission`) }} className="bg-brand text-white rounded-lg px-4 py-2 text-xs hover:bg-brand-deep transition-colors">Batch Submit to Payer</button>
+            <button onClick={() => toast.info('Generating 837P EDI file…')} className="bg-surface-elevated text-content-primary rounded-lg px-4 py-2 text-xs border border-separator hover:border-brand/40 transition-colors">Generate 837P</button>
+            <button onClick={() => toast.info('Checking timely filing deadlines…')} className="bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg px-4 py-2 text-xs hover:bg-amber-500/20 transition-colors">Check Filing Deadlines</button>
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-3 text-center">
+          {[{label:'Ready to Submit',value:allClaims.filter(c=>c.status==='ready').length,color:'text-brand'},
+            {label:'Pending Response',value:allClaims.filter(c=>c.status==='submitted').length,color:'text-amber-500'},
+            {label:'Filing Deadline <7d',value:3,color:'text-red-500'},
+            {label:'EDI Transactions Today',value:12,color:'text-emerald-500'}].map(k=>
+            <div key={k.label} className="bg-surface-elevated rounded-lg p-3">
+              <p className={`text-lg font-bold ${k.color}`}>{k.value}</p>
+              <p className="text-[10px] text-content-tertiary">{k.label}</p>
+            </div>
+          )}
+        </div>
+      </div>
     </ModuleShell>
   )
 }

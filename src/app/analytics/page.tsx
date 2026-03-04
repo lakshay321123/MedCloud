@@ -5,7 +5,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { demoClaims, demoClients } from '@/lib/demo-data'
-import { useClaims, useReport, useClientHealthScores } from '@/lib/hooks'
+import { useClaims, useReport, useClientHealthScores, useProviders, useClients } from '@/lib/hooks'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import { useAnalyticsKPIs } from '@/lib/hooks'
 import {
