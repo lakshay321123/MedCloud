@@ -172,10 +172,11 @@ export function useAgentPrompt(agentName: 'chris' | 'cindy' | null) {
       const res = await fetch(`/api/retell?${qs}`)
       const data = await res.json()
 
-      if (!res.ok || data.error) {
+      if (!res.ok || data.error || data.fallback) {
         // Fallback: list all agents and find by name
         const listRes = await fetch('/api/retell?action=list-agents')
         const listData = await listRes.json()
+        console.log('[Prompt Editor] list-agents raw:', JSON.stringify(listData).slice(0, 500))
         // Retell may return array directly or wrapped: { agents: [] } or { data: [] }
         const agents: Record<string, unknown>[] = Array.isArray(listData)
           ? listData
@@ -193,7 +194,8 @@ export function useAgentPrompt(agentName: 'chris' | 'cindy' | null) {
           setPrompt(prompt)
           return
         }
-        setError(`Agent "${agentName}" not found. Check RETELL_AGENT_${agentName.toUpperCase()} env var.`)
+        const agentNames = agents.map((a: Record<string, unknown>) => a.agent_name).join(', ')
+        setError(`Agent "${agentName}" not found in Retell. Available agents: ${agentNames || 'none'}. Check RETELL_AGENT_${agentName.toUpperCase()} env var.`)
         return
       }
 
