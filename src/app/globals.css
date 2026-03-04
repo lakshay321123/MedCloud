@@ -5,49 +5,44 @@
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════
-   APPLE HEALTH × COSENTUS TEAL
-   Calm, confident, intelligent
+   MEDCLOUD · COSENTUS AI
+   Brand palette: #000 · #616161 · #00B5D6 family
    ═══════════════════════════════════════════ */
 
 :root {
   --brand: #00B5D6;
-  --brand-gradient: linear-gradient(135deg, #00B5D6, #069DB8);
-  --brand-gradient-vibrant: linear-gradient(135deg, #36C2DE, #00B5D6, #047285);
+  --brand-gradient: linear-gradient(135deg, #00B5D6, #36C2DE);
+  --brand-gradient-vibrant: linear-gradient(135deg, #36C2DE, #00B5D6, #68D1E6);
 }
 
-/* ── LIGHT MODE (primary experience) ─── */
+/* ── LIGHT MODE ─── */
+/* Base: #D6EBF2 (Cyan 100) · Cards: #FFFFFF · Hover: #D6EBF2 · Text: #000 / #616161 */
 .light {
-  --surface-primary: #F5F5F7;
+  --surface-primary: #D6EBF2;
   --surface-secondary: #FFFFFF;
-  --surface-elevated: #EBEBED;
-  --surface-overlay: rgba(255,255,255,0.85);
+  --surface-elevated: #D6EBF2;               /* hover rows, elevated areas */
+  --surface-overlay: rgba(214,235,242,0.92);
   --content-primary: #000000;
-  --content-secondary: #3A3A3C;
-  --content-tertiary: #6E6E73;
+  --content-secondary: #616161;
+  --content-tertiary: #CCCCCC;
   --content-inverse: #FFFFFF;
-  --separator: rgba(0,0,0,0.12);
+  --separator: rgba(0,181,214,0.2);          /* softer than solid #A1DEED */
 }
 
 /* ── DARK MODE ─── */
+/* Base: #000 · Cards: #616161@18% · Sidebar: #616161@40% · Text: #FFF/#CCCCCC */
 .dark {
   --surface-primary: #000000;
-  --surface-secondary: #1C1C1E;
-  --surface-elevated: #2C2C2E;
-  --surface-overlay: rgba(28,28,30,0.85);
-  --content-primary: #F5F5F7;
-  --content-secondary: #98989D;
-  --content-tertiary: #636366;
+  --surface-secondary: rgba(97,97,97,0.18);    /* cards — subtle lift from black */
+  --surface-elevated: rgba(97,97,97,0.40);     /* sidebar, topbar, dropdowns */
+  --surface-overlay: rgba(0,0,0,0.88);
+  --content-primary: #FFFFFF;
+  --content-secondary: #CCCCCC;
+  --content-tertiary: #68D1E6;
   --content-inverse: #000000;
-  --separator: rgba(255,255,255,0.08);
-  --brand: #00A2BF;        /* slightly toned down, less neon */
-  --brand-hover: #0091AB;
-}
-
-.dark .bg-brand {
-  background-color: #00A2BF;
-}
-.dark .bg-brand:hover {
-  background-color: #0091AB;
+  --separator: rgba(0,181,214,0.15);
+  --brand: #00B5D6;
+  --brand-hover: #36C2DE;
 }
 
 /* ── BASE ─── */
@@ -70,8 +65,8 @@ select option {
   color: #1D1D1F;
 }
 .dark select option {
-  background: #2C2C2E;
-  color: #F5F5F7;
+  background: #1a1a1a;
+  color: #FFFFFF;
 }
 
 /* ── UTILITY CLASSES ─── */
