@@ -165,14 +165,14 @@ export default function DenialsPage() {
     <ModuleShell title={t("denials","title")} subtitle={t("denials","subtitle")}>
       {apiError && <ErrorBanner error={apiError} onRetry={refetch} />}
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Open Denials" value={denials.filter(d => ['denied','open','pending','new'].includes(d.status)).length} icon={<ShieldAlert size={20} />} />
-        <KPICard label="In Appeal" value={denials.filter(d => ['appealed','appeal_pending','in_appeal'].includes(d.status)).length} />
-        <KPICard label="Appeal Success Rate" value={(() => {
+        <KPICard label={t('denials','openDenials')} value={denials.filter(d => ['denied','open','pending','new'].includes(d.status)).length} icon={<ShieldAlert size={20} />} />
+        <KPICard label={t('denials','inAppeal')} value={denials.filter(d => ['appealed','appeal_pending','in_appeal'].includes(d.status)).length} />
+        <KPICard label={t('denials','appealSuccessRate')} value={(() => {
           const paid = denials.filter(d => d.status === 'paid').length
           const appealed = denials.filter(d => ['appealed','appeal_pending','in_appeal'].includes(d.status)).length
           return paid > 0 ? `${Math.round((paid / Math.max(1, appealed)) * 100)}%` : '—'
         })()} trend="up" sub="+4%" />
-        <KPICard label="Avg Resolution" value="18 days" />
+        <KPICard label={t('denials','avgResolution')} value="18 days" />
       </div>
       <div className="grid grid-cols-2 gap-4 h-[calc(100vh-380px)]">
         <div className="card overflow-auto">

@@ -142,6 +142,7 @@ const translations = {
     todayPostingSummary: { en: "Today's posting summary",  ar: 'ملخص ترحيل اليوم',              es: 'Resumen de Registros de Hoy' },
     todayAppointments:{ en: "Today's Appointments",        ar: 'مواعيد اليوم',                   es: 'Citas de Hoy' },
     pendingSignOffs:  { en: 'Pending Sign-Offs',           ar: 'بانتظار الاعتماد',              es: 'Firmas Pendientes' },
+    unsignedNotes:    { en: 'Unsigned > 24h',               ar: 'غير موقّعة > 24 ساعة',         es: 'Sin Firmar > 24h' },
   },
 
   claims: {
@@ -183,6 +184,10 @@ const translations = {
     deductible:     { en: 'Deductible',                    ar: 'قابل للخصم',                   es: 'Deducible' },
     priorAuth:      { en: 'Prior Authorization',           ar: 'التفويض المسبق',               es: 'Autorización Previa' },
     batchCheck:     { en: 'Batch Check',                   ar: 'فحص دفعي',                     es: 'Verificación por Lote' },
+    checksToday:    { en: 'Checks Today',                  ar: 'فحوصات اليوم',                 es: 'Verificaciones Hoy' },
+    activeElig:     { en: 'Active',                        ar: 'نشط',                           es: 'Activo' },
+    inactiveIssues: { en: 'Inactive/Issues',               ar: 'غير نشط/مشاكل',                es: 'Inactivo/Problemas' },
+    priorAuthReq:   { en: 'Prior Auth Required',           ar: 'تفويض مسبق مطلوب',             es: 'Auth Previa Requerida' },
     noBatchYet:     { en: 'No batch run yet this session', ar: 'لم تُشغَّل دفعة بعد',          es: 'Sin lote ejecutado aún' },
   },
 
@@ -195,6 +200,7 @@ const translations = {
     generateAppeal:    { en: 'Generate Appeal',          ar: 'توليد طعن',                  es: 'Generar Apelación' },
     appealLevel:       { en: 'Appeal Level',             ar: 'مستوى الطعن',               es: 'Nivel de Apelación' },
     appealSuccessRate: { en: 'Appeal Success Rate',      ar: 'معدل نجاح الطعن',           es: 'Tasa de Éxito de Apelación' },
+    avgResolution:     { en: 'Avg Resolution',           ar: 'متوسط وقت الحل',            es: 'Resolución Promedio' },
   },
 
   ar: {
@@ -276,7 +282,7 @@ const translations = {
     title:            { en: 'Analytics',                ar: 'التحليلات',               es: 'Analítica' },
     subtitle:         { en: 'Revenue cycle performance insights', ar: 'رؤى أداء دورة الإيراد', es: 'Perspectivas de rendimiento del ciclo de ingresos' },
     revenueCollected: { en: 'Revenue Collected',        ar: 'الإيراد المحصّل',         es: 'Ingresos Recaudados' },
-    collectionRate:   { en: 'Collection Rate',          ar: 'معدل التحصيل',            es: 'Tasa de Cobro' },
+    collectionRate:   { en: 'Net Collection Rate',      ar: 'معدل التحصيل الصافي',    es: 'Tasa Neta de Cobro' },
     denialRate:       { en: 'Denial Rate',              ar: 'معدل الرفض',              es: 'Tasa de Denegación' },
     cleanClaimRate:   { en: 'Clean Claim Rate',         ar: 'معدل المطالبات النظيفة', es: 'Tasa de Reclamaciones Limpias' },
     daysInAR:         { en: 'Days in A/R',              ar: 'أيام الذمم',             es: 'Días en C×C' },

@@ -61,10 +61,10 @@ export default function CredentialingPage() {
   return (
     <ModuleShell title={t("credentialing","title")} subtitle={t("credentialing","subtitle")}>
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Active Providers" value={activeCount} icon={<BadgeCheck size={20}/>}/>
-        <KPICard label="Expiring (30 days)" value={expiringCount} trend="down"/>
-        <KPICard label="Onboarding" value={onboardingCount}/>
-        <KPICard label="Total Enrollments" value={totalEnrollments}/>
+        <KPICard label={t('credentialing','activeProviders')} value={activeCount} icon={<BadgeCheck size={20}/>}/>
+        <KPICard label={t('credentialing','expiring30')} value={expiringCount} trend="down"/>
+        <KPICard label={t('credentialing','onboarding')} value={onboardingCount}/>
+        <KPICard label={t('credentialing','totalEnrollments')} value={totalEnrollments}/>
       </div>
       {expiring > 0 && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-4 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2">
