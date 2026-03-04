@@ -10,7 +10,7 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import { TrendingUp, X, Phone, Bot, User, PhoneCall, Plus, AlertTriangle, FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { tfDaysRemaining } from '@/lib/utils/time'
 import { useRouter } from 'next/navigation'
-import { useLogARCall, usePayerConfigs, useTimelyFilingDeadlines, useCreditBalances, useWriteOffs, useRequestWriteOff, useARFollowUps, useARCallLog, useCheckSLAEscalations, useIdentifyCreditBalances, useResolveCreditBalance, useApproveWriteOff, useUpsertPayerConfig } from '@/lib/hooks'
+import { useLogARCall, usePayerConfigs, useTimelyFilingDeadlines, useCreditBalances, useWriteOffs, useRequestWriteOff, useARFollowUps, useARCallLog, useCheckSLAEscalations, useIdentifyCreditBalances, useResolveCreditBalance, useApproveWriteOff, useUpsertPayerConfig, useClaims } from '@/lib/hooks'
 
 
 
@@ -557,10 +557,52 @@ export default function ARManagementPage() {
   const { selectedClient, country } = useApp()
   const { t } = useT()
   const { toast } = useToast()
+  const { data: claimsResult, loading: claimsLoading } = useClaims({ limit: 200 })
+  const { data: arCallLogResult } = useARCallLog()
+
+  // Map real claims to AR accounts shape; fall back to seed data if API empty
+  const apiAccounts: ARAccount[] = useMemo(() => (claimsResult?.data || [])
+    .filter(c => !['paid', 'draft'].includes(c.status))
+    .map(c => {
+      const today = new Date()
+      const dos = c.dos_from || c.created_at?.slice(0, 10) || ''
+      const ageMs = dos ? today.getTime() - new Date(dos).getTime() : 0
+      const age = Math.max(0, Math.floor(ageMs / 86400000))
+      const balance = (Number(c.total_charges) || 0) - (Number(c.paid_amount) || 0)
+      const source: ARAccount['source'] =
+        c.status === 'denied' || c.status === 'appealed' ? 'denied_claim' :
+        balance > 0 && balance < Number(c.total_charges) ? 'underpayment' :
+        'patient_balance'
+      const priority: ARAccount['priority'] =
+        age > 90 ? 'urgent' : age > 60 ? 'high' : age > 30 ? 'medium' : 'low'
+      return {
+        id: c.id,
+        patient: c.patient_name || 'Unknown Patient',
+        client: c.client_name || '',
+        payer: c.payer_name || 'Unknown Payer',
+        original: Number(c.total_charges) || 0,
+        balance,
+        age,
+        lastAction: c.status === 'denied' ? 'Denied — follow-up needed' : 'Submitted — awaiting payment',
+        nextFollowup: new Date(today.getTime() + 7 * 86400000).toISOString().slice(0, 10),
+        priority,
+        source,
+        dos,
+      }
+    }), [claimsResult])
+
   const [accounts, setAccounts] = useState<ARAccount[]>(initialAccounts)
   const [callHistory, setCallHistory] = useState<Record<string, CallLogEntry[]>>(initialCallHistory)
   const [selected, setSelected] = useState<ARAccount | null>(null)
   const [callMode, setCallMode] = useState<'accounts' | 'inbound' | 'credits' | 'sla'>('accounts')
+
+  // Sync API data into accounts state when it arrives
+  React.useEffect(() => {
+    if (apiAccounts.length > 0) {
+      setAccounts(apiAccounts)
+    }
+  }, [claimsResult])
+
   const { mutate: logCallAPI } = useLogARCall()
   const { data: creditBalanceResult } = useCreditBalances({ limit: 50 })
   const { data: identifiedCredits, loading: identifyingCredits, refetch: refetchCredits } = useIdentifyCreditBalances()
@@ -652,10 +694,8 @@ export default function ARManagementPage() {
 
   return (
     <ModuleShell title={t("ar","title")} subtitle={t("ar","subtitle")}>
-      <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
-        <AlertTriangle size={13} className='shrink-0' />
-        A/R Management connected — live account tracking
-      </div>
+      {claimsLoading && <div className='mx-4 mb-4 px-4 py-2.5 bg-brand/5 border border-brand/20 rounded-lg flex items-center gap-2 text-xs text-brand'><AlertTriangle size={13} className='shrink-0'/>Loading live AR accounts…</div>}
+      {!claimsLoading && apiAccounts.length === 0 && <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-400'><AlertTriangle size={13} className='shrink-0'/>No claims in AR — showing seed data. Submit claims to populate live accounts.</div>}
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KPICard label={t("ar","totalAR")} value={`$${(totalAR/1000).toFixed(0)}K`} icon={<TrendingUp size={20} />} />
         <KPICard label={t("ar","workedToday")} value={String(workedToday)} trend="up" />

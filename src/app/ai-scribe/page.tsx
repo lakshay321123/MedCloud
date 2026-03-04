@@ -102,9 +102,15 @@ function ProviderView() {
 
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
   const [selectedVisit, setSelectedVisit] = useState<DemoVisit | null>(null)
-  const selectedPatient = demoPatients.find(p => p.id === selectedPatientId)
+  // Derive patient info from the selected visit (API) or fall back to demoPatients
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const selectedPatient: any = selectedVisit
+    ? { id: selectedVisit.patientId, name: selectedVisit.patientName, firstName: (selectedVisit.patientName || '').split(' ')[0], lastName: (selectedVisit.patientName || '').split(' ').slice(1).join(' '), dob: '', gender: '', insurance: '', allergies: [], medications: [] }
+    : demoPatients.find(p => p.id === selectedPatientId) ?? null
   const selectedAppt = demoAppointments.find(a => a.patientId === selectedPatientId)
-  const todayAppts = demoAppointments
+  const todayAppts: any[] = apiVisits.length
+    ? apiVisits.map(v => ({ id: v.id, patientId: v.patientId, patientName: v.patientName, time: v.dos, type: v.encounterType, provider: v.provider, status: v.status }))
+    : demoAppointments
 
   // Recording state
   const [transcript, setTranscript] = useState('')
@@ -386,7 +392,7 @@ function ProviderView() {
       {(selectedPatient.medications?.length ?? 0) > 0 && (
         <div className="card p-4">
           <div className="text-xs font-semibold text-content-secondary mb-2 uppercase tracking-wide">Medications</div>
-          <ul className="text-sm space-y-1">{selectedPatient.medications!.map((m, i) => <li key={i}>• {m}</li>)}</ul>
+          <ul className="text-sm space-y-1">{selectedPatient.medications!.map((m: string, i: number) => <li key={i}>• {m}</li>)}</ul>
         </div>
       )}
       {/* Prior visits preview */}

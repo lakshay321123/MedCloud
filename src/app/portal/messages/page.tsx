@@ -2,7 +2,7 @@
 import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
-import { demoMessages, DemoMessage } from '@/lib/demo-data'
+import type { DemoMessage } from '@/lib/demo-data'
 import { useMessages, useSendMessage, useMarkMessageRead } from '@/lib/hooks'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -46,8 +46,8 @@ export default function MessagesPage() {
   const { t } = useT()
   const { toast } = useToast()
   const { getError } = useAbuseFilter()
-  // API threads take priority; demo data fills in when API is unavailable
-  const [localThreads, setLocalThreads] = useState<any[]>(demoMessages)
+  // localThreads holds optimistically-added threads before API refetch
+  const [localThreads, setLocalThreads] = useState<DemoMessage[]>([])
   const [selected, setSelected] = useState<DemoMessage | null>(null)
   const [filter, setFilter] = useState('')
   const [reply, setReply] = useState('')

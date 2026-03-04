@@ -4,7 +4,6 @@ import React, { useState, useMemo } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
-import { demoClaims, demoClients } from '@/lib/demo-data'
 import { useClaims, useReport, useClientHealthScores, useProviders, useClients } from '@/lib/hooks'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import { useAnalyticsKPIs } from '@/lib/hooks'
@@ -32,23 +31,16 @@ function KPITooltip({ formula }: { formula: string }) {
   )
 }
 
-// ─── Static demo data ────────────────────────────────────────────────────────
-const monthlyRevenue = [
-  { month: 'Oct', revenue: 280000 },
-  { month: 'Nov', revenue: 310000 },
-  { month: 'Dec', revenue: 295000 },
-  { month: 'Jan', revenue: 340000 },
-  { month: 'Feb', revenue: 380000 },
-  { month: 'Mar', revenue: 420000 },
+// Static fallback trend data — used when DB has < 2 months of claims
+const FALLBACK_REVENUE = [
+  { month: 'Oct', revenue: 280000 }, { month: 'Nov', revenue: 310000 },
+  { month: 'Dec', revenue: 295000 }, { month: 'Jan', revenue: 340000 },
+  { month: 'Feb', revenue: 380000 }, { month: 'Mar', revenue: 420000 },
 ]
-
-const denialTrend = [
-  { month: 'Oct', initial: 7.2, net: 4.1 },
-  { month: 'Nov', initial: 6.8, net: 3.9 },
-  { month: 'Dec', initial: 8.1, net: 4.8 },
-  { month: 'Jan', initial: 6.2, net: 3.5 },
-  { month: 'Feb', initial: 5.8, net: 3.2 },
-  { month: 'Mar', initial: 5.1, net: 2.9 },
+const FALLBACK_DENIAL = [
+  { month: 'Oct', initial: 7.2, net: 4.1 }, { month: 'Nov', initial: 6.8, net: 3.9 },
+  { month: 'Dec', initial: 8.1, net: 4.8 }, { month: 'Jan', initial: 6.2, net: 3.5 },
+  { month: 'Feb', initial: 5.8, net: 3.2 }, { month: 'Mar', initial: 5.1, net: 2.9 },
 ]
 
 // Deterministic daily claim counts — no Math.random(), consistent on every render
@@ -123,20 +115,31 @@ export default function AnalyticsPage() {
   const [tab, setTab] = useState<'financial' | 'operational' | 'ai' | 'payer'>('financial')
   const [dateRange, setDateRange] = useState('last30')
 
-  // Live API — returns aggregated KPIs from Aurora
+  // Live API
   const { data: liveKPIs } = useAnalyticsKPIs()
+  const { data: claimsApiResult } = useClaims({ limit: 500 })
 
-  // Demo claims used for chart visualisations only (time-series not in API yet)
-  const claims = useMemo(() =>
-    selectedClient
-      ? demoClaims.filter(c => c.clientId === selectedClient.id)
-      : country === 'uae'
-        ? demoClaims.filter(c => (UAE_ORG_IDS as readonly string[]).includes(c.clientId))
-        : country === 'usa'
-          ? demoClaims.filter(c => (US_ORG_IDS as readonly string[]).includes(c.clientId))
-          : demoClaims,
-    [selectedClient, country]
-  )
+  const claims = useMemo(() => {
+    const apiClaims = (claimsApiResult?.data || []).map(c => ({
+      id: c.id,
+      clientId: c.client_id,
+      clientName: c.client_name || c.client_id,
+      patientId: c.patient_id,
+      payer: c.payer_name || 'Unknown',
+      status: c.status,
+      billed: Number(c.total_charges) || 0,
+      allowed: Number(c.allowed_amount) || 0,
+      paid: Number(c.paid_amount) || 0,
+      submittedDate: c.submitted_date,
+      paymentDate: c.paid_date,
+      dos: c.dos_from,
+    }))
+    if (!apiClaims.length) return []
+    if (selectedClient) return apiClaims.filter(c => c.clientId === selectedClient.id)
+    if (country === 'uae') return apiClaims.filter(c => (UAE_ORG_IDS as readonly string[]).includes(c.clientId))
+    if (country === 'usa') return apiClaims.filter(c => (US_ORG_IDS as readonly string[]).includes(c.clientId))
+    return apiClaims
+  }, [claimsApiResult, selectedClient, country])
 
   // ─── Financial calculations ───────────────────────────────────────────────
   const revenueCollected = useMemo(() =>
@@ -180,16 +183,18 @@ export default function AnalyticsPage() {
   }, [claims])
 
   // ─── Collection rate by client bar ──────────────────────────────────────
-  const clientCollectionRates = useMemo(() =>
-    demoClients.map(client => {
-      const cc = demoClaims.filter(c => c.clientId === client.id)
-      const billed = cc.reduce((s, c) => s + c.billed, 0)
-      const paid = cc.reduce((s, c) => s + c.paid, 0)
-      const rate = billed > 0 ? Math.round((paid / billed) * 100) : 0
-      return { name: client.name.split(' ')[0], rate, fill: rate >= 95 ? '#10B981' : rate >= 85 ? '#F59E0B' : '#EF4444' }
-    }),
-    []
-  )
+  const clientCollectionRates = useMemo(() => {
+    const byClient: Record<string, { billed: number; paid: number; name: string }> = {}
+    claims.forEach(c => {
+      if (!byClient[c.clientId]) byClient[c.clientId] = { billed: 0, paid: 0, name: (c as any).clientName || c.clientId }
+      byClient[c.clientId].billed += c.billed
+      byClient[c.clientId].paid += c.paid
+    })
+    return Object.values(byClient).map(cl => {
+      const rate = cl.billed > 0 ? Math.round((cl.paid / cl.billed) * 100) : 0
+      return { name: cl.name.split(' ')[0], rate, fill: rate >= 95 ? '#10B981' : rate >= 85 ? '#F59E0B' : '#EF4444' }
+    })
+  }, [claims])
 
   // ─── Payer performance table ──────────────────────────────────────────────
   const payerPerf = useMemo(() => {
@@ -229,6 +234,38 @@ export default function AnalyticsPage() {
       payer: p,
       cats: denialCategories.map(cat => seedRng(p + cat) % 5),
     }))
+  }, [claims])
+
+  // ─── Computed monthly revenue + denial trends from real claims ──────────
+  const monthlyRevenue = useMemo(() => {
+    if (claims.length < 3) return FALLBACK_REVENUE
+    const byMonth: Record<string, number> = {}
+    claims.forEach(c => {
+      if (!c.submittedDate) return
+      const month = new Date(c.submittedDate).toLocaleString('en-US', { month: 'short' })
+      byMonth[month] = (byMonth[month] || 0) + c.paid
+    })
+    const result = Object.entries(byMonth).map(([month, revenue]) => ({ month, revenue }))
+    return result.length >= 2 ? result : FALLBACK_REVENUE
+  }, [claims])
+
+  const denialTrend = useMemo(() => {
+    if (claims.length < 3) return FALLBACK_DENIAL
+    const byMonth: Record<string, { total: number; denied: number; appealed: number }> = {}
+    claims.forEach(c => {
+      if (!c.submittedDate) return
+      const month = new Date(c.submittedDate).toLocaleString('en-US', { month: 'short' })
+      if (!byMonth[month]) byMonth[month] = { total: 0, denied: 0, appealed: 0 }
+      byMonth[month].total++
+      if (c.status === 'denied') byMonth[month].denied++
+      if (c.status === 'appealed') byMonth[month].appealed++
+    })
+    const result = Object.entries(byMonth).map(([month, d]) => ({
+      month,
+      initial: d.total > 0 ? parseFloat(((d.denied / d.total) * 100).toFixed(1)) : 0,
+      net: d.total > 0 ? parseFloat((((d.denied - d.appealed) / d.total) * 100).toFixed(1)) : 0,
+    }))
+    return result.length >= 2 ? result : FALLBACK_DENIAL
   }, [claims])
 
   const TABS = [

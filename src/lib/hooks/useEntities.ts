@@ -244,6 +244,7 @@ export interface ApiTask {
   id: string
   org_id: string
   client_id?: string
+  client_name?: string
   title?: string
   description?: string
   status?: TaskStatus
@@ -509,6 +510,10 @@ export function useTasks(extra?: ApiListParams) {
 
 export function useUpdateTask(id: string) {
   return useMutation<ApiTask, Partial<ApiTask>>('put', `/tasks/${id}`)
+}
+
+export function useCreateTask() {
+  return useMutation<ApiTask, Partial<ApiTask>>('post', '/tasks')
 }
 
 // ── CARC / RARC ───────────────────────────────────────────────────────────────

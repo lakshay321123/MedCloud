@@ -4,7 +4,6 @@ import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
-import { demoAuditLog } from '@/lib/demo-data'
 import { useAuditLog, useClients, useProviders, useInvoices, useGenerateInvoice, useInvoiceConfigs, usePatientAccessRequests, useClientOnboardings, useInitOnboarding } from '@/lib/hooks'
 import { Users, Building2, Activity, Shield, X, Search, Plus, Receipt, ClipboardList, KeyRound } from 'lucide-react'
 
@@ -317,7 +316,7 @@ function AuditLogTab() {
     details: typeof a.details === 'object' ? JSON.stringify(a.details) : a.details || '',
     ipAddress: '—', userAgent: '—', role: a.user_role || '—', ip: '—',
   }))
-  const filtered = (apiAudit.length ? apiAudit : demoAuditLog).filter((e: any) => {
+  const filtered = apiAudit.filter((e) => {
     if (search && !e.user.toLowerCase().includes(search.toLowerCase())) return false
     if (actionFilter && e.action !== actionFilter) return false
     return true

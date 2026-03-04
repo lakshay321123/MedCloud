@@ -6,7 +6,6 @@ import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import DocViewer from '@/components/shared/DocViewer'
 import { useApp } from '@/lib/context'
-import { demoMessages } from '@/lib/demo-data'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import type { DemoClaim, ClaimTimelineEvent } from '@/lib/demo-data'
 import { useToast } from '@/components/shared/Toast'
@@ -125,7 +124,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
   const { currentUser } = useApp()
   const [tab, setTab] = useState<'overview' | 'lines' | 'docs' | 'messages' | 'audit' | 'scrub'>('overview')
   const { toast } = useToast()
-  const [localMessages, setLocalMessages] = useState(demoMessages.filter(m => m.entityId === claim.id))
+  const [localMessages, setLocalMessages] = useState<any[]>([])
   const [msgInput, setMsgInput] = useState('')
   const [ediOutput, setEdiOutput] = useState<string | null>(null)
   const [edi837IOutput, setEdi837IOutput] = useState<string | null>(null)
