@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useEffect, useMemo, useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -11,6 +12,7 @@ import { getSLAStatus } from '@/lib/utils/time'
 import { useERAFiles, useAutoPostPayments } from '@/lib/hooks'
 
 export default function PaymentPostingPage() {
+  const { t } = useT()
   const { selectedClient } = useApp()
   const { toast } = useToast()
   const { data: apiERAResult } = useERAFiles({ limit: 50 })
@@ -63,16 +65,16 @@ export default function PaymentPostingPage() {
 
   if (!selectedEra) {
     return (
-      <ModuleShell title="Payment Posting" subtitle="Process ERAs and post payments">
+      <ModuleShell title={t("posting","title")} subtitle={t("posting","subtitle")}>
         <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
           <AlertTriangle size={13} className='shrink-0' />
           Demo data — live data connects in Sprint 2
         </div>
         <div className="grid grid-cols-4 gap-4 mb-4">
-          <KPICard label="ERAs Pending" value={eras.filter(e => e.status !== 'posted').length} icon={<Receipt size={20} />} />
-          <KPICard label="Posted Today" value="89" icon={<CheckCircle2 size={20} />} />
-          <KPICard label="Auto-Post Rate" value={apiERAResult?.data ? `${Math.round((apiERAResult.data.filter(e => e.status === 'posted').length / Math.max(apiERAResult.data.length, 1)) * 100)}%` : '76%'} icon={<Send size={20} />} />
-          <KPICard label="Unmatched" value={demoUnmatchedPayments.length} icon={<AlertTriangle size={20} />} />
+          <KPICard label={t("posting","erasPending")} value={eras.filter(e => e.status !== 'posted').length} icon={<Receipt size={20} />} />
+          <KPICard label={t("posting","postedToday")} value="89" icon={<CheckCircle2 size={20} />} />
+          <KPICard label={t("posting","autoPostRate")} value={apiERAResult?.data ? `${Math.round((apiERAResult.data.filter(e => e.status === 'posted').length / Math.max(apiERAResult.data.length, 1)) * 100)}%` : '76%'} icon={<Send size={20} />} />
+          <KPICard label={t("posting","unmatched")} value={demoUnmatchedPayments.length} icon={<AlertTriangle size={20} />} />
         </div>
 
         {/* Silent denial detection banner */}
@@ -80,7 +82,7 @@ export default function PaymentPostingPage() {
           <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-4">
             <AlertTriangle size={15} className="text-red-500 mt-0.5 shrink-0" />
             <div className="flex-1">
-              <p className="text-[13px] font-semibold text-red-500">Silent Denials Detected</p>
+              <p className="text-[13px] font-semibold text-red-500">{t("posting","silentDenials")}</p>
               <p className="text-[12px] text-content-secondary mt-0.5">
                 {silentDenials.length} ERA line{silentDenials.length > 1 ? 's' : ''} have denied amounts but are not routed to AR.
                 These may be silently written off.
@@ -101,7 +103,7 @@ export default function PaymentPostingPage() {
 
         <div className="card overflow-hidden mb-4">
           <div className="flex items-center justify-between px-4 py-3 border-b border-separator">
-            <h3 className="text-[12px] font-semibold text-content-secondary uppercase tracking-wider">ERA Files</h3>
+            <h3 className="text-[12px] font-semibold text-content-secondary uppercase tracking-wider">{t("posting","eraFiles")}</h3>
             <button onClick={() => setShowUploadModal(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-brand text-white rounded-btn text-[12px] font-medium hover:bg-brand-dark transition-colors">
               <Upload size={13} /> Upload ERA
@@ -145,7 +147,7 @@ export default function PaymentPostingPage() {
         </div>
 
         <div className="card p-4">
-          <h3 className="text-[12px] font-semibold text-content-tertiary uppercase tracking-wider mb-2">Unmatched Payments</h3>
+          <h3 className="text-[12px] font-semibold text-content-tertiary uppercase tracking-wider mb-2">{t("posting","unmatchedPmts")}</h3>
           <div className="space-y-2 text-[13px]">
             {demoUnmatchedPayments.map(item => (
               <div key={item.id} className="flex items-center justify-between bg-surface-elevated rounded-btn p-2">
@@ -163,7 +165,7 @@ export default function PaymentPostingPage() {
             <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
               <div className="bg-surface-secondary rounded-xl shadow-2xl w-full max-w-md border border-separator">
                 <div className="flex items-center justify-between px-5 py-4 border-b border-separator">
-                  <h3 className="font-semibold text-content-primary">Upload ERA File</h3>
+                  <h3 className="font-semibold text-content-primary">{t("posting","uploadERA")}</h3>
                   <button onClick={() => setShowUploadModal(false)}><X size={16} className="text-content-secondary" /></button>
                 </div>
                 <div className="p-5 space-y-4">
@@ -214,7 +216,7 @@ export default function PaymentPostingPage() {
   }
 
   return (
-    <ModuleShell title="Payment Posting" subtitle="Process ERAs and post payments">
+    <ModuleShell title={t("posting","title")} subtitle={t("posting","subtitle")}>
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
         Demo data — live data connects in Sprint 2
@@ -319,7 +321,7 @@ export default function PaymentPostingPage() {
             setPosting(false)
           }
         }} disabled={posting} className="bg-brand text-white rounded-btn px-4 py-2 text-[13px] disabled:opacity-60">
-          {posting ? 'Posting…' : 'Post All Approved'}
+          {posting ? t('posting','posting') : t('posting','postApproved')}
         </button>
         <button onClick={() => {
           const denied = eraLines.filter(l => l.action === 'deny_route')

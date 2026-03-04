@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -43,6 +44,7 @@ const statusColor = (s: string) => ({ connected:'text-emerald-600 dark:text-emer
 
 function ConfigModal({ integration, onClose }: { integration: Integration; onClose: () => void }) {
   const { toast } = useToast()
+  const { t } = useT()
   const [loading, setLoading] = useState(false)
   function handleSave() {
     setLoading(true)
@@ -126,6 +128,7 @@ function LogDrawer({ integration, onClose }: { integration: Integration; onClose
 }
 
 export default function IntegrationsPage() {
+  const { t } = useT()
   const { toast } = useToast()
   const [configFor, setConfigFor] = useState<Integration | null>(null)
   const [logsFor, setLogsFor] = useState<Integration | null>(null)
@@ -140,9 +143,9 @@ export default function IntegrationsPage() {
   const categories = integrations.map(i=>i.category).filter((c,idx,arr)=>arr.indexOf(c)===idx)
 
   return (
-    <ModuleShell title="Integration Hub" subtitle="External system connections and data pipes">
+    <ModuleShell title={t("integrations","title")} subtitle={t("integrations","subtitle")}>
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <KPICard label="Connected" value={stats.connected} icon={<CheckCircle2 size={20}/>}/>
+        <KPICard label={t("integrations","connected")} value={stats.connected} icon={<CheckCircle2 size={20}/>}/>
         <KPICard label="Errors" value={stats.errors} icon={<AlertTriangle size={20}/>}/>
         <KPICard label="Pending" value={stats.pending} icon={<Clock size={20}/>}/>
         <KPICard label="Total" value={stats.total} icon={<Plug size={20}/>}/>

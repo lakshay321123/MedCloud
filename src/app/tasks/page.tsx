@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState, useEffect } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -35,6 +36,7 @@ type Task = {
 
 function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t: Task) => void }) {
   const { toast } = useToast()
+  const { t } = useT()
   const { clients } = useApp()
   const ic = 'w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm outline-none focus:border-brand/40 transition-colors'
   const [form, setForm] = useState({
@@ -68,7 +70,7 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
       <div className="card w-[520px]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-separator">
-          <h3 className="font-semibold text-content-primary">Create Task</h3>
+          <h3 className="font-semibold text-content-primary">{t("tasks","createTask")}</h3>
           <button onClick={onClose} className="p-1 hover:bg-surface-elevated rounded-btn"><X size={16} className="text-content-secondary"/></button>
         </div>
         <div className="p-4 space-y-3">
@@ -76,14 +78,14 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
             <div>
               <label className="text-xs text-content-secondary block mb-1">Task Type *</label>
               <select value={form.type} onChange={e => setForm(p=>({...p,type:e.target.value}))} className={ic}>
-                <option value="">Select type</option>
+                <option value="">{t("actions","selectType")}</option>
                 {['Missing Docs','Denial Review','ERA Exception','Coding Query','Credentialing','A/R Follow-up','Appeal Deadline','Patient Contact','Prior Auth','Claim Resubmission','Other'].map(t=><option key={t}>{t}</option>)}
               </select>
             </div>
             <div>
               <label className="text-xs text-content-secondary block mb-1">Priority</label>
               <select value={form.priority} onChange={e => setForm(p=>({...p,priority:e.target.value as Task['priority']}))} className={ic}>
-                <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option>
+                <option value="low">{t("status","low")}</option><option value="medium">{t("status","medium")}</option><option value="high">{t("status","high")}</option><option value="urgent">{t("status","urgent")}</option>
               </select>
             </div>
           </div>
@@ -95,7 +97,7 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
             <div>
               <label className="text-xs text-content-secondary block mb-1">Assign To</label>
               <select value={form.assigned} onChange={e=>setForm(p=>({...p,assigned:e.target.value}))} className={ic}>
-                <option value="">Unassigned</option>
+                <option value="">{t("tasks","unassigned")}</option>
                 {['Sarah K.','Mike R.','Lisa T.','Amy C.','Tom B.','Voice AI'].map(s=><option key={s}>{s}</option>)}
               </select>
             </div>
@@ -105,8 +107,8 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
             </div>
           </div>
           <div className="flex gap-2 pt-1">
-            <button onClick={handleSave} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep">Create Task</button>
-            <button onClick={onClose} className="px-4 py-2.5 border border-separator rounded-lg text-sm text-content-secondary">Cancel</button>
+            <button onClick={handleSave} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep">{t("tasks","createTask")}</button>
+            <button onClick={onClose} className="px-4 py-2.5 border border-separator rounded-lg text-sm text-content-secondary">{t("actions","cancel")}</button>
           </div>
         </div>
       </div>
@@ -115,6 +117,7 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
 }
 
 export default function TasksPage() {
+  const { t } = useT()
   const { toast } = useToast()
   const { country, selectedClient } = useApp()
   const [selected, setSelected] = useState<Task | null>(null)
@@ -162,10 +165,10 @@ export default function TasksPage() {
       }
     >
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Open Tasks" value={displayTasks.filter(t=>t.status!=='completed').length} icon={<ListChecks size={20}/>}/>
-        <KPICard label="In Progress" value={displayTasks.filter(t=>t.status==='in_progress').length}/>
-        <KPICard label="Blocked" value={displayTasks.filter(t=>t.status==='blocked').length} trend="down"/>
-        <KPICard label="SLA Breached" value={displayTasks.filter(t=>t.sla==='red').length} trend="down"/>
+        <KPICard label={t("tasks","openTasks")} value={displayTasks.filter(t=>t.status!=='completed').length} icon={<ListChecks size={20}/>}/>
+        <KPICard label={t("tasks","inProgress")} value={displayTasks.filter(t=>t.status==='in_progress').length}/>
+        <KPICard label={t("tasks","blocked")} value={displayTasks.filter(t=>t.status==='blocked').length} trend="down"/>
+        <KPICard label={t("tasks","slaBreached")} value={displayTasks.filter(t=>t.sla==='red').length} trend="down"/>
       </div>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
@@ -233,10 +236,10 @@ export default function TasksPage() {
                   value={pendingStatus ?? selected.status}
                   onChange={e => setPendingStatus(e.target.value as Task['status'])}>
 
-                  <option value="open">Open</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="blocked">Blocked</option>
-                  <option value="completed">Completed</option>
+                  <option value="open">{t("status","open")}</option>
+                  <option value="in_progress">{t("tasks","inProgress")}</option>
+                  <option value="blocked">{t("tasks","blocked")}</option>
+                  <option value="completed">{t("status","completed")}</option>
                 </select>
               </div>
 
@@ -261,7 +264,7 @@ export default function TasksPage() {
                   setSelected(null)
                   setPendingStatus(null)
                 }}
-                className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium">Save Changes</button>
+                className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium">{t("tasks","saveChanges")}</button>
             </div>
           </div>
         </>

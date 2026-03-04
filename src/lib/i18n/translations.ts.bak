@@ -1,0 +1,458 @@
+/**
+ * MedCloud Translation Strings
+ * Supports: English (en) | Arabic (ar) | Spanish (es)
+ * Arabic uses RTL — direction is set on <html dir> in context.tsx
+ */
+
+export type Language = 'en' | 'ar' | 'es'
+
+const translations = {
+
+  // ── Navigation / Modules ────────────────────────────────────────────────
+  nav: {
+    dashboard:     { en: 'Dashboard',          ar: 'لوحة التحكم',        es: 'Panel Principal' },
+    claims:        { en: 'Claims Center',      ar: 'مركز المطالبات',      es: 'Centro de Reclamaciones' },
+    coding:        { en: 'AI Coding',          ar: 'الترميز الذكي',       es: 'Codificación IA' },
+    eligibility:   { en: 'Eligibility',        ar: 'التأهيلية',            es: 'Elegibilidad' },
+    denials:       { en: 'Denials & Appeals',  ar: 'الرفض والطعون',       es: 'Denegaciones y Apelaciones' },
+    ar:            { en: 'A/R Management',     ar: 'إدارة الذمم',          es: 'Gestión de Cuentas por Cobrar' },
+    posting:       { en: 'Payment Posting',    ar: 'ترحيل المدفوعات',     es: 'Registro de Pagos' },
+    contracts:     { en: 'Contract Manager',   ar: 'إدارة العقود',         es: 'Gestión de Contratos' },
+    voice:         { en: 'Voice AI',           ar: 'الذكاء الصوتي',        es: 'IA de Voz' },
+    scribe:        { en: 'AI Scribe',          ar: 'الكاتب الذكي',         es: 'Transcriptor IA' },
+    tasks:         { en: 'Tasks & Workflows',  ar: 'المهام والسير',        es: 'Tareas y Flujos' },
+    documents:     { en: 'Documents',          ar: 'المستندات',             es: 'Documentos' },
+    credentialing: { en: 'Credentialing',      ar: 'الاعتماد المهني',      es: 'Acreditación' },
+    analytics:     { en: 'Analytics',          ar: 'التحليلات',             es: 'Analítica' },
+    admin:         { en: 'Admin & Settings',   ar: 'الإدارة والإعدادات',   es: 'Administración y Ajustes' },
+    integrations:  { en: 'Integration Hub',    ar: 'مركز التكامل',         es: 'Hub de Integración' },
+    appointments:  { en: 'Appointments',       ar: 'المواعيد',              es: 'Citas' },
+    scan:          { en: 'Scan & Submit',      ar: 'مسح وإرسال',           es: 'Escanear y Enviar' },
+    watch:         { en: 'Watch & Track',      ar: 'متابعة وتتبع',         es: 'Seguimiento' },
+    patients:      { en: 'Patients',           ar: 'المرضى',                es: 'Pacientes' },
+    messages:      { en: 'Messages',           ar: 'الرسائل',               es: 'Mensajes' },
+  },
+
+  // ── Section Labels ──────────────────────────────────────────────────────
+  sections: {
+    operations: { en: 'OPERATIONS',      ar: 'العمليات',            es: 'OPERACIONES' },
+    ai:         { en: 'AI & AUTOMATION', ar: 'الذكاء والأتمتة',     es: 'IA Y AUTOMATIZACIÓN' },
+    management: { en: 'MANAGEMENT',      ar: 'الإدارة',              es: 'GESTIÓN' },
+    portal:     { en: 'CLIENT PORTAL',   ar: 'بوابة العميل',        es: 'PORTAL DEL CLIENTE' },
+    system:     { en: 'SYSTEM',          ar: 'النظام',               es: 'SISTEMA' },
+    clinical:   { en: 'CLINICAL',        ar: 'السريري',              es: 'CLÍNICO' },
+    myportal:   { en: 'MY PORTAL',       ar: 'بوابتي',               es: 'MI PORTAL' },
+  },
+
+  // ── Common Actions (Buttons) ────────────────────────────────────────────
+  actions: {
+    save:            { en: 'Save',                  ar: 'حفظ',                    es: 'Guardar' },
+    saveChanges:     { en: 'Save Changes',          ar: 'حفظ التغييرات',           es: 'Guardar Cambios' },
+    cancel:          { en: 'Cancel',                ar: 'إلغاء',                   es: 'Cancelar' },
+    submit:          { en: 'Submit',                ar: 'إرسال',                   es: 'Enviar' },
+    search:          { en: 'Search',                ar: 'بحث',                     es: 'Buscar' },
+    filter:          { en: 'Filter',                ar: 'تصفية',                   es: 'Filtrar' },
+    export:          { en: 'Export',                ar: 'تصدير',                   es: 'Exportar' },
+    add:             { en: 'Add',                   ar: 'إضافة',                   es: 'Agregar' },
+    edit:            { en: 'Edit',                  ar: 'تعديل',                   es: 'Editar' },
+    delete:          { en: 'Delete',                ar: 'حذف',                     es: 'Eliminar' },
+    close:           { en: 'Close',                 ar: 'إغلاق',                   es: 'Cerrar' },
+    confirm:         { en: 'Confirm',               ar: 'تأكيد',                   es: 'Confirmar' },
+    refresh:         { en: 'Refresh',               ar: 'تحديث',                   es: 'Actualizar' },
+    download:        { en: 'Download',              ar: 'تنزيل',                   es: 'Descargar' },
+    upload:          { en: 'Upload',                ar: 'رفع',                     es: 'Subir' },
+    back:            { en: 'Back',                  ar: 'رجوع',                    es: 'Atrás' },
+    next:            { en: 'Next',                  ar: 'التالي',                   es: 'Siguiente' },
+    verify:          { en: 'Verify Now',            ar: 'تحقق الآن',               es: 'Verificar Ahora' },
+    approve:         { en: 'Approve',               ar: 'موافقة',                  es: 'Aprobar' },
+    reject:          { en: 'Reject',                ar: 'رفض',                     es: 'Rechazar' },
+    generate:        { en: 'Generate',              ar: 'توليد',                   es: 'Generar' },
+    generateAI:      { en: 'Generate with AI',      ar: 'توليد بالذكاء الاصطناعي', es: 'Generar con IA' },
+    generateCDI:     { en: 'Generate CDI Query with AI', ar: 'توليد استعلام CDI بالذكاء الاصطناعي', es: 'Generar Consulta CDI con IA' },
+    runBatch:        { en: 'Run Batch',             ar: 'تشغيل دفعة',              es: 'Ejecutar Lote' },
+    logout:          { en: 'Logout',                ar: 'تسجيل خروج',              es: 'Cerrar Sesión' },
+    sendQuery:       { en: 'Send Query',            ar: 'إرسال الاستعلام',         es: 'Enviar Consulta' },
+    confirmHold:     { en: 'Confirm Hold',          ar: 'تأكيد الإيقاف',           es: 'Confirmar Retención' },
+    submitAppeal:    { en: 'Submit Appeal',         ar: 'إرسال الطعن',             es: 'Enviar Apelación' },
+    logCall:         { en: 'Log Manual Call',       ar: 'تسجيل مكالمة يدوية',      es: 'Registrar Llamada Manual' },
+    newClaim:        { en: 'New Claim',             ar: 'مطالبة جديدة',            es: 'Nueva Reclamación' },
+    addPatient:      { en: 'Add Patient',           ar: 'إضافة مريض',              es: 'Agregar Paciente' },
+    addPayer:        { en: 'Add Payer Enrollment',  ar: 'إضافة تسجيل دافع',        es: 'Agregar Inscripción de Pagador' },
+    postAll:         { en: 'Post All Approved',     ar: 'ترحيل جميع الموافق عليها', es: 'Registrar Todos Aprobados' },
+    posting:         { en: 'Posting…',              ar: 'جارٍ الترحيل…',            es: 'Registrando…' },
+    recredential:    { en: 'Initiate Re-credentialing', ar: 'بدء إعادة الاعتماد', es: 'Iniciar Re-acreditación' },
+    scanId:          { en: 'Scan Emirates ID',      ar: 'مسح الهوية الإماراتية',   es: 'Escanear ID' },
+    scanLicense:     { en: "Scan Driver's License", ar: 'مسح رخصة القيادة',       es: 'Escanear Licencia' },
+    startRecording:  { en: 'Start Recording',       ar: 'بدء التسجيل',             es: 'Iniciar Grabación' },
+    stopRecording:   { en: 'Stop Recording',        ar: 'إيقاف التسجيل',           es: 'Detener Grabación' },
+    newCampaign:     { en: 'New Campaign',          ar: 'حملة جديدة',              es: 'Nueva Campaña' },
+    launchCall:      { en: 'Launch Call',           ar: 'إطلاق مكالمة',            es: 'Iniciar Llamada' },
+    sendMessage:     { en: 'Send',                  ar: 'إرسال',                   es: 'Enviar' },
+    allStatuses:     { en: 'All Statuses',          ar: 'جميع الحالات',             es: 'Todos los Estados' },
+    allTypes:        { en: 'All Types',             ar: 'جميع الأنواع',             es: 'Todos los Tipos' },
+    allOutcomes:     { en: 'All Outcomes',          ar: 'جميع النتائج',             es: 'Todos los Resultados' },
+    selectOutcome:   { en: 'Select outcome…',       ar: 'اختر النتيجة…',            es: 'Seleccionar resultado…' },
+    selectReason:    { en: 'Select reason…',        ar: 'اختر السبب…',             es: 'Seleccionar motivo…' },
+    selectPatient:   { en: 'Select Patient',        ar: 'اختر المريض',             es: 'Seleccionar Paciente' },
+    selectType:      { en: 'Select type',           ar: 'اختر النوع',              es: 'Seleccionar tipo' },
+    scrubClaim:      { en: 'Scrub Claim',           ar: 'فحص المطالبة',            es: 'Revisar Reclamación' },
+    verifyCoverage:  { en: 'Verify Coverage',       ar: 'التحقق من التغطية',       es: 'Verificar Cobertura' },
+  },
+
+  // ── Status Labels ───────────────────────────────────────────────────────
+  status: {
+    active:       { en: 'Active',         ar: 'نشط',          es: 'Activo' },
+    inactive:     { en: 'Inactive',       ar: 'غير نشط',      es: 'Inactivo' },
+    pending:      { en: 'Pending',        ar: 'قيد الانتظار',  es: 'Pendiente' },
+    approved:     { en: 'Approved',       ar: 'موافق عليه',   es: 'Aprobado' },
+    denied:       { en: 'Denied',         ar: 'مرفوض',         es: 'Denegado' },
+    submitted:    { en: 'Submitted',      ar: 'مُرسَل',         es: 'Enviado' },
+    inReview:     { en: 'In Review',      ar: 'قيد المراجعة',  es: 'En Revisión' },
+    paid:         { en: 'Paid',           ar: 'مدفوع',         es: 'Pagado' },
+    failed:       { en: 'Failed',         ar: 'فشل',           es: 'Fallido' },
+    completed:    { en: 'Completed',      ar: 'مكتمل',         es: 'Completado' },
+    inNetwork:    { en: 'In-Network',     ar: 'داخل الشبكة',   es: 'En Red' },
+    outOfNetwork: { en: 'Out-of-Network', ar: 'خارج الشبكة',   es: 'Fuera de Red' },
+    open:         { en: 'Open',           ar: 'مفتوح',         es: 'Abierto' },
+    closed:       { en: 'Closed',         ar: 'مغلق',          es: 'Cerrado' },
+    appealed:     { en: 'Appealed',       ar: 'مطعون فيه',     es: 'Apelado' },
+    inProgress:   { en: 'In Progress',    ar: 'جارٍ التنفيذ',  es: 'En Curso' },
+    blocked:      { en: 'Blocked',        ar: 'محظور',          es: 'Bloqueado' },
+    low:          { en: 'Low',            ar: 'منخفض',          es: 'Bajo' },
+    medium:       { en: 'Medium',         ar: 'متوسط',          es: 'Medio' },
+    high:         { en: 'High',           ar: 'مرتفع',          es: 'Alto' },
+    urgent:       { en: 'Urgent',         ar: 'عاجل',           es: 'Urgente' },
+    posted:       { en: 'Posted',         ar: 'مُرحَّل',         es: 'Registrado' },
+    unmatched:    { en: 'Unmatched',      ar: 'غير مطابق',     es: 'Sin Coincidencia' },
+    onHold:       { en: 'On Hold',        ar: 'معلق',           es: 'En Espera' },
+    connected:    { en: 'Connected',      ar: 'متصل',           es: 'Conectado' },
+  },
+
+  // ── Topbar ──────────────────────────────────────────────────────────────
+  topbar: {
+    searchPlaceholder: { en: 'Search patients, claims, docs…', ar: 'ابحث عن مرضى، مطالبات، مستندات…', es: 'Buscar pacientes, reclamaciones, docs…' },
+    selectClient:      { en: 'All Clients',  ar: 'جميع العملاء',   es: 'Todos los Clientes' },
+    language:          { en: 'Language',     ar: 'اللغة',           es: 'Idioma' },
+  },
+
+  // ── Dashboard ───────────────────────────────────────────────────────────
+  dashboard: {
+    title:            { en: 'Dashboard',               ar: 'لوحة التحكم',               es: 'Panel Principal' },
+    subtitle:         { en: 'Revenue Cycle Overview',  ar: 'نظرة عامة على دورة الإيراد', es: 'Resumen del Ciclo de Ingresos' },
+    revenueCollected: { en: 'Revenue Collected',       ar: 'الإيراد المحصّل',            es: 'Ingresos Recaudados' },
+    claimsSubmitted:  { en: 'Claims Submitted',        ar: 'المطالبات المقدّمة',          es: 'Reclamaciones Enviadas' },
+    denialRate:       { en: 'Denial Rate',             ar: 'معدل الرفض',                es: 'Tasa de Denegación' },
+    daysInAR:         { en: 'Days in A/R',             ar: 'أيام الذمم المدينة',         es: 'Días en C×C' },
+    cleanClaimRate:   { en: 'Clean Claim Rate',        ar: 'معدل المطالبات النظيفة',    es: 'Tasa de Reclamaciones Limpias' },
+    collectionRate:   { en: 'Net Collection Rate',     ar: 'معدل التحصيل الصافي',       es: 'Tasa Neta de Cobro' },
+    pendingClaims:    { en: 'Active Patients',         ar: 'المرضى النشطون',             es: 'Pacientes Activos' },
+    openDenials:      { en: 'Open Denials',            ar: 'الرفوض المفتوحة',            es: 'Denegaciones Abiertas' },
+    recentActivity:   { en: 'Recent Activity',         ar: 'النشاط الأخير',              es: 'Actividad Reciente' },
+    aiCallsToday:     { en: 'AI Calls Today',          ar: 'مكالمات الذكاء اليوم',       es: 'Llamadas IA Hoy' },
+    aiCodingAcc:      { en: 'AI Coding Accuracy',      ar: 'دقة الترميز الذكي',          es: 'Precisión Codificación IA' },
+    chartsWaiting:    { en: 'Charts Waiting',          ar: 'مخططات بالانتظار',           es: 'Gráficos Pendientes' },
+    past24hSLA:       { en: 'Past 24h SLA',            ar: 'SLA آخر 24 ساعة',           es: 'SLA Últimas 24h' },
+    queriesPending:   { en: 'Queries Pending',         ar: 'استعلامات معلقة',            es: 'Consultas Pendientes' },
+    codedToday:       { en: 'Coded Today',             ar: 'مُرمَّز اليوم',              es: 'Codificados Hoy' },
+    scrubErrors:      { en: 'Scrub Errors',            ar: 'أخطاء الفحص',                es: 'Errores de Revisión' },
+    readyToSubmit:    { en: 'Ready to Submit',         ar: 'جاهز للإرسال',               es: 'Listo para Enviar' },
+    denied:           { en: 'Denied',                  ar: 'مرفوض',                      es: 'Denegado' },
+    chargeLag:        { en: 'Charge Lag Alerts',       ar: 'تنبيهات تأخر الرسوم',        es: 'Alertas de Retraso' },
+    overdueAccounts:  { en: 'Overdue (60+ days)',      ar: 'متأخر (60+ يوم)',             es: 'Vencido (60+ días)' },
+    unworkedDenials:  { en: 'Unworked Denials',        ar: 'رفوض غير معالجة',            es: 'Denegaciones Sin Trabajar' },
+    appealsDeadline:  { en: 'Appeals Near Deadline',   ar: 'طعون قرب الموعد',            es: 'Apelaciones Próx. Vencimiento' },
+    accountsWorked:   { en: 'Accounts Worked Today',   ar: 'حسابات عملت اليوم',          es: 'Cuentas Trabajadas Hoy' },
+  },
+
+  // ── Claims ──────────────────────────────────────────────────────────────
+  claims: {
+    title:          { en: 'Claims Center',       ar: 'مركز المطالبات',         es: 'Centro de Reclamaciones' },
+    subtitle:       { en: 'Manage claims across all clients', ar: 'إدارة المطالبات عبر جميع العملاء', es: 'Gestionar reclamaciones de todos los clientes' },
+    claimId:        { en: 'Claim ID',            ar: 'رقم المطالبة',           es: 'ID de Reclamación' },
+    patient:        { en: 'Patient',             ar: 'المريض',                 es: 'Paciente' },
+    payer:          { en: 'Payer',               ar: 'الدافع',                 es: 'Pagador' },
+    amount:         { en: 'Amount',              ar: 'المبلغ',                 es: 'Monto' },
+    dateOfService:  { en: 'Date of Service',     ar: 'تاريخ الخدمة',           es: 'Fecha de Servicio' },
+    submittedToday: { en: 'Submitted Today',     ar: 'مُرسَل اليوم',            es: 'Enviados Hoy' },
+    totalClaims:    { en: 'Total Claims',        ar: 'إجمالي المطالبات',       es: 'Total Reclamaciones' },
+    scrubErrors:    { en: 'Scrub Errors',        ar: 'أخطاء الفحص',            es: 'Errores de Revisión' },
+    submissionLag:  { en: 'Submission Lag',      ar: 'تأخر الإرسال',           es: 'Retraso de Envío' },
+  },
+
+  // ── Coding ──────────────────────────────────────────────────────────────
+  coding: {
+    title:        { en: 'AI Coding',              ar: 'الترميز الذكي',          es: 'Codificación IA' },
+    subtitle:     { en: 'Review and approve AI-suggested codes', ar: 'مراجعة وموافقة الرموز المقترحة', es: 'Revisar y aprobar códigos sugeridos por IA' },
+    myQueue:      { en: 'My Queue',               ar: 'قائمتي',                 es: 'Mi Cola' },
+    codedToday:   { en: 'Coded Today',            ar: 'مُرمَّز اليوم',            es: 'Codificados Hoy' },
+    aiAcceptance: { en: 'AI Acceptance',          ar: 'قبول الذكاء الاصطناعي',  es: 'Aceptación IA' },
+    avgTime:      { en: 'Avg Time/Chart',         ar: 'متوسط وقت/مخطط',         es: 'Tiempo Prom/Gráfico' },
+    selectReason: { en: 'Select reason…',         ar: 'اختر السبب…',             es: 'Seleccionar motivo…' },
+  },
+
+  // ── Eligibility ─────────────────────────────────────────────────────────
+  eligibility: {
+    title:         { en: 'Eligibility',                  ar: 'التأهيلية',               es: 'Elegibilidad' },
+    subtitle:      { en: 'Check insurance coverage and benefits', ar: 'التحقق من التغطية التأمينية', es: 'Verificar cobertura de seguro' },
+    verifyNow:     { en: 'Verify Now',                   ar: 'تحقق الآن',              es: 'Verificar Ahora' },
+    selectPatient: { en: 'Select Patient',               ar: 'اختر المريض',            es: 'Seleccionar Paciente' },
+    copay:         { en: 'Copay',                        ar: 'المشاركة في الدفع',      es: 'Copago' },
+    deductible:    { en: 'Deductible',                   ar: 'قابل للخصم',             es: 'Deducible' },
+    priorAuth:     { en: 'Prior Authorization',          ar: 'التفويض المسبق',         es: 'Autorización Previa' },
+    batchCheck:    { en: 'Batch Check',                  ar: 'فحص دفعي',               es: 'Verificación por Lote' },
+    noBatchYet:    { en: 'No batch run yet this session',ar: 'لا توجد دفعة بعد',      es: 'Sin lote ejecutado aún' },
+    checksToday:   { en: 'Checks Today',                 ar: 'فحوصات اليوم',           es: 'Verificaciones Hoy' },
+    activeCount:   { en: 'Active',                       ar: 'نشط',                    es: 'Activo' },
+    issuesCount:   { en: 'Inactive/Issues',              ar: 'غير نشط/مشاكل',          es: 'Inactivo/Problemas' },
+    priorAuthReq:  { en: 'Prior Auth Required',          ar: 'مطلوب تفويض مسبق',       es: 'Autorización Previa Requerida' },
+  },
+
+  // ── Denials ─────────────────────────────────────────────────────────────
+  denials: {
+    title:          { en: 'Denials & Appeals',     ar: 'الرفض والطعون',          es: 'Denegaciones y Apelaciones' },
+    subtitle:       { en: 'Manage denied claims and appeal workflows', ar: 'إدارة المطالبات المرفوضة وسير الطعن', es: 'Gestionar reclamaciones denegadas y flujos de apelación' },
+    openDenials:    { en: 'Open Denials',          ar: 'الرفوض المفتوحة',        es: 'Denegaciones Abiertas' },
+    inAppeal:       { en: 'In Appeal',             ar: 'قيد الطعن',              es: 'En Apelación' },
+    writeOff:       { en: 'Write-off Rate',        ar: 'معدل الشطب',             es: 'Tasa de Cancelación' },
+    appealSuccess:  { en: 'Appeal Success Rate',   ar: 'معدل نجاح الطعن',       es: 'Tasa de Éxito de Apelación' },
+    appealLevel:    { en: 'Appeal Level',          ar: 'مستوى الطعن',            es: 'Nivel de Apelación' },
+    denialAtRisk:   { en: 'Denial $ At Risk',      ar: 'مبالغ الرفض المعرضة للخطر', es: 'Monto en Riesgo por Denegación' },
+  },
+
+  // ── A/R Management ──────────────────────────────────────────────────────
+  ar: {
+    title:         { en: 'A/R Management',       ar: 'إدارة الذمم',            es: 'Gestión de C×C' },
+    subtitle:      { en: 'Accounts receivable follow-up and collections', ar: 'متابعة وتحصيل الذمم المدينة', es: 'Seguimiento y cobro de cuentas' },
+    logCall:       { en: 'Log Manual Call',      ar: 'تسجيل مكالمة يدوية',     es: 'Registrar Llamada Manual' },
+    daysInAR:      { en: 'Days in A/R',          ar: 'أيام الذمم',              es: 'Días en C×C' },
+    totalAR:       { en: 'Total A/R',            ar: 'إجمالي الذمم',            es: 'Total C×C' },
+    followUp:      { en: 'Follow Up Date',       ar: 'تاريخ المتابعة',          es: 'Fecha de Seguimiento' },
+    avgDays:       { en: 'Avg Days Outstanding', ar: 'متوسط أيام الاستحقاق',   es: 'Promedio Días Pendientes' },
+    underpayment:  { en: 'Underpayment Alerts',  ar: 'تنبيهات نقص الدفع',      es: 'Alertas de Subpago' },
+    overdueAccts:  { en: 'Overdue (60+ days)',   ar: 'متأخر (60+ يوم)',         es: 'Vencido (60+ días)' },
+    wo_smallBalance:     { en: 'Small balance (under threshold)',   ar: 'رصيد صغير',          es: 'Saldo pequeño' },
+    wo_timelyFiling:     { en: 'Timely filing deadline passed',     ar: 'انتهت مهلة الإيداع',  es: 'Plazo de presentación vencido' },
+    wo_noAuth:           { en: 'No authorization on file',          ar: 'لا تفويض مسجل',       es: 'Sin autorización registrada' },
+    wo_medicalNecessity: { en: 'Medical necessity denial – exhausted appeals', ar: 'رفض بسبب الضرورة الطبية', es: 'Denegación necesidad médica' },
+    wo_contractual:      { en: 'Contractual adjustment',            ar: 'تعديل تعاقدي',        es: 'Ajuste contractual' },
+    wo_charityCare:      { en: 'Charity care / financial hardship', ar: 'رعاية خيرية',         es: 'Atención benéfica' },
+    wo_bankruptcy:       { en: 'Patient bankruptcy',                ar: 'إفلاس المريض',        es: 'Quiebra del paciente' },
+    wo_other:            { en: 'Other (explain in notes)',          ar: 'أخرى (اشرح في الملاحظات)', es: 'Otro (explicar en notas)' },
+  },
+
+  // ── Payment Posting ─────────────────────────────────────────────────────
+  posting: {
+    title:        { en: 'Payment Posting',      ar: 'ترحيل المدفوعات',        es: 'Registro de Pagos' },
+    subtitle:     { en: 'Process ERAs and post payments', ar: 'معالجة ملفات ERA وترحيل المدفوعات', es: 'Procesar ERAs y registrar pagos' },
+    postApproved: { en: 'Post All Approved',    ar: 'ترحيل جميع الموافق عليها', es: 'Registrar Todos Aprobados' },
+    posting:      { en: 'Posting…',             ar: 'جارٍ الترحيل…',           es: 'Registrando…' },
+    erasPending:  { en: 'ERAs Pending',         ar: 'ERAs معلقة',              es: 'ERAs Pendientes' },
+    erasToPost:   { en: 'ERAs to Post',         ar: 'ERAs للترحيل',            es: 'ERAs a Registrar' },
+    postedToday:  { en: 'Posted Today',         ar: 'مُرحَّل اليوم',            es: 'Registrado Hoy' },
+    autoPostRate: { en: 'Auto-Post Rate',       ar: 'معدل الترحيل التلقائي',   es: 'Tasa de Registro Automático' },
+    unmatched:    { en: 'Unmatched',            ar: 'غير مطابق',               es: 'Sin Coincidencia' },
+    manualReview: { en: 'Manual Review Lines',  ar: 'سطور المراجعة اليدوية',   es: 'Líneas de Revisión Manual' },
+  },
+
+  // ── Tasks ────────────────────────────────────────────────────────────────
+  tasks: {
+    title:         { en: 'Tasks & Workflows',   ar: 'المهام والسير',           es: 'Tareas y Flujos' },
+    subtitle:      { en: 'Manage team tasks and workflows', ar: 'إدارة مهام وسير عمل الفريق', es: 'Gestionar tareas del equipo' },
+    saveChanges:   { en: 'Save Changes',        ar: 'حفظ التغييرات',           es: 'Guardar Cambios' },
+    assignedTo:    { en: 'Assigned To',         ar: 'مُسنَد إلى',               es: 'Asignado a' },
+    dueDate:       { en: 'Due Date',            ar: 'تاريخ الاستحقاق',         es: 'Fecha de Vencimiento' },
+    priority:      { en: 'Priority',            ar: 'الأولوية',                es: 'Prioridad' },
+    openTasks:     { en: 'Open Tasks',          ar: 'مهام مفتوحة',             es: 'Tareas Abiertas' },
+    inProgress:    { en: 'In Progress',         ar: 'جارٍ التنفيذ',            es: 'En Curso' },
+    blocked:       { en: 'Blocked',             ar: 'محظور',                   es: 'Bloqueado' },
+    slaBreached:   { en: 'SLA Breached',        ar: 'تجاوز SLA',               es: 'SLA Incumplido' },
+    unassigned:    { en: 'Unassigned',          ar: 'غير مُسنَد',               es: 'Sin Asignar' },
+    myQueue:       { en: 'My Queue',            ar: 'قائمتي',                  es: 'Mi Cola' },
+    pendingSignoff:{ en: 'Pending Sign-Off',    ar: 'بانتظار التوقيع',         es: 'Pendiente de Firma' },
+  },
+
+  // ── Voice AI ─────────────────────────────────────────────────────────────
+  voice: {
+    title:        { en: 'Voice AI',           ar: 'الذكاء الصوتي',           es: 'IA de Voz' },
+    subtitle:     { en: 'Automated calls to payers and patients', ar: 'مكالمات آلية للدافعين والمرضى', es: 'Llamadas automáticas a pagadores y pacientes' },
+    callsToday:   { en: 'Calls Today',        ar: 'مكالمات اليوم',            es: 'Llamadas Hoy' },
+    avgDuration:  { en: 'Avg Duration',       ar: 'متوسط المدة',              es: 'Duración Promedio' },
+    successRate:  { en: 'Success Rate',       ar: 'معدل النجاح',              es: 'Tasa de Éxito' },
+    onHold:       { en: 'On Hold Right Now',  ar: 'معلق الآن',               es: 'En Espera Ahora' },
+    newCampaign:  { en: 'New Campaign',       ar: 'حملة جديدة',               es: 'Nueva Campaña' },
+    launchCall:   { en: 'Launch Call',        ar: 'إطلاق مكالمة',             es: 'Iniciar Llamada' },
+  },
+
+  // ── AI Scribe ────────────────────────────────────────────────────────────
+  scribe: {
+    title:        { en: 'AI Scribe',          ar: 'الكاتب الذكي',             es: 'Transcriptor IA' },
+    subtitle:     { en: 'Clinical note transcription and SOAP generation', ar: 'نسخ الملاحظات السريرية وتوليد SOAP', es: 'Transcripción de notas clínicas y generación SOAP' },
+    notesToday:   { en: 'Notes Today',        ar: 'ملاحظات اليوم',            es: 'Notas Hoy' },
+    pendingSignoff:{ en: 'Pending Sign-off',  ar: 'بانتظار التوقيع',          es: 'Pendiente de Firma' },
+    aiConfidence: { en: 'Avg AI Confidence',  ar: 'ثقة الذكاء متوسط',         es: 'Confianza IA Promedio' },
+    codesSuggested:{ en: 'Codes Suggested',  ar: 'رموز مقترحة',              es: 'Códigos Sugeridos' },
+    startRecording:{ en: 'Start Recording',  ar: 'بدء التسجيل',              es: 'Iniciar Grabación' },
+    stopRecording: { en: 'Stop Recording',   ar: 'إيقاف التسجيل',            es: 'Detener Grabación' },
+    unsignedAlert: { en: 'Unsigned > 24h',   ar: 'غير موقع > 24 ساعة',       es: 'Sin Firma > 24h' },
+    past48hSLA:   { en: 'Past 48h SLA',      ar: 'SLA آخر 48 ساعة',          es: 'SLA Últimas 48h' },
+  },
+
+  // ── Credentialing ────────────────────────────────────────────────────────
+  credentialing: {
+    title:          { en: 'Credentialing',         ar: 'الاعتماد المهني',      es: 'Acreditación' },
+    subtitle:       { en: 'Provider credentials and payer enrollment', ar: 'اعتماد المزودين وتسجيل الدافعين', es: 'Credenciales de proveedor e inscripción de pagadores' },
+    activeProviders:{ en: 'Active Providers',      ar: 'مزودون نشطون',         es: 'Proveedores Activos' },
+    expiring30:     { en: 'Expiring (30 days)',     ar: 'تنتهي خلال 30 يوم',    es: 'Expiran (30 días)' },
+    onboarding:     { en: 'Onboarding',            ar: 'إعداد المزودين',        es: 'Incorporación' },
+    totalEnroll:    { en: 'Total Enrollments',     ar: 'إجمالي التسجيلات',      es: 'Total Inscripciones' },
+    recredential:   { en: 'Initiate Re-credentialing', ar: 'بدء إعادة الاعتماد', es: 'Iniciar Re-acreditación' },
+    addPayer:       { en: 'Add Payer Enrollment',  ar: 'إضافة تسجيل دافع',     es: 'Agregar Inscripción de Pagador' },
+  },
+
+  // ── Analytics ───────────────────────────────────────────────────────────
+  analytics: {
+    title:          { en: 'Analytics',             ar: 'التحليلات',             es: 'Analítica' },
+    subtitle:       { en: 'Financial and operational reporting', ar: 'التقارير المالية والتشغيلية', es: 'Informes financieros y operativos' },
+    last30:         { en: 'Last 30 Days',          ar: 'آخر 30 يوماً',           es: 'Últimos 30 Días' },
+    last90:         { en: 'Last 90 Days',          ar: 'آخر 90 يوماً',           es: 'Últimos 90 Días' },
+    ytd:            { en: 'Year to Date',          ar: 'منذ بداية العام',        es: 'Año hasta la Fecha' },
+    custom:         { en: 'Custom',                ar: 'مخصص',                  es: 'Personalizado' },
+    revenueCollected:{ en: 'Revenue Collected',   ar: 'الإيراد المحصّل',        es: 'Ingresos Recaudados' },
+    collectionRate: { en: 'Net Collection Rate',   ar: 'معدل التحصيل الصافي',   es: 'Tasa Neta de Cobro' },
+    daysInAR:       { en: 'Days in A/R',           ar: 'أيام الذمم',             es: 'Días en C×C' },
+    denialRate:     { en: 'Denial Rate',           ar: 'معدل الرفض',             es: 'Tasa de Denegación' },
+    denialAtRisk:   { en: 'Denial $ At Risk',      ar: 'مبالغ الرفض المعرضة للخطر', es: 'Monto en Riesgo' },
+    cleanClaimRate: { en: 'Clean Claim Rate',      ar: 'معدل المطالبات النظيفة', es: 'Tasa de Reclamaciones Limpias' },
+    firstPassRate:  { en: 'First Pass Rate',       ar: 'معدل التمرير الأول',     es: 'Tasa de Primer Paso' },
+    avgCodingTime:  { en: 'Avg Coding Time',       ar: 'متوسط وقت الترميز',      es: 'Tiempo Prom. de Codificación' },
+    submissionLag:  { en: 'Submission Lag',        ar: 'تأخر الإرسال',           es: 'Retraso de Envío' },
+    postingLag:     { en: 'Posting Lag',           ar: 'تأخر الترحيل',           es: 'Retraso de Registro' },
+    aiAcceptance:   { en: 'AI Acceptance Rate',    ar: 'معدل قبول الذكاء',       es: 'Tasa de Aceptación IA' },
+    avgCodingAcc:   { en: 'Auto-Coding Accuracy',  ar: 'دقة الترميز التلقائي',   es: 'Precisión Codificación Auto.' },
+    voiceSuccess:   { en: 'Voice AI Success',      ar: 'نجاح الذكاء الصوتي',     es: 'Éxito IA de Voz' },
+    avgResolution:  { en: 'Avg Resolution',        ar: 'متوسط الحل',              es: 'Resolución Promedio' },
+  },
+
+  // ── Documents ───────────────────────────────────────────────────────────
+  documents: {
+    title:       { en: 'Documents',            ar: 'المستندات',              es: 'Documentos' },
+    subtitle:    { en: 'Document vault, fax center, and unlinked queue', ar: 'خزنة المستندات ومركز الفاكس', es: 'Bóveda de documentos y centro de fax' },
+    searchDocs:  { en: 'Search documents, patients…', ar: 'ابحث في المستندات…', es: 'Buscar documentos, pacientes…' },
+    allStatuses: { en: 'All Statuses',         ar: 'جميع الحالات',           es: 'Todos los Estados' },
+    selectDoc:   { en: 'Select document…',     ar: 'اختر مستنداً…',          es: 'Seleccionar documento…' },
+    searchPatient: { en: 'Search patient name…', ar: 'ابحث باسم المريض…',    es: 'Buscar nombre del paciente…' },
+  },
+
+  // ── Patients ─────────────────────────────────────────────────────────────
+  patients: {
+    title:         { en: 'Patients',          ar: 'المرضى',                  es: 'Pacientes' },
+    subtitle:      { en: 'Manage patient records', ar: 'إدارة سجلات المرضى', es: 'Gestionar registros de pacientes' },
+    addPatient:    { en: 'Add Patient',       ar: 'إضافة مريض',              es: 'Agregar Paciente' },
+    firstName:     { en: 'First Name',        ar: 'الاسم الأول',              es: 'Nombre' },
+    lastName:      { en: 'Last Name',         ar: 'الاسم الأخير',             es: 'Apellido' },
+    dateOfBirth:   { en: 'Date of Birth',     ar: 'تاريخ الميلاد',           es: 'Fecha de Nacimiento' },
+    gender:        { en: 'Gender',            ar: 'الجنس',                   es: 'Género' },
+    phone:         { en: 'Phone',             ar: 'الهاتف',                   es: 'Teléfono' },
+    email:         { en: 'Email',             ar: 'البريد الإلكتروني',        es: 'Correo Electrónico' },
+    insurance:     { en: 'Insurance',         ar: 'التأمين',                  es: 'Seguro' },
+    mrn:           { en: 'MRN',              ar: 'الرقم الطبي',               es: 'NHC' },
+    search:        { en: 'Search by name, phone, ID…', ar: 'ابحث بالاسم أو الهاتف أو الرقم…', es: 'Buscar por nombre, teléfono, ID…' },
+    male:          { en: 'Male',             ar: 'ذكر',                       es: 'Masculino' },
+    female:        { en: 'Female',           ar: 'أنثى',                      es: 'Femenino' },
+    other:         { en: 'Other',            ar: 'آخر',                       es: 'Otro' },
+    select:        { en: 'Select',           ar: 'اختر',                      es: 'Seleccionar' },
+  },
+
+  // ── Scan & Submit ────────────────────────────────────────────────────────
+  scan: {
+    title:        { en: 'Scan & Submit',      ar: 'مسح وإرسال',               es: 'Escanear y Enviar' },
+    subtitle:     { en: 'Upload documents to Cosentus for processing', ar: 'رفع المستندات لمعالجتها', es: 'Subir documentos para procesamiento' },
+    searchPatient:{ en: 'Search patient by name…', ar: 'ابحث بالمريض باسمه…', es: 'Buscar paciente por nombre…' },
+    billingNotes: { en: 'Any notes for the billing team?', ar: 'ملاحظات لفريق الفوترة؟', es: '¿Notas para el equipo de facturación?' },
+  },
+
+  // ── Watch & Track ────────────────────────────────────────────────────────
+  watch: {
+    title:         { en: 'Watch & Track',    ar: 'متابعة وتتبع',              es: 'Seguimiento' },
+    subtitle:      { en: 'Track your claims and revenue', ar: 'تتبع مطالباتك وإيراداتك', es: 'Rastrear reclamaciones e ingresos' },
+    totalClaims:   { en: 'Total Claims',     ar: 'إجمالي المطالبات',          es: 'Total Reclamaciones' },
+    totalCharges:  { en: 'Total Charges',    ar: 'إجمالي الرسوم',             es: 'Total Cargos' },
+    collected:     { en: 'Collected',        ar: 'محصّل',                     es: 'Recaudado' },
+    avgDaysToPay:  { en: 'Avg Days to Pay',  ar: 'متوسط أيام السداد',         es: 'Promedio Días de Pago' },
+    allStatuses:   { en: 'All Statuses',     ar: 'جميع الحالات',              es: 'Todos los Estados' },
+  },
+
+  // ── Appointments ─────────────────────────────────────────────────────────
+  appointments: {
+    title:          { en: 'Appointments',         ar: 'المواعيد',              es: 'Citas' },
+    subtitle:       { en: 'Schedule and manage appointments', ar: 'جدولة وإدارة المواعيد', es: 'Programar y gestionar citas' },
+    todayAppts:     { en: "Today's Appointments", ar: 'مواعيد اليوم',          es: 'Citas de Hoy' },
+    pendingSignoff: { en: 'Pending Sign-Offs',    ar: 'بانتظار التوقيع',       es: 'Firmas Pendientes' },
+  },
+
+  // ── Messages ─────────────────────────────────────────────────────────────
+  messages: {
+    title:       { en: 'Messages',           ar: 'الرسائل',                   es: 'Mensajes' },
+    subtitle:    { en: 'Conversations about patients, claims, and submissions', ar: 'محادثات حول المرضى والمطالبات', es: 'Conversaciones sobre pacientes y reclamaciones' },
+    placeholder: { en: 'Type a message…',   ar: 'اكتب رسالة…',               es: 'Escribe un mensaje…' },
+    send:        { en: 'Send',              ar: 'إرسال',                       es: 'Enviar' },
+  },
+
+  // ── Admin ────────────────────────────────────────────────────────────────
+  admin: {
+    title:    { en: 'Admin & Settings',   ar: 'الإدارة والإعدادات',           es: 'Administración y Ajustes' },
+    subtitle: { en: 'System administration', ar: 'إدارة النظام',              es: 'Administración del Sistema' },
+  },
+
+  // ── Integrations ─────────────────────────────────────────────────────────
+  integrations: {
+    title:     { en: 'Integration Hub',  ar: 'مركز التكامل',                  es: 'Hub de Integración' },
+    subtitle:  { en: 'External system connections and data pipes', ar: 'اتصالات الأنظمة الخارجية', es: 'Conexiones de sistemas externos' },
+    connected: { en: 'Connected',        ar: 'متصل',                          es: 'Conectado' },
+    totalPayers:{ en: 'Total Payers',   ar: 'إجمالي الدافعين',                es: 'Total Pagadores' },
+  },
+
+  // ── Contracts ────────────────────────────────────────────────────────────
+  contracts: {
+    title:          { en: 'Contract Manager',  ar: 'إدارة العقود',            es: 'Gestión de Contratos' },
+    subtitle:       { en: 'Payer contracts, fee schedules, and underpayment detection', ar: 'عقود الدافعين وكشف نقص الدفع', es: 'Contratos, aranceles y detección de subpago' },
+    activeContracts:{ en: 'Active Contracts',  ar: 'عقود نشطة',               es: 'Contratos Activos' },
+    expiring90:     { en: 'Expiring (90 days)',ar: 'تنتهي خلال 90 يوم',        es: 'Expiran (90 días)' },
+    avgDaysToPay:   { en: 'Avg Days to Payment', ar: 'متوسط أيام الدفع',      es: 'Promedio Días de Pago' },
+    underpayment:   { en: 'Underpayment Alerts', ar: 'تنبيهات نقص الدفع',     es: 'Alertas de Subpago' },
+  },
+
+  // ── Common Table Headers ─────────────────────────────────────────────────
+  table: {
+    id:       { en: 'ID',           ar: 'الرقم',       es: 'ID' },
+    name:     { en: 'Name',         ar: 'الاسم',       es: 'Nombre' },
+    status:   { en: 'Status',       ar: 'الحالة',      es: 'Estado' },
+    date:     { en: 'Date',         ar: 'التاريخ',     es: 'Fecha' },
+    amount:   { en: 'Amount',       ar: 'المبلغ',      es: 'Monto' },
+    actions:  { en: 'Actions',      ar: 'الإجراءات',   es: 'Acciones' },
+    client:   { en: 'Client',       ar: 'العميل',      es: 'Cliente' },
+    provider: { en: 'Provider',     ar: 'المزود',      es: 'Proveedor' },
+    notes:    { en: 'Notes',        ar: 'الملاحظات',   es: 'Notas' },
+    type:     { en: 'Type',         ar: 'النوع',       es: 'Tipo' },
+    noData:   { en: 'No data found',ar: 'لا توجد بيانات', es: 'Sin datos' },
+    total:    { en: 'Total',        ar: 'الإجمالي',    es: 'Total' },
+  },
+
+  // ── Misc / Global ────────────────────────────────────────────────────────
+  misc: {
+    loading:    { en: 'Loading…',          ar: 'جارٍ التحميل…',   es: 'Cargando…' },
+    error:      { en: 'Something went wrong', ar: 'حدث خطأ',      es: 'Algo salió mal' },
+    tryAgain:   { en: 'Try Again',         ar: 'حاول مجدداً',      es: 'Intentar de Nuevo' },
+    noResults:  { en: 'No results found',  ar: 'لا توجد نتائج',    es: 'Sin resultados' },
+    required:   { en: 'Required',          ar: 'مطلوب',             es: 'Requerido' },
+    optional:   { en: 'Optional',          ar: 'اختياري',           es: 'Opcional' },
+    of:         { en: 'of',                ar: 'من',                es: 'de' },
+    total:      { en: 'Total',             ar: 'الإجمالي',           es: 'Total' },
+    usa:        { en: 'United States',     ar: 'الولايات المتحدة',  es: 'Estados Unidos' },
+    uae:        { en: 'UAE',               ar: 'الإمارات',           es: 'Emiratos' },
+  },
+
+} as const
+
+export type TranslationKey = typeof translations
+export default translations

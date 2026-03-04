@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState, useEffect, useRef } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -29,6 +30,7 @@ function StatusDot({ status }: { status: DemoCall['status'] }) {
 
 // ─── Call Detail Drawer ───────────────────────────────────────────────────
 function CallDetailDrawer({ call, onClose }: { call: DemoCall; onClose: () => void }) {
+  const { t } = useT()
   const { toast } = useToast()
   const transcriptRef = useRef<HTMLDivElement>(null)
   const [outcome, setOutcome] = useState(call.outcome ?? '')
@@ -65,7 +67,7 @@ function CallDetailDrawer({ call, onClose }: { call: DemoCall; onClose: () => vo
       <div className="flex-1 overflow-y-auto">
         {/* Live Transcript */}
         <div className="p-4 border-b border-separator">
-          <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">Live Transcript</h4>
+          <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">{t("voice","liveTranscript")}</h4>
           <div ref={transcriptRef} className="bg-surface-elevated rounded-lg p-3 h-52 overflow-y-auto font-mono text-[11px] space-y-2">
             {call.transcript && call.transcript.length > 0 ? (
               <>
@@ -83,7 +85,7 @@ function CallDetailDrawer({ call, onClose }: { call: DemoCall; onClose: () => vo
                 )}
               </>
             ) : (
-              <span className="text-content-tertiary">Awaiting call start...</span>
+              <span className="text-content-tertiary">{t("voice","awaiting")}</span>
             )}
           </div>
         </div>
@@ -138,7 +140,7 @@ function CallDetailDrawer({ call, onClose }: { call: DemoCall; onClose: () => vo
               onChange={e => setOutcome(e.target.value)}
               className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"
             >
-              <option value="">Select outcome...</option>
+              <option value="">{t("actions","selectOutcome")}</option>
               {['Got Status', 'Voicemail', 'Transferred', 'Failed'].map(o => (
                 <option key={o} value={o}>{o}</option>
               ))}
@@ -164,6 +166,7 @@ function CallDetailDrawer({ call, onClose }: { call: DemoCall; onClose: () => vo
 
 // ─── Tab 1: Active Calls ──────────────────────────────────────────────────
 function ActiveCallsTab() {
+  const { t } = useT()
   const { toast } = useToast()
   const [selectedCall, setSelectedCall] = useState<DemoCall | null>(null)
 
@@ -181,10 +184,10 @@ function ActiveCallsTab() {
   return (
     <div>
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Calls Today" value={47} icon={<Phone size={20} />} />
-        <KPICard label="Avg Duration" value="4:32" icon={<Clock size={20} />} />
-        <KPICard label="Success Rate" value="78%" />
-        <KPICard label="On Hold Right Now" value={filteredCalls.filter(c => c.status === 'on_hold').length} icon={<PhoneCall size={20} />} />
+        <KPICard label={t("voice","callsToday")} value={47} icon={<Phone size={20} />} />
+        <KPICard label={t("voice","avgDuration")} value="4:32" icon={<Clock size={20} />} />
+        <KPICard label={t("voice","successRate")} value="78%" />
+        <KPICard label={t("voice","onHold")} value={filteredCalls.filter(c => c.status === 'on_hold').length} icon={<PhoneCall size={20} />} />
       </div>
 
       <div className="card overflow-hidden">
@@ -238,6 +241,7 @@ function ActiveCallsTab() {
 
 // ─── Tab 2: Call Log ──────────────────────────────────────────────────────
 function CallLogTab() {
+  const { t } = useT()
   const { toast } = useToast()
   const [typeFilter, setTypeFilter] = useState('')
   const [outcomeFilter, setOutcomeFilter] = useState('')
@@ -261,14 +265,14 @@ function CallLogTab() {
       <div className="flex gap-3 mb-4">
         <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
           className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
-          <option value="">All Types</option>
+          <option value="">{t("actions","allTypes")}</option>
           {['Payer Status Check', 'Payer Appeal Follow-up', 'Patient Balance Reminder', 'Appointment Reminder'].map(t => (
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
         <select value={outcomeFilter} onChange={e => setOutcomeFilter(e.target.value)}
           className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
-          <option value="">All Outcomes</option>
+          <option value="">{t("actions","allOutcomes")}</option>
           {['Got Status', 'Voicemail', 'Transferred', 'Failed'].map(o => (
             <option key={o} value={o}>{o}</option>
           ))}
@@ -329,6 +333,7 @@ function CallLogTab() {
 
 // ─── Tab 3: Campaign Launcher ─────────────────────────────────────────────
 function CampaignLauncherTab() {
+  const { t } = useT()
   const { toast } = useToast()
   const [selected, setSelected] = useState<DemoCampaign | null>(null)
   const [name, setName] = useState('')
@@ -440,6 +445,7 @@ const stepBadge: Record<string, string> = {
 }
 
 function ScriptBuilderTab() {
+  const { t } = useT()
   const { toast } = useToast()
   const [selected, setSelected] = useState<DemoScript>(demoScripts[0])
   const [scriptSteps, setScriptSteps] = useState(demoScripts[0].steps)
@@ -541,11 +547,11 @@ function ScriptBuilderTab() {
                         setEditingContent('')
                       }}
                       className="text-[10px] bg-brand text-white px-2 py-1 rounded"
-                    >Save</button>
+                    >{t("actions","save")}</button>
                     <button
                       onClick={() => { setEditingStep(null); setEditingContent('') }}
                       className="text-[10px] border border-separator px-2 py-1 rounded text-content-secondary"
-                    >Cancel</button>
+                    >{t("actions","cancel")}</button>
                   </div>
                 )}
               </div>
@@ -578,10 +584,11 @@ const TABS = [
 type TabId = typeof TABS[number]['id']
 
 export default function VoiceAIPage() {
+  const { t } = useT()
   const [tab, setTab] = useState<TabId>('active')
 
   return (
-    <ModuleShell title="Voice AI" subtitle="Automated calls to payers and patients">
+    <ModuleShell title={t("voice","title")} subtitle={t("voice","subtitle")}>
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
         Demo data — live data connects in Sprint 2

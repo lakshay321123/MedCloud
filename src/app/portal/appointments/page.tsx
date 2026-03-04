@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
 import { getClientName } from '@/lib/demo-data'
@@ -97,6 +98,7 @@ interface ApptDrawerProps {
 }
 
 function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) {
+  const { t } = useT()
   const { toast } = useToast()
   const isProvider = currentUserRole === 'provider'
   const isFrontDesk = currentUserRole === 'client'
@@ -138,7 +140,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
         }`}>
           <span className={`w-2 h-2 rounded-full ${ec.color}`}/>
           Eligibility: {ec.label}
-          {elig !== 'verified' && <button onClick={() => toast.info('Verifying eligibility...')} className="ml-auto text-brand underline text-[10px]">Verify Now</button>}
+          {elig !== 'verified' && <button onClick={() => toast.info('Verifying eligibility...')} className="ml-auto text-brand underline text-[10px]">{t("appointments","verifyNow")}</button>}
         </div>
 
         {/* Content */}
@@ -241,6 +243,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
 }
 
 export default function AppointmentsPage() {
+  const { t } = useT()
   const { currentUser, selectedClient } = useApp()
   const { toast } = useToast()
   const isStaff = staffRoles.includes(currentUser.role)
@@ -295,8 +298,8 @@ export default function AppointmentsPage() {
   }
 
   return (
-    <ModuleShell title="Appointments" subtitle={isStaff ? 'View client appointments and visit status' : 'Manage your schedule'}
-      actions={isClinic ? <button onClick={()=>setShowAdd(true)} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep"><Plus size={16}/>Book Appointment</button> : undefined}>
+    <ModuleShell title={t("appointments","title")} subtitle={isStaff ? 'View client appointments and visit status' : 'Manage your schedule'}
+      actions={isClinic ? <button onClick={()=>setShowAdd(true)} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep"><Plus size={16}/>{t("appointments","book")}</button> : undefined}>
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3 mb-4">

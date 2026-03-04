@@ -94,6 +94,7 @@ function LogCallModal({
   onClose: () => void
   onSave: (entry: CallLogEntry, followupDate?: string, promisedDate?: string) => void
 }) {
+  const { t } = useT()
   const { toast } = useToast()
   const phone = payerPhones[account.payer] || 'Contact payer directly'
   const ivr = payerIVR[account.payer] || []
@@ -171,7 +172,7 @@ function LogCallModal({
               <label className="text-[11px] text-content-tertiary block mb-1">Call Outcome *</label>
               <select value={outcome} onChange={e => setOutcome(e.target.value)}
                 className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40">
-                <option value="">Select outcome…</option>
+                <option value="">{t("ar","selectOutcome")}</option>
                 {CALL_OUTCOMES.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
             </div>
@@ -231,6 +232,7 @@ function ARDrawer({
   onUpdateAccount: (update: Partial<ARAccount>) => void
   onAddCall: (entry: CallLogEntry, followupDate?: string, promisedDate?: string) => void
 }) {
+  const { t } = useT()
   const { toast } = useToast()
   const router = useRouter()
   const [drawerTab, setDrawerTab] = useState<'summary' | 'calls' | 'notes' | 'claims'>('summary')
@@ -470,15 +472,15 @@ function ARDrawer({
                   <label className="text-[11px] text-content-tertiary block mb-1">Reason *</label>
                   <select value={writeoffReason} onChange={e => setWriteoffReason(e.target.value)}
                     className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40">
-                    <option value="">Select a reason…</option>
-                    <option value="small_balance">Small balance (under threshold)</option>
-                    <option value="timely_filing">Timely filing deadline passed</option>
-                    <option value="no_auth">No authorization on file</option>
-                    <option value="medical_necessity">Medical necessity denial – exhausted appeals</option>
-                    <option value="contractual">Contractual adjustment</option>
-                    <option value="charity_care">Charity care / financial hardship</option>
-                    <option value="bankruptcy">Patient bankruptcy</option>
-                    <option value="other">Other (explain in notes)</option>
+                    <option value="">{"Select reason…"}</option>
+                    <option value="small_balance">{"Small balance write-off"}</option>
+                    <option value="timely_filing">{"Timely filing exceeded"}</option>
+                    <option value="no_auth">{"No authorization on file"}</option>
+                    <option value="medical_necessity">{"Medical necessity not met"}</option>
+                    <option value="contractual">{"Contractual adjustment"}</option>
+                    <option value="charity_care">{"Charity care"}</option>
+                    <option value="bankruptcy">{"Patient bankruptcy"}</option>
+                    <option value="other">{"Other"}</option>
                   </select>
                 </div>
               </div>
@@ -495,6 +497,7 @@ function ARDrawer({
 }
 
 function InboundCallPanel() {
+  const { t } = useT()
   const { toast } = useToast()
   const [phoneSearch, setPhoneSearch] = useState('')
   const [found, setFound] = useState<ARAccount | null>(null)
@@ -630,7 +633,7 @@ export default function ARManagementPage() {
         <KPICard label="Total A/R" value={`$${(totalAR/1000).toFixed(0)}K`} icon={<TrendingUp size={20} />} />
         <KPICard label="Worked Today" value={String(workedToday)} trend="up" />
         <KPICard label="Follow-ups Due" value={String(followupsDue)} />
-        <KPICard label="Avg Days Outstanding" value={`${avgAge}`} />
+        <KPICard label={t("ar","avgDaysOutstanding")} value={`${avgAge}`} />
       </div>
 
       {/* Tab bar */}

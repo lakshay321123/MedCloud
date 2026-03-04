@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
 import { demoPatients, demoSubmissions } from '@/lib/demo-data'
@@ -14,6 +15,7 @@ interface FileItem { name: string; size: string }
 type Step = 1 | 2 | 3
 
 export default function ScanSubmitPage() {
+  const { t } = useT()
   const { selectedClient, currentUser, country } = useApp()
   const isClinic = currentUser.role === 'client' || currentUser.role === 'provider'
   const clientId = isClinic
@@ -59,7 +61,7 @@ export default function ScanSubmitPage() {
   const history = demoSubmissions.filter(s => s.clientId === clientId)
 
   if (submitted) return (
-    <ModuleShell title="Scan & Submit" subtitle="Upload documents to Cosentus for processing">
+    <ModuleShell title={t("scan","title")} subtitle={t("scan","subtitle")}>
       <div className="max-w-lg mx-auto">
         <div className="card p-10 text-center mb-6">
           <CheckCircle2 size={56} className="text-emerald-500 mx-auto mb-4"/>
@@ -84,7 +86,7 @@ export default function ScanSubmitPage() {
   )
 
   return (
-    <ModuleShell title="Scan & Submit" subtitle="Upload documents to Cosentus for processing">
+    <ModuleShell title={t("scan","title")} subtitle={t("scan","subtitle")}>
       <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
         <span className="text-lg shrink-0">📄</span>
         <div>
@@ -114,7 +116,7 @@ export default function ScanSubmitPage() {
                 <>
                   <div className="relative">
                     <input value={patientSearch} onChange={e=>setPatientSearch(e.target.value)}
-                      placeholder="Search patient by name..."
+                      placeholder={t("scan","searchPatient")}
                       className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2.5 text-sm text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40"/>
                   </div>
                   {patientSearch && (
@@ -175,9 +177,9 @@ export default function ScanSubmitPage() {
                   </div>
                   <div className="flex gap-2">
                     <button onClick={()=>{setPatientId('NEW');setShowNewPatient(false)}}
-                      className="flex-1 bg-brand text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-deep transition-colors">Use New Patient</button>
+                      className="flex-1 bg-brand text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-deep transition-colors">{t("scan","useNewPatient")}</button>
                     <button onClick={()=>setShowNewPatient(false)}
-                      className="px-4 py-2 border border-separator text-content-secondary rounded-lg text-sm hover:text-content-primary transition-colors">Cancel</button>
+                      className="px-4 py-2 border border-separator text-content-secondary rounded-lg text-sm hover:text-content-primary transition-colors">{t("actions","cancel")}</button>
                   </div>
                 </div>
               )}
@@ -233,7 +235,7 @@ export default function ScanSubmitPage() {
           {/* STEP 3 */}
           {step === 3 && (
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-content-primary">Review & Submit</h3>
+              <h3 className="text-sm font-semibold text-content-primary">{t("scan","reviewSubmit")}</h3>
               <div className="bg-surface-elevated rounded-lg p-4 space-y-2.5">
                 <div className="flex justify-between text-sm">
                   <span className="text-content-secondary">Patient</span>
@@ -251,7 +253,7 @@ export default function ScanSubmitPage() {
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Notes for billing team (optional)</label>
                 <textarea value={note} onChange={e=>setNote(e.target.value)} rows={3}
-                  placeholder="Any notes for the billing team?"
+                  placeholder={t("scan","billingNotes")}
                   className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary resize-none outline-none focus:border-brand/40"/>
               </div>
               <div className="flex gap-3">

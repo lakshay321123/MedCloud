@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
@@ -74,6 +75,7 @@ const queues = [
 ]
 
 function UsersTab() {
+  const { t } = useT()
   const { toast } = useToast()
   const [showAdd, setShowAdd] = useState(false)
   const [search, setSearch] = useState('')
@@ -107,9 +109,9 @@ function UsersTab() {
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${u.active?'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400':'bg-gray-500/10 text-gray-400'}`}>{u.active?'Active':'Disabled'}</span></td>
               <td className="px-4 py-3 text-xs text-content-secondary">{u.lastLogin}</td>
               <td className="px-4 py-3 flex gap-1">
-                <button onClick={()=>toast.info(`Editing ${u.name}`)} className="text-[10px] text-brand hover:underline">Edit</button>
+                <button onClick={()=>toast.info(`Editing ${u.name}`)} className="text-[10px] text-brand hover:underline">{t("actions","edit")}</button>
                 <span className="text-content-tertiary">·</span>
-                <button onClick={()=>toast.warning(`${u.name} disabled`)} className="text-[10px] text-red-500 hover:underline">Disable</button>
+                <button onClick={()=>toast.warning(`${u.name} disabled`)} className="text-[10px] text-red-500 hover:underline">{t("admin","disable")}</button>
               </td>
             </tr>
           ))}</tbody>
@@ -121,7 +123,7 @@ function UsersTab() {
           <div className="fixed inset-0 flex items-center justify-center z-50">
             <div className="bg-surface-secondary rounded-xl p-6 w-full max-w-md shadow-2xl space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-semibold">Add User</h3>
+                <h3 className="text-base font-semibold">{t("admin","addUser")}</h3>
                 <button onClick={()=>setShowAdd(false)}><X size={16} className="text-content-secondary"/></button>
               </div>
               {[['Full Name','Jane Smith'],['Email','jane@cosentus.ai']].map(([l,p])=>(
@@ -143,7 +145,7 @@ function UsersTab() {
                 </select>
               </div>
               <button onClick={()=>{toast.success('User created. Invite email sent.');setShowAdd(false)}}
-                className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">Create User</button>
+                className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">{t("admin","createUser")}</button>
             </div>
           </div>
         </>
@@ -153,6 +155,7 @@ function UsersTab() {
 }
 
 function OrgsTab() {
+  const { t } = useT()
   const { toast } = useToast()
   const [showAddOrg, setShowAddOrg] = useState(false)
   const [orgData, setOrgData] = useState({
@@ -364,6 +367,7 @@ const ALL_TABS = [
 type TabId = typeof ALL_TABS[number]['id']
 
 export default function AdminPage() {
+  const { t } = useT()
   const { currentUser } = useApp()
   const isDirector = currentUser.role === 'director'
   const tabs = isDirector
@@ -372,7 +376,7 @@ export default function AdminPage() {
   const [tab, setTab] = useState<TabId>(isDirector ? 'orgs' : 'users')
 
   return (
-    <ModuleShell title="Admin & Settings" subtitle="System administration">
+    <ModuleShell title={t("admin","title")} subtitle={t("admin","subtitle")}>
       <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
         <span className="text-lg shrink-0">⚙️</span>
         <div>

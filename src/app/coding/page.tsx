@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -103,6 +104,7 @@ const removeReasons = [
 
 // ── AddCodeRow sub-component ─────────────────────────────────────────────────
 function AddCodeRow({ type, onAdd }: { type: 'ICD' | 'CPT'; onAdd: (code: string, description: string) => void }) {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const results = type === 'ICD' ? getDemoIcdMatches(query) : getDemoCptMatches(query)
@@ -142,15 +144,16 @@ function AddCodeRow({ type, onAdd }: { type: 'ICD' | 'CPT'; onAdd: (code: string
         </div>
       )}
       {query.length >= 2 && results.length === 0 && (
-        <p className="text-[12px] text-content-tertiary mt-1 px-2">No results — try a different term</p>
+        <p className="text-[12px] text-content-tertiary mt-1 px-2">{t("coding","noSearchResults")}</p>
       )}
-      <button onClick={() => setOpen(false)} className="mt-1 text-[11px] text-content-tertiary hover:text-content-secondary">Cancel</button>
+      <button onClick={() => setOpen(false)} className="mt-1 text-[11px] text-content-tertiary hover:text-content-secondary">{t("actions","cancel")}</button>
     </div>
   )
 }
 
 // ── Main Page Component ──────────────────────────────────────────────────────
 export default function CodingPage() {
+  const { t } = useT()
   const { selectedClient, currentUser, country } = useApp()
   const [reassignTarget, setReassignTarget] = useState<string | null>(null)
   const { toast } = useToast()
@@ -464,12 +467,12 @@ export default function CodingPage() {
   }
 
   return (
-    <ModuleShell title="AI Coding" subtitle="Review and approve AI-suggested codes">
+    <ModuleShell title={t("coding","title")} subtitle={t("coding","subtitle")}>
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="My Queue" value={apiQueueResult?.meta?.total ?? queue.length} icon={<BrainCircuit size={20} />} />
-        <KPICard label="Coded Today" value="4" icon={<CheckCircle2 size={20} />} />
-        <KPICard label="AI Acceptance" value="89%" icon={<Activity size={20} />} />
-        <KPICard label="Avg Time/Chart" value="6.2m" icon={<Clock size={20} />} />
+        <KPICard label={t("coding","myQueue")} value={apiQueueResult?.meta?.total ?? queue.length} icon={<BrainCircuit size={20} />} />
+        <KPICard label={t("coding","codedToday")} value="4" icon={<CheckCircle2 size={20} />} />
+        <KPICard label={t("coding","aiAcceptance")} value="89%" icon={<Activity size={20} />} />
+        <KPICard label={t("coding","avgTimeChart")} value="6.2m" icon={<Clock size={20} />} />
       </div>
 
       <div className={`grid gap-4 h-[calc(100vh-280px)] ${docOpen ? 'grid-cols-12' : 'grid-cols-12'}`}>
@@ -483,7 +486,7 @@ export default function CodingPage() {
                   <div className='w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center mb-3'>
                     <BrainCircuit size={20} className='text-content-tertiary' />
                   </div>
-                  <p className='text-sm font-medium text-content-primary mb-1'>No charts in queue</p>
+                  <p className='text-sm font-medium text-content-primary mb-1'>{t("coding","noChartsQueue")}</p>
                   <p className='text-xs text-content-secondary'>Charts will appear here once they&apos;re added to the system.</p>
                 </div>
               )}
@@ -524,7 +527,7 @@ export default function CodingPage() {
                     )}
                     {currentUser.role === 'supervisor' && (
                       <button onClick={e => { e.stopPropagation(); setReassignTarget(reassignTarget === q.id ? null : q.id) }}
-                        className="text-[9px] text-content-tertiary hover:text-brand transition-colors mt-0.5 block">Reassign</button>
+                        className="text-[9px] text-content-tertiary hover:text-brand transition-colors mt-0.5 block">{t("actions","reassign")}</button>
                     )}
                     {currentUser.role === 'supervisor' && reassignTarget === q.id && (
                       <div className="mt-1 space-y-1" onClick={e => e.stopPropagation()}>
@@ -859,7 +862,7 @@ export default function CodingPage() {
                               />
                             </div>
                             <div className="flex gap-2 pt-1">
-                              <button onClick={() => setShowQuickSoap(false)} className="flex-1 border border-separator rounded-lg py-2 text-[12px] text-content-secondary">Cancel</button>
+                              <button onClick={() => setShowQuickSoap(false)} className="flex-1 border border-separator rounded-lg py-2 text-[12px] text-content-secondary">{t("actions","cancel")}</button>
                               <button
                                 onClick={() => generateAICodes(quickSoap.assessment, quickSoap.plan, quickSoap.specialty)}
                                 disabled={!quickSoap.assessment.trim()}
@@ -1172,7 +1175,7 @@ export default function CodingPage() {
               {queryGenerating ? (
                 <><span className="animate-spin inline-block w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full"/><span>Generating...</span></>
               ) : (
-                <><span>✦</span><span>Generate CDI Query with AI</span></>
+                <><span>✦</span><span>{t("coding","generateCDI")}</span></>
               )}
             </button>
             <textarea
@@ -1183,7 +1186,7 @@ export default function CodingPage() {
               className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] resize-none focus:border-brand/40 outline-none text-content-primary"
             />
             <div className="flex gap-2 mt-3">
-              <button onClick={() => setShowQueryModal(false)} className="flex-1 border border-separator rounded-lg py-2 text-[13px] text-content-secondary">Cancel</button>
+              <button onClick={() => setShowQueryModal(false)} className="flex-1 border border-separator rounded-lg py-2 text-[13px] text-content-secondary">{t("actions","cancel")}</button>
               <button
                 onClick={async () => {
                   if (!queryText.trim()) { toast.error('Please enter a question'); return }
@@ -1198,7 +1201,7 @@ export default function CodingPage() {
                   setQueryText('')
                 }}
                 className="flex-1 bg-brand text-white rounded-lg py-2 text-[13px] font-medium"
-              >Send Query</button>
+              >{t("actions","sendQuery")}</button>
             </div>
           </div>
         </div>
@@ -1215,13 +1218,13 @@ export default function CodingPage() {
               onChange={e => setHoldReason(e.target.value)}
               className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-primary mb-4"
             >
-              <option value="">Select reason...</option>
+              <option value="">{"Select reason…"}</option>
               {['Awaiting additional documentation', 'Awaiting doctor query response', 'Payer policy clarification needed', 'Supervisor review required', 'Duplicate chart — investigating'].map(r => (
                 <option key={r}>{r}</option>
               ))}
             </select>
             <div className="flex gap-2">
-              <button onClick={() => setShowHoldModal(false)} className="flex-1 border border-separator rounded-lg py-2 text-[13px] text-content-secondary">Cancel</button>
+              <button onClick={() => setShowHoldModal(false)} className="flex-1 border border-separator rounded-lg py-2 text-[13px] text-content-secondary">{t("actions","cancel")}</button>
               <button
                 onClick={() => {
                   if (!holdReason) { toast.error('Please select a reason'); return }
@@ -1230,7 +1233,7 @@ export default function CodingPage() {
                   setHoldReason('')
                 }}
                 className="flex-1 bg-amber-500 text-white rounded-lg py-2 text-[13px] font-medium"
-              >Confirm Hold</button>
+              >{"Confirm Hold"}</button>
             </div>
           </div>
         </div>

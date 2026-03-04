@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -34,6 +35,7 @@ function ContractStatusBadge({ status }: { status: DemoContract['status'] }) {
 }
 
 export default function ContractsPage() {
+  const { t } = useT()
   const { toast } = useToast()
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<DemoContract | null>(demoContracts[0] ?? null)
@@ -57,16 +59,16 @@ export default function ContractsPage() {
   ] as const
 
   return (
-    <ModuleShell title="Contract Manager" subtitle="Payer contracts, fee schedules, and underpayment detection">
+    <ModuleShell title={t("contracts","title")} subtitle={t("contracts","subtitle")}>
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
         Demo data — live data connects in Sprint 2
       </div>
       <div className="grid grid-cols-4 gap-4 mb-5">
-        <KPICard label="Active Contracts" value={activeCount} icon={<Scale size={20}/>} />
-        <KPICard label="Expiring (90 days)" value={expiringSoon} trend="down" />
-        <KPICard label="Underpayment Alerts" value={totalUnderpayments} />
-        <KPICard label="Total Payers" value={demoContracts.length} />
+        <KPICard label={t("contracts","activeContracts")} value={activeCount} icon={<Scale size={20}/>} />
+        <KPICard label={t("contracts","expiring90")} value={expiringSoon} trend="down" />
+        <KPICard label={t("contracts","underpayAlerts")} value={totalUnderpayments} />
+        <KPICard label={t("contracts","totalPayers")} value={demoContracts.length} />
       </div>
 
       {expiringSoon > 0 && (
@@ -170,8 +172,8 @@ export default function ContractsPage() {
                             <td className="py-2 pr-3"><input value={newCpt.contractedRate} onChange={e=>setNewCpt(p=>({...p,contractedRate:e.target.value}))} placeholder="0.00" className="w-20 bg-surface-elevated border border-brand/40 rounded px-1.5 py-0.5 text-[12px] text-content-primary focus:outline-none"/></td>
                             <td colSpan={3} className="py-2 pr-3">
                               <div className="flex gap-2">
-                                <button onClick={()=>{toast.success(`CPT ${newCpt.cpt||'code'} added to fee schedule`);setAddingCpt(false);setNewCpt({cpt:'',description:'',contractedRate:''})}} className="text-[11px] bg-brand text-white px-2.5 py-1 rounded">Save</button>
-                                <button onClick={()=>{setAddingCpt(false);setNewCpt({cpt:'',description:'',contractedRate:''})}} className="text-[11px] border border-separator px-2.5 py-1 rounded text-content-secondary">Cancel</button>
+                                <button onClick={()=>{toast.success(`CPT ${newCpt.cpt||'code'} added to fee schedule`);setAddingCpt(false);setNewCpt({cpt:'',description:'',contractedRate:''})}} className="text-[11px] bg-brand text-white px-2.5 py-1 rounded">{t("actions","save")}</button>
+                                <button onClick={()=>{setAddingCpt(false);setNewCpt({cpt:'',description:'',contractedRate:''})}} className="text-[11px] border border-separator px-2.5 py-1 rounded text-content-secondary">{t("actions","cancel")}</button>
                               </div>
                             </td>
                           </tr>
@@ -194,7 +196,7 @@ export default function ContractsPage() {
                       </div>
                     )}
                     {selected.underpayments.length === 0 ? (
-                      <p className="text-[13px] text-content-tertiary text-center py-12">No underpayments detected for this contract</p>
+                      <p className="text-[13px] text-content-tertiary text-center py-12">{t("contracts","noUnderpay")}</p>
                     ) : (
                       <table className="w-full text-[12px]">
                         <thead><tr className="border-b border-separator text-[11px] text-content-tertiary uppercase tracking-wider">

@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -21,6 +22,7 @@ type Provider = typeof providers[0]
 
 export default function CredentialingPage() {
   const { toast } = useToast()
+  const { t } = useT()
   const { selectedClient, country } = useApp()
   const [selected, setSelected] = useState<Provider | null>(null)
   const { data: apiCredResult } = useCredentialing({ limit: 50 })
@@ -57,12 +59,12 @@ export default function CredentialingPage() {
   const expiring = expiringCount
 
   return (
-    <ModuleShell title="Credentialing" subtitle="Provider credentials and payer enrollment">
+    <ModuleShell title={t("credentialing","title")} subtitle={t("credentialing","subtitle")}>
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Active Providers" value={activeCount} icon={<BadgeCheck size={20}/>}/>
-        <KPICard label="Expiring (30 days)" value={expiringCount} trend="down"/>
-        <KPICard label="Onboarding" value={onboardingCount}/>
-        <KPICard label="Total Enrollments" value={totalEnrollments}/>
+        <KPICard label={t("credentialing","activeProviders")} value={activeCount} icon={<BadgeCheck size={20}/>}/>
+        <KPICard label={t("credentialing","expiring30")} value={expiringCount} trend="down"/>
+        <KPICard label={t("credentialing","onboarding")} value={onboardingCount}/>
+        <KPICard label={t("credentialing","totalEnrollments")} value={totalEnrollments}/>
       </div>
       {expiring > 0 && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-4 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2">
@@ -145,7 +147,7 @@ export default function CredentialingPage() {
                   }
                 }}
                   className="bg-brand/10 text-brand rounded-lg py-2 text-xs font-medium hover:bg-brand/20 transition-colors">
-                  Initiate Re-credentialing
+                  {t("credentialing","initiateRecred")}
                 </button>
                 <button onClick={() => toast.info('CAQH portal opened')}
                   className="bg-surface-elevated border border-separator rounded-lg py-2 text-xs font-medium">
@@ -161,7 +163,7 @@ export default function CredentialingPage() {
                   }
                 }}
                   className="bg-surface-elevated border border-separator rounded-lg py-2 text-xs font-medium col-span-2">
-                  Add Payer Enrollment
+                  {t("credentialing","addPayer")}
                 </button>
               </div>
             </div>
