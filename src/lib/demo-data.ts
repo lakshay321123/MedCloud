@@ -752,10 +752,13 @@ export const demoARAccounts = [
 
 // Denials for dashboard and denials page
 export const demoDenialsData = [
-  { id: 'DEN-001', claimId: 'CLM-4504', patientName: 'Sarah Johnson', payer: 'Aetna', denialReason: 'Prior authorization required', status: 'denied' as const, appealLevel: 'L1' as const },
-  { id: 'DEN-002', claimId: 'CLM-4507', patientName: 'Robert Chen', payer: 'Medicare', denialReason: 'Not medically necessary', status: 'appealed' as const, appealLevel: null },
-  { id: 'DEN-003', claimId: 'CLM-4511', patientName: 'Khalid Ibrahim', payer: 'NAS', denialReason: 'Prior auth required — not obtained', status: 'denied' as const, appealLevel: null },
-  { id: 'DEN-004', claimId: 'CLM-4515', patientName: 'Emily Williams', payer: 'Medicare', denialReason: 'Expenses not covered — inactive coverage', status: 'denied' as const, appealLevel: null },
+  { id: 'DEN-001', claimId: 'CLM-4504', patientName: 'Sarah Johnson', payer: 'Aetna', denialReason: 'Prior authorization required', status: 'denied' as const, appealLevel: 'L1' as const, clientId: 'org-102', clientName: 'Irvine Family Practice', dos: '2026-02-15' },
+  { id: 'DEN-002', claimId: 'CLM-4507', patientName: 'Robert Chen', payer: 'Medicare', denialReason: 'Not medically necessary', status: 'appealed' as const, appealLevel: null, clientId: 'org-103', clientName: 'Patel Cardiology', dos: '2026-02-10' },
+  { id: 'DEN-003', claimId: 'CLM-4511', patientName: 'Khalid Ibrahim', payer: 'NAS', denialReason: 'Prior auth required — not obtained', status: 'denied' as const, appealLevel: null, clientId: 'org-104', clientName: 'Dubai Wellness Clinic', dos: '2026-01-15' },
+  { id: 'DEN-004', claimId: 'CLM-4515', patientName: 'Emily Williams', payer: 'Medicare', denialReason: 'Expenses not covered — inactive coverage', status: 'denied' as const, appealLevel: null, clientId: 'org-102', clientName: 'Irvine Family Practice', dos: '2026-02-20' },
+  { id: 'DEN-005', claimId: 'CLM-4520', patientName: 'Ahmed Al Mansouri', payer: 'Daman', denialReason: 'Duplicate claim — already processed', status: 'denied' as const, appealLevel: null, clientId: 'org-101', clientName: 'Gulf Medical Center', dos: '2026-02-01' },
+  { id: 'DEN-006', claimId: 'CLM-4522', patientName: 'Fatima Al Hashimi', payer: 'Thiqa', denialReason: 'Coding error — modifier missing', status: 'denied' as const, appealLevel: 'L1' as const, clientId: 'org-101', clientName: 'Gulf Medical Center', dos: '2026-01-28' },
+  { id: 'DEN-007', claimId: 'CLM-4525', patientName: 'Omar Saeed', payer: 'NAS', denialReason: 'Timely filing limit exceeded', status: 'denied' as const, appealLevel: null, clientId: 'org-104', clientName: 'Dubai Wellness Clinic', dos: '2025-11-10' },
 ]
 
 export const demoPriorVisitHistory: Record<string, Array<{
