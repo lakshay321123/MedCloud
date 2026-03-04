@@ -12,6 +12,11 @@ const RETELL_PHONES = {
   cindy: process.env.RETELL_PHONE_CINDY ?? '+19495229502',
 }
 
+const RETELL_LLMS = {
+  chris: process.env.RETELL_LLM_CHRIS ?? '',
+  cindy: process.env.RETELL_LLM_CINDY ?? '',
+}
+
 async function retellFetch(path: string, options: RequestInit = {}) {
   if (!RETELL_API_KEY) throw new Error('RETELL_API_KEY not configured')
   const res = await fetch(`${RETELL_BASE}${path}`, {
@@ -118,36 +123,14 @@ export async function GET(req: NextRequest) {
     // ── Get agent (for prompt editor) ─────────────────────────────────────
     if (action === 'get-agent') {
       const agentName = searchParams.get('agent') as 'chris' | 'cindy'
-      const agentId = RETELL_AGENTS[agentName]
+      const llmId = RETELL_LLMS[agentName]
 
-      // list-agents returns full agent objects — no need for get-agent
-      const allAgents: Record<string, unknown>[] = await retellFetch('/v2/list-agents')
-        .then(d => Array.isArray(d) ? d : (d.agents ?? d.data ?? []))
-
-      // Match by configured agent_id
-      const agent = allAgents.find((a: Record<string, unknown>) => a.agent_id === agentId)
-
-      if (!agent) {
-        return NextResponse.json({
-          error: `Agent not found`,
-          agent_id_searched: agentId,
-          available_agents: allAgents.map((a: Record<string, unknown>) => ({
-            agent_id: a.agent_id,
-            agent_name: a.agent_name,
-          })),
-        }, { status: 404 })
+      if (!llmId) {
+        return NextResponse.json({ error: `RETELL_LLM_${agentName?.toUpperCase()} not set in Vercel env vars` }, { status: 400 })
       }
 
-      // Prompt lives on the LLM object, not the agent
-      const llmId = (agent.response_engine as Record<string, unknown>)?.llm_id as string
-      if (llmId) {
-        const llm = await retellFetch(`/v2/get-retell-llm/${llmId}`).catch(() => null)
-        if (llm?.general_prompt) {
-          return NextResponse.json({ ...agent, general_prompt: llm.general_prompt })
-        }
-      }
-
-      return NextResponse.json(agent)
+      const data = await retellFetch(`/v2/get-retell-llm/${llmId}`)
+      return NextResponse.json({ general_prompt: data.general_prompt ?? '', llm_id: llmId, ...data })
     }
 
     // ── List all agents (to discover correct agent IDs) ───────────────────
@@ -232,9 +215,9 @@ export async function POST(req: NextRequest) {
     // ── Update agent prompt ───────────────────────────────────────────────
     if (action === 'update-agent') {
       const { agent_name, general_prompt } = body
-      const agentId = RETELL_AGENTS[agent_name as 'chris' | 'cindy']
-      if (!agentId) throw new Error(`Agent ${agent_name} not configured`)
-      const data = await retellFetch(`/v2/agent/${agentId}`, {
+      const llmId = RETELL_LLMS[agent_name as 'chris' | 'cindy']
+      if (!llmId) throw new Error(`RETELL_LLM_${agent_name?.toUpperCase()} not set in Vercel env vars`)
+      const data = await retellFetch(`/v2/update-retell-llm/${llmId}`, {
         method: 'PATCH',
         body: JSON.stringify({ general_prompt }),
       })
