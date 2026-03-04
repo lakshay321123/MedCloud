@@ -47,7 +47,7 @@ export default function MessagesPage() {
   const { toast } = useToast()
   const { getError } = useAbuseFilter()
   // localThreads holds optimistically-added threads before API refetch
-  const [localThreads, setLocalThreads] = useState<any[]>([])
+  const [localThreads, setLocalThreads] = useState<DemoMessage[]>([])
   const [selected, setSelected] = useState<DemoMessage | null>(null)
   const [filter, setFilter] = useState('')
   const [reply, setReply] = useState('')

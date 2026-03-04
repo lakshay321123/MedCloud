@@ -158,7 +158,7 @@ export default function TasksPage() {
       })
       await refetchTasks()
     } catch {
-      // Keep optimistic entry — will sync on next load
+      toast.error('Task saved locally — server sync failed. Will retry on next load.')
     }
   }
 

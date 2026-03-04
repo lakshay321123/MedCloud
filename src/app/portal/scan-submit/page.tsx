@@ -284,7 +284,23 @@ export default function ScanSubmitPage() {
   )
 }
 
-function HistorySection({ history }: { history: any[] }) {
+
+type Submission = {
+  id: string
+  clientId: string
+  patientId?: string
+  patientName?: string
+  trackingId?: string
+  submittedAt?: string
+  date?: string
+  docType?: string
+  type?: string
+  status: string
+  pages?: number
+  size?: string
+}
+
+function HistorySection({ history }: { history: Submission[] }) {
   const statusLabels: Record<string,string> = {
     received:'Received',in_review:'In Review',coded:'Coded',claim_submitted:'Claim Submitted',paid:'Paid ✓'
   }
@@ -301,7 +317,7 @@ function HistorySection({ history }: { history: any[] }) {
           <tbody>{history.map(s=>(
             <tr key={s.id} className="border-b border-separator last:border-0">
               <td className="px-4 py-3 font-mono text-xs text-brand">{s.trackingId}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{new Date(s.submittedAt).toLocaleDateString()}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{s.submittedAt ? new Date(s.submittedAt).toLocaleDateString() : s.date || "—"}</td>
               <td className="px-4 py-3 text-xs">{s.docType}</td>
               <td className="px-4 py-3 text-xs font-medium">{s.patientName}</td>
               <td className="px-4 py-3"><StatusBadge status={s.status} small/></td>

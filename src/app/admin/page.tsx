@@ -316,7 +316,7 @@ function AuditLogTab() {
     details: typeof a.details === 'object' ? JSON.stringify(a.details) : a.details || '',
     ipAddress: '—', userAgent: '—', role: a.user_role || '—', ip: '—',
   }))
-  const filtered = (apiAudit.length ? apiAudit : []).filter((e: any) => {
+  const filtered = apiAudit.filter((e: any) => {
     if (search && !e.user.toLowerCase().includes(search.toLowerCase())) return false
     if (actionFilter && e.action !== actionFilter) return false
     return true

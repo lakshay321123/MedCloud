@@ -571,7 +571,9 @@ export default function ARManagementPage() {
       const balance = (Number(c.total_charges) || 0) - (Number(c.paid_amount) || 0)
       const source: ARAccount['source'] =
         c.status === 'denied' ? 'denied_claim' :
-        balance < Number(c.total_charges) && balance > 0 ? 'underpayment' :
+        (balance > 0 && balance < Number(c.total_charges)) ? 'underpayment' :
+        (c.status === 'submitted' || c.status === 'accepted' || c.status === 'in_process') ? 'patient_balance' :
+        age > 90 ? 'timely_filing_risk' :
         'denied_claim'
       const priority: ARAccount['priority'] =
         age > 90 ? 'urgent' : age > 60 ? 'high' : age > 30 ? 'medium' : 'low'

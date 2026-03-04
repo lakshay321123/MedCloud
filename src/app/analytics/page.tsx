@@ -123,6 +123,7 @@ export default function AnalyticsPage() {
     const apiClaims = (claimsApiResult?.data || []).map(c => ({
       id: c.id,
       clientId: c.client_id,
+      clientName: c.client_name || c.client_id,
       patientId: c.patient_id,
       payer: c.payer_name || 'Unknown',
       status: c.status,
@@ -136,7 +137,7 @@ export default function AnalyticsPage() {
     if (!apiClaims.length) return []
     if (selectedClient) return apiClaims.filter(c => c.clientId === selectedClient.id)
     if (country === 'uae') return apiClaims.filter(c => (UAE_ORG_IDS as readonly string[]).includes(c.clientId))
-    if (country === 'usa') return apiClaims.filter(c => !(UAE_ORG_IDS as readonly string[]).includes(c.clientId))
+    if (country === 'usa') return apiClaims.filter(c => (US_ORG_IDS as readonly string[]).includes(c.clientId))
     return apiClaims
   }, [claimsApiResult, selectedClient, country])
 
@@ -185,13 +186,14 @@ export default function AnalyticsPage() {
   const clientCollectionRates = useMemo(() => {
     const byClient: Record<string, { billed: number; paid: number; name: string }> = {}
     claims.forEach(c => {
-      if (!byClient[c.clientId]) byClient[c.clientId] = { billed: 0, paid: 0, name: c.clientId }
+      if (!byClient[c.clientId]) byClient[c.clientId] = { billed: 0, paid: 0, name: (c as any).clientName || c.clientId }
       byClient[c.clientId].billed += c.billed
       byClient[c.clientId].paid += c.paid
     })
     return Object.values(byClient).map(cl => {
       const rate = cl.billed > 0 ? Math.round((cl.paid / cl.billed) * 100) : 0
-      return { name: cl.name.slice(0, 8), rate, fill: rate >= 95 ? '#10B981' : rate >= 85 ? '#F59E0B' : '#EF4444' }
+      const shortName = cl.name.split(' ').map((w: string) => w[0]).join('').toUpperCase() || cl.name.slice(0, 6)
+      return { name: shortName, rate, fill: rate >= 95 ? '#10B981' : rate >= 85 ? '#F59E0B' : '#EF4444' }
     })
   }, [claims])
 
