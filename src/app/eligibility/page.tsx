@@ -94,8 +94,9 @@ export default function EligibilityPage() {
         priorAuth: r.prior_auth_required ? 'Yes' : 'No',
       })))
       toast.success(`Batch complete: ${result.checked}/${result.total} checked`)
-    } catch {
-      toast.success(`Batch complete — 34 patients checked for ${batchDate}. 31 active, 3 issues found.`)
+    } catch (err) {
+      console.error('[eligibility] batch check failed:', err)
+      toast.error('Batch eligibility check failed — please try again')
     } finally {
       setBatchRunning(false)
     }
@@ -232,7 +233,11 @@ export default function EligibilityPage() {
               {batchRunning ? 'Running...' : 'Run Batch'}
             </button>
           </div>
-          <p className="text-content-secondary">Last batch: Today 3:00 AM — 34 checked, 31 active, 3 issues</p>
+          <p className="text-content-secondary">
+            {batchResults
+              ? `Last batch: ${batchResults.length} checked`
+              : 'No batch run yet this session'}
+          </p>
           {batchResults && batchResults.length > 0 && (
             <div className="card overflow-hidden mt-2">
               <table className="w-full text-[12px]">

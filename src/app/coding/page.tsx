@@ -452,8 +452,9 @@ export default function CodingPage() {
         }
       )
       toast.success(`Chart approved → Claim ${result.claim_number || result.claim_id} created. Sent to billing queue.`)
-    } catch {
-      toast.success(`Chart approved → CLM-${Math.floor(Math.random() * 9000 + 1000)} created. Sent to billing queue.`)
+    } catch (err) {
+      console.error('[coding] chart approval failed:', err)
+      toast.error('Failed to approve chart — please try again')
     }
 
     const nextIdx = queue.findIndex(q => q.id === selected) + 1
