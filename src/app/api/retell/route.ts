@@ -120,10 +120,7 @@ export async function GET(req: NextRequest) {
       const agentName = searchParams.get('agent') as 'chris' | 'cindy'
       const agentId = RETELL_AGENTS[agentName]
       if (!agentId) return NextResponse.json({ error: `${agentName} not configured — add RETELL_AGENT_${agentName?.toUpperCase()} to Vercel env` }, { status: 400 })
-      const data = await retellFetch('/v2/get-agent', {
-        method: 'POST',
-        body: JSON.stringify({ agent_id: agentId }),
-      })
+      const data = await retellFetch(`/v2/agent/${agentId}`)
       return NextResponse.json(data)
     }
 
@@ -205,7 +202,7 @@ export async function POST(req: NextRequest) {
       const { agent_name, general_prompt } = body
       const agentId = RETELL_AGENTS[agent_name as 'chris' | 'cindy']
       if (!agentId) throw new Error(`Agent ${agent_name} not configured`)
-      const data = await retellFetch(`/v2/update-agent/${agentId}`, {
+      const data = await retellFetch(`/v2/agent/${agentId}`, {
         method: 'PATCH',
         body: JSON.stringify({ general_prompt }),
       })
