@@ -158,7 +158,7 @@ export default function DenialsPage() {
           </table>
         </div>
 
-        <div className="card p-4 flex flex-col">
+        <div className="card p-4 flex flex-col overflow-y-auto">
           {selected && selectedDenial ? (
             <>
               <h3 className="text-sm font-semibold mb-1">{selectedDenial.id} — {selectedDenial.patientName}</h3>
@@ -199,7 +199,8 @@ export default function DenialsPage() {
                 </div>
               </div>
               <textarea
-                className="w-full flex-1 min-h-[130px] bg-surface-elevated border border-separator rounded-lg p-2 text-xs resize-none"
+                className="w-full flex-1 min-h-[320px] bg-surface-elevated border border-separator rounded-lg p-3 text-xs leading-relaxed resize-y font-mono"
+                style={{ resize: 'vertical' }}
                 value={getAppealText(selectedDenial)}
                 onChange={e => {
                   const key = `${selectedDenial.id}-${appealLevel}`
