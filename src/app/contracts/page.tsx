@@ -5,6 +5,8 @@ import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import { demoContracts } from '@/lib/demo-data'
 import type { DemoContract } from '@/lib/demo-data'
+import { useFeeSchedules, usePayerConfigs, usePayers } from '@/lib/hooks'
+import { useApp } from '@/lib/context'
 import { Scale, Search, AlertTriangle, Edit2, Plus } from 'lucide-react'
 
 const statusStyles: Record<DemoContract['status'], { label: string; className: string }> = {
@@ -42,13 +44,45 @@ export default function ContractsPage() {
   const [addingCpt, setAddingCpt] = useState(false)
   const [newCpt, setNewCpt] = useState({ cpt: '', description: '', contractedRate: '' })
 
-  const filtered = demoContracts.filter(c =>
+  const { data: apiFeeResult } = useFeeSchedules({ limit: 200 })
+  const { data: apiPayerCfgResult } = usePayerConfigs()
+  const { data: apiPayerResult } = usePayers()
+
+  // Map API data to DemoContract format
+  const apiContracts: DemoContract[] = (() => {
+    const payers = apiPayerResult?.data || []
+    const fees = apiFeeResult?.data || []
+    const configs = apiPayerCfgResult?.data || []
+    if (!payers.length) return []
+    return payers.map((p: any) => {
+      const payerFees = fees.filter((f: any) => f.payer_id === p.id)
+      const cfg = configs.find((c: any) => c.payer_id === p.id)
+      return {
+        id: p.id, payer: p.name, payerId: p.name?.replace(/\s/g, '').toUpperCase().slice(0, 6) || '',
+        client: (p as any).client_name || '—', clientId: p.id, status: 'active' as const,
+        effective: cfg?.created_at?.slice(0, 10) || '2025-01-01',
+        expiry: null, paymentTerms: `${cfg?.clean_claim_days || 30} days clean claim`,
+        timelyFiling: cfg?.timely_filing_days_initial || 365,
+        appealDeadline: cfg?.timely_filing_days_appeal || 60,
+        feeScheduleFrequency: 'Annual',
+        feeSchedule: payerFees.map((f: any) => ({
+          cpt: f.cpt_code, description: f.description || '', contractedRate: Number(f.contracted_rate || 0),
+          medicarePercent: f.medicare_rate ? Math.round((Number(f.contracted_rate) / Number(f.medicare_rate)) * 100) : 100,
+          effectiveDate: f.effective_date || '2025-01-01',
+        })),
+        underpayments: [],
+      }
+    })
+  })()
+
+  const allContracts = apiContracts.length ? apiContracts : demoContracts
+  const filtered = allContracts.filter(c =>
     !search || c.payer.toLowerCase().includes(search.toLowerCase()) || c.client.toLowerCase().includes(search.toLowerCase())
   )
 
-  const activeCount = demoContracts.filter(c => c.status === 'active').length
-  const expiringSoon = demoContracts.filter(c => c.status === 'expiring_soon').length
-  const totalUnderpayments = demoContracts.reduce((s, c) => s + c.underpayments.length, 0)
+  const activeCount = allContracts.filter(c => c.status === 'active').length
+  const expiringSoon = allContracts.filter(c => c.status === 'expiring_soon').length
+  const totalUnderpayments = allContracts.reduce((s, c) => s + c.underpayments.length, 0)
 
   const TABS = [
     { id: 'fee', label: 'Fee Schedule' },
@@ -58,15 +92,12 @@ export default function ContractsPage() {
 
   return (
     <ModuleShell title="Contract Manager" subtitle="Payer contracts, fee schedules, and underpayment detection">
-      <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
-        <AlertTriangle size={13} className='shrink-0' />
-        Demo data — live data connects in Sprint 2
-      </div>
+      {!apiContracts.length && <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-400'><AlertTriangle size={13} className='shrink-0'/>Connecting to live contract data…</div>}
       <div className="grid grid-cols-4 gap-4 mb-5">
         <KPICard label="Active Contracts" value={activeCount} icon={<Scale size={20}/>} />
         <KPICard label="Expiring (90 days)" value={expiringSoon} trend="down" />
         <KPICard label="Underpayment Alerts" value={totalUnderpayments} />
-        <KPICard label="Total Payers" value={demoContracts.length} />
+        <KPICard label="Total Payers" value={allContracts.length} />
       </div>
 
       {expiringSoon > 0 && (

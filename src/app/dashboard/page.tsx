@@ -11,7 +11,7 @@ import {
   CheckCircle2, ShieldAlert, Receipt, ScanLine, Send, ShieldCheck, XCircle
 } from 'lucide-react'
 // removed all demo imports from dashboard
-import { useDashboardMetrics } from '@/lib/hooks'
+import { useDashboardMetrics, useClientHealthScores } from '@/lib/hooks'
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 function QuickLinkCard({ title, subtitle, href, icon }: { title: string; subtitle: string; href: string; icon: React.ReactNode }) {

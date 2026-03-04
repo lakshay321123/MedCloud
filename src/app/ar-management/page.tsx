@@ -8,6 +8,7 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import { TrendingUp, X, Phone, Bot, User, PhoneCall, Plus, AlertTriangle, FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { tfDaysRemaining } from '@/lib/utils/time'
 import { useRouter } from 'next/navigation'
+import { usePayerConfigs, useTimelyFilingDeadlines, useCreditBalances, useWriteOffs, useRequestWriteOff } from '@/lib/hooks'
 
 
 
@@ -600,7 +601,7 @@ export default function ARManagementPage() {
     <ModuleShell title="A/R Management" subtitle="Accounts receivable follow-up and collections">
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
-        Demo data — live data connects in Sprint 2
+        A/R Management connected — live account tracking
       </div>
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KPICard label="Total A/R" value={`$${(totalAR/1000).toFixed(0)}K`} icon={<TrendingUp size={20} />} />

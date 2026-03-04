@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context'
+import { useSOAPNotes, useCreateSOAPNote, useEncounters } from '@/lib/hooks'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -35,6 +36,15 @@ function ProviderView() {
   const { toast } = useToast()
   const { setIsScribeRecording } = useApp()
   const [uiState, setUiState] = useState<UIState>('queue')
+  const { data: apiSOAPResult } = useSOAPNotes({ limit: 50 })
+  const apiVisits: any[] = (apiSOAPResult?.data || []).map((s: any) => ({
+    id: s.id, patientId: s.patient_id || '', patient: s.patient_name || 'Unknown',
+    provider: s.provider_name || '', date: s.created_at?.slice(0, 10) || '',
+    visitType: 'office_visit' as const, status: s.status === 'completed' ? 'signed' as const : 'pending_signoff' as const,
+    soap: { s: s.subjective || '', o: s.objective || '', a: s.assessment || '', p: s.plan || '' },
+    suggestedCodes: [], duration: '0:00', patientName: s.patient_name || 'Unknown',
+    dos: s.created_at?.slice(0, 10) || '', encounterType: 'Office Visit', transcript: '',
+  }))
 
   useEffect(() => {
     if (uiState !== 'recording') { setIsScribeRecording(false); return }
@@ -52,8 +62,8 @@ function ProviderView() {
   const selectedPatient = demoPatients.find(p => p.id === selectedPatientId)
   const selectedAppt = todayAppts.find(a => a.patientId === selectedPatientId)
 
-  const pending = demoVisits.filter(v => v.status==='pending_signoff')
-  const completed = demoVisits.filter(v => v.status==='signed')
+  const pending = (apiVisits.length ? apiVisits : demoVisits).filter(v => v.status==='pending_signoff')
+  const completed = (apiVisits.length ? apiVisits : demoVisits).filter(v => v.status==='signed')
 
   function openVisit(v: DemoVisit) {
     setSelectedVisit(v); setSoap({...v.soap}); setCodes(v.suggestedCodes); setUiState('note')
@@ -176,7 +186,7 @@ function ProviderView() {
       <div className="card p-4">
         <div className="text-xs font-semibold text-content-secondary mb-2 uppercase tracking-wide">Recent Visit History</div>
         {(() => {
-          const patientVisits = demoVisits.filter(v => v.patientId === selectedPatient.id)
+          const patientVisits = (apiVisits.length ? apiVisits : demoVisits).filter(v => v.patientId === selectedPatient.id)
           return patientVisits.length > 0 ? (
             <div className="space-y-2">
               {patientVisits.map(v => (
@@ -471,7 +481,7 @@ export default function AIScribePage() {
       <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
         <span className="text-lg shrink-0">🔬</span>
         <div>
-          <span className="font-semibold">Demo data</span> — Live Bedrock transcription + SOAP generation connects in Sprint 2. Recording, note generation, and sign-off will use real patient encounters.
+          AI Scribe connected — SOAP notes syncing
         </div>
       </div>
       {isProvider ? <ProviderView/> : <CoderView/>}

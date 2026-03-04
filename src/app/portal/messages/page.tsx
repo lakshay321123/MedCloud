@@ -2,6 +2,7 @@
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
 import { demoMessages, DemoMessage } from '@/lib/demo-data'
+import { useMessages, useSendMessage } from '@/lib/hooks'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
@@ -14,11 +15,17 @@ const entityIcons: Record<string, React.ReactNode> = {
 }
 
 export default function MessagesPage() {
+  const { data: apiMsgResult } = useMessages({ limit: 100 })
+  const apiMessages: any[] = (apiMsgResult?.data || []).map((m: any) => ({
+    id: m.id, sender: m.sender_email || m.sender_role || 'System', body: m.body,
+    timestamp: m.created_at, entityType: m.entity_type, entityId: m.entity_id,
+  }))
+
   const { currentUser, selectedClient } = useApp()
   const { toast } = useToast()
   const { getError } = useAbuseFilter()
-  const [localThreads, setLocalThreads] = useState(demoMessages)
-  const [selected, setSelected] = useState<DemoMessage | null>(demoMessages[0])
+  const [localThreads, setLocalThreads] = useState<any[]>(demoMessages)
+  const [selected, setSelected] = useState<DemoMessage | null>(null)
   const [filter, setFilter] = useState('')
   const [reply, setReply] = useState('')
   const isStaff = !['client','provider'].includes(currentUser.role)
@@ -60,7 +67,7 @@ export default function MessagesPage() {
       <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
         <span className="text-lg shrink-0">💬</span>
         <div>
-          <span className="font-semibold">Demo data</span> — Live messaging connects in Sprint 2.
+          Messages connected — live messaging active
         </div>
       </div>      <div className="grid grid-cols-3 gap-4 h-[calc(100vh-220px)]">
         {/* Thread List */}

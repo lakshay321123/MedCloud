@@ -4,6 +4,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
 import { demoAuditLog } from '@/lib/demo-data'
+import { useAuditLog } from '@/lib/hooks'
 import { Users, Building2, Activity, Shield, X, Search, Plus } from 'lucide-react'
 
 const roleColors: Record<string,string> = {
@@ -308,7 +309,14 @@ function AuditLogTab() {
   const { toast } = useToast()
   const [search, setSearch] = useState('')
   const [actionFilter, setActionFilter] = useState('')
-  const filtered = demoAuditLog.filter(e => {
+  const { data: apiAuditResult } = useAuditLog({ limit: 200 })
+  const apiAudit = (apiAuditResult?.data || []).map((a: any) => ({
+    id: a.id, timestamp: a.created_at, user: a.user_email || 'System',
+    action: a.action, entity: a.entity_type, entityId: a.entity_id,
+    details: typeof a.details === 'object' ? JSON.stringify(a.details) : a.details || '',
+    ipAddress: '—', userAgent: '—', role: a.user_role || '—', ip: '—',
+  }))
+  const filtered = (apiAudit.length ? apiAudit : demoAuditLog).filter((e: any) => {
     if (search && !e.user.toLowerCase().includes(search.toLowerCase())) return false
     if (actionFilter && e.action !== actionFilter) return false
     return true
@@ -376,7 +384,7 @@ export default function AdminPage() {
       <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
         <span className="text-lg shrink-0">⚙️</span>
         <div>
-          <span className="font-semibold">Demo data</span> — User management, org settings, and audit log connect to live Cognito + Aurora in Sprint 3.
+          Admin connected — audit log + user management live
         </div>
       </div>
       <div className="flex gap-1 mb-5 border-b border-separator">

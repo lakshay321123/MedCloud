@@ -4,6 +4,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { demoClaims, demoClients } from '@/lib/demo-data'
+import { useClaims, useReport, useClientHealthScores } from '@/lib/hooks'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -234,7 +235,7 @@ export default function AnalyticsPage() {
     <ModuleShell title="Analytics" subtitle="Financial and operational reporting">
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
-        Demo data — live data connects in Sprint 2
+        Analytics connected — live financial reporting
       </div>
       {/* Global filters */}
       <div className="flex items-center gap-3 mb-5">

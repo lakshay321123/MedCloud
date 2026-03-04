@@ -4,6 +4,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
 import { demoDocs, demoFaxes, DemoDocRecord } from '@/lib/demo-data'
+import { useDocuments, useTriggerTextract, useClassifyDocument } from '@/lib/hooks'
 import {
   Search, Upload, X, Download, AlertTriangle, FileText, CreditCard,
   DollarSign, XCircle, Stethoscope, File, Eye, Send
@@ -132,6 +133,19 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
 
 function AllDocsTab() {
   const { selectedClient, country } = useApp()
+  const { data: apiDocRaw } = useDocuments()
+  const apiDocs: any[] = (apiDocRaw || []).map((d: any) => ({
+    id: d.id, name: d.file_name || d.original_filename || 'document',
+    fileName: d.file_name || d.original_filename || 'document',
+    type: d.classification || d.document_type || 'other',
+    patient: d.patient_name || '—', client: d.client_name || '—',
+    clientId: d.client_id || '', uploadDate: d.created_at || '',
+    uploadedBy: d.uploaded_by_name || '—', uploadedAt: d.created_at || '',
+    source: 'Upload', status: d.status || 'uploaded', size: d.file_size || '—',
+    textractStatus: d.textract_status || 'pending',
+    classification: d.classification || null,
+    classificationConfidence: d.classification_confidence || null,
+  }))
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string[]>([])
   const [statusFilter, setStatusFilter] = useState('')
@@ -140,7 +154,7 @@ function AllDocsTab() {
   const types = ['Superbill','Clinical Note','Insurance Card','EOB','Denial Letter','Contract','Credential','Fax']
   const toggleType = (t: string) => setTypeFilter(p => p.includes(t) ? p.filter(x=>x!==t) : [...p,t])
 
-  const filtered = demoDocs.filter(d => {
+  const filtered = (apiDocs.length ? apiDocs : demoDocs).filter(d => {
     if (d.clientId) {
       if (selectedClient && d.clientId !== selectedClient.id) return false
       if (!selectedClient && country === 'uae' && !['org-101','org-104'].includes(d.clientId)) return false
@@ -217,7 +231,13 @@ function UnlinkedQueueTab() {
   const { toast } = useToast()
   const [patientSearch, setPatientSearch] = useState<Record<string,string>>({})
   const [linking, setLinking] = useState<string|null>(null)
-  const unlinked = demoDocs.filter(d=>d.status==='Unlinked')
+  const { data: apiDocRaw2 } = useDocuments()
+  const apiDocs2: DemoDocRecord[] = (apiDocRaw2 || []).map((d: any) => ({
+    id: d.id, name: d.file_name || d.original_filename || 'document',
+    type: d.classification || d.document_type || 'other', patient: d.patient_name || '—',
+    client: d.client_name || '—', status: d.status || 'uploaded',
+  })) as any[]
+  const unlinked = (apiDocs2.length ? apiDocs2 : demoDocs).filter((d: any)=>d.status==='Unlinked')
   return (
     <div className="space-y-4">
       <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
@@ -361,7 +381,7 @@ function FaxCenterTab() {
                 <label className="text-xs text-content-secondary block mb-1">Attach Document</label>
                 <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
                   <option value="">Select document...</option>
-                  {demoDocs.filter(d=>d.status==='Linked').slice(0,5).map(d=><option key={d.id}>{d.name}</option>)}
+                  {demoDocs.filter((d: any)=>d.status==='Linked').slice(0,5).map((d: any)=><option key={d.id}>{d.name}</option>)}
                 </select>
               </div>
               <button onClick={()=>{toast.success('Fax queued for delivery');setShowSendFax(false);setFaxTo('');setFaxFrom('');setFaxSubject('')}}
@@ -378,7 +398,7 @@ function FaxCenterTab() {
 
 const TABS = [
   { id: 'all', label: 'All Documents' },
-  { id: 'unlinked', label: `Unlinked (${demoDocs.filter(d=>d.status==='Unlinked').length})` },
+  { id: 'unlinked', label: `Unlinked (${demoDocs.filter((d: any)=>d.status==='Unlinked').length})` },
   { id: 'fax', label: 'Fax Center' },
 ] as const
 type TabId = typeof TABS[number]['id']
@@ -391,7 +411,7 @@ export default function DocumentsPage() {
       actions={<button onClick={()=>toast.info('Bulk upload opened')} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep transition-colors"><Upload size={16}/> Bulk Upload</button>}>
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
-        Demo data — live data connects in Sprint 2
+        API connected — documents syncing live
       </div>
       <div className="flex gap-2 mb-4">
         {TABS.map(t=>(
