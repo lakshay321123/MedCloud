@@ -24,9 +24,24 @@ async function retellFetch(path: string, options: RequestInit = {}) {
   })
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`Retell ${res.status}: ${err}`)
+    throw new Error(`Retell ${res.status} ${path}: ${err}`)
   }
-  return res.json()
+  // Retell returns either an array or an object depending on endpoint
+  const text = await res.text()
+  try { return JSON.parse(text) } catch { return text }
+}
+
+// Normalize Retell call list — handles both array and {call_list:[]} shapes
+function normalizeCallList(data: unknown): Record<string, unknown>[] {
+  if (Array.isArray(data)) return data
+  if (data && typeof data === 'object') {
+    const d = data as Record<string, unknown>
+    if (Array.isArray(d.call_list)) return d.call_list as Record<string, unknown>[]
+    if (Array.isArray(d.calls)) return d.calls as Record<string, unknown>[]
+    // Some endpoints wrap in data key
+    if (Array.isArray(d.data)) return d.data as Record<string, unknown>[]
+  }
+  return []
 }
 
 export async function GET(req: NextRequest) {
@@ -34,52 +49,47 @@ export async function GET(req: NextRequest) {
   const action = searchParams.get('action')
 
   try {
-    // ── Active / live calls ──────────────────────────────────────────────
+    // ── List calls ────────────────────────────────────────────────────────
     if (action === 'list-calls') {
-      const limit = Number(searchParams.get('limit') ?? '200')
+      const limit = Number(searchParams.get('limit') ?? '500')
       const agentFilter = searchParams.get('agent') // 'chris' | 'cindy' | null
-      const payer = searchParams.get('payer')
-      const startDate = searchParams.get('start_date')
-      const endDate = searchParams.get('end_date')
 
-      const body: Record<string, unknown> = { limit }
-      const filterCriteria: Record<string, unknown> = {}
+      // Fetch without filter_criteria — Retell's filter format varies by version
+      // We tag and filter client-side for reliability
+      const data = await retellFetch('/v2/list-calls', {
+        method: 'POST',
+        body: JSON.stringify({ limit }),
+      })
 
-      if (agentFilter && RETELL_AGENTS[agentFilter as 'chris' | 'cindy']) {
-        filterCriteria.agent_id = [RETELL_AGENTS[agentFilter as 'chris' | 'cindy']]
-      } else if (!agentFilter) {
-        // Return all known agents
-        const ids = [RETELL_AGENTS.chris, RETELL_AGENTS.cindy].filter(Boolean)
-        if (ids.length > 0) filterCriteria.agent_id = ids
-      }
-      if (startDate) filterCriteria.start_timestamp = new Date(startDate).getTime()
-      if (endDate) filterCriteria.end_timestamp = new Date(endDate).getTime() + 86400000
+      let calls = normalizeCallList(data)
 
-      if (Object.keys(filterCriteria).length > 0) body.filter_criteria = filterCriteria
-
-      const data = await retellFetch('/v2/list-calls', { method: 'POST', body: JSON.stringify(body) })
-
-      // Client-side payer filter (from dynamic variables)
-      let calls = data.call_list ?? []
-      if (payer && payer !== 'all') {
-        calls = calls.filter((c: Record<string, unknown>) => {
-          const vars = (c.retell_llm_dynamic_variables ?? {}) as Record<string, string>
-          const p = (vars['primary_carrier_name'] ?? vars['primaryinsurance'] ?? '').toLowerCase()
-          return p.includes(payer.toLowerCase())
-        })
-      }
-
-      // Tag each call with agent name
-      calls = calls.map((c: Record<string, unknown>) => ({
+      // Tag each call with _agent_name
+      calls = calls.map(c => ({
         ...c,
-        _agent_name: c.agent_id === RETELL_AGENTS.chris ? 'chris'
-          : c.agent_id === RETELL_AGENTS.cindy ? 'cindy' : 'unknown',
+        _agent_name:
+          c.agent_id === RETELL_AGENTS.chris ? 'chris'
+          : c.agent_id === RETELL_AGENTS.cindy ? 'cindy'
+          : 'unknown',
       }))
 
-      return NextResponse.json({ call_list: calls, total: calls.length })
+      // Filter by agent if requested
+      if (agentFilter === 'chris' || agentFilter === 'cindy') {
+        const targetId = RETELL_AGENTS[agentFilter]
+        if (targetId) calls = calls.filter(c => c.agent_id === targetId)
+      }
+
+      return NextResponse.json({
+        call_list: calls,
+        total: calls.length,
+        _debug: {
+          raw_type: Array.isArray(data) ? 'array' : typeof data,
+          raw_keys: data && typeof data === 'object' ? Object.keys(data as object) : [],
+          agent_ids_configured: { chris: !!RETELL_AGENTS.chris, cindy: !!RETELL_AGENTS.cindy },
+        },
+      })
     }
 
-    // ── Single call detail ───────────────────────────────────────────────
+    // ── Get single call ───────────────────────────────────────────────────
     if (action === 'get-call') {
       const callId = searchParams.get('call_id')
       if (!callId) return NextResponse.json({ error: 'call_id required' }, { status: 400 })
@@ -87,22 +97,26 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(data)
     }
 
-    // ── Batch campaigns ──────────────────────────────────────────────────
+    // ── List batches ──────────────────────────────────────────────────────
     if (action === 'list-batches') {
-      const data = await retellFetch('/v2/list-batches', { method: 'POST', body: JSON.stringify({ limit: 100 }) })
-      return NextResponse.json(data)
+      const data = await retellFetch('/v2/list-batches', {
+        method: 'POST',
+        body: JSON.stringify({ limit: 100 }),
+      })
+      const batches = normalizeCallList(data)
+      return NextResponse.json({ batch_list: batches })
     }
 
-    // ── Agent config (prompt, name, etc.) ───────────────────────────────
+    // ── Get agent (for prompt editor) ─────────────────────────────────────
     if (action === 'get-agent') {
       const agentName = searchParams.get('agent') as 'chris' | 'cindy'
       const agentId = RETELL_AGENTS[agentName]
-      if (!agentId) return NextResponse.json({ error: `Agent ${agentName} not configured` }, { status: 400 })
+      if (!agentId) return NextResponse.json({ error: `${agentName} not configured — add RETELL_AGENT_${agentName?.toUpperCase()} to Vercel env` }, { status: 400 })
       const data = await retellFetch(`/v2/get-agent/${agentId}`)
       return NextResponse.json(data)
     }
 
-    // ── Agents info ──────────────────────────────────────────────────────
+    // ── Agent info ────────────────────────────────────────────────────────
     if (action === 'agents') {
       return NextResponse.json({
         agents: [
@@ -113,7 +127,23 @@ export async function GET(req: NextRequest) {
       })
     }
 
+    // ── Debug: raw API response ───────────────────────────────────────────
+    if (action === 'debug') {
+      const data = await retellFetch('/v2/list-calls', {
+        method: 'POST',
+        body: JSON.stringify({ limit: 2 }),
+      })
+      return NextResponse.json({
+        raw: data,
+        type: Array.isArray(data) ? 'array' : typeof data,
+        keys: data && typeof data === 'object' ? Object.keys(data as object) : [],
+        agent_ids: RETELL_AGENTS,
+        api_key_set: !!RETELL_API_KEY,
+      })
+    }
+
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+
   } catch (err) {
     console.error('[Retell GET]', err)
     return NextResponse.json({ error: String(err), fallback: true }, { status: 502 })
@@ -125,7 +155,7 @@ export async function POST(req: NextRequest) {
   const { action } = body
 
   try {
-    // ── Single outbound call ─────────────────────────────────────────────
+    // ── Single call ───────────────────────────────────────────────────────
     if (action === 'create-call') {
       const { agent_name, to_number, retell_llm_dynamic_variables } = body
       const agentId = RETELL_AGENTS[agent_name as 'chris' | 'cindy']
@@ -138,7 +168,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(data)
     }
 
-    // ── Batch campaign ───────────────────────────────────────────────────
+    // ── Batch campaign ────────────────────────────────────────────────────
     if (action === 'create-batch') {
       const { agent_name, recipients, batch_name } = body
       const agentId = RETELL_AGENTS[agent_name as 'chris' | 'cindy']
@@ -159,22 +189,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(data)
     }
 
-    // ── Update agent prompt ──────────────────────────────────────────────
+    // ── Update agent prompt ───────────────────────────────────────────────
     if (action === 'update-agent') {
-      const { agent_name, general_prompt, agent_name_label } = body
+      const { agent_name, general_prompt } = body
       const agentId = RETELL_AGENTS[agent_name as 'chris' | 'cindy']
       if (!agentId) throw new Error(`Agent ${agent_name} not configured`)
-      const payload: Record<string, unknown> = {}
-      if (general_prompt !== undefined) payload.general_prompt = general_prompt
-      if (agent_name_label !== undefined) payload.agent_name = agent_name_label
       const data = await retellFetch(`/v2/update-agent/${agentId}`, {
         method: 'PATCH',
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ general_prompt }),
       })
       return NextResponse.json(data)
     }
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+
   } catch (err) {
     console.error('[Retell POST]', err)
     return NextResponse.json({ error: String(err), fallback: true }, { status: 502 })

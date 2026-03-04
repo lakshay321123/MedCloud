@@ -220,6 +220,18 @@ function CallLogTab() {
   const [outcomeFilter, setOutcomeFilter] = useState('')
   const [payerFilter, setPayerFilter] = useState('')
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
+  const [debugInfo, setDebugInfo] = useState<Record<string, unknown> | null>(null)
+  const [debugging, setDebugging] = useState(false)
+
+  async function runDebug() {
+    setDebugging(true)
+    try {
+      const res = await fetch('/api/retell?action=debug')
+      const data = await res.json()
+      setDebugInfo(data)
+    } catch (e) { setDebugInfo({ error: String(e) }) }
+    finally { setDebugging(false) }
+  }
   const [selected, setSelected] = useState<RetellCall | null>(null)
   const [page, setPage] = useState(0)
   const PAGE_SIZE = 25
@@ -276,6 +288,9 @@ function CallLogTab() {
         ))}
         <div className="ml-auto flex items-center gap-2 pb-2">
           <button onClick={refetch} className="p-1.5 hover:bg-surface-elevated rounded text-content-secondary transition-colors"><RefreshCw size={13} /></button>
+          <button onClick={runDebug} disabled={debugging} className="text-[10px] px-2 py-1 border border-separator rounded text-content-tertiary hover:text-content-secondary hover:bg-surface-elevated disabled:opacity-40 transition-colors">
+            {debugging ? '…' : 'Debug API'}
+          </button>
           {fallback && <span className="text-[10px] text-amber-500 flex items-center gap-1"><AlertTriangle size={11} />Demo</span>}
         </div>
       </div>
@@ -303,6 +318,19 @@ function CallLogTab() {
         )}
         <span className="ml-auto text-xs text-content-tertiary self-center">{filtered.length} calls</span>
       </div>
+
+      {/* Debug panel */}
+      {debugInfo && (
+        <div className="card p-4 border-amber-500/30">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-semibold text-amber-500 uppercase tracking-wider">API Debug Response</p>
+            <button onClick={() => setDebugInfo(null)} className="text-[10px] text-content-tertiary hover:text-content-secondary">✕</button>
+          </div>
+          <pre className="text-[10px] text-content-secondary font-mono bg-surface-elevated p-3 rounded-lg overflow-auto max-h-48 whitespace-pre-wrap">
+            {JSON.stringify(debugInfo, null, 2)}
+          </pre>
+        </div>
+      )}
 
       {loading ? <div className="card p-12 text-center text-sm text-content-tertiary">Loading…</div> : (
         <>
