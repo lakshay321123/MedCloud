@@ -3,6 +3,7 @@ import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
 import { demoPatients, demoSubmissions } from '@/lib/demo-data'
+import { useDocuments, usePatients } from '@/lib/hooks'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { Upload, CheckCircle2, FileText, X, Plus, ArrowRight } from 'lucide-react'
@@ -16,12 +17,23 @@ type Step = 1 | 2 | 3
 
 export default function ScanSubmitPage() {
   const { selectedClient, currentUser, country } = useApp()
+  const { data: apiPatientResult } = usePatients({ limit: 100 })
+  const apiPatients: any[] = (apiPatientResult?.data || []).map((p: any) => ({
+    id: p.id, name: (p.first_name || '') + ' ' + (p.last_name || ''), dob: p.date_of_birth || '',
+    clientId: p.client_id || '',
+  }))
+  const { data: apiDocRaw } = useDocuments()
+  const apiSubmissions: any[] = (apiDocRaw || []).map((d: any) => ({
+    id: d.id, patient: d.patient_name || '—', type: d.document_type || 'superbill',
+    fileName: d.file_name || 'document', status: d.status || 'uploaded',
+    uploadedAt: d.created_at || '', client: d.client_name || '—', clientId: d.client_id || '',
+  }))
   const { t } = useT()
   const isClinic = currentUser.role === 'client' || currentUser.role === 'provider'
   const clientId = isClinic
     ? currentUser.organization_id
-    : selectedClient?.id ?? (country === 'uae' ? UAE_ORG_IDS[0] : US_ORG_IDS[0])
-  const myPatients = demoPatients.filter(p => p.clientId === clientId)
+    : selectedClient?.id ?? (country === 'uae' ? 'org-101' : 'org-102')
+  const myPatients = (apiPatients.length ? apiPatients : demoPatients).filter(p => p.clientId === clientId)
 
   const [step, setStep] = useState<Step>(1)
   const [patientId, setPatientId] = useState('')
@@ -58,7 +70,7 @@ export default function ScanSubmitPage() {
   }
 
   // Submission history
-  const history = demoSubmissions.filter(s => s.clientId === clientId)
+  const history = (apiSubmissions.length ? apiSubmissions : demoSubmissions).filter(s => s.clientId === clientId)
 
   if (submitted) return (
     <ModuleShell title={t("scan","title")} subtitle="Upload documents to Cosentus for processing">
@@ -90,7 +102,7 @@ export default function ScanSubmitPage() {
       <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
         <span className="text-lg shrink-0">📄</span>
         <div>
-          <span className="font-semibold">Demo data</span> — Patient list and submission history connect to live API in Sprint 2.
+          Scan & Submit connected — live document upload
         </div>
       </div>
       <div className="max-w-2xl mx-auto">

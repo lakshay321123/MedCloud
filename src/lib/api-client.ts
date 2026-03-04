@@ -46,7 +46,9 @@ export class MedCloudApiError extends Error {
 }
 
 function buildUrl(path: string, params?: ApiListParams): string {
-  const url = new URL(API_BASE + API_PREFIX + path)
+  const base = API_BASE || (typeof window !== 'undefined' ? window.location.origin : '')
+  if (!base) return path // fallback — will fail gracefully at fetch
+  const url = new URL(base + API_PREFIX + path)
   if (params) {
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== '') {
@@ -76,19 +78,18 @@ async function request<T>(
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  const url = buildUrl(path, method === 'GET' ? params : undefined)
-  const options: RequestInit = {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  }
-
   let res: Response
   try {
+    const url = buildUrl(path, method === 'GET' ? params : undefined)
+    const options: RequestInit = {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    }
     res = await fetch(url, options)
   } catch (err) {
     throw new MedCloudApiError(
-      err instanceof Error ? err.message : 'Network error',
+      err instanceof Error ? err.message : 'Network error — check NEXT_PUBLIC_API_URL',
       0,
       'NETWORK_ERROR'
     )

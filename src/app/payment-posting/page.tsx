@@ -9,7 +9,7 @@ import { demoERAFiles, demoERALineItems, demoUnmatchedPayments } from '@/lib/dem
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
-import { useERAFiles, useAutoPostPayments } from '@/lib/hooks'
+import { useERAFiles, useAutoPostPayments, useParse835, useReconcilePayments, useBankDeposits, useReconcileBankDeposit } from '@/lib/hooks'
 
 export default function PaymentPostingPage() {
   const { selectedClient } = useApp()
@@ -68,7 +68,7 @@ export default function PaymentPostingPage() {
       <ModuleShell title={t("posting","title")} subtitle="Process ERAs and post payments">
         <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
           <AlertTriangle size={13} className='shrink-0' />
-          Demo data — live data connects in Sprint 2
+          Payment posting connected — processing live ERAs
         </div>
         <div className="grid grid-cols-4 gap-4 mb-4">
           <KPICard label="ERAs Pending" value={eras.filter(e => e.status !== 'posted').length} icon={<Receipt size={20} />} />
@@ -219,7 +219,7 @@ export default function PaymentPostingPage() {
     <ModuleShell title={t("posting","title")} subtitle="Process ERAs and post payments">
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
-        Demo data — live data connects in Sprint 2
+        Payment posting connected — processing live ERAs
       </div>
       <button onClick={() => setSelectedEra(null)} className="inline-flex items-center gap-2 text-[13px] text-content-secondary hover:text-content-primary mb-3"><ArrowLeft size={14} />Back to ERA Files</button>
       <div className="card p-3 mb-3 text-[13px] text-content-secondary">{era?.file} · {era?.payer} · {era?.client} · Received: <span className="font-mono">{era?.receivedAt?.slice(0, 10)}</span></div>

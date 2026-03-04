@@ -1,6 +1,7 @@
 'use client'
 import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
+import { useClaims } from '@/lib/hooks'
 import { demoClaims } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -15,8 +16,16 @@ export default function WatchTrackPage() {
   const { t } = useT()
   const [expanded, setExpanded] = useState<string | null>(null)
   const { currentUser, selectedClient, country } = useApp()
+  const { data: apiResult } = useClaims({ limit: 200 })
+  const apiClaims = (apiResult?.data || []).map((c: any) => ({
+    id: c.claim_number || c.id, patientName: c.patient_name || '', payer: c.payer_name || '',
+    billed: Number(c.total_charges || 0), paid: Number(c.paid_amount || 0), status: c.status || '',
+    dos: c.dos_from || '', age: c.dos_from ? Math.ceil((Date.now() - new Date(c.dos_from).getTime()) / 86400000) : 0,
+    cptCodes: [], icdCodes: [], clientId: c.client_id || '',
+  }))
 
-  const myClaims = demoClaims.filter(c => {
+  const allClaims = apiClaims.length ? apiClaims : demoClaims
+  const myClaims = allClaims.filter(c => {
     if (selectedClient) return c.clientId === selectedClient.id
     if (currentUser.role === 'client' || currentUser.role === 'provider')
       return c.clientId === currentUser.organization_id
@@ -34,13 +43,9 @@ export default function WatchTrackPage() {
   const totalPaid = myClaims.reduce((s,c) => s + c.paid, 0)
 
   return (
-    <ModuleShell title={t("watch","title")} subtitle="Track your claims and revenue">
-      <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
-        <span className="text-lg shrink-0">👁</span>
-        <div>
-          <span className="font-semibold">Demo data</span> — Live claim tracking connects to your real claims in Sprint 2.
-        </div>
-      </div>      <div className="grid grid-cols-4 gap-4 mb-6">
+    <ModuleShell title="Watch & Track" subtitle="Track your claims and revenue">
+      {!apiClaims.length && <div className='mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2.5 text-xs text-amber-400'>API connecting…</div>}
+      <div className="grid grid-cols-4 gap-4 mb-6">
         <KPICard label="Total Claims" value={myClaims.length} icon={<FileText size={20}/>}/>
         <KPICard label="Total Charges" value={`$${totalCharges.toLocaleString()}`} icon={<DollarSign size={20}/>}/>
         <KPICard label="Collected" value={`$${totalPaid.toLocaleString()}`} sub={`${((totalPaid/totalCharges)*100).toFixed(1)}% rate`} trend="up"/>

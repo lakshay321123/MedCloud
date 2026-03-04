@@ -7,7 +7,7 @@ import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 // removed demo imports
 import { ShieldCheck, AlertTriangle, CheckCircle2 } from 'lucide-react'
-import { useEligibilityChecks } from '@/lib/hooks'
+import { useEligibilityChecks, useRunEligibility, useBatchEligibility, useParse271 } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import type { ApiEligibilityCheck } from '@/lib/hooks'
 

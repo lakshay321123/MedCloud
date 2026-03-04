@@ -2736,7 +2736,7 @@ async function categorizeDenials(orgId, clientId) {
       await pool.query(
         'UPDATE denials SET category = $1, updated_at = NOW() WHERE id = $2',
         [d.category, d.id]
-      ).catch(() => {});
+      ).catch((err) => { console.error('Notification error:', err.message); });
     }
   }
 
@@ -3280,6 +3280,708 @@ async function getNotifications(orgId, userId, qs) {
   return { data: r.rows, total: r.rows.length, unread_count: Number(unreadR.rows[0]?.cnt || 0) };
 }
 
+
+// ─── Contextual Messages ────────────────────────────────────────────────────
+async function getMessages(orgId, userId, qs) {
+  let q = 'SELECT m.*, u.email as sender_email, u.role as sender_role_name FROM messages m LEFT JOIN users u ON m.sender_id = u.id WHERE m.org_id = $1';
+  const p = [orgId];
+  if (qs.entity_type && qs.entity_id) {
+    q += ` AND m.entity_type = $${p.length + 1} AND m.entity_id = $${p.length + 2}`;
+    p.push(qs.entity_type, qs.entity_id);
+  }
+  if (qs.entity_type && !qs.entity_id) {
+    q += ` AND m.entity_type = $${p.length + 1}`; p.push(qs.entity_type);
+  }
+  if (qs.parent_id) { q += ` AND m.parent_id = $${p.length + 1}`; p.push(qs.parent_id); }
+  if (qs.parent_id === 'null') { q += ' AND m.parent_id IS NULL'; }
+  if (qs.is_internal === 'false') { q += ' AND m.is_internal = false'; }
+  q += ' ORDER BY m.created_at DESC';
+  if (qs.limit) { q += ` LIMIT $${p.length + 1}`; p.push(qs.limit); }
+  const r = await pool.query(q, p);
+  // Count unread in DB for efficiency
+  const unreadP = [...p].slice(0, p.length - (qs.limit ? 1 : 0)); // exclude LIMIT param
+  const unreadQ = q.replace(/SELECT m\.\*, .*? FROM/, 'SELECT COUNT(*) FROM').replace(/ORDER BY.*$/, '') + (userId ? ` AND NOT (m.read_by @> ARRAY[$${unreadP.length + 1}::uuid])` : '');
+  let unread = 0;
+  if (userId) {
+    try {
+      unreadP.push(userId);
+      const unreadR = await pool.query(unreadQ, unreadP);
+      unread = Number(unreadR.rows[0]?.count || 0);
+    } catch (_) { unread = r.rows.filter(m => !(m.read_by || []).includes(userId)).length; }
+  }
+  return { data: r.rows, total: r.rows.length, unread_count: unread };
+}
+
+async function sendMessage(body, orgId, userId) {
+  const { entity_type, entity_id, parent_id, subject, body: msgBody, recipient_ids, is_internal, priority, attachments } = body;
+  if (!msgBody) throw new Error('Message body required');
+  const msg = await create('messages', {
+    org_id: orgId, client_id: body.client_id, entity_type: entity_type || 'general',
+    entity_id, parent_id, sender_id: userId, sender_role: body.sender_role,
+    recipient_ids: recipient_ids || null, subject, body: msgBody,
+    attachments: attachments || [], is_internal: is_internal || false,
+    is_system: false, read_by: [userId], priority: priority || 'normal',
+  }, orgId);
+  if (recipient_ids?.length) {
+    for (const rid of recipient_ids) {
+      await createNotification(orgId, {
+        user_id: rid, type: 'info', priority: priority || 'normal',
+        title: `New message${entity_type ? ` on ${entity_type}` : ''}`,
+        message: (msgBody || '').substring(0, 100),
+        entity_type: 'message', entity_id: msg.id,
+        action_url: entity_type && entity_id ? `/${entity_type}s/${entity_id}` : '/messages',
+      });
+    }
+  }
+  return msg;
+}
+
+async function markMessageRead(messageId, orgId, userId) {
+  const msg = await getById('messages', messageId);
+  if (!msg || msg.org_id !== orgId) throw new Error('Message not found');
+  const readBy = msg.read_by || [];
+  if (!readBy.includes(userId)) readBy.push(userId);
+  return update('messages', messageId, { read_by: readBy, updated_at: new Date().toISOString() });
+}
+
+// ─── Audit Log Viewer ───────────────────────────────────────────────────────
+async function getAuditLog(orgId, qs) {
+  let where = 'WHERE al.org_id = $1';
+  const p = [orgId];
+  if (qs.user_id) { where += ` AND al.user_id = $${p.length + 1}`; p.push(qs.user_id); }
+  if (qs.entity_type) { where += ` AND al.entity_type = $${p.length + 1}`; p.push(qs.entity_type); }
+  if (qs.entity_id) { where += ` AND al.entity_id = $${p.length + 1}`; p.push(qs.entity_id); }
+  if (qs.action) { where += ` AND al.action = $${p.length + 1}`; p.push(qs.action); }
+  if (qs.from) { where += ` AND al.created_at >= $${p.length + 1}`; p.push(qs.from); }
+  if (qs.to) { where += ` AND al.created_at <= $${p.length + 1}`; p.push(qs.to); }
+  const countP = [...p];
+  const countR = await pool.query(`SELECT COUNT(*) FROM audit_log al ${where}`, countP);
+  let q = `SELECT al.*, u.email as user_email FROM audit_log al LEFT JOIN users u ON al.user_id = u.id ${where}`;
+  q += ' ORDER BY al.created_at DESC';
+  const limit = Math.min(Number(qs.limit) || 50, 500);
+  q += ` LIMIT $${p.length + 1}`; p.push(limit);
+  if (qs.offset) { q += ` OFFSET $${p.length + 1}`; p.push(qs.offset); }
+  const r = await pool.query(q, p);
+  return { data: r.rows, total: Number(countR.rows[0].count), limit };
+}
+
+// ─── Payer Config (Timely Filing + Phone + IVR) ─────────────────────────────
+async function getPayerConfig(orgId, payerId) {
+  const r = await pool.query('SELECT * FROM payer_config WHERE org_id = $1 AND payer_id = $2', [orgId, payerId]);
+  return r.rows[0] || null;
+}
+
+async function upsertPayerConfig(body, orgId) {
+  if (!body.payer_id) throw new Error('payer_id required');
+  const existing = await getPayerConfig(orgId, body.payer_id);
+  const data = { ...body, org_id: orgId, updated_at: new Date().toISOString() };
+  if (existing) { return update('payer_config', existing.id, data); }
+  return create('payer_config', data, orgId);
+}
+
+async function listPayerConfigs(orgId) {
+  const r = await pool.query(
+    `SELECT pc.*, p.name as payer_name FROM payer_config pc
+     JOIN payers p ON pc.payer_id = p.id WHERE pc.org_id = $1 ORDER BY p.name`, [orgId]);
+  return { data: r.rows, total: r.rows.length };
+}
+
+// ─── Timely Filing Deadline Calculator ──────────────────────────────────────
+async function calculateTimelyFilingDeadlines(orgId, clientId) {
+  let q = `SELECT c.id, c.claim_number, c.dos_from, c.payer_id, c.status, c.created_at,
+            p.name as payer_name, pc.timely_filing_days_initial
+           FROM claims c JOIN payers p ON c.payer_id = p.id
+           LEFT JOIN payer_config pc ON pc.org_id = c.org_id AND pc.payer_id = c.payer_id
+           WHERE c.org_id = $1 AND c.status NOT IN ('paid','write_off','cancelled')`;
+  const params = [orgId];
+  if (clientId) { q += ` AND c.client_id = $${params.length + 1}`; params.push(clientId); }
+  q += ' ORDER BY c.dos_from ASC';
+  const r = await pool.query(q, params);
+  const now = new Date();
+  const results = r.rows.map(claim => {
+    const filingDays = claim.timely_filing_days_initial || 365;
+    const dosDate = new Date(claim.dos_from);
+    const deadline = new Date(dosDate); deadline.setDate(deadline.getDate() + filingDays);
+    const daysRemaining = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+    const risk = daysRemaining <= 0 ? 'expired' : daysRemaining <= 14 ? 'critical' : daysRemaining <= 30 ? 'warning' : daysRemaining <= 60 ? 'approaching' : 'safe';
+    return { claim_id: claim.id, claim_number: claim.claim_number, payer_name: claim.payer_name,
+      dos_from: claim.dos_from, status: claim.status, filing_days_limit: filingDays,
+      deadline: deadline.toISOString().slice(0, 10), days_remaining: daysRemaining, risk };
+  });
+  for (const r of results) {
+    await pool.query('UPDATE claims SET timely_filing_deadline = $1, timely_filing_days_remaining = $2 WHERE id = $3',
+      [r.deadline, r.days_remaining, r.claim_id]).catch((err) => { console.error(`Failed to update timely filing for claim ${r.claim_id}:`, err.message); });
+  }
+  const summary = { expired: results.filter(r => r.risk === 'expired').length,
+    critical: results.filter(r => r.risk === 'critical').length,
+    warning: results.filter(r => r.risk === 'warning').length,
+    approaching: results.filter(r => r.risk === 'approaching').length,
+    safe: results.filter(r => r.risk === 'safe').length };
+  return { data: results, total: results.length, summary };
+}
+
+// ─── Credit Balance Identification ──────────────────────────────────────────
+async function identifyCreditBalances(orgId, clientId) {
+  let q = `SELECT c.id as claim_id, c.claim_number, c.patient_id, c.payer_id,
+            c.total_charge, c.total_paid, c.adjustment_amount,
+            p.first_name || ' ' || p.last_name as patient_name, py.name as payer_name,
+            (c.total_paid - (c.total_charge - COALESCE(c.adjustment_amount, 0))) as overpayment
+           FROM claims c JOIN patients p ON c.patient_id = p.id JOIN payers py ON c.payer_id = py.id
+           WHERE c.org_id = $1 AND c.total_paid > (c.total_charge - COALESCE(c.adjustment_amount, 0)) AND c.total_paid > 0`;
+  const params = [orgId];
+  if (clientId) { q += ` AND c.client_id = $${params.length + 1}`; params.push(clientId); }
+  q += ' ORDER BY (c.total_paid - (c.total_charge - COALESCE(c.adjustment_amount, 0))) DESC';
+  const r = await pool.query(q, params);
+  // Batch-load existing unresolved credit balances to avoid N+1 queries
+  const existingR = await pool.query(
+    'SELECT DISTINCT claim_id FROM credit_balances WHERE org_id = $1 AND status != $2', [orgId, 'resolved']);
+  const existingClaimIds = new Set(existingR.rows.map(r => r.claim_id));
+  let newCount = 0;
+  for (const row of r.rows) {
+    if (Number(row.overpayment) <= 0.01) continue;
+    if (!existingClaimIds.has(row.claim_id)) {
+      await create('credit_balances', { org_id: orgId, claim_id: row.claim_id, patient_id: row.patient_id,
+        payer_id: row.payer_id, amount: Number(row.overpayment).toFixed(2), source: 'overpayment', status: 'identified' }, orgId);
+      existingClaimIds.add(row.claim_id);
+      newCount++;
+    }
+  }
+  const allR = await pool.query(
+    `SELECT cb.*, p.first_name || ' ' || p.last_name as patient_name, py.name as payer_name, c.claim_number
+     FROM credit_balances cb LEFT JOIN patients p ON cb.patient_id = p.id
+     LEFT JOIN payers py ON cb.payer_id = py.id LEFT JOIN claims c ON cb.claim_id = c.id
+     WHERE cb.org_id = $1 AND cb.status NOT IN ('resolved','written_off') ORDER BY cb.amount DESC`, [orgId]);
+  const totalAmount = allR.rows.reduce((sum, r) => sum + Number(r.amount), 0);
+  return { data: allR.rows, total: allR.rows.length, new_identified: newCount, total_amount: totalAmount.toFixed(2) };
+}
+
+async function resolveCreditBalance(creditId, body, orgId, userId) {
+  const cb = await getById('credit_balances', creditId);
+  if (!cb || cb.org_id !== orgId) throw new Error('Credit balance not found');
+  const { resolution_method, resolution_claim_id, notes } = body;
+  if (!resolution_method) throw new Error('resolution_method required');
+  const statusMap = { refund_check: 'refund_requested', refund_eft: 'refund_requested', applied_to_claim: 'applied_to_balance', written_off: 'written_off' };
+  return update('credit_balances', creditId, {
+    status: statusMap[resolution_method] || 'under_review', resolution_method, resolution_claim_id, notes,
+    resolution_date: new Date().toISOString().slice(0, 10), assigned_to: userId, updated_at: new Date().toISOString() });
+}
+
+// ─── Bank Reconciliation ────────────────────────────────────────────────────
+async function reconcileBankDeposit(depositId, orgId, userId) {
+  const deposit = await getById('bank_deposits', depositId);
+  if (!deposit || deposit.org_id !== orgId) throw new Error('Deposit not found');
+  let q = `SELECT ef.id, ef.payer_name, ef.check_number, ef.total_paid, ef.payment_date
+           FROM era_files ef WHERE ef.org_id = $1`;
+  const params = [orgId];
+  if (deposit.payer_id) {
+    const payer = await getById('payers', deposit.payer_id);
+    if (payer) { q += ` AND ef.payer_name ILIKE $${params.length + 1}`; params.push(`%${payer.name}%`); }
+  }
+  q += ` AND ef.payment_date BETWEEN ($${params.length + 1}::date - 3) AND ($${params.length + 1}::date + 3)`;
+  params.push(deposit.deposit_date);
+  q += ' ORDER BY ef.payment_date';
+  const eraR = await pool.query(q, params);
+  let eraTotal = 0; const matchedEras = [];
+  for (const era of eraR.rows) { eraTotal += Number(era.total_paid || 0); matchedEras.push(era.id); }
+  const variance = Number(deposit.amount) - eraTotal;
+  const reconciled = Math.abs(variance) < 0.01;
+  await update('bank_deposits', depositId, { reconciled, reconciled_at: reconciled ? new Date().toISOString() : null,
+    era_file_ids: matchedEras, variance: variance.toFixed(2), updated_at: new Date().toISOString() });
+  return { deposit_id: depositId, deposit_amount: deposit.amount, era_total: eraTotal.toFixed(2),
+    variance: variance.toFixed(2), reconciled, matched_era_count: matchedEras.length, matched_eras: eraR.rows };
+}
+
+// ─── Appeal Templates ───────────────────────────────────────────────────────
+async function getAppealTemplates(orgId, qs) {
+  let q = 'SELECT at.*, p.name as payer_name FROM appeal_templates at LEFT JOIN payers p ON at.payer_id = p.id WHERE at.org_id = $1';
+  const params = [orgId];
+  if (qs.payer_id) { q += ` AND at.payer_id = $${params.length + 1}`; params.push(qs.payer_id); }
+  if (qs.carc_code) { q += ` AND at.carc_code = $${params.length + 1}`; params.push(qs.carc_code); }
+  if (qs.denial_category) { q += ` AND at.denial_category = $${params.length + 1}`; params.push(qs.denial_category); }
+  q += ' ORDER BY at.win_rate DESC';
+  const r = await pool.query(q, params);
+  return { data: r.rows, total: r.rows.length };
+}
+
+// ─── Batch Denial Appeal ────────────────────────────────────────────────────
+async function batchGenerateAppeals(body, orgId, userId) {
+  const { category, payer_id, denial_ids } = body;
+  let q = `SELECT d.id FROM denials d WHERE d.org_id = $1 AND d.status NOT IN ('appeal_in_progress','overturned','written_off')`;
+  const params = [orgId];
+  if (denial_ids?.length) { q += ` AND d.id = ANY($${params.length + 1})`; params.push(denial_ids); }
+  else {
+    if (category) { q += ` AND d.category = $${params.length + 1}`; params.push(category); }
+    if (payer_id) { q += ` AND d.payer_id = $${params.length + 1}`; params.push(payer_id); }
+  }
+  q += ' LIMIT 50';
+  const r = await pool.query(q, params);
+  const results = { total: r.rows.length, succeeded: 0, failed: 0, appeals: [] };
+  for (const denial of r.rows) {
+    try {
+      const appeal = await generateAppeal(denial.id, orgId, userId);
+      results.succeeded++;
+      results.appeals.push({ denial_id: denial.id, appeal_id: appeal.appeal_id, status: 'generated' });
+    } catch (err) {
+      results.failed++;
+      results.appeals.push({ denial_id: denial.id, error: err.message, status: 'failed' });
+    }
+  }
+  return results;
+}
+
+// ─── Client Health Scoring ──────────────────────────────────────────────────
+async function calculateClientHealth(orgId, clientId) {
+  const cid = clientId;
+  const denialR = await pool.query(
+    `SELECT COUNT(*) FILTER (WHERE status = 'denied') as denied, COUNT(*) as total
+     FROM claims WHERE org_id = $1 AND client_id = $2 AND created_at > NOW() - INTERVAL '90 days'`, [orgId, cid]);
+  const denialRate = denialR.rows[0].total > 0 ? (denialR.rows[0].denied / denialR.rows[0].total) * 100 : 0;
+  const denialScore = Math.max(0, 100 - (denialRate * 5));
+
+  const arR = await pool.query(
+    `SELECT AVG(EXTRACT(EPOCH FROM (COALESCE(paid_at, NOW()) - created_at)) / 86400) as avg_days
+     FROM claims WHERE org_id = $1 AND client_id = $2 AND status NOT IN ('draft','cancelled')
+     AND created_at > NOW() - INTERVAL '90 days'`, [orgId, cid]);
+  const avgDaysAR = Number(arR.rows[0].avg_days || 45);
+  const arScore = Math.max(0, Math.min(100, 100 - ((avgDaysAR - 25) * 3)));
+
+  const cleanR = await pool.query(
+    `SELECT COUNT(*) FILTER (WHERE scrub_passed = true) as clean, COUNT(*) as total
+     FROM claims WHERE org_id = $1 AND client_id = $2 AND created_at > NOW() - INTERVAL '90 days'`, [orgId, cid]);
+  const cleanRate = cleanR.rows[0].total > 0 ? (cleanR.rows[0].clean / cleanR.rows[0].total) * 100 : 50;
+
+  const collR = await pool.query(
+    `SELECT SUM(total_paid) as collected, SUM(total_charge) as charged
+     FROM claims WHERE org_id = $1 AND client_id = $2 AND status = 'paid'
+     AND created_at > NOW() - INTERVAL '90 days'`, [orgId, cid]);
+  const collectionRate = Number(collR.rows[0].charged) > 0
+    ? (Number(collR.rows[0].collected) / Number(collR.rows[0].charged)) * 100 : 50;
+  const collectionScore = Math.min(100, collectionRate);
+
+  const healthScore = Math.round(denialScore * 0.25 + arScore * 0.25 + cleanRate * 0.25 + collectionScore * 0.25);
+  await pool.query('UPDATE clients SET health_score = $1, health_score_updated_at = NOW() WHERE id = $2', [healthScore, cid]).catch((err) => { console.error(`Failed to update health score for client ${cid}:`, err.message); });
+
+  return { client_id: cid, health_score: healthScore, calculated_at: new Date().toISOString(),
+    components: {
+      denial_rate: { value: Math.round(denialRate * 10) / 10, score: Math.round(denialScore), weight: '25%', target: '< 5%' },
+      days_in_ar: { value: Math.round(avgDaysAR), score: Math.round(arScore), weight: '25%', target: '< 35 days' },
+      clean_claim_rate: { value: Math.round(cleanRate * 10) / 10, score: Math.round(cleanRate), weight: '25%', target: '> 95%' },
+      collection_rate: { value: Math.round(collectionRate * 10) / 10, score: Math.round(collectionScore), weight: '25%', target: '> 95%' },
+    } };
+}
+
+async function calculateAllClientHealth(orgId) {
+  const clientsR = await pool.query('SELECT id, name FROM clients WHERE org_id = $1', [orgId]);
+  const results = [];
+  for (const client of clientsR.rows) {
+    try { const health = await calculateClientHealth(orgId, client.id);
+      results.push({ client_name: client.name, ...health });
+    } catch (_) { results.push({ client_id: client.id, client_name: client.name, health_score: null, error: 'calculation_failed' }); }
+  }
+  results.sort((a, b) => (a.health_score || 0) - (b.health_score || 0));
+  return { data: results, total: results.length };
+}
+
+// ─── Appeal Deadline Tracking ───────────────────────────────────────────────
+async function checkAppealDeadlines(orgId) {
+  const r = await pool.query(
+    `SELECT d.id, d.claim_id, d.carc_code, d.amount, d.appeal_deadline, d.appeal_deadline_alert_sent,
+            c.claim_number, py.name as payer_name,
+            EXTRACT(DAY FROM (d.appeal_deadline::date - CURRENT_DATE)) as days_until_deadline
+     FROM denials d JOIN claims c ON d.claim_id = c.id LEFT JOIN payers py ON d.payer_id = py.id
+     WHERE d.org_id = $1 AND d.status IN ('open','pending','in_review')
+       AND d.appeal_deadline IS NOT NULL AND d.appeal_deadline >= CURRENT_DATE
+       AND (d.appeal_deadline_alert_sent IS NULL OR d.appeal_deadline_alert_sent = false)
+     ORDER BY d.appeal_deadline ASC`, [orgId]);
+  const alerts = [];
+  for (const denial of r.rows) {
+    const daysLeft = Number(denial.days_until_deadline);
+    if ([25, 14, 7, 3, 1].some(d => daysLeft <= d)) {
+      const urgency = daysLeft <= 3 ? 'urgent' : daysLeft <= 7 ? 'high' : 'normal';
+      await createNotification(orgId, { type: 'denial', priority: urgency,
+        title: `Appeal deadline in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`,
+        message: `${denial.payer_name} denial ${denial.claim_number} (CARC ${denial.carc_code}) — $${denial.amount}. Deadline: ${denial.appeal_deadline}`,
+        entity_type: 'denial', entity_id: denial.id, action_url: `/denials?id=${denial.id}` });
+      if (daysLeft <= 3) { await pool.query('UPDATE denials SET appeal_deadline_alert_sent = true WHERE id = $1', [denial.id]); }
+      alerts.push({ denial_id: denial.id, claim_number: denial.claim_number, days_remaining: daysLeft, urgency });
+    }
+  }
+  return { alerts_sent: alerts.length, alerts };
+}
+
+// ─── SLA Escalation Check ───────────────────────────────────────────────────
+async function checkSLAEscalations(orgId) {
+  const r = await pool.query(
+    `SELECT t.id, t.title, t.due_date, t.priority, t.assigned_to, t.status, t.entity_type, t.entity_id,
+            u.email as assigned_email, EXTRACT(EPOCH FROM (NOW() - t.due_date)) / 3600 as hours_overdue
+     FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id
+     WHERE t.org_id = $1 AND t.status NOT IN ('completed','cancelled')
+       AND t.due_date IS NOT NULL AND t.due_date < NOW() ORDER BY t.due_date ASC`, [orgId]);
+  const escalations = [];
+  for (const task of r.rows) {
+    const hoursOver = Math.round(Number(task.hours_overdue));
+    let level;
+    if (hoursOver >= 36) level = 'director';
+    else if (hoursOver >= 24) level = 'manager';
+    else if (hoursOver >= 20) level = 'team_lead';
+    else continue;
+    await createNotification(orgId, { type: 'task', priority: hoursOver >= 36 ? 'urgent' : 'high',
+      title: `SLA breach: ${task.title} (${hoursOver}h overdue)`,
+      message: `Task overdue by ${hoursOver} hours. Escalation level: ${level}. Assigned: ${task.assigned_email || 'unassigned'}`,
+      entity_type: 'task', entity_id: task.id, action_url: `/tasks?id=${task.id}` });
+    escalations.push({ task_id: task.id, title: task.title, hours_overdue: hoursOver, escalation_level: level, assigned_to: task.assigned_email });
+  }
+  return { escalations_sent: escalations.length, escalations };
+}
+
+
+
+// ─── Coding QA Audit Engine ─────────────────────────────────────────────────
+async function createCodingQAAudit(body, orgId, userId) {
+  const { coding_id, auditor_codes } = body;
+  if (!coding_id || !auditor_codes?.length) throw new Error('coding_id and auditor_codes required');
+  
+  const coding = await getById('coding_queue', coding_id);
+  if (!coding || coding.org_id !== orgId) throw new Error('Coding item not found');
+
+  // Get AI suggestions for this coding item
+  const aiR = await pool.query(
+    'SELECT suggested_codes FROM ai_coding_suggestions WHERE coding_id = $1 ORDER BY created_at DESC LIMIT 1', [coding_id]
+  );
+  const aiCodes = aiR.rows[0]?.suggested_codes || [];
+  const coderCodes = body.coder_codes || [];
+  const auditorSet = new Set(auditor_codes.map(c => `${c.cpt || ''}|${c.icd10 || ''}`));
+  
+  // Calculate accuracy
+  const aiMatches = aiCodes.filter(c => auditorSet.has(`${c.cpt || ''}|${c.icd10 || ''}`)).length;
+  const coderMatches = coderCodes.filter(c => auditorSet.has(`${c.cpt || ''}|${c.icd10 || ''}`)).length;
+  const aiAccuracy = auditor_codes.length > 0 ? (aiMatches / auditor_codes.length) * 100 : 0;
+  const coderAccuracy = auditor_codes.length > 0 ? (coderMatches / auditor_codes.length) * 100 : 0;
+  
+  // Find discrepancies
+  const discrepancies = [];
+  for (const ac of auditor_codes) {
+    const key = `${ac.cpt || ''}|${ac.icd10 || ''}`;
+    const inAI = aiCodes.some(c => `${c.cpt || ''}|${c.icd10 || ''}` === key);
+    const inCoder = coderCodes.some(c => `${c.cpt || ''}|${c.icd10 || ''}` === key);
+    if (!inAI || !inCoder) {
+      discrepancies.push({ code: ac.cpt || ac.icd10, expected: 'present', ai: inAI ? 'correct' : 'missed', coder: inCoder ? 'correct' : 'missed' });
+    }
+  }
+  
+  const overallResult = aiAccuracy >= 95 && coderAccuracy >= 95 ? 'pass' :
+    aiAccuracy >= 80 && coderAccuracy >= 80 ? 'minor_error' :
+    aiAccuracy >= 60 || coderAccuracy >= 60 ? 'major_error' : 'critical_error';
+
+  return create('coding_qa_audits', {
+    org_id: orgId, client_id: coding.client_id, coding_id, encounter_id: coding.encounter_id,
+    auditor_id: userId, coder_id: coding.assigned_to,
+    ai_codes: aiCodes, coder_codes: coderCodes, auditor_codes: auditor_codes,
+    ai_accuracy: aiAccuracy.toFixed(2), coder_accuracy: coderAccuracy.toFixed(2),
+    discrepancies, overall_result: overallResult,
+    findings: body.findings, education_needed: overallResult !== 'pass',
+  }, orgId);
+}
+
+async function getCodingQAStats(orgId, qs) {
+  let q = `SELECT 
+    COUNT(*) as total_audits,
+    COUNT(*) FILTER (WHERE overall_result = 'pass') as pass_count,
+    COUNT(*) FILTER (WHERE overall_result = 'minor_error') as minor_count,
+    COUNT(*) FILTER (WHERE overall_result = 'major_error') as major_count,
+    COUNT(*) FILTER (WHERE overall_result = 'critical_error') as critical_count,
+    ROUND(AVG(ai_accuracy), 2) as avg_ai_accuracy,
+    ROUND(AVG(coder_accuracy), 2) as avg_coder_accuracy
+    FROM coding_qa_audits WHERE org_id = $1`;
+  const p = [orgId];
+  if (qs.coder_id) { q += ` AND coder_id = $${p.length + 1}`; p.push(qs.coder_id); }
+  if (qs.from) { q += ` AND audit_date >= $${p.length + 1}`; p.push(qs.from); }
+  if (qs.to) { q += ` AND audit_date <= $${p.length + 1}`; p.push(qs.to); }
+  const r = await pool.query(q, p);
+  
+  // Per-coder breakdown
+  const coderQ = `SELECT coder_id, u.email as coder_email, COUNT(*) as audits,
+    ROUND(AVG(coder_accuracy), 2) as avg_accuracy,
+    COUNT(*) FILTER (WHERE overall_result = 'pass') as pass_rate
+    FROM coding_qa_audits qa LEFT JOIN users u ON qa.coder_id = u.id
+    WHERE qa.org_id = $1 GROUP BY coder_id, u.email ORDER BY avg_accuracy`;
+  const coderR = await pool.query(coderQ, [orgId]);
+  
+  return { summary: r.rows[0], by_coder: coderR.rows };
+}
+
+async function sampleForQA(orgId, clientId, samplePercent) {
+  const pct = Math.min(Math.max(Number(samplePercent) || 5, 1), 100);
+  const r = await pool.query(
+    `SELECT cq.id, cq.encounter_id, cq.patient_id, cq.assigned_to, p.first_name || ' ' || p.last_name as patient_name
+     FROM coding_queue cq LEFT JOIN patients p ON cq.patient_id = p.id
+     WHERE cq.org_id = $1 AND cq.status = 'approved'
+       AND cq.id NOT IN (SELECT coding_id FROM coding_qa_audits WHERE org_id = $1)
+     ORDER BY RANDOM() LIMIT GREATEST(1, (SELECT COUNT(*) * $2 / 100 FROM coding_queue WHERE org_id = $1 AND status = 'approved'))`,
+    [orgId, pct]);
+  return { data: r.rows, total: r.rows.length, sample_percent: pct };
+}
+
+// ─── Client Onboarding Checklist ────────────────────────────────────────────
+const DEFAULT_ONBOARDING_CHECKLIST = [
+  { item_number: 1, title: 'BAA signed', description: 'Business Associate Agreement executed', required: true },
+  { item_number: 2, title: 'Client contract signed', description: 'Service agreement with pricing terms', required: true },
+  { item_number: 3, title: 'EHR/PM access provided', description: 'Login credentials or API access to client system', required: true },
+  { item_number: 4, title: 'Provider roster received', description: 'All provider names, NPIs, specialties, credentials', required: true },
+  { item_number: 5, title: 'Payer enrollment verified', description: 'Confirm all providers enrolled with all payers', required: true },
+  { item_number: 6, title: 'Fee schedules loaded', description: 'Contracted rates for all payers entered', required: true },
+  { item_number: 7, title: 'ERA/EFT enrollment confirmed', description: 'Electronic remittance and payment active', required: true },
+  { item_number: 8, title: 'Clearinghouse enrollment', description: 'Payer list enrolled with Availity', required: true },
+  { item_number: 9, title: 'Historical data migrated', description: 'Open claims, AR aging, patient demographics imported', required: false },
+  { item_number: 10, title: 'User accounts created', description: 'All client staff accounts with correct roles', required: true },
+  { item_number: 11, title: 'Client training completed', description: 'Portal walkthrough, scan/submit training', required: true },
+  { item_number: 12, title: 'Parallel billing test', description: '1 week of parallel billing to verify accuracy', required: true },
+  { item_number: 13, title: 'AR takeover plan agreed', description: 'Cutover date and responsibility split documented', required: true },
+  { item_number: 14, title: 'Go-live sign-off', description: 'Client confirms readiness for go-live', required: true },
+];
+
+async function initOnboarding(clientId, orgId, userId) {
+  const existing = await pool.query('SELECT id FROM client_onboarding WHERE org_id = $1 AND client_id = $2', [orgId, clientId]);
+  if (existing.rows.length > 0) throw new Error('Onboarding already exists for this client');
+  const checklist = DEFAULT_ONBOARDING_CHECKLIST.map(item => ({ ...item, completed: false, completed_by: null, completed_at: null, notes: '' }));
+  return create('client_onboarding', {
+    org_id: orgId, client_id: clientId, status: 'in_progress',
+    assigned_to: userId, checklist, go_live_target: null,
+  }, orgId);
+}
+
+async function updateOnboardingItem(onboardingId, itemNumber, body, orgId, userId) {
+  const ob = await getById('client_onboarding', onboardingId);
+  if (!ob || ob.org_id !== orgId) throw new Error('Onboarding not found');
+  const checklist = ob.checklist || [];
+  const idx = checklist.findIndex(i => i.item_number === Number(itemNumber));
+  if (idx === -1) throw new Error('Checklist item not found');
+  checklist[idx] = { ...checklist[idx], ...body, completed_by: body.completed ? userId : null, completed_at: body.completed ? new Date().toISOString() : null };
+  const allRequired = checklist.filter(i => i.required);
+  const allDone = allRequired.every(i => i.completed);
+  const status = allDone ? 'completed' : 'in_progress';
+  return update('client_onboarding', onboardingId, {
+    checklist, status, completed_at: allDone ? new Date().toISOString() : null,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+// ─── Provider Note Addendum Workflow ────────────────────────────────────────
+async function getNoteAddendums(orgId, soapNoteId) {
+  const r = await pool.query(
+    'SELECT na.*, u.email as provider_email FROM note_addendums na LEFT JOIN users u ON na.provider_id = u.id WHERE na.org_id = $1 AND na.soap_note_id = $2 ORDER BY na.created_at',
+    [orgId, soapNoteId]);
+  return r.rows;
+}
+
+async function createAddendum(body, orgId, userId) {
+  const { soap_note_id, addendum_text, reason } = body;
+  if (!soap_note_id || !addendum_text) throw new Error('soap_note_id and addendum_text required');
+  const note = await getById('soap_notes', soap_note_id);
+  if (!note || note.org_id !== orgId) throw new Error('SOAP note not found');
+  // Snapshot original for audit trail
+  const originalText = JSON.stringify({ subjective: note.subjective, objective: note.objective, assessment: note.assessment, plan: note.plan });
+  const addendum = await create('note_addendums', {
+    org_id: orgId, soap_note_id, encounter_id: note.encounter_id,
+    provider_id: userId, addendum_text, reason: reason || 'additional_info',
+    original_text: originalText, signed_off: false,
+  }, orgId);
+  // Create task for sign-off if not self
+  if (note.provider_id && note.provider_id !== userId) {
+    await create('tasks', {
+      org_id: orgId, title: `Review addendum on SOAP note`,
+      description: `Addendum added to note for encounter ${note.encounter_id}. Reason: ${reason || 'additional_info'}`,
+      status: 'pending', priority: 'high', task_type: 'addendum_review',
+      entity_type: 'soap_note', entity_id: soap_note_id, assigned_to: note.provider_id,
+    }, orgId);
+  }
+  return addendum;
+}
+
+async function signOffAddendum(addendumId, orgId, userId) {
+  const addendum = await getById('note_addendums', addendumId);
+  if (!addendum || addendum.org_id !== orgId) throw new Error('Addendum not found');
+  return update('note_addendums', addendumId, { signed_off: true, signed_off_at: new Date().toISOString() });
+}
+
+// ─── Invoicing Engine ───────────────────────────────────────────────────────
+async function generateInvoice(clientId, periodStart, periodEnd, orgId) {
+  // Get pricing config
+  const configR = await pool.query(
+    `SELECT * FROM invoice_configs WHERE org_id = $1 AND client_id = $2
+     AND effective_date <= $3 AND (end_date IS NULL OR end_date >= $3) ORDER BY effective_date DESC LIMIT 1`,
+    [orgId, clientId, periodEnd]);
+  const config = configR.rows[0];
+  if (!config) throw new Error('No invoice configuration found for this client');
+
+  // Count claims submitted in period
+  const claimsR = await pool.query(
+    `SELECT COUNT(*) as claim_count, SUM(total_charge) as total_charges
+     FROM claims WHERE org_id = $1 AND client_id = $2
+       AND submitted_at BETWEEN $3 AND $4 AND status != 'cancelled'`,
+    [orgId, clientId, periodStart, periodEnd]);
+  const claimCount = Number(claimsR.rows[0].claim_count || 0);
+  const totalCharges = Number(claimsR.rows[0].total_charges || 0);
+
+  // Collections in period
+  const collectionsR = await pool.query(
+    `SELECT SUM(p.amount) as collected FROM payments p
+     JOIN claims c ON p.claim_id = c.id
+     WHERE c.org_id = $1 AND c.client_id = $2 AND p.payment_date BETWEEN $3 AND $4`,
+    [orgId, clientId, periodStart, periodEnd]);
+  const collections = Number(collectionsR.rows[0].collected || 0);
+
+  // Calculate amounts based on pricing model
+  let perClaimAmt = 0, pctAmt = 0, flatAmt = 0;
+  const lineItems = [];
+  if (config.pricing_model === 'per_claim' || config.pricing_model === 'hybrid') {
+    perClaimAmt = claimCount * Number(config.per_claim_rate || 0);
+    lineItems.push({ description: `Claims processed (${claimCount} × $${config.per_claim_rate})`, quantity: claimCount, rate: Number(config.per_claim_rate), amount: perClaimAmt });
+  }
+  if (config.pricing_model === 'percentage' || config.pricing_model === 'hybrid') {
+    pctAmt = collections * (Number(config.percentage_rate || 0) / 100);
+    lineItems.push({ description: `Collections fee (${config.percentage_rate}% of $${collections.toFixed(2)})`, quantity: 1, rate: Number(config.percentage_rate), amount: pctAmt });
+  }
+  if (config.pricing_model === 'flat_monthly' || config.pricing_model === 'hybrid') {
+    flatAmt = Number(config.flat_rate || 0);
+    lineItems.push({ description: 'Monthly flat fee', quantity: 1, rate: flatAmt, amount: flatAmt });
+  }
+  let subtotal = perClaimAmt + pctAmt + flatAmt;
+  if (config.minimum_monthly && subtotal < Number(config.minimum_monthly)) {
+    const diff = Number(config.minimum_monthly) - subtotal;
+    lineItems.push({ description: 'Minimum monthly adjustment', quantity: 1, rate: diff, amount: diff });
+    subtotal = Number(config.minimum_monthly);
+  }
+
+  // Generate invoice number
+  const countR = await pool.query('SELECT COUNT(*) FROM invoices WHERE org_id = $1', [orgId]);
+  const invoiceNumber = `INV-${String(Number(countR.rows[0].count) + 1).padStart(5, '0')}`;
+  const dueDate = new Date(periodEnd); dueDate.setDate(dueDate.getDate() + 30);
+
+  return create('invoices', {
+    org_id: orgId, client_id: clientId, invoice_number: invoiceNumber,
+    period_start: periodStart, period_end: periodEnd, status: 'draft',
+    claims_count: claimCount, collections_total: collections.toFixed(2),
+    per_claim_amount: perClaimAmt.toFixed(2), percentage_amount: pctAmt.toFixed(2),
+    flat_amount: flatAmt.toFixed(2), subtotal: subtotal.toFixed(2),
+    tax: '0.00', total: subtotal.toFixed(2), line_items: lineItems,
+    issued_date: new Date().toISOString().slice(0, 10), due_date: dueDate.toISOString().slice(0, 10),
+  }, orgId);
+}
+
+// ─── Patient Right of Access ────────────────────────────────────────────────
+async function createAccessRequest(body, orgId, userId) {
+  const { patient_id, request_type, delivery_method } = body;
+  if (!patient_id) throw new Error('patient_id required');
+  const patient = await getById('patients', patient_id);
+  if (!patient || patient.org_id !== orgId) throw new Error('Patient not found');
+  const requestDate = new Date();
+  const deadline = new Date(requestDate); deadline.setDate(deadline.getDate() + 30);
+  const req = await create('patient_access_requests', {
+    org_id: orgId, client_id: patient.client_id, patient_id,
+    request_date: requestDate.toISOString().slice(0, 10),
+    deadline_date: deadline.toISOString().slice(0, 10),
+    request_type: request_type || 'full_record', delivery_method, assigned_to: userId,
+  }, orgId);
+  // Create tracking task
+  await create('tasks', {
+    org_id: orgId, title: `Patient records request — ${patient.first_name} ${patient.last_name}`,
+    description: `Right of access request. Type: ${request_type || 'full_record'}. Deadline: ${deadline.toISOString().slice(0, 10)}`,
+    status: 'pending', priority: 'high', task_type: 'patient_access',
+    entity_type: 'patient', entity_id: patient_id, due_date: deadline.toISOString(), assigned_to: userId,
+  }, orgId);
+  return req;
+}
+
+async function checkAccessDeadlines(orgId) {
+  const r = await pool.query(
+    `SELECT par.*, p.first_name || ' ' || p.last_name as patient_name,
+            EXTRACT(DAY FROM (par.deadline_date::date - CURRENT_DATE)) as days_remaining
+     FROM patient_access_requests par JOIN patients p ON par.patient_id = p.id
+     WHERE par.org_id = $1 AND par.status NOT IN ('completed','denied')
+       AND par.deadline_date >= CURRENT_DATE ORDER BY par.deadline_date ASC`, [orgId]);
+  const alerts = [];
+  for (const req of r.rows) {
+    const daysLeft = Number(req.days_remaining);
+    if (daysLeft <= 7) {
+      await createNotification(orgId, { type: 'compliance', priority: daysLeft <= 3 ? 'urgent' : 'high',
+        title: `Patient access request deadline in ${daysLeft} days`,
+        message: `${req.patient_name} — ${req.request_type}. HIPAA requires fulfillment within 30 days.`,
+        entity_type: 'patient', entity_id: req.patient_id,
+        action_url: `/patients/${req.patient_id}` });
+      alerts.push({ request_id: req.id, patient_name: req.patient_name, days_remaining: daysLeft });
+    }
+  }
+  return { alerts_sent: alerts.length, alerts, open_requests: r.rows };
+}
+
+// ─── HCC Coding Support ────────────────────────────────────────────────────
+const HCC_CATEGORIES = {
+  'E11': { hcc: 19, label: 'Diabetes without Complication', raf: 0.105 },
+  'E11.2': { hcc: 18, label: 'Diabetes with Chronic Complications', raf: 0.302 },
+  'E11.6': { hcc: 18, label: 'Diabetes with Other Complications', raf: 0.302 },
+  'I50': { hcc: 85, label: 'Congestive Heart Failure', raf: 0.323 },
+  'J44': { hcc: 111, label: 'Chronic Obstructive Pulmonary Disease', raf: 0.335 },
+  'N18.3': { hcc: 138, label: 'CKD Stage 3', raf: 0.069 },
+  'N18.4': { hcc: 137, label: 'CKD Stage 4', raf: 0.289 },
+  'N18.5': { hcc: 136, label: 'CKD Stage 5', raf: 0.289 },
+  'F32': { hcc: 59, label: 'Major Depression', raf: 0.309 },
+  'G20': { hcc: 78, label: "Parkinson's Disease", raf: 0.606 },
+  'C': { hcc: 12, label: 'Cancer (various)', raf: 0.146 },
+  'F20': { hcc: 57, label: 'Schizophrenia', raf: 0.477 },
+  'B20': { hcc: 1, label: 'HIV/AIDS', raf: 0.288 },
+};
+
+async function flagHCCCodes(patientId, orgId) {
+  const patient = await getById('patients', patientId);
+  if (!patient || patient.org_id !== orgId) throw new Error('Patient not found');
+  // Get all diagnoses from claims in last 12 months
+  const dxR = await pool.query(
+    `SELECT DISTINCT cd.icd10_code, cd.description FROM claim_diagnoses cd
+     JOIN claims c ON cd.claim_id = c.id
+     WHERE c.org_id = $1 AND c.patient_id = $2 AND c.dos_from > NOW() - INTERVAL '12 months'`,
+    [orgId, patientId]);
+  
+  const hccFlags = [];
+  let totalRaf = 0;
+  for (const dx of dxR.rows) {
+    const code = dx.icd10_code || '';
+    // Check exact match first, then prefix match
+    let match = HCC_CATEGORIES[code];
+    if (!match) {
+      const prefix = Object.keys(HCC_CATEGORIES).find(k => code.startsWith(k));
+      if (prefix) match = HCC_CATEGORIES[prefix];
+    }
+    if (match) {
+      hccFlags.push({ icd10: code, description: dx.description, hcc_category: match.hcc, hcc_label: match.label, raf_value: match.raf });
+      totalRaf += match.raf;
+    }
+  }
+
+  // Check for re-documentation needs
+  const lastAssessed = patient.hcc_last_assessed;
+  const needsReassessment = !lastAssessed || (new Date() - new Date(lastAssessed)) > 365 * 24 * 60 * 60 * 1000;
+  
+  // Update patient record
+  const nextReassessment = new Date(); nextReassessment.setFullYear(nextReassessment.getFullYear() + 1);
+  await pool.query(
+    `UPDATE patients SET hcc_codes = $1, hcc_raf_score = $2, hcc_last_assessed = CURRENT_DATE,
+     hcc_next_reassessment = $3 WHERE id = $4`,
+    [JSON.stringify(hccFlags), totalRaf.toFixed(3), nextReassessment.toISOString().slice(0, 10), patientId]).catch((err) => { console.error(`Failed to update HCC flags for patient ${patientId}:`, err.message); });
+
+  // Alert if reassessment needed
+  if (needsReassessment && hccFlags.length > 0) {
+    await createNotification(orgId, { type: 'coding', priority: 'normal',
+      title: `HCC re-documentation needed: ${patient.first_name} ${patient.last_name}`,
+      message: `${hccFlags.length} HCC conditions found, RAF score ${totalRaf.toFixed(3)}. Annual re-documentation required.`,
+      entity_type: 'patient', entity_id: patientId, action_url: `/patients/${patientId}` }).catch((err) => { console.error('HCC notification error:', err.message); });
+  }
+
+  return { patient_id: patientId, hcc_codes: hccFlags, total_raf_score: totalRaf.toFixed(3),
+    needs_reassessment: needsReassessment, next_reassessment: nextReassessment.toISOString().slice(0, 10) };
+}
+
+
 // ════════════════════════════════════════════════════════════════════════════════
 // MAIN HANDLER
 // ════════════════════════════════════════════════════════════════════════════════
@@ -3394,7 +4096,8 @@ export const handler = async (event) => {
     if (path.includes('/claims') && !path.includes('/lines') && !path.includes('/diagnoses') &&
         !path.includes('/scrub') && !path.includes('/generate-edi') && !path.includes('/generate-dha') &&
         !path.includes('/transition') && !path.includes('/underpayment') && !path.includes('/predict-denial') &&
-        !path.includes('/generate-276') && !path.includes('/parse-277') && !path.includes('/batch-submit')) {
+        !path.includes('/generate-276') && !path.includes('/parse-277') && !path.includes('/batch-submit') &&
+        !path.includes('/timely-filing') && !path.includes('/generate-837i') && !path.includes('/secondary')) {
       if (method === 'GET' && !pathParams.id) return respond(200, await enrichedClaims(effectiveOrgId, clientId));
       if (method === 'GET' && pathParams.id) {
         const c = await getById('claims', pathParams.id);
@@ -3498,7 +4201,7 @@ export const handler = async (event) => {
     }
 
     // ════ Denials ═══════════════════════════════════════════════════════════
-    if (path.includes('/denials') && !path.includes('/appeal') && !path.includes('/categorize')) {
+    if (path.includes('/denials') && !path.includes('/appeal') && !path.includes('/categorize') && !path.includes('/check-deadlines') && !path.includes('/batch-appeal')) {
       if (method === 'GET' && !pathParams.id) return respond(200, await enrichedDenials(effectiveOrgId, clientId));
       if (method === 'GET' && pathParams.id) {
         const d = await getById('denials', pathParams.id);
@@ -3530,7 +4233,7 @@ export const handler = async (event) => {
 
     // ════ Coding Queue ═════════════════════════════════════════════════════
     if (path.includes('/coding') && !path.includes('/approve') && !path.includes('/query') &&
-        !path.includes('/assign') && !path.includes('/ai-suggest')) {
+        !path.includes('/assign') && !path.includes('/ai-suggest') && !path.includes('/coding-qa')) {
       if (method === 'GET' && !pathParams.id) return respond(200, await enrichedCoding(effectiveOrgId, clientId));
       if (method === 'GET' && pathParams.id) {
         const c = await getById('coding_queue', pathParams.id);
@@ -3834,7 +4537,7 @@ export const handler = async (event) => {
     }
 
     // ════ Patients ═════════════════════════════════════════════════════════
-    if (path.includes('/patients')) {
+    if (path.includes('/patients') && !path.includes('/hcc')) {
       if (method === 'GET' && !pathParams.id) return respond(200, await enrichedPatients(effectiveOrgId, clientId));
       if (method === 'GET' && pathParams.id) {
         const p = await getById('patients', pathParams.id);
@@ -3869,6 +4572,8 @@ export const handler = async (event) => {
     const entitySubRouteExclusions = {
       'encounters': ['/charge-capture', '/chart-check'],
       'credentialing': ['/dashboard', '/enrollment'],
+      'tasks': ['/check-sla'],
+      'clients': ['/health'],
     };
 
     for (const [route, table] of Object.entries(entityMap)) {
@@ -4126,6 +4831,267 @@ export const handler = async (event) => {
         const result = await update('appeals', pathParams.id, { ...body, updated_at: new Date().toISOString() });
         return respond(200, result);
       }
+    }
+
+
+    // ─── Sprint 4 Routes ──────────────────────────────────────────────────────
+
+    // Messages (contextual messaging)
+    if (resource === 'messages') {
+      if (method === 'GET' && !pathParams.id) {
+        return respond(200, await getMessages(effectiveOrgId, userId, qs));
+      }
+      if (method === 'POST' && !pathParams.id) {
+        return respond(201, await sendMessage(body, effectiveOrgId, userId));
+      }
+      if (method === 'PUT' && pathParams.id && path.includes('/read')) {
+        return respond(200, await markMessageRead(pathParams.id, effectiveOrgId, userId));
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const existing = await getById('messages', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, await update('messages', pathParams.id, { ...body, updated_at: new Date().toISOString() }));
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('messages', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
+      }
+    }
+
+    // Audit Log
+    if (resource === 'audit-log' && method === 'GET') {
+      return respond(200, await getAuditLog(effectiveOrgId, qs));
+    }
+
+    // Payer Config (timely filing, phones, IVR scripts)
+    if (resource === 'payer-config') {
+      if (method === 'GET' && qs.payer_id) {
+        return respond(200, await getPayerConfig(effectiveOrgId, qs.payer_id));
+      }
+      if (method === 'GET') {
+        return respond(200, await listPayerConfigs(effectiveOrgId));
+      }
+      if (method === 'POST' || method === 'PUT') {
+        return respond(200, await upsertPayerConfig(body, effectiveOrgId));
+      }
+    }
+
+    // Timely Filing Deadlines
+    if (path.includes('/claims/timely-filing') && method === 'GET') {
+      return respond(200, await calculateTimelyFilingDeadlines(effectiveOrgId, clientId));
+    }
+
+    // Credit Balances
+    if (resource === 'credit-balances') {
+      if (method === 'GET' && path.includes('/identify')) {
+        return respond(200, await identifyCreditBalances(effectiveOrgId, clientId));
+      }
+      if (method === 'GET' && !pathParams.id) {
+        return respond(200, await list('credit_balances', effectiveOrgId, clientId));
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('credit_balances', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
+      }
+      if (method === 'PUT' && pathParams.id && path.includes('/resolve')) {
+        return respond(200, await resolveCreditBalance(pathParams.id, body, effectiveOrgId, userId));
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const existing = await getById('credit_balances', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, await update('credit_balances', pathParams.id, { ...body, updated_at: new Date().toISOString() }));
+      }
+    }
+
+    // Bank Deposits + Reconciliation
+    if (resource === 'bank-deposits') {
+      if (method === 'GET' && !pathParams.id) {
+        return respond(200, await list('bank_deposits', effectiveOrgId, clientId, 'ORDER BY deposit_date DESC'));
+      }
+      if (method === 'POST' && !pathParams.id) {
+        return respond(201, await create('bank_deposits', body, effectiveOrgId));
+      }
+      if (method === 'POST' && pathParams.id && path.includes('/reconcile')) {
+        return respond(200, await reconcileBankDeposit(pathParams.id, effectiveOrgId, userId));
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('bank_deposits', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const existing = await getById('bank_deposits', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, await update('bank_deposits', pathParams.id, { ...body, updated_at: new Date().toISOString() }));
+      }
+    }
+
+    // Appeal Templates
+    if (resource === 'appeal-templates') {
+      if (method === 'GET' && !pathParams.id) {
+        return respond(200, await getAppealTemplates(effectiveOrgId, qs));
+      }
+      if (method === 'POST' && !pathParams.id) {
+        return respond(201, await create('appeal_templates', body, effectiveOrgId));
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const existing = await getById('appeal_templates', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, await update('appeal_templates', pathParams.id, { ...body, updated_at: new Date().toISOString() }));
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('appeal_templates', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
+      }
+    }
+
+    // Batch Denial Appeal
+    if (path.includes('/denials/batch-appeal') && method === 'POST') {
+      return respond(200, await batchGenerateAppeals(body, effectiveOrgId, userId));
+    }
+
+    // Client Health Scoring
+    if (path.includes('/clients/health') && method === 'GET') {
+      if (qs.client_id) {
+        return respond(200, await calculateClientHealth(effectiveOrgId, qs.client_id));
+      }
+      return respond(200, await calculateAllClientHealth(effectiveOrgId));
+    }
+
+    // Appeal Deadline Alerts
+    if (path.includes('/denials/check-deadlines') && method === 'POST') {
+      return respond(200, await checkAppealDeadlines(effectiveOrgId));
+    }
+
+    // SLA Escalation Check
+    if (path.includes('/tasks/check-sla') && method === 'POST') {
+      return respond(200, await checkSLAEscalations(effectiveOrgId));
+    }
+
+
+    // ─── Sprint 4B Routes ─────────────────────────────────────────────────────
+
+    // Coding QA Audits
+    if (path.includes('/coding-qa')) {
+      if (method === 'POST' && path.includes('/sample')) {
+        return respond(200, await sampleForQA(effectiveOrgId, clientId, qs.percent || 5));
+      }
+      if (method === 'GET' && path.includes('/stats')) {
+        return respond(200, await getCodingQAStats(effectiveOrgId, qs));
+      }
+      if (method === 'POST' && !pathParams.id) {
+        return respond(201, await createCodingQAAudit(body, effectiveOrgId, userId));
+      }
+      if (method === 'GET' && !pathParams.id) {
+        return respond(200, await list('coding_qa_audits', effectiveOrgId, clientId, 'ORDER BY audit_date DESC'));
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('coding_qa_audits', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
+      }
+    }
+
+    // Client Onboarding
+    if (resource === 'client-onboarding') {
+      if (method === 'POST' && !pathParams.id) {
+        return respond(201, await initOnboarding(body.client_id, effectiveOrgId, userId));
+      }
+      if (method === 'GET' && !pathParams.id) {
+        return respond(200, await list('client_onboarding', effectiveOrgId, clientId));
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('client_onboarding', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
+      }
+      if (method === 'PUT' && pathParams.id && qs.item) {
+        return respond(200, await updateOnboardingItem(pathParams.id, qs.item, body, effectiveOrgId, userId));
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const existing = await getById('client_onboarding', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, await update('client_onboarding', pathParams.id, { ...body, updated_at: new Date().toISOString() }));
+      }
+    }
+
+    // Note Addendums
+    if (resource === 'note-addendums') {
+      if (method === 'POST' && !pathParams.id) {
+        return respond(201, await createAddendum(body, effectiveOrgId, userId));
+      }
+      if (method === 'GET' && qs.soap_note_id) {
+        return respond(200, await getNoteAddendums(effectiveOrgId, qs.soap_note_id));
+      }
+      if (method === 'PUT' && pathParams.id && path.includes('/sign-off')) {
+        return respond(200, await signOffAddendum(pathParams.id, effectiveOrgId, userId));
+      }
+    }
+
+    // Invoice Configs
+    if (resource === 'invoice-configs') {
+      if (method === 'GET' && !pathParams.id) {
+        return respond(200, await list('invoice_configs', effectiveOrgId, clientId));
+      }
+      if (method === 'POST') {
+        return respond(201, await create('invoice_configs', body, effectiveOrgId));
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const existing = await getById('invoice_configs', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, await update('invoice_configs', pathParams.id, { ...body, updated_at: new Date().toISOString() }));
+      }
+    }
+
+    // Invoices
+    if (resource === 'invoices') {
+      if (method === 'POST' && path.includes('/generate')) {
+        return respond(201, await generateInvoice(body.client_id, body.period_start, body.period_end, effectiveOrgId));
+      }
+      if (method === 'GET' && !pathParams.id) {
+        return respond(200, await list('invoices', effectiveOrgId, clientId, 'ORDER BY issued_date DESC'));
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('invoices', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const existing = await getById('invoices', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, await update('invoices', pathParams.id, { ...body, updated_at: new Date().toISOString() }));
+      }
+    }
+
+    // Patient Right of Access
+    if (resource === 'patient-access') {
+      if (method === 'POST' && path.includes('/check-deadlines')) {
+        return respond(200, await checkAccessDeadlines(effectiveOrgId));
+      }
+      if (method === 'POST' && !pathParams.id) {
+        return respond(201, await createAccessRequest(body, effectiveOrgId, userId));
+      }
+      if (method === 'GET' && !pathParams.id) {
+        return respond(200, await list('patient_access_requests', effectiveOrgId, clientId, 'ORDER BY deadline_date ASC'));
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('patient_access_requests', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const existing = await getById('patient_access_requests', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, await update('patient_access_requests', pathParams.id, { ...body, updated_at: new Date().toISOString() }));
+      }
+    }
+
+    // HCC Coding Flags
+    if (path.includes('/patients') && path.includes('/hcc') && method === 'POST') {
+      return respond(200, await flagHCCCodes(pathParams.id, effectiveOrgId));
     }
 
     return respond(404, { error: 'Route not found', path, method });
