@@ -575,6 +575,7 @@ const TABS = [
   { id: 'log', label: 'Call Log', icon: PhoneMissed },
   { id: 'campaign', label: 'Campaign Launcher', icon: BarChart2 },
   { id: 'scripts', label: 'Script Builder', icon: Settings2 },
+  { id: 'analytics', label: 'Call Analytics', icon: PhoneCall },
 ] as const
 
 type TabId = typeof TABS[number]['id']
@@ -607,6 +608,49 @@ export default function VoiceAIPage() {
       {tab === 'log' && <CallLogTab />}
       {tab === 'campaign' && <CampaignLauncherTab />}
       {tab === 'scripts' && <ScriptBuilderTab />}
+      {tab === 'analytics' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-4 gap-4">
+            {[{label:'Total Calls Today',value:'47',color:'text-brand'},{label:'Avg Hold Time',value:'4m 32s',color:'text-amber-500'},{label:'Success Rate',value:'78%',color:'text-emerald-500'},{label:'IVR Navigation',value:'92%',color:'text-blue-500'}].map(k=>
+              <div key={k.label} className="card p-4 text-center">
+                <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
+                <p className="text-[10px] text-content-tertiary mt-1">{k.label}</p>
+              </div>
+            )}
+          </div>
+          <div className="card p-4">
+            <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Call Outcomes by Payer</h4>
+            <div className="space-y-2">
+              {[{payer:'Aetna',total:15,success:12,hold:'3:45'},{payer:'BCBS',total:12,success:9,hold:'5:12'},{payer:'United',total:10,success:7,hold:'4:58'},{payer:'Cigna',total:6,success:5,hold:'3:20'},{payer:'Medicare',total:4,success:4,hold:'2:15'}].map(p=>(
+                <div key={p.payer} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
+                  <span className="text-xs font-medium w-20">{p.payer}</span>
+                  <div className="flex-1 mx-4 h-2 bg-surface rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full" style={{width:`${(p.success/p.total*100).toFixed(0)}%`}}/>
+                  </div>
+                  <span className="text-[10px] text-content-secondary w-16 text-right">{p.success}/{p.total} calls</span>
+                  <span className="text-[10px] text-content-tertiary w-16 text-right">Hold: {p.hold}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="card p-4">
+            <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Call Purpose Breakdown</h4>
+            <div className="grid grid-cols-3 gap-3">
+              {[{purpose:'Claim Status',count:18,pct:38},{purpose:'Eligibility Verify',count:12,pct:26},{purpose:'Appeal Follow-up',count:8,pct:17},{purpose:'Prior Auth',count:5,pct:11},{purpose:'Payment Inquiry',count:3,pct:6},{purpose:'Other',count:1,pct:2}].map(c=>(
+                <div key={c.purpose} className="bg-surface-elevated rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs">{c.purpose}</span>
+                    <span className="text-xs font-bold">{c.count}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-surface rounded-full overflow-hidden">
+                    <div className="h-full bg-brand rounded-full" style={{width:`${c.pct}%`}}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </ModuleShell>
   )
 }
