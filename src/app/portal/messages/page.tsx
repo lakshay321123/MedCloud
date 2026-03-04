@@ -7,7 +7,8 @@ import { useMessages, useSendMessage, useMarkMessageRead } from '@/lib/hooks'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
-import { MessageCircle, Send, Paperclip, User, FileText, Calendar, ClipboardList, Building2 } from 'lucide-react'
+import { MessageCircle, Send, Paperclip, User, FileText, Calendar, ClipboardList, Building2, Plus, X, ChevronDown } from 'lucide-react'
+import { usePatients, useClaims } from '@/lib/hooks'
 import { useAbuseFilter, handleAbuseViolation } from '@/lib/utils/abuse-filter'
 
 const entityIcons: Record<string, React.ReactNode> = {
@@ -51,6 +52,15 @@ export default function MessagesPage() {
   const [selected, setSelected] = useState<DemoMessage | null>(null)
   const [filter, setFilter] = useState('')
   const [reply, setReply] = useState('')
+  const [composing, setComposing] = useState(false)
+  const [newSubject, setNewSubject] = useState('')
+  const [newBody, setNewBody] = useState('')
+  const [newEntityType, setNewEntityType] = useState('general')
+  const [newEntityId, setNewEntityId] = useState('')
+  const { data: patientResult } = usePatients({ limit: 50 })
+  const { data: claimResult } = useClaims({ limit: 50 })
+  const patients = patientResult?.data || []
+  const claims = claimResult?.data || []
   const isStaff = !['client','provider'].includes(currentUser.role)
 
   // Merge: API threads overlay demo data by ID; purely local new threads at front
@@ -69,6 +79,29 @@ export default function MessagesPage() {
     if (isStaff && selectedClient && m.clientId !== selectedClient.id) return false
     return true
   })
+
+  const handleComposeSend = async () => {
+    if (!newSubject.trim() || !newBody.trim()) { toast.warning('Subject and message are required'); return }
+    const senderName = currentUser.name || currentUser.role
+    const result = await sendMessageMutation.mutate({
+      entity_type: newEntityType,
+      entity_id: newEntityId || undefined,
+      client_id: selectedClient?.id || currentUser.organization_id || undefined,
+      subject: newSubject.trim(),
+      body: newBody.trim(),
+      sender_name: senderName,
+      sender_role: currentUser.role,
+    } as any)
+    if (result) {
+      toast.success('Message sent')
+      setComposing(false)
+      setNewSubject('')
+      setNewBody('')
+      setNewEntityType('general')
+      setNewEntityId('')
+      refetchMessages()
+    }
+  }
 
   const handleSend = async () => {
     if (!reply.trim() || !selected) return
@@ -119,7 +152,8 @@ export default function MessagesPage() {
   }
 
   return (
-    <ModuleShell title={t("messages","title")} subtitle="Conversations about patients, claims, and submissions">
+    <ModuleShell title={t("messages","title")} subtitle="Conversations about patients, claims, and submissions"
+      actions={<button onClick={() => setComposing(true)} className="flex items-center gap-2 bg-brand text-white text-sm px-3 py-1.5 rounded-lg hover:bg-brand-deep transition-colors"><Plus size={15}/> New Message</button>}>
       {apiMsgResult && apiThreads.length > 0 && (
         <div className="mb-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-2.5 flex items-center gap-3 text-xs text-emerald-600 dark:text-emerald-400">
           <span>✓</span><span>Live messages loaded — {apiThreads.length} thread{apiThreads.length !== 1 ? 's' : ''} from server</span>
@@ -129,7 +163,71 @@ export default function MessagesPage() {
         <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2.5 flex items-center gap-3 text-xs text-amber-700 dark:text-amber-400">
           <span>💬</span><span>No messages yet — send a message and threads will appear here</span>
         </div>
-      )}      <div className="grid grid-cols-3 gap-4 h-[calc(100vh-220px)]">
+      )}      {/* Compose Modal */}
+      {composing && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-surface rounded-2xl border border-separator w-full max-w-lg shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-separator">
+              <h3 className="text-[15px] font-semibold text-content-primary">New Message</h3>
+              <button onClick={() => setComposing(false)} className="text-content-secondary hover:text-content-primary"><X size={18}/></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] text-content-secondary mb-1 block">Type</label>
+                  <select value={newEntityType} onChange={e => { setNewEntityType(e.target.value); setNewEntityId('') }}
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                    {['general','patient','claim','appointment'].map(t => (
+                      <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+                {newEntityType === 'patient' && (
+                  <div>
+                    <label className="text-[11px] text-content-secondary mb-1 block">Patient</label>
+                    <select value={newEntityId} onChange={e => setNewEntityId(e.target.value)}
+                      className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                      <option value="">Select patient…</option>
+                      {patients.map((p: any) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
+                    </select>
+                  </div>
+                )}
+                {newEntityType === 'claim' && (
+                  <div>
+                    <label className="text-[11px] text-content-secondary mb-1 block">Claim</label>
+                    <select value={newEntityId} onChange={e => setNewEntityId(e.target.value)}
+                      className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                      <option value="">Select claim…</option>
+                      {claims.map((c: any) => <option key={c.id} value={c.id}>{c.claim_number} — {c.patient_name}</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="text-[11px] text-content-secondary mb-1 block">Subject</label>
+                <input value={newSubject} onChange={e => setNewSubject(e.target.value)}
+                  placeholder="Message subject…"
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary" />
+              </div>
+              <div>
+                <label className="text-[11px] text-content-secondary mb-1 block">Message</label>
+                <textarea value={newBody} onChange={e => setNewBody(e.target.value)} rows={4}
+                  placeholder="Write your message…"
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary resize-none" />
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <button onClick={() => setComposing(false)} className="px-4 py-2 text-sm text-content-secondary hover:text-content-primary">Cancel</button>
+                <button onClick={handleComposeSend} disabled={!newSubject.trim() || !newBody.trim()}
+                  className="flex items-center gap-2 bg-brand text-white text-sm px-4 py-2 rounded-lg hover:bg-brand-deep disabled:opacity-50 transition-colors">
+                  <Send size={14}/> Send Message
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-3 gap-4 h-[calc(100vh-220px)]">
         {/* Thread List */}
         <div className="card overflow-hidden flex flex-col">
           <div className="p-3 border-b border-separator">
