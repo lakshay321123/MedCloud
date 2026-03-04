@@ -79,8 +79,6 @@ export default function DenialsPage() {
     carc_description: d.carc_description,
     rarc_description: d.rarc_description,
   })) || []
-  const demoDenials: DenialRow[] = []
-
   const denials: DenialRow[] = filterByRegion(
     apiDenials,
     currentUser.organization_id,

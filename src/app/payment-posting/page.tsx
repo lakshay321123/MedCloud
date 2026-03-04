@@ -19,8 +19,7 @@ export default function PaymentPostingPage() {
   const { data: apiERAResult } = useERAFiles({ limit: 50 })
   const { mutate: autoPost } = useAutoPostPayments()
   const [posting, setPosting] = useState(false)
-  const demoEras: any[] = []
-  // Map API ERA files to DemoERAFile shape for display compatibility
+  // Map API ERA files to display shape
   const eras = apiERAResult?.data?.map(e => ({
     id: e.id,
     clientId: e.client_id,

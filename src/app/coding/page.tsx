@@ -17,7 +17,9 @@ import {
 } from 'lucide-react'
 
 // ── Demo code lookup tables ─────────────────────────────────────────────────
-const ICD_DEMO_LOOKUP = [
+// Manual fallback code lookup — used when AI Coding is unavailable (BM4 requirement)
+// AI down → type-ahead search from these tables + manual entry, flagged 'manually coded'
+const ICD_FALLBACK_LOOKUP = [
   { code: 'E11.9', description: 'Type 2 diabetes mellitus without complications' },
   { code: 'E11.65', description: 'Type 2 diabetes mellitus with hyperglycemia' },
   { code: 'E11.21', description: 'Type 2 diabetes mellitus with diabetic nephropathy' },
@@ -50,7 +52,7 @@ const ICD_DEMO_LOOKUP = [
   { code: 'R50.9', description: 'Fever, unspecified' },
 ]
 
-const CPT_DEMO_LOOKUP = [
+const CPT_FALLBACK_LOOKUP = [
   { code: '99213', description: 'Office visit, established patient, low complexity' },
   { code: '99214', description: 'Office visit, established patient, moderate complexity' },
   { code: '99215', description: 'Office visit, established patient, high complexity' },
@@ -83,10 +85,10 @@ const CPT_DEMO_LOOKUP = [
 ]
 
 const getDemoIcdMatches = (q: string) => q.length < 2 ? [] :
-  ICD_DEMO_LOOKUP.filter(r => r.code.toLowerCase().includes(q.toLowerCase()) || r.description.toLowerCase().includes(q.toLowerCase())).slice(0, 6)
+  ICD_FALLBACK_LOOKUP.filter(r => r.code.toLowerCase().includes(q.toLowerCase()) || r.description.toLowerCase().includes(q.toLowerCase())).slice(0, 6)
 
 const getDemoCptMatches = (q: string) => q.length < 2 ? [] :
-  CPT_DEMO_LOOKUP.filter(r => r.code.toLowerCase().includes(q.toLowerCase()) || r.description.toLowerCase().includes(q.toLowerCase())).slice(0, 6)
+  CPT_FALLBACK_LOOKUP.filter(r => r.code.toLowerCase().includes(q.toLowerCase()) || r.description.toLowerCase().includes(q.toLowerCase())).slice(0, 6)
 
 // ── NCCI edit pairs ──────────────────────────────────────────────────────────
 const NCCI_EDITS: Array<[string, string, string]> = [
