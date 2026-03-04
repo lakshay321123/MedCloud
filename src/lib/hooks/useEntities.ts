@@ -1378,9 +1378,9 @@ export interface ApiReport {
   csv?: string
 }
 
-export function useReport(reportType: string, extra?: ApiListParams & { from?: string; to?: string; format?: string }) {
-  const params = useClientParams({ ...extra, type: reportType })
-  return useApi<ApiReport>('/reports', params)
+export function useReport(reportType: string | null, extra?: ApiListParams & { from?: string; to?: string; format?: string }) {
+  const params = useClientParams({ ...extra, type: reportType ?? '' })
+  return useApi<ApiReport>('/reports', params, { skip: !reportType })
 }
 
 // ── Sprint 3: Auto-Appeals (AI Feature #4) ───────────────────────────────────
