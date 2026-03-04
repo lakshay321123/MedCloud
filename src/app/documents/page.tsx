@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
@@ -386,10 +387,11 @@ type TabId = typeof TABS[number]['id']
 
 export default function DocumentsPage() {
   const { toast } = useToast()
+  const { t } = useT()
   const [tab, setTab] = useState<TabId>('all')
   return (
-    <ModuleShell title="Documents" subtitle="Document vault, fax center, and unlinked queue"
-      actions={<button onClick={()=>toast.info('Bulk upload opened')} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep transition-colors"><Upload size={16}/> Bulk Upload</button>}>
+    <ModuleShell title={t("documents","title")} subtitle={t("documents","subtitle")}
+      actions={<button onClick={()=>toast.info('Bulk upload opened')} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep transition-colors"><Upload size={16}/> {t("documents","bulkUpload")}</button>}>
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
         Demo data — live data connects in Sprint 2

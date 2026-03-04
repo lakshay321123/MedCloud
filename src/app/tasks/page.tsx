@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState, useEffect } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -116,6 +117,7 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
 
 export default function TasksPage() {
   const { toast } = useToast()
+  const { t } = useT()
   const { country, selectedClient } = useApp()
   const [selected, setSelected] = useState<Task | null>(null)
   const [showCreate, setShowCreate] = useState(false)
@@ -153,7 +155,7 @@ export default function TasksPage() {
 
   return (
     <ModuleShell
-      title="Tasks & Workflows"
+      title={t("tasks","title")}
       subtitle="Track and manage work across all departments"
       actions={
         <button onClick={() => setShowCreate(true)} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep">

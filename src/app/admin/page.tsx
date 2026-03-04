@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
@@ -365,6 +366,7 @@ type TabId = typeof ALL_TABS[number]['id']
 
 export default function AdminPage() {
   const { currentUser } = useApp()
+  const { t } = useT()
   const isDirector = currentUser.role === 'director'
   const tabs = isDirector
     ? ALL_TABS.filter(t => t.id === 'orgs')
@@ -372,7 +374,7 @@ export default function AdminPage() {
   const [tab, setTab] = useState<TabId>(isDirector ? 'orgs' : 'users')
 
   return (
-    <ModuleShell title="Admin & Settings" subtitle="System administration">
+    <ModuleShell title={t("admin","title")} subtitle={t("admin","subtitle")}>
       <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
         <span className="text-lg shrink-0">⚙️</span>
         <div>
