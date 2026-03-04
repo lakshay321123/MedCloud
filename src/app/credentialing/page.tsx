@@ -141,7 +141,7 @@ export default function CredentialingPage() {
                     toast.success('Re-credentialing initiated')
                   } catch (err) {
                     console.error('[credentialing] re-cred failed:', err)
-                    toast.success('Re-credentialing initiated')
+                    toast.error('Failed to initiate re-credentialing')
                   }
                 }}
                   className="bg-brand/10 text-brand rounded-lg py-2 text-xs font-medium hover:bg-brand/20 transition-colors">
@@ -157,7 +157,7 @@ export default function CredentialingPage() {
                     toast.success('Enrollment started')
                   } catch (err) {
                     console.error('[credentialing] enrollment failed:', err)
-                    toast.success('Enrollment started')
+                    toast.error('Failed to start enrollment')
                   }
                 }}
                   className="bg-surface-elevated border border-separator rounded-lg py-2 text-xs font-medium col-span-2">

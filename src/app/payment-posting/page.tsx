@@ -314,7 +314,7 @@ export default function PaymentPostingPage() {
             }
           } catch (err) {
             console.error('[payment-posting] auto-post failed:', err)
-            toast.success(`${approved.length} line(s) posted (offline)`)
+            toast.warning(`Posted ${approved.length} line(s) locally — failed to sync with server`)
           } finally {
             setPosting(false)
           }
