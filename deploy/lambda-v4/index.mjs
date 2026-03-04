@@ -94,6 +94,37 @@ try {
 const S3_BUCKET = process.env.S3_BUCKET || 'medcloud-documents-us';
 // Bedrock model — override via BEDROCK_MODEL env var. Verify model availability in your region.
 const BEDROCK_MODEL = process.env.BEDROCK_MODEL || 'anthropic.claude-sonnet-4-5-20250929-v1:0';
+const BEDROCK_REGION = process.env.AWS_REGION || 'us-east-1';
+
+// ─── Prompt Injection Sanitizer ────────────────────────────────────────────────
+// Strip sequences that could manipulate LLM behavior when embedding untrusted text
+function sanitizeForPrompt(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/```/g, "'''")                     // prevent code fence injection
+    .replace(/<\/?(?:system|assistant|user|human|admin|instruction)[^>]*>/gi, '') // strip role tags
+    .replace(/(?:ignore|disregard|forget)\s+(?:all\s+)?(?:previous|above|prior)\s+(?:instructions?|prompts?|rules?)/gi, '[FILTERED]')
+    .substring(0, 8000);                        // hard length cap
+}
+
+// ─── Safe JSON extraction from LLM output ──────────────────────────────────────
+function extractJSON(text) {
+  if (!text) return null;
+  // Try markdown fenced block first
+  const fenced = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+  if (fenced) {
+    try { return JSON.parse(fenced[1].trim()); } catch (_) {}
+  }
+  // Fall back to balanced brace matching (non-greedy approach)
+  let depth = 0, start = -1;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '{') { if (depth === 0) start = i; depth++; }
+    else if (text[i] === '}') { depth--; if (depth === 0 && start >= 0) {
+      try { return JSON.parse(text.substring(start, i + 1)); } catch (_) { start = -1; }
+    }}
+  }
+  return null;
+}
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 const respond = (code, body) => ({
@@ -451,9 +482,9 @@ async function ingest835(eraFileId, ediContent, orgId, clientId, userId) {
 }
 
 // ─── DHA eClaim XML Generator (UAE) ────────────────────────────────────────────
-async function generateDHAeClaim(claimId) {
+async function generateDHAeClaim(claimId, orgId) {
   const claim = await getById('claims', claimId);
-  if (!claim) throw new Error('Claim not found');
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
 
   const linesR = await pool.query('SELECT * FROM claim_lines WHERE claim_id = $1 ORDER BY line_number', [claimId]);
   const dxR = await pool.query('SELECT * FROM claim_diagnoses WHERE claim_id = $1 ORDER BY sequence', [claimId]);
@@ -529,9 +560,9 @@ async function generateDHAeClaim(claimId) {
 }
 
 // ─── 837P EDI Generator (preserved from v3) ───────────────────────────────────
-async function generateEDI(claimId) {
+async function generateEDI(claimId, orgId) {
   const claim = await getById('claims', claimId);
-  if (!claim) throw new Error('Claim not found');
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
 
   const linesR = await pool.query('SELECT * FROM claim_lines WHERE claim_id = $1 ORDER BY line_number', [claimId]);
   const dxR = await pool.query('SELECT * FROM claim_diagnoses WHERE claim_id = $1 ORDER BY sequence', [claimId]);
@@ -616,7 +647,7 @@ async function generateEDI(claimId) {
 // ─── Claim Scrubbing (50 rules, persists results) ─────────────────────────────
 async function scrubClaim(claimId, orgId, userId) {
   const claim = await getById('claims', claimId);
-  if (!claim) throw new Error('Claim not found');
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
 
   const linesR = await pool.query('SELECT * FROM claim_lines WHERE claim_id = $1', [claimId]);
   const dxR = await pool.query('SELECT * FROM claim_diagnoses WHERE claim_id = $1', [claimId]);
@@ -828,7 +859,7 @@ async function scrubClaim(claimId, orgId, userId) {
 // ─── Bedrock AI Auto-Coding ────────────────────────────────────────────────────
 async function aiAutoCode(codingQueueId, orgId, userId) {
   const item = await getById('coding_queue', codingQueueId);
-  if (!item) throw new Error('Coding queue item not found');
+  if (!item || item.org_id !== orgId) throw new Error('Coding queue item not found');
 
   // Get SOAP note or document content
   let clinicalText = '';
@@ -857,7 +888,7 @@ async function aiAutoCode(codingQueueId, orgId, userId) {
 Coding System: ${codingSystem}
 
 Clinical Documentation:
-${clinicalText || 'No clinical documentation available. Return empty suggestions.'}
+${sanitizeForPrompt(clinicalText) || 'No clinical documentation available. Return empty suggestions.'}
 
 Respond ONLY with valid JSON (no markdown, no backticks):
 {
@@ -950,7 +981,7 @@ Respond ONLY with valid JSON (no markdown, no backticks):
 // ─── Textract Document Processing ──────────────────────────────────────────────
 async function triggerTextract(documentId, orgId, userId) {
   const doc = await getById('documents', documentId);
-  if (!doc) throw new Error('Document not found');
+  if (!doc || doc.org_id !== orgId) throw new Error('Document not found');
   if (!doc.s3_key) throw new Error('Document has no S3 key — upload first');
 
   // Update status
@@ -1006,9 +1037,9 @@ async function triggerTextract(documentId, orgId, userId) {
   return { document_id: documentId, status: 'completed', result: mockResult, mock: true };
 }
 
-async function getTextractResults(documentId) {
+async function getTextractResults(documentId, orgId) {
   const doc = await getById('documents', documentId);
-  if (!doc) throw new Error('Document not found');
+  if (!doc || doc.org_id !== orgId) throw new Error('Document not found');
 
   if (doc.textract_status === 'completed' && doc.textract_result) {
     return { document_id: documentId, status: 'completed', result: typeof doc.textract_result === 'string' ? JSON.parse(doc.textract_result) : doc.textract_result };
@@ -1039,7 +1070,7 @@ async function getTextractResults(documentId) {
 // ─── Auto-Post Payments ────────────────────────────────────────────────────────
 async function autoPostPayments(eraFileId, orgId, userId) {
   const era = await getById('era_files', eraFileId);
-  if (!era) throw new Error('ERA file not found');
+  if (!era || era.org_id !== orgId) throw new Error('ERA file not found');
 
   const paymentsR = await pool.query(
     `SELECT * FROM payments WHERE era_file_id = $1 AND (action = 'pending' OR action IS NULL)`,
@@ -1085,7 +1116,7 @@ async function autoPostPayments(eraFileId, orgId, userId) {
 // ─── 271 Eligibility Response Parser ───────────────────────────────────────────
 async function parse271Response(eligibilityCheckId, ediContent, orgId, userId) {
   const elig = await getById('eligibility_checks', eligibilityCheckId);
-  if (!elig) throw new Error('Eligibility check not found');
+  if (!elig || elig.org_id !== orgId) throw new Error('Eligibility check not found');
 
   const segments = ediContent.split('~').map(s => s.trim()).filter(Boolean);
   const result = {
@@ -1203,7 +1234,7 @@ async function parse271Response(eligibilityCheckId, ediContent, orgId, userId) {
 // ─── Contract Underpayment Detection ───────────────────────────────────────────
 async function detectUnderpayments(claimId, orgId, userId) {
   const claim = await getById('claims', claimId);
-  if (!claim) throw new Error('Claim not found');
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
 
   // Get payments for this claim
   const pmtR = await pool.query(
@@ -1308,8 +1339,8 @@ async function batchSubmitClaims(claimIds, orgId, clientId, userId) {
 
       // Generate EDI based on claim type
       const ediResult = claim.claim_type === 'DHA'
-        ? await generateDHAeClaim(claimId)
-        : await generateEDI(claimId);
+        ? await generateDHAeClaim(claimId, orgId)
+        : await generateEDI(claimId, orgId);
 
       // Update claim status
       await update('claims', claimId, { status: 'submitted', submitted_at: new Date().toISOString() });
@@ -1337,7 +1368,7 @@ async function batchSubmitClaims(claimIds, orgId, clientId, userId) {
 // ─── Denial Prediction (AI Feature #7) ─────────────────────────────────────────
 async function predictDenial(claimId, orgId, userId) {
   const claim = await getById('claims', claimId);
-  if (!claim) throw new Error('Claim not found');
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
 
   const linesR = await pool.query('SELECT * FROM claim_lines WHERE claim_id = $1', [claimId]);
   const risks = [];
@@ -1401,7 +1432,7 @@ async function predictDenial(claimId, orgId, userId) {
 // ─── 276 Claim Status Request Generator ────────────────────────────────────────
 async function generate276(claimId, orgId) {
   const claim = await getById('claims', claimId);
-  if (!claim) throw new Error('Claim not found');
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
   const patient = claim.patient_id ? await getById('patients', claim.patient_id) : null;
   const payer = claim.payer_id ? await getById('payers', claim.payer_id) : null;
   const provider = claim.provider_id ? await getById('providers', claim.provider_id) : null;
@@ -1439,7 +1470,7 @@ async function generate276(claimId, orgId) {
 // ─── 277 Claim Status Response Parser ──────────────────────────────────────────
 async function parse277Response(claimId, ediContent, orgId, userId) {
   const claim = await getById('claims', claimId);
-  if (!claim) throw new Error('Claim not found');
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
   const segments = ediContent.split('~').map(s => s.trim()).filter(Boolean);
   const result = { claim_id: claimId, claim_number: claim.claim_number, statuses: [] };
 
@@ -1557,7 +1588,7 @@ async function generatePresignedUrl(folder, fileName, contentType) {
 // ─── Coding Approve → Claim Creation ───────────────────────────────────────────
 async function approveCoding(codingQueueId, body, orgId, userId) {
   const item = await getById('coding_queue', codingQueueId);
-  if (!item) throw new Error('Coding item not found');
+  if (!item || item.org_id !== orgId) throw new Error('Coding item not found');
 
   const icdCodes = body.icd_codes || [];
   const cptCodes = body.cpt_codes || [];
@@ -1635,7 +1666,7 @@ async function approveCoding(codingQueueId, body, orgId, userId) {
 // ─── 837I Institutional Claim Generator ────────────────────────────────────────
 async function generate837I(claimId, orgId) {
   const claim = await getById('claims', claimId);
-  if (!claim) throw new Error('Claim not found');
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
   if (claim.claim_type !== '837I') throw new Error('Claim is not institutional (837I)');
 
   const linesR = await pool.query('SELECT * FROM claim_lines WHERE claim_id = $1 ORDER BY line_number', [claimId]);
@@ -1744,7 +1775,7 @@ async function generate837I(claimId, orgId) {
 async function chargeCapture(encounterId, orgId, userId) {
   // Fetch encounter + associated SOAP note + document
   const encounter = await getById('encounters', encounterId);
-  if (!encounter) throw new Error('Encounter not found');
+  if (!encounter || encounter.org_id !== orgId) throw new Error('Encounter not found');
 
   const soapR = await pool.query(
     'SELECT * FROM soap_notes WHERE encounter_id = $1 ORDER BY created_at DESC LIMIT 1', [encounterId]
@@ -1775,16 +1806,16 @@ async function chargeCapture(encounterId, orgId, userId) {
 
   // Call Bedrock for charge extraction
   const { BedrockRuntimeClient, InvokeModelCommand } = await import('@aws-sdk/client-bedrock-runtime');
-  const bedrock = new BedrockRuntimeClient({ region: 'us-east-1' });
+  const bedrock = new BedrockRuntimeClient({ region: BEDROCK_REGION });
 
   const prompt = `You are a medical charge capture specialist. Extract billable charges from this clinical documentation.
 
 Region: ${isUAE ? 'UAE (use ICD-10-AM + DRG codes)' : 'US (use ICD-10-CM + CPT codes)'}
 
 Clinical Documentation:
-${clinicalText.substring(0, 4000)}
+${sanitizeForPrompt(clinicalText)}
 
-Patient: ${encounter.patient_name || 'Unknown'}, DOS: ${encounter.encounter_date || 'Unknown'}
+Patient: ${sanitizeForPrompt(encounter.patient_name) || 'Unknown'}, DOS: ${encounter.encounter_date || 'Unknown'}
 
 Return ONLY valid JSON:
 {
@@ -1815,7 +1846,7 @@ Return ONLY valid JSON:
 
   try {
     const resp = await bedrock.send(new InvokeModelCommand({
-      modelId: 'anthropic.claude-sonnet-4-5-20250929-v1:0',
+      modelId: BEDROCK_MODEL,
       contentType: 'application/json',
       accept: 'application/json',
       body: JSON.stringify({
@@ -1827,8 +1858,7 @@ Return ONLY valid JSON:
 
     const aiResult = JSON.parse(new TextDecoder().decode(resp.body));
     const text = aiResult.content?.[0]?.text || '{}';
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const charges = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    const charges = extractJSON(text) || {};
 
     // Store results
     await pool.query(
@@ -1870,7 +1900,7 @@ Return ONLY valid JSON:
 // ─── Document Classification AI ────────────────────────────────────────────────
 async function classifyDocument(documentId, orgId) {
   const doc = await getById('documents', documentId);
-  if (!doc) throw new Error('Document not found');
+  if (!doc || doc.org_id !== orgId) throw new Error('Document not found');
 
   // If Textract results exist, use that text; otherwise classify by metadata
   let docText = '';
@@ -1919,15 +1949,15 @@ async function classifyDocument(documentId, orgId) {
   if (docText.length > 50 && (!classification || confidence < 70)) {
     try {
       const { BedrockRuntimeClient, InvokeModelCommand } = await import('@aws-sdk/client-bedrock-runtime');
-      const bedrock = new BedrockRuntimeClient({ region: 'us-east-1' });
+      const bedrock = new BedrockRuntimeClient({ region: BEDROCK_REGION });
 
       const prompt = `Classify this medical document. Return ONLY JSON: {"type": "<one of: ${DOCUMENT_TYPES.join(', ')}>", "confidence": <0-100>, "key_entities": ["string"]}
 
 Document text:
-${docText}`;
+${sanitizeForPrompt(docText)}`;
 
       const resp = await bedrock.send(new InvokeModelCommand({
-        modelId: 'anthropic.claude-sonnet-4-5-20250929-v1:0',
+        modelId: BEDROCK_MODEL,
         contentType: 'application/json',
         accept: 'application/json',
         body: JSON.stringify({
@@ -1939,9 +1969,8 @@ ${docText}`;
 
       const aiResult = JSON.parse(new TextDecoder().decode(resp.body));
       const text = aiResult.content?.[0]?.text || '{}';
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = extractJSON(text);
+      if (parsed) {
         classification = DOCUMENT_TYPES.includes(parsed.type) ? parsed.type : classification || 'other';
         confidence = parsed.confidence || 80;
         method = 'bedrock_ai';
@@ -2108,7 +2137,7 @@ async function generatePatientStatement(patientId, orgId) {
 // ─── Secondary Claim / COB Workflow ────────────────────────────────────────────
 async function triggerSecondaryClaim(claimId, orgId, userId) {
   const claim = await getById('claims', claimId);
-  if (!claim) throw new Error('Claim not found');
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
   if (!['paid', 'partial_pay'].includes(claim.status)) {
     throw new Error('Primary claim must be paid or partially paid before filing secondary');
   }
@@ -2480,7 +2509,7 @@ async function generateReport(reportType, orgId, clientId, params) {
 // ─── Auto-Appeals Engine (AI Feature #4) ───────────────────────────────────────
 async function generateAppeal(denialId, orgId, userId) {
   const denial = await getById('denials', denialId);
-  if (!denial) throw new Error('Denial not found');
+  if (!denial || denial.org_id !== orgId) throw new Error('Denial not found');
 
   const claim = denial.claim_id ? await getById('claims', denial.claim_id) : null;
   const patient = claim?.patient_id ? await getById('patients', claim.patient_id) : null;
@@ -2516,29 +2545,29 @@ async function generateAppeal(denialId, orgId, userId) {
 
   // Build clinical summary
   const clinicalContext = [
-    soap ? `CLINICAL NOTE:\nSubjective: ${soap.subjective || 'N/A'}\nObjective: ${soap.objective || 'N/A'}\nAssessment: ${soap.assessment || 'N/A'}\nPlan: ${soap.plan || 'N/A'}` : '',
-    dxR.rows.length ? `DIAGNOSES: ${dxR.rows.map(d => `${d.icd_code} - ${d.description || ''}`).join('; ')}` : '',
+    soap ? `CLINICAL NOTE:\nSubjective: ${sanitizeForPrompt(soap.subjective) || 'N/A'}\nObjective: ${sanitizeForPrompt(soap.objective) || 'N/A'}\nAssessment: ${sanitizeForPrompt(soap.assessment) || 'N/A'}\nPlan: ${sanitizeForPrompt(soap.plan) || 'N/A'}` : '',
+    dxR.rows.length ? `DIAGNOSES: ${dxR.rows.map(d => `${d.icd_code} - ${sanitizeForPrompt(d.description) || ''}`).join('; ')}` : '',
     linesR.rows.length ? `PROCEDURES: ${linesR.rows.map(l => `${l.cpt_code} x${l.units || 1} ($${l.charge_amount || 0})`).join('; ')}` : '',
-    callsR.rows.length ? `PRIOR CALLS: ${callsR.rows.map(c => `${c.call_date?.toISOString?.()?.slice(0,10) || 'N/A'}: ${c.outcome} - ${c.notes || ''}`).join(' | ')}` : '',
+    callsR.rows.length ? `PRIOR CALLS: ${callsR.rows.map(c => `${c.call_date?.toISOString?.()?.slice(0,10) || 'N/A'}: ${sanitizeForPrompt(c.outcome)} - ${sanitizeForPrompt(c.notes) || ''}`).join(' | ')}` : '',
   ].filter(Boolean).join('\n\n');
 
   // Call Bedrock for appeal letter generation
   const { BedrockRuntimeClient, InvokeModelCommand } = await import('@aws-sdk/client-bedrock-runtime');
-  const bedrock = new BedrockRuntimeClient({ region: 'us-east-1' });
+  const bedrock = new BedrockRuntimeClient({ region: BEDROCK_REGION });
 
   const prompt = `You are a medical billing appeal specialist. Generate a professional appeal letter for a denied claim.
 
 DENIAL DETAILS:
-- Denial Reason (CARC ${denial.carc_code || 'N/A'}): ${carcDesc}
+- Denial Reason (CARC ${denial.carc_code || 'N/A'}): ${sanitizeForPrompt(carcDesc)}
 - RARC: ${denial.rarc_code || 'N/A'}
 - Denied Amount: $${denial.amount || 0}
 - Claim Number: ${claim?.claim_number || 'N/A'}
 - DOS: ${claim?.dos_from || 'N/A'}
 - Appeal Level: ${appealType} (Level ${nextLevel})
 
-PATIENT: ${patient ? `${patient.first_name} ${patient.last_name}, DOB: ${patient.date_of_birth}` : 'N/A'}
-PROVIDER: ${provider ? `${provider.first_name || ''} ${provider.last_name || ''}, NPI: ${provider.npi || ''}` : 'N/A'}
-PAYER: ${payer?.name || 'N/A'}
+PATIENT: ${patient ? `${sanitizeForPrompt(patient.first_name)} ${sanitizeForPrompt(patient.last_name)}, DOB: ${patient.date_of_birth}` : 'N/A'}
+PROVIDER: ${provider ? `${sanitizeForPrompt(provider.first_name || '')} ${sanitizeForPrompt(provider.last_name || '')}, NPI: ${provider.npi || ''}` : 'N/A'}
+PAYER: ${sanitizeForPrompt(payer?.name) || 'N/A'}
 
 ${clinicalContext}
 
@@ -2554,7 +2583,7 @@ Generate a JSON response ONLY:
 
   try {
     const resp = await bedrock.send(new InvokeModelCommand({
-      modelId: 'anthropic.claude-sonnet-4-5-20250929-v1:0',
+      modelId: BEDROCK_MODEL,
       contentType: 'application/json',
       accept: 'application/json',
       body: JSON.stringify({
@@ -2566,8 +2595,7 @@ Generate a JSON response ONLY:
 
     const aiResult = JSON.parse(new TextDecoder().decode(resp.body));
     const text = aiResult.content?.[0]?.text || '{}';
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const appeal = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    const appeal = extractJSON(text) || {};
 
     // Store appeal
     const appealId = uuid();
@@ -2723,7 +2751,7 @@ async function categorizeDenials(orgId, clientId) {
 // ─── Chart Completeness Check (AI Feature #14) ────────────────────────────────
 async function checkChartCompleteness(encounterId, orgId) {
   const encounter = await getById('encounters', encounterId);
-  if (!encounter) throw new Error('Encounter not found');
+  if (!encounter || encounter.org_id !== orgId) throw new Error('Encounter not found');
 
   const soapR = await pool.query(
     'SELECT * FROM soap_notes WHERE encounter_id = $1 ORDER BY created_at DESC LIMIT 1', [encounterId]
@@ -2783,15 +2811,15 @@ async function checkChartCompleteness(encounterId, orgId) {
   if (completenessScore < 60 && soap) {
     try {
       const { BedrockRuntimeClient, InvokeModelCommand } = await import('@aws-sdk/client-bedrock-runtime');
-      const bedrock = new BedrockRuntimeClient({ region: 'us-east-1' });
+      const bedrock = new BedrockRuntimeClient({ region: BEDROCK_REGION });
 
       const prompt = `Review this clinical note for coding readiness. What specific documentation is missing or insufficient for accurate E/M coding?
 
 SOAP Note:
-S: ${(soap.subjective || '').substring(0, 1000)}
-O: ${(soap.objective || '').substring(0, 1000)}
-A: ${(soap.assessment || '').substring(0, 500)}
-P: ${(soap.plan || '').substring(0, 500)}
+S: ${sanitizeForPrompt(soap.subjective)}
+O: ${sanitizeForPrompt(soap.objective)}
+A: ${sanitizeForPrompt(soap.assessment)}
+P: ${sanitizeForPrompt(soap.plan)}
 
 Return ONLY JSON:
 {
@@ -2802,7 +2830,7 @@ Return ONLY JSON:
 }`;
 
       const resp = await bedrock.send(new InvokeModelCommand({
-        modelId: 'anthropic.claude-sonnet-4-5-20250929-v1:0',
+        modelId: BEDROCK_MODEL,
         contentType: 'application/json',
         accept: 'application/json',
         body: JSON.stringify({
@@ -2814,8 +2842,7 @@ Return ONLY JSON:
 
       const aiResult = JSON.parse(new TextDecoder().decode(resp.body));
       const text = aiResult.content?.[0]?.text || '{}';
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) aiAnalysis = JSON.parse(jsonMatch[0]);
+      aiAnalysis = extractJSON(text);
     } catch (aiErr) {
       console.error('Bedrock chart completeness error:', aiErr);
     }
@@ -2849,7 +2876,7 @@ Return ONLY JSON:
 // ─── Contract Rate Extraction from PDFs (AI Feature #12 enhancement) ──────────
 async function extractContractRates(documentId, payerId, orgId, userId) {
   const doc = await getById('documents', documentId);
-  if (!doc) throw new Error('Document not found');
+  if (!doc || doc.org_id !== orgId) throw new Error('Document not found');
 
   let docText = '';
   if (doc.textract_result?.text) {
@@ -2861,14 +2888,14 @@ async function extractContractRates(documentId, payerId, orgId, userId) {
   const payer = payerId ? await getById('payers', payerId) : null;
 
   const { BedrockRuntimeClient, InvokeModelCommand } = await import('@aws-sdk/client-bedrock-runtime');
-  const bedrock = new BedrockRuntimeClient({ region: 'us-east-1' });
+  const bedrock = new BedrockRuntimeClient({ region: BEDROCK_REGION });
 
   const prompt = `Extract fee schedule / contracted rates from this payer contract document.
 
-Payer: ${payer?.name || 'Unknown'}
+Payer: ${sanitizeForPrompt(payer?.name) || 'Unknown'}
 
 Document text (may be messy from OCR):
-${docText.substring(0, 6000)}
+${sanitizeForPrompt(docText)}
 
 Return ONLY valid JSON:
 {
@@ -2896,7 +2923,7 @@ Return ONLY valid JSON:
 
   try {
     const resp = await bedrock.send(new InvokeModelCommand({
-      modelId: 'anthropic.claude-sonnet-4-5-20250929-v1:0',
+      modelId: BEDROCK_MODEL,
       contentType: 'application/json',
       accept: 'application/json',
       body: JSON.stringify({
@@ -2908,8 +2935,7 @@ Return ONLY valid JSON:
 
     const aiResult = JSON.parse(new TextDecoder().decode(resp.body));
     const text = aiResult.content?.[0]?.text || '{}';
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const extracted = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    const extracted = extractJSON(text) || {};
 
     // Auto-insert extracted rates into fee_schedules
     let inserted = 0;
@@ -2961,7 +2987,7 @@ Return ONLY valid JSON:
 // ─── Payment Reconciliation Engine ─────────────────────────────────────────────
 async function reconcilePayments(eraFileId, orgId, userId) {
   const eraFile = await getById('era_files', eraFileId);
-  if (!eraFile) throw new Error('ERA file not found');
+  if (!eraFile || eraFile.org_id !== orgId) throw new Error('ERA file not found');
 
   // Get all payments from this ERA
   const paymentsR = await pool.query(
@@ -3140,7 +3166,7 @@ async function requestWriteOff(body, orgId, userId) {
   if (!claim_id) throw new Error('claim_id required');
 
   const claim = await getById('claims', claim_id);
-  if (!claim) throw new Error('Claim not found');
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
 
   const writeOffAmount = amount || Number(claim.total_charge || 0);
 
@@ -3201,7 +3227,7 @@ async function requestWriteOff(body, orgId, userId) {
 
 async function approveWriteOff(writeOffId, body, orgId, userId) {
   const wo = await getById('write_off_requests', writeOffId);
-  if (!wo) throw new Error('Write-off request not found');
+  if (!wo || wo.org_id !== orgId) throw new Error('Write-off request not found');
   if (wo.status !== 'pending') throw new Error(`Write-off already ${wo.status}`);
 
   const action = body.action; // 'approve' or 'deny'
@@ -3331,7 +3357,7 @@ export const handler = async (event) => {
         return respond(200, result);
       }
       if (method === 'GET') {
-        const result = await getTextractResults(pathParams.id);
+        const result = await getTextractResults(pathParams.id, effectiveOrgId);
         return respond(200, result);
       }
     }
@@ -3403,7 +3429,7 @@ export const handler = async (event) => {
 
     // 837P/837I EDI generate
     if (path.includes('/generate-edi') && method === 'POST') {
-      const r = await generateEDI(pathParams.id);
+      const r = await generateEDI(pathParams.id, effectiveOrgId);
       // Log EDI transaction
       await create('edi_transactions', {
         org_id: effectiveOrgId,
@@ -3419,7 +3445,7 @@ export const handler = async (event) => {
 
     // DHA eClaim XML generate (UAE)
     if (path.includes('/generate-dha') && method === 'POST') {
-      const r = await generateDHAeClaim(pathParams.id);
+      const r = await generateDHAeClaim(pathParams.id, effectiveOrgId);
       await create('edi_transactions', {
         org_id: effectiveOrgId,
         client_id: clientId,
@@ -3855,10 +3881,15 @@ export const handler = async (event) => {
         }
         if (method === 'GET' && pathParams.id) {
           const r = await getById(table, pathParams.id);
-          return r ? respond(200, r) : respond(404, { error: 'Not found' });
+          if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+          return respond(200, r);
         }
         if (method === 'POST') return respond(201, await create(table, body, effectiveOrgId));
-        if (method === 'PUT' && pathParams.id) return respond(200, await update(table, pathParams.id, body));
+        if (method === 'PUT' && pathParams.id) {
+          const existing = await getById(table, pathParams.id);
+          if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+          return respond(200, await update(table, pathParams.id, body));
+        }
         if (method === 'DELETE' && pathParams.id) {
           await pool.query(`DELETE FROM ${table} WHERE id = $1 AND org_id = $2`, [pathParams.id, effectiveOrgId]);
           return respond(200, { deleted: true });
@@ -3904,7 +3935,8 @@ export const handler = async (event) => {
       }
       if (method === 'GET' && pathParams.id) {
         const r = await getById('prior_auth_requests', pathParams.id);
-        return r ? respond(200, r) : respond(404, { error: 'Not found' });
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
       }
       if (method === 'POST') {
         const result = await createPriorAuth(body, effectiveOrgId, userId);
@@ -3939,10 +3971,13 @@ export const handler = async (event) => {
       // Get single statement
       if (method === 'GET' && pathParams.id) {
         const r = await getById('patient_statements', pathParams.id);
-        return r ? respond(200, r) : respond(404, { error: 'Not found' });
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
       }
       // Update statement (mark sent, mark paid, etc.)
       if (method === 'PUT' && pathParams.id) {
+        const existing = await getById('patient_statements', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
         const result = await update('patient_statements', pathParams.id, { ...body, updated_at: new Date().toISOString() });
         return respond(200, result);
       }
@@ -4032,7 +4067,8 @@ export const handler = async (event) => {
       }
       if (method === 'GET' && pathParams.id) {
         const r = await getById('write_off_requests', pathParams.id);
-        return r ? respond(200, r) : respond(404, { error: 'Not found' });
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
       }
     }
 
@@ -4081,9 +4117,12 @@ export const handler = async (event) => {
       }
       if (method === 'GET' && pathParams.id) {
         const r = await getById('appeals', pathParams.id);
-        return r ? respond(200, r) : respond(404, { error: 'Not found' });
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
       }
       if (method === 'PUT' && pathParams.id) {
+        const existing = await getById('appeals', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
         const result = await update('appeals', pathParams.id, { ...body, updated_at: new Date().toISOString() });
         return respond(200, result);
       }
