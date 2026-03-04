@@ -12,12 +12,12 @@ import { api } from '@/lib/api-client'
 import type { ApiEligibilityCheck } from '@/lib/hooks'
 
 export default function EligibilityPage() {
-  const { country } = useApp()
+  const { country, clients, selectedClient } = useApp()
   const { t } = useT()
   const { toast } = useToast()
   const { data: apiEligResult } = useEligibilityChecks({ limit: 20 })
   const [tab, setTab] = useState<'single' | 'batch' | 'priorauth'>('single')
-  const [selectedClientId, setSelectedClientId] = useState('')
+  const [selectedClientId, setSelectedClientId] = useState(selectedClient?.id || '')
   const [selectedPatientId, setSelectedPatientId] = useState('')
   const [payer, setPayer] = useState('')
   const [dos, setDos] = useState(new Date().toISOString().slice(0, 10))
@@ -60,8 +60,8 @@ export default function EligibilityPage() {
       setVerificationResult({
         status: result.status || 'active',
         network: result.network_status || 'In-Network',
-        copay: result.copay != null ? `$${result.copay}` : '$25',
-        deductible: result.deductible != null ? `$${result.deductible} remaining` : '$500 remaining',
+        copay: result.copay != null ? `$${result.copay}` : 'N/A',
+        deductible: result.deductible != null ? `$${result.deductible} remaining` : 'N/A',
         coinsurance: String(resultData.coinsurance || '80/20'),
         priorAuth: result.prior_auth_required ? 'Yes — required' : 'No',
       })
@@ -123,10 +123,10 @@ export default function EligibilityPage() {
   return (
     <ModuleShell title={t("eligibility","title")} subtitle={t("eligibility","subtitle")}>
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Checks Today" value={eligStats.total} icon={<ShieldCheck size={20} />} />
-        <KPICard label="Active" value={eligStats.active} sub={`${eligStats.total > 0 ? Math.round(eligStats.active / eligStats.total * 100) : 0}%`} trend="up" />
-        <KPICard label="Inactive/Issues" value={eligStats.issues} trend="down" />
-        <KPICard label="Prior Auth Required" value={eligStats.priorAuth} />
+        <KPICard label={t('eligibility','checksToday')} value={eligStats.total} icon={<ShieldCheck size={20} />} />
+        <KPICard label={t('eligibility','activeElig')} value={eligStats.active} sub={`${eligStats.total > 0 ? Math.round(eligStats.active / eligStats.total * 100) : 0}%`} trend="up" />
+        <KPICard label={t('eligibility','inactiveIssues')} value={eligStats.issues} trend="down" />
+        <KPICard label={t('eligibility','priorAuthReq')} value={eligStats.priorAuth} />
       </div>
 
       <div className="flex gap-2 mb-4">
@@ -138,8 +138,8 @@ export default function EligibilityPage() {
           <div className="card p-4 mb-4">
             <div className="grid grid-cols-4 gap-3">
               <select value={selectedClientId} onChange={e => { setSelectedClientId(e.target.value); setSelectedPatientId(''); setVerified(false) }} className="bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px]">
-                <option value=''>All Clients</option>
-                {/* Sprint 2: replace with API client list */}
+                <option value=''>{t('topbar','selectClient')}</option>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               <select value={selectedPatientId} onChange={e => { setSelectedPatientId(e.target.value); setVerified(false) }} className="bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px]">
                 <option value="">Select patient</option>

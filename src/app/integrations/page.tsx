@@ -14,8 +14,7 @@ interface Integration {
 
 const integrations: Integration[] = [
   // Clearinghouses
-  { id:'availity', name:'Availity', description:'Real-time eligibility & claims', initials:'AV', color:'bg-blue-500', category:'Clearinghouses', status:'connected', lastSync:'2 min ago' },
-  { id:'change', name:'Change Healthcare', description:'Claims clearinghouse & EDI', initials:'CH', color:'bg-indigo-500', category:'Clearinghouses', status:'error', errorMsg:'API timeout — last success 3h ago' },
+  { id:'availity', name:'Availity', description:'Primary clearinghouse — claims, eligibility, ERA', initials:'AV', color:'bg-indigo-500', category:'Clearinghouses', status:'connected', lastSync:'5 min ago' },
   { id:'dha', name:'DHA eClaim (UAE)', description:'UAE DOH claims gateway', initials:'DH', color:'bg-emerald-500', category:'Clearinghouses', status:'connected', lastSync:'14 min ago' },
   { id:'eclinical', name:'eClinicalWorks', description:'EHR integration & patient data', initials:'EC', color:'bg-cyan-500', category:'EHR Systems', status:'pending' },
   // EHR Systems
@@ -23,7 +22,7 @@ const integrations: Integration[] = [
   { id:'cerner', name:'Cerner HL7', description:'Cerner Millennium HL7 v2.x', initials:'CE', color:'bg-rose-500', category:'EHR Systems', status:'not_configured' },
   { id:'athena', name:'athenahealth', description:'Practice management & EHR', initials:'AT', color:'bg-orange-500', category:'EHR Systems', status:'not_configured' },
   // Communication
-  { id:'twilio', name:'Twilio', description:'Voice AI & SMS outreach', initials:'TW', color:'bg-red-500', category:'Communication', status:'connected', lastSync:'1 min ago' },
+  { id:'retell', name:'Retell AI', description:'Voice AI payer follow-up calls', initials:'RT', color:'bg-violet-500', category:'Communication', status:'connected', lastSync:'1 min ago' },
   { id:'cloudfax', name:'Cloud Fax (SRFax)', description:'Inbound / outbound fax', initials:'CF', color:'bg-gray-500', category:'Communication', status:'error', errorMsg:'Auth failed — token expired' },
   { id:'email', name:'Email Ingest', description:'Automated email parsing', initials:'EM', color:'bg-sky-500', category:'Communication', status:'connected', lastSync:'8 min ago' },
   // Storage
@@ -144,7 +143,7 @@ export default function IntegrationsPage() {
   return (
     <ModuleShell title="Integration Hub" subtitle="External system connections and data pipes">
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <KPICard label="Connected" value={stats.connected} icon={<CheckCircle2 size={20}/>}/>
+        <KPICard label={t('integrations','connected')} value={stats.connected} icon={<CheckCircle2 size={20}/>}/>
         <KPICard label={t("misc","errors")} value={stats.errors} icon={<AlertTriangle size={20}/>}/>
         <KPICard label={t("status","pending")} value={stats.pending} icon={<Clock size={20}/>}/>
         <KPICard label={t("misc","total")} value={stats.total} icon={<Plug size={20}/>}/>

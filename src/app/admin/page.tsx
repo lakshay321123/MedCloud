@@ -63,7 +63,7 @@ const services = [
   { name:'Textract', status:'operational', lastCheck:'5 min', ms:210 },
   { name:'Bedrock', status:'operational', lastCheck:'2 min', ms:340 },
   { name:'AppSync', status:'operational', lastCheck:'2 min', ms:65 },
-  { name:'Twilio', status:'operational', lastCheck:'3 min', ms:188 },
+  { name:'Retell AI', status:'operational', lastCheck:'3 min', ms:188 },
   { name:'Availity', status:'degraded', lastCheck:'2 min', ms:1840 },
   { name:'DHA eClaim', status:'operational', lastCheck:'4 min', ms:290 },
   { name:'Email Ingest', status:'operational', lastCheck:'2 min', ms:76 },

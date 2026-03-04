@@ -348,7 +348,7 @@ function ProviderDashboard() {
       <div className="grid grid-cols-3 gap-4">
         <KPICard label={t('dashboard','todayAppointments')} value={todayAppointments.length} icon={<CalendarDays size={20} />} />
         <KPICard label={t('dashboard','pendingSignOffs')} value={pendingSignOffs} icon={<FileText size={20} />} />
-        <KPICard label="Unsigned > 24h" value={unsignedNotes} icon={<Clock size={20} />} />
+        <KPICard label={t('dashboard','unsignedNotes')} value={unsignedNotes} icon={<Clock size={20} />} />
       </div>
       {(unsignedNotes ?? 0) > 0 && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center justify-between">

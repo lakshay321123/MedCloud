@@ -6,19 +6,25 @@ import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useApp } from '@/lib/context'
 import { demoERAFiles, demoERALineItems, demoUnmatchedPayments } from '@/lib/demo-data'
+import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
 import { useERAFiles, useAutoPostPayments, useParse835, useReconcilePayments, useBankDeposits, useReconcileBankDeposit, usePayments, useUpdatePayment, useCreateBankDeposit } from '@/lib/hooks'
 
 export default function PaymentPostingPage() {
-  const { selectedClient } = useApp()
+  const { selectedClient, country } = useApp()
   const { t } = useT()
   const { toast } = useToast()
   const { data: apiERAResult } = useERAFiles({ limit: 50 })
   const { mutate: autoPost } = useAutoPostPayments()
   const [posting, setPosting] = useState(false)
-  const demoEras = demoERAFiles.filter(era => !selectedClient || era.clientId === selectedClient.id)
+  const demoEras = demoERAFiles.filter(era => {
+    if (selectedClient) return era.clientId === selectedClient.id
+    if (country === 'uae') return UAE_ORG_IDS.includes(era.clientId)
+    if (country === 'usa') return US_ORG_IDS.includes(era.clientId)
+    return true
+  })
   // Map API ERA files to DemoERAFile shape for display compatibility
   const eras = apiERAResult?.data?.map(e => ({
     id: e.id,
@@ -71,10 +77,10 @@ export default function PaymentPostingPage() {
           Payment posting connected — processing live ERAs
         </div>
         <div className="grid grid-cols-4 gap-4 mb-4">
-          <KPICard label="ERAs Pending" value={eras.filter(e => e.status !== 'posted').length} icon={<Receipt size={20} />} />
-          <KPICard label="Posted Today" value="89" icon={<CheckCircle2 size={20} />} />
-          <KPICard label="Auto-Post Rate" value={apiERAResult?.data ? `${Math.round((apiERAResult.data.filter(e => e.status === 'posted').length / Math.max(apiERAResult.data.length, 1)) * 100)}%` : '76%'} icon={<Send size={20} />} />
-          <KPICard label="Unmatched" value={demoUnmatchedPayments.length} icon={<AlertTriangle size={20} />} />
+          <KPICard label={t('posting','erasPending')} value={eras.filter(e => e.status !== 'posted').length} icon={<Receipt size={20} />} />
+          <KPICard label={t('posting','postedToday')} value="89" icon={<CheckCircle2 size={20} />} />
+          <KPICard label={t('posting','autoPostRate')} value={apiERAResult?.data ? `${Math.round((apiERAResult.data.filter(e => e.status === 'posted').length / Math.max(apiERAResult.data.length, 1)) * 100)}%` : '76%'} icon={<Send size={20} />} />
+          <KPICard label={t('posting','unmatched')} value={demoUnmatchedPayments.length} icon={<AlertTriangle size={20} />} />
         </div>
 
         {/* Silent denial detection banner */}
