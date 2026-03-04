@@ -380,13 +380,13 @@ function ProviderView() {
       {(selectedPatient.allergies?.length ?? 0) > 0 && (
         <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
           <div className="text-xs font-semibold text-red-500 mb-1">⚠ Allergies</div>
-          <div className="text-sm">{selectedPatient.allergies!.join(', ')}</div>
+          <div className="text-sm">{(selectedPatient.allergies! as string[]).join(', ')}</div>
         </div>
       )}
       {(selectedPatient.medications?.length ?? 0) > 0 && (
         <div className="card p-4">
           <div className="text-xs font-semibold text-content-secondary mb-2 uppercase tracking-wide">Medications</div>
-          <ul className="text-sm space-y-1">{selectedPatient.medications!.map((m, i) => <li key={i}>• {m}</li>)}</ul>
+          <ul className="text-sm space-y-1">{selectedPatient.medications!.map((m: string, i: number) => <li key={i}>• {m}</li>)}</ul>
         </div>
       )}
       {/* Prior visits preview */}
