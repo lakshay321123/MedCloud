@@ -10,7 +10,7 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
 import { demoVisits, demoPatients, demoAppointments, DemoVisit } from '@/lib/demo-data'
 import { Mic, Square, Pause, Check, ChevronLeft, BrainCircuit, Clock, FileText, Activity, User } from 'lucide-react'
-import { formatDOB } from '@/lib/utils/region'
+import { formatDOB, UAE_CLIENT_NAMES } from '@/lib/utils/region'
 
 function Waveform() {
   return (
@@ -36,7 +36,7 @@ type UIState = 'queue' | 'select_patient' | 'review_patient' | 'recording' | 'pr
 function ProviderView() {
   const { t } = useT()
   const { toast } = useToast()
-  const { setIsScribeRecording } = useApp()
+  const { setIsScribeRecording, country, selectedClient } = useApp()
   const [uiState, setUiState] = useState<UIState>('queue')
   const { data: apiSOAPResult } = useSOAPNotes({ limit: 50 })
   const apiVisits: any[] = (apiSOAPResult?.data || []).map((s: any) => ({
@@ -59,13 +59,27 @@ function ProviderView() {
   const [liveTranscript, setLiveTranscript] = useState('')
   const [recordingTime, setRecordingTime] = useState('00:00')
 
-  // Today's appointments for patient selector
-  const todayAppts = demoAppointments.filter(a => a.date === '2026-03-02')
+  // Today's appointments for patient selector — filtered by region
+  const todayAppts = demoAppointments.filter(a => {
+    if (a.date !== '2026-03-02') return false
+    if (selectedClient) return a.clientId === selectedClient.id
+    if (country === 'uae') return UAE_CLIENT_NAMES.includes(a.clientId === 'org-101' ? 'Gulf Medical Center' : a.clientId === 'org-104' ? 'Dubai Wellness Clinic' : '' as typeof UAE_CLIENT_NAMES[number])
+    if (country === 'usa') return !['org-101', 'org-104'].includes(a.clientId)
+    return true
+  })
   const selectedPatient = demoPatients.find(p => p.id === selectedPatientId)
   const selectedAppt = todayAppts.find(a => a.patientId === selectedPatientId)
 
-  const pending = (apiVisits.length ? apiVisits : demoVisits).filter(v => v.status==='pending_signoff')
-  const completed = (apiVisits.length ? apiVisits : demoVisits).filter(v => v.status==='signed')
+  // Filter visits by region too
+  const regionPatientIds = new Set(demoPatients.filter(p => {
+    if (selectedClient) return p.clientId === selectedClient.id
+    if (country === 'uae') return ['org-101', 'org-104'].includes(p.clientId)
+    if (country === 'usa') return !['org-101', 'org-104'].includes(p.clientId)
+    return true
+  }).map(p => p.id))
+  const allVisits = (apiVisits.length ? apiVisits : demoVisits).filter(v => regionPatientIds.has(v.patientId))
+  const pending = allVisits.filter(v => v.status==='pending_signoff')
+  const completed = allVisits.filter(v => v.status==='signed')
 
   function openVisit(v: DemoVisit) {
     setSelectedVisit(v); setSoap({...v.soap}); setCodes(v.suggestedCodes); setUiState('note')
@@ -436,7 +450,15 @@ function ProviderView() {
 }
 
 function CoderView() {
-  const [selectedVisit, setSelectedVisit] = useState<DemoVisit>(demoVisits[0])
+  const { country, selectedClient } = useApp()
+  const regionPatientIds = new Set(demoPatients.filter(p => {
+    if (selectedClient) return p.clientId === selectedClient.id
+    if (country === 'uae') return ['org-101', 'org-104'].includes(p.clientId)
+    if (country === 'usa') return !['org-101', 'org-104'].includes(p.clientId)
+    return true
+  }).map(p => p.id))
+  const coderVisits = demoVisits.filter(v => regionPatientIds.has(v.patientId))
+  const [selectedVisit, setSelectedVisit] = useState<DemoVisit>(coderVisits[0] ?? demoVisits[0])
   const { toast } = useToast()
   const router = useRouter()
   return (
@@ -445,7 +467,7 @@ function CoderView() {
         <div className="px-3 py-2 border-b border-separator text-xs font-semibold text-content-secondary uppercase tracking-wider">
           Signed Notes — Read Only
         </div>
-        {demoVisits.map(v=>(
+        {coderVisits.map(v=>(
           <button key={v.id} onClick={()=>setSelectedVisit(v)}
             className={`w-full text-left px-3 py-3 border-b border-separator last:border-0 table-row ${selectedVisit.id===v.id?'bg-brand/5':''}`}>
             <div className="flex items-center justify-between">
