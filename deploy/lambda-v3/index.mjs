@@ -28,9 +28,9 @@ const { Pool } = pg;
 
 // ─── Connection ────────────────────────────────────────────────────────────────
 const pool = new Pool({
-  host: process.env.DB_HOST || 'medcloud-db.ck54k4qcenu4.us-east-1.rds.amazonaws.com',
+  host: process.env.DB_HOST || 'localhost',
   database: process.env.DB_NAME || 'medcloud',
-  user: process.env.DB_USER || 'medcloud_admin',
+  user: process.env.DB_USER || 'medcloud',
   password: process.env.DB_PASS,
   port: 5432,
   max: 10,

@@ -1,35 +1,47 @@
 /**
- * MedCloud API v4 — Sprint 2 Complete
+ * MedCloud API v4 — Sprint 2+3 Backend Complete
  * 
- * UPGRADE from v3 — NEW features:
- *   POST  /era-files/:id/parse-835     — Parse 835 EDI content into payment records
- *   POST  /claims/:id/generate-dha     — Generate DHA eClaim XML (UAE)
- *   POST  /claims/:id/generate-edi     — Generate 837P/837I ANSI X12 (US)
- *   POST  /claims/:id/scrub            — Run 50-rule claim scrubbing engine
- *   POST  /claims/:id/underpayment-check — Detect contract underpayments per line
- *   POST  /claims/batch-submit         — Batch submit up to 100 claims
- *   POST  /coding/:id/ai-suggest       — Bedrock AI auto-coding from SOAP/document
- *   POST  /documents/:id/textract      — Trigger Textract OCR on uploaded document
- *   GET   /documents/:id/textract      — Get Textract results
- *   POST  /eligibility/270             — Generate 270 eligibility request
- *   POST  /eligibility/:id/parse-271   — Parse 271 eligibility response
- *   POST  /edi-transactions            — Create EDI transaction record
- *   GET   /edi-transactions            — List EDI transactions
- *   GET   /scrub-results/:claimId      — Get persisted scrub results
- *   POST  /ar/log-call                 — Log AR call (enhanced)
- *   GET   /ar/call-log                 — List AR call log
- *   GET   /soap-notes                  — List SOAP notes (with filters)
- *   PUT   /soap-notes/:id              — Update SOAP note
- *   GET   /ai-coding-suggestions/:id   — Get AI suggestions for coding item
- *   CRUD  /fee-schedules               — Contract rate management
- *   POST  /payments/auto-post          — Auto-post payments from 835
+ * ── Sprint 2 v7 routes ──
+ *   POST  /era-files/:id/parse-835     — Parse 835 EDI into payment records
+ *   POST  /claims/:id/generate-dha     — DHA eClaim XML (UAE)
+ *   POST  /claims/:id/generate-edi     — 837P ANSI X12 (US)
+ *   POST  /claims/:id/generate-837i    — 837I institutional (UB-04) ANSI X12
+ *   POST  /claims/:id/scrub            — 52-rule claim scrubbing
+ *   POST  /claims/:id/underpayment-check — Contract underpayment detection
  *   POST  /claims/:id/predict-denial   — Denial prediction (7 risk factors)
- *   POST  /claims/:id/generate-276     — Generate 276 claim status inquiry
- *   POST  /claims/:id/parse-277        — Parse 277 claim status response
- *   GET   /analytics?from=&to=         — Analytics KPIs (collection rate, clean claim %, AR aging, payer perf)
+ *   POST  /claims/:id/generate-276     — 276 claim status inquiry
+ *   POST  /claims/:id/parse-277        — 277 claim status response parser
+ *   POST  /claims/:id/secondary        — Secondary claim (COB)
+ *   POST  /claims/batch-submit         — Batch submit up to 100 claims
+ *   POST  /encounters/:id/charge-capture — AI charge capture (#11)
+ *   POST  /documents/:id/classify      — AI document classification
+ *   POST  /documents/:id/textract      — Textract OCR
+ *   CRUD  /prior-auth                  — Prior auth workflow
+ *   POST  /patient-statements/generate — Patient billing statements
+ *   CRUD  /patient-statements          — Statement management
+ *   GET   /credentialing/dashboard     — Expiry alerts
+ *   POST  /credentialing/enrollment    — Provider enrollment
+ *   GET   /reports?type=X&format=csv   — 6 report types with CSV export
+ *   CRUD  /fee-schedules               — Contract rates
+ *   POST  /payments/auto-post          — Auto-post from 835
+ *   GET   /analytics?from=&to=         — Analytics KPIs
  *
- * SECURITY: UUID validation on all org/user/client IDs. Audit middleware logs every PHI access.
- * SCRUBBING: 50 rules — NCCI edits, gender/age, timely filing, modifier, bilateral, add-on, UAE-specific.
+ * ── Sprint 3 routes (NEW) ──
+ *   POST  /denials/:id/generate-appeal — AI auto-appeal letter generation (#4)
+ *   GET   /denials/categorize          — Auto-categorize denials into 8 groups from CARC codes
+ *   CRUD  /appeals                     — Appeal management (L1/L2/L3)
+ *   POST  /encounters/:id/chart-check  — Chart completeness check (#14)
+ *   POST  /documents/:id/extract-rates — AI contract rate extraction from PDFs (#12)
+ *   POST  /era-files/:id/reconcile     — Payment reconciliation (match, recoupments, underpay, zero-pay)
+ *   POST  /write-offs                  — Write-off request (tiered approval)
+ *   PUT   /write-offs/:id              — Approve/deny write-off
+ *   GET   /write-offs                  — List write-off requests
+ *   GET   /notifications               — User notifications (with unread count)
+ *   POST  /notifications               — Create notification
+ *   PUT   /notifications/:id           — Mark notification read
+ *
+ * SECURITY: UUID validation, HIPAA audit middleware logs every PHI access.
+ * SCRUBBING: 52 rules. DENIAL CATEGORIES: 8 groups from 300+ CARC codes.
  *
  * ALL v3 routes preserved + client_id filtering on all enriched queries.
  *
@@ -43,9 +55,9 @@ const { Pool } = pg;
 
 // ─── Connection ────────────────────────────────────────────────────────────────
 const pool = new Pool({
-  host: process.env.DB_HOST || 'medcloud-db.ck54k4qcenu4.us-east-1.rds.amazonaws.com',
+  host: process.env.DB_HOST || 'localhost',
   database: process.env.DB_NAME || 'medcloud',
-  user: process.env.DB_USER || 'medcloud_admin',
+  user: process.env.DB_USER || 'medcloud',
   password: process.env.DB_PASS,
   port: 5432,
   max: 10,
@@ -82,6 +94,37 @@ try {
 const S3_BUCKET = process.env.S3_BUCKET || 'medcloud-documents-us';
 // Bedrock model — override via BEDROCK_MODEL env var. Verify model availability in your region.
 const BEDROCK_MODEL = process.env.BEDROCK_MODEL || 'anthropic.claude-sonnet-4-5-20250929-v1:0';
+const BEDROCK_REGION = process.env.AWS_REGION || 'us-east-1';
+
+// ─── Prompt Injection Sanitizer ────────────────────────────────────────────────
+// Strip sequences that could manipulate LLM behavior when embedding untrusted text
+function sanitizeForPrompt(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/```/g, "'''")                     // prevent code fence injection
+    .replace(/<\/?(?:system|assistant|user|human|admin|instruction)[^>]*>/gi, '') // strip role tags
+    .replace(/(?:ignore|disregard|forget)\s+(?:all\s+)?(?:previous|above|prior)\s+(?:instructions?|prompts?|rules?)/gi, '[FILTERED]')
+    .substring(0, 8000);                        // hard length cap
+}
+
+// ─── Safe JSON extraction from LLM output ──────────────────────────────────────
+function extractJSON(text) {
+  if (!text) return null;
+  // Try markdown fenced block first
+  const fenced = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+  if (fenced) {
+    try { return JSON.parse(fenced[1].trim()); } catch (_) {}
+  }
+  // Fall back to balanced brace matching (non-greedy approach)
+  let depth = 0, start = -1;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '{') { if (depth === 0) start = i; depth++; }
+    else if (text[i] === '}') { depth--; if (depth === 0 && start >= 0) {
+      try { return JSON.parse(text.substring(start, i + 1)); } catch (_) { start = -1; }
+    }}
+  }
+  return null;
+}
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 const respond = (code, body) => ({
@@ -439,9 +482,9 @@ async function ingest835(eraFileId, ediContent, orgId, clientId, userId) {
 }
 
 // ─── DHA eClaim XML Generator (UAE) ────────────────────────────────────────────
-async function generateDHAeClaim(claimId) {
+async function generateDHAeClaim(claimId, orgId) {
   const claim = await getById('claims', claimId);
-  if (!claim) throw new Error('Claim not found');
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
 
   const linesR = await pool.query('SELECT * FROM claim_lines WHERE claim_id = $1 ORDER BY line_number', [claimId]);
   const dxR = await pool.query('SELECT * FROM claim_diagnoses WHERE claim_id = $1 ORDER BY sequence', [claimId]);
@@ -517,9 +560,9 @@ async function generateDHAeClaim(claimId) {
 }
 
 // ─── 837P EDI Generator (preserved from v3) ───────────────────────────────────
-async function generateEDI(claimId) {
+async function generateEDI(claimId, orgId) {
   const claim = await getById('claims', claimId);
-  if (!claim) throw new Error('Claim not found');
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
 
   const linesR = await pool.query('SELECT * FROM claim_lines WHERE claim_id = $1 ORDER BY line_number', [claimId]);
   const dxR = await pool.query('SELECT * FROM claim_diagnoses WHERE claim_id = $1 ORDER BY sequence', [claimId]);
@@ -604,7 +647,7 @@ async function generateEDI(claimId) {
 // ─── Claim Scrubbing (50 rules, persists results) ─────────────────────────────
 async function scrubClaim(claimId, orgId, userId) {
   const claim = await getById('claims', claimId);
-  if (!claim) throw new Error('Claim not found');
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
 
   const linesR = await pool.query('SELECT * FROM claim_lines WHERE claim_id = $1', [claimId]);
   const dxR = await pool.query('SELECT * FROM claim_diagnoses WHERE claim_id = $1', [claimId]);
@@ -816,7 +859,7 @@ async function scrubClaim(claimId, orgId, userId) {
 // ─── Bedrock AI Auto-Coding ────────────────────────────────────────────────────
 async function aiAutoCode(codingQueueId, orgId, userId) {
   const item = await getById('coding_queue', codingQueueId);
-  if (!item) throw new Error('Coding queue item not found');
+  if (!item || item.org_id !== orgId) throw new Error('Coding queue item not found');
 
   // Get SOAP note or document content
   let clinicalText = '';
@@ -845,7 +888,7 @@ async function aiAutoCode(codingQueueId, orgId, userId) {
 Coding System: ${codingSystem}
 
 Clinical Documentation:
-${clinicalText || 'No clinical documentation available. Return empty suggestions.'}
+${sanitizeForPrompt(clinicalText) || 'No clinical documentation available. Return empty suggestions.'}
 
 Respond ONLY with valid JSON (no markdown, no backticks):
 {
@@ -938,7 +981,7 @@ Respond ONLY with valid JSON (no markdown, no backticks):
 // ─── Textract Document Processing ──────────────────────────────────────────────
 async function triggerTextract(documentId, orgId, userId) {
   const doc = await getById('documents', documentId);
-  if (!doc) throw new Error('Document not found');
+  if (!doc || doc.org_id !== orgId) throw new Error('Document not found');
   if (!doc.s3_key) throw new Error('Document has no S3 key — upload first');
 
   // Update status
@@ -994,9 +1037,9 @@ async function triggerTextract(documentId, orgId, userId) {
   return { document_id: documentId, status: 'completed', result: mockResult, mock: true };
 }
 
-async function getTextractResults(documentId) {
+async function getTextractResults(documentId, orgId) {
   const doc = await getById('documents', documentId);
-  if (!doc) throw new Error('Document not found');
+  if (!doc || doc.org_id !== orgId) throw new Error('Document not found');
 
   if (doc.textract_status === 'completed' && doc.textract_result) {
     return { document_id: documentId, status: 'completed', result: typeof doc.textract_result === 'string' ? JSON.parse(doc.textract_result) : doc.textract_result };
@@ -1027,7 +1070,7 @@ async function getTextractResults(documentId) {
 // ─── Auto-Post Payments ────────────────────────────────────────────────────────
 async function autoPostPayments(eraFileId, orgId, userId) {
   const era = await getById('era_files', eraFileId);
-  if (!era) throw new Error('ERA file not found');
+  if (!era || era.org_id !== orgId) throw new Error('ERA file not found');
 
   const paymentsR = await pool.query(
     `SELECT * FROM payments WHERE era_file_id = $1 AND (action = 'pending' OR action IS NULL)`,
@@ -1073,7 +1116,7 @@ async function autoPostPayments(eraFileId, orgId, userId) {
 // ─── 271 Eligibility Response Parser ───────────────────────────────────────────
 async function parse271Response(eligibilityCheckId, ediContent, orgId, userId) {
   const elig = await getById('eligibility_checks', eligibilityCheckId);
-  if (!elig) throw new Error('Eligibility check not found');
+  if (!elig || elig.org_id !== orgId) throw new Error('Eligibility check not found');
 
   const segments = ediContent.split('~').map(s => s.trim()).filter(Boolean);
   const result = {
@@ -1191,7 +1234,7 @@ async function parse271Response(eligibilityCheckId, ediContent, orgId, userId) {
 // ─── Contract Underpayment Detection ───────────────────────────────────────────
 async function detectUnderpayments(claimId, orgId, userId) {
   const claim = await getById('claims', claimId);
-  if (!claim) throw new Error('Claim not found');
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
 
   // Get payments for this claim
   const pmtR = await pool.query(
@@ -1296,8 +1339,8 @@ async function batchSubmitClaims(claimIds, orgId, clientId, userId) {
 
       // Generate EDI based on claim type
       const ediResult = claim.claim_type === 'DHA'
-        ? await generateDHAeClaim(claimId)
-        : await generateEDI(claimId);
+        ? await generateDHAeClaim(claimId, orgId)
+        : await generateEDI(claimId, orgId);
 
       // Update claim status
       await update('claims', claimId, { status: 'submitted', submitted_at: new Date().toISOString() });
@@ -1325,7 +1368,7 @@ async function batchSubmitClaims(claimIds, orgId, clientId, userId) {
 // ─── Denial Prediction (AI Feature #7) ─────────────────────────────────────────
 async function predictDenial(claimId, orgId, userId) {
   const claim = await getById('claims', claimId);
-  if (!claim) throw new Error('Claim not found');
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
 
   const linesR = await pool.query('SELECT * FROM claim_lines WHERE claim_id = $1', [claimId]);
   const risks = [];
@@ -1389,7 +1432,7 @@ async function predictDenial(claimId, orgId, userId) {
 // ─── 276 Claim Status Request Generator ────────────────────────────────────────
 async function generate276(claimId, orgId) {
   const claim = await getById('claims', claimId);
-  if (!claim) throw new Error('Claim not found');
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
   const patient = claim.patient_id ? await getById('patients', claim.patient_id) : null;
   const payer = claim.payer_id ? await getById('payers', claim.payer_id) : null;
   const provider = claim.provider_id ? await getById('providers', claim.provider_id) : null;
@@ -1427,7 +1470,7 @@ async function generate276(claimId, orgId) {
 // ─── 277 Claim Status Response Parser ──────────────────────────────────────────
 async function parse277Response(claimId, ediContent, orgId, userId) {
   const claim = await getById('claims', claimId);
-  if (!claim) throw new Error('Claim not found');
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
   const segments = ediContent.split('~').map(s => s.trim()).filter(Boolean);
   const result = { claim_id: claimId, claim_number: claim.claim_number, statuses: [] };
 
@@ -1545,7 +1588,7 @@ async function generatePresignedUrl(folder, fileName, contentType) {
 // ─── Coding Approve → Claim Creation ───────────────────────────────────────────
 async function approveCoding(codingQueueId, body, orgId, userId) {
   const item = await getById('coding_queue', codingQueueId);
-  if (!item) throw new Error('Coding item not found');
+  if (!item || item.org_id !== orgId) throw new Error('Coding item not found');
 
   const icdCodes = body.icd_codes || [];
   const cptCodes = body.cpt_codes || [];
@@ -1620,6 +1663,1623 @@ async function approveCoding(codingQueueId, body, orgId, userId) {
   return { coding_id: codingQueueId, claim_id: claim.id, claim_number: claimNumber, status: 'completed' };
 }
 
+// ─── 837I Institutional Claim Generator ────────────────────────────────────────
+async function generate837I(claimId, orgId) {
+  const claim = await getById('claims', claimId);
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
+  if (claim.claim_type !== '837I') throw new Error('Claim is not institutional (837I)');
+
+  const linesR = await pool.query('SELECT * FROM claim_lines WHERE claim_id = $1 ORDER BY line_number', [claimId]);
+  const dxR = await pool.query('SELECT * FROM claim_diagnoses WHERE claim_id = $1 ORDER BY sequence', [claimId]);
+  const patient = claim.patient_id ? await getById('patients', claim.patient_id) : null;
+  const provider = claim.provider_id ? await getById('providers', claim.provider_id) : null;
+  const payer = claim.payer_id ? await getById('payers', claim.payer_id) : null;
+
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+  const timeStr = now.toTimeString().slice(0, 5).replace(':', '');
+  const ctrlNum = String(Math.floor(Math.random() * 900000000) + 100000000);
+
+  let edi = '';
+  // ISA/GS/ST — 837I uses 005010X223A2
+  edi += `ISA*00*          *00*          *ZZ*COSENTUS       *ZZ*${(payer?.name || 'PAYER').substring(0, 15).padEnd(15)}*${dateStr.slice(2)}*${timeStr}*^*00501*${ctrlNum}*0*P*:~\n`;
+  edi += `GS*HC*COSENTUS*${payer?.payer_code || 'PAYER'}*${dateStr}*${timeStr}*${ctrlNum}*X*005010X223A2~\n`;
+  edi += `ST*837*0001*005010X223A2~\n`;
+  edi += `BHT*0019*00*${claim.claim_number || claimId.slice(0, 8)}*${dateStr}*${timeStr}*CH~\n`;
+
+  // Submitter
+  edi += `NM1*41*2*COSENTUS AI*****46*COSENTUS001~\n`;
+  edi += `PER*IC*BILLING*TE*8005551234~\n`;
+  // Receiver
+  edi += `NM1*40*2*${payer?.name || 'PAYER'}*****46*${payer?.payer_code || 'PAYER001'}~\n`;
+
+  // Billing provider (Facility)
+  if (provider) {
+    edi += `NM1*85*2*${provider.last_name || provider.name || 'FACILITY'}*****XX*${provider.npi || '0000000000'}~\n`;
+    edi += `N3*${provider.address_line1 || '123 MAIN ST'}~\n`;
+    edi += `N4*${provider.city || 'CITY'}*${provider.state || 'CA'}*${provider.zip || '00000'}~\n`;
+    if (provider.tax_id) edi += `REF*EI*${provider.tax_id}~\n`;
+  }
+
+  // Subscriber / Patient
+  if (patient) {
+    edi += `NM1*IL*1*${patient.last_name || ''}*${patient.first_name || ''}****MI*${patient.insurance_member_id || ''}~\n`;
+    edi += `N3*${patient.address_line1 || ''}~\n`;
+    edi += `N4*${patient.city || ''}*${patient.state || ''}*${patient.zip || ''}~\n`;
+    edi += `DMG*D8*${(patient.date_of_birth || '19700101').replace(/-/g, '')}*${patient.gender === 'female' ? 'F' : patient.gender === 'male' ? 'M' : 'U'}~\n`;
+  }
+
+  // CLM — Institutional claim: type-of-bill, admission type, frequency
+  const typeOfBill = claim.type_of_bill || '0111'; // 011 = Hospital Inpatient, 1 = Admit through Discharge
+  const admitType = claim.admit_type || '1'; // 1=Emergency, 2=Urgent, 3=Elective
+  const admitSource = claim.admit_source || '1'; // 1=Physician referral
+  const patientStatus = claim.patient_status || '01'; // 01=Discharged home
+  edi += `CLM*${claim.claim_number}*${claim.total_charge || 0}***${typeOfBill}:B:1*Y*A*Y*Y~\n`;
+
+  // Admission date (DTP*435) and discharge date (DTP*096)
+  edi += `DTP*435*D8*${(claim.dos_from || dateStr).replace(/-/g, '')}~\n`;
+  if (claim.dos_to) edi += `DTP*096*D8*${claim.dos_to.replace(/-/g, '')}~\n`;
+
+  // Admission type/source/patient status
+  edi += `CL1*${admitType}*${admitSource}*${patientStatus}~\n`;
+
+  // Occurrence codes (if any)
+  if (claim.occurrence_code) edi += `HI*BH:${claim.occurrence_code}~\n`;
+
+  // Attending physician
+  if (provider) {
+    edi += `NM1*71*1*${provider.last_name || 'DOC'}*${provider.first_name || ''}****XX*${provider.npi || ''}~\n`;
+    if (provider.taxonomy) edi += `PRV*AT*PXC*${provider.taxonomy}~\n`;
+  }
+
+  // Principal + secondary diagnoses (HI segments — ICD-10)
+  if (dxR.rows.length > 0) {
+    const principal = dxR.rows.find(d => d.sequence === 1) || dxR.rows[0];
+    edi += `HI*ABK:${principal.icd_code}~\n`; // ABK = principal diagnosis
+    const secondary = dxR.rows.filter(d => d.sequence !== 1).slice(0, 11);
+    if (secondary.length > 0) {
+      edi += `HI*${secondary.map(d => `ABF:${d.icd_code}`).join('*')}~\n`; // ABF = other diagnosis
+    }
+    // Principal procedure (if surgical)
+    if (claim.principal_procedure) edi += `HI*BBR:${claim.principal_procedure}~\n`;
+  }
+
+  // Revenue code lines (SV2 for institutional)
+  let segCount = 0;
+  for (const line of linesR.rows) {
+    segCount++;
+    const rc = line.revenue_code || '0250'; // 0250 = General pharmacy
+    const hcpcs = line.cpt_code || '';
+    edi += `LX*${segCount}~\n`;
+    edi += `SV2*${rc}*HC:${hcpcs}*${line.charge_amount || 0}*UN*${line.units || 1}~\n`;
+    if (line.dos_from) edi += `DTP*472*D8*${line.dos_from.replace(/-/g, '')}~\n`;
+  }
+
+  // Trailers
+  const totalSegments = edi.split('\n').filter(s => s.trim()).length + 1;
+  edi += `SE*${totalSegments}*0001~\n`;
+  edi += `GE*1*${ctrlNum}~\n`;
+  edi += `IEA*1*${ctrlNum}~\n`;
+
+  // Log EDI transaction
+  await pool.query(
+    `INSERT INTO edi_transactions (id, org_id, client_id, transaction_type, direction, claim_id, status, submitted_at, created_at)
+     VALUES ($1, $2, $3, '837I', 'outbound', $4, 'pending', NOW(), NOW())`,
+    [uuid(), orgId, claim.client_id, claimId]
+  );
+
+  return { edi_content: edi, claim_id: claimId, claim_number: claim.claim_number, format: '837I' };
+}
+
+// ─── Charge Capture AI (Feature #11) ───────────────────────────────────────────
+async function chargeCapture(encounterId, orgId, userId) {
+  // Fetch encounter + associated SOAP note + document
+  const encounter = await getById('encounters', encounterId);
+  if (!encounter || encounter.org_id !== orgId) throw new Error('Encounter not found');
+
+  const soapR = await pool.query(
+    'SELECT * FROM soap_notes WHERE encounter_id = $1 ORDER BY created_at DESC LIMIT 1', [encounterId]
+  );
+  const soap = soapR.rows[0];
+
+  // Also check for documents linked to this encounter
+  const docR = await pool.query(
+    'SELECT * FROM documents WHERE encounter_id = $1 AND textract_status = $2 ORDER BY created_at DESC LIMIT 1',
+    [encounterId, 'completed']
+  );
+  const doc = docR.rows[0];
+  const textractText = doc?.textract_result?.text || '';
+
+  // Build clinical text from available sources
+  const clinicalText = [
+    soap ? `SUBJECTIVE: ${soap.subjective || ''}\nOBJECTIVE: ${soap.objective || ''}\nASSESSMENT: ${soap.assessment || ''}\nPLAN: ${soap.plan || ''}` : '',
+    textractText,
+    encounter.chief_complaint ? `CHIEF COMPLAINT: ${encounter.chief_complaint}` : '',
+    encounter.notes || '',
+  ].filter(Boolean).join('\n\n');
+
+  if (!clinicalText.trim()) throw new Error('No clinical documentation available for charge capture');
+
+  // Determine region for coding system
+  const client = encounter.client_id ? await getById('clients', encounter.client_id) : null;
+  const isUAE = client?.region === 'uae';
+
+  // Call Bedrock for charge extraction
+  const { BedrockRuntimeClient, InvokeModelCommand } = await import('@aws-sdk/client-bedrock-runtime');
+  const bedrock = new BedrockRuntimeClient({ region: BEDROCK_REGION });
+
+  const prompt = `You are a medical charge capture specialist. Extract billable charges from this clinical documentation.
+
+Region: ${isUAE ? 'UAE (use ICD-10-AM + DRG codes)' : 'US (use ICD-10-CM + CPT codes)'}
+
+Clinical Documentation:
+${sanitizeForPrompt(clinicalText)}
+
+Patient: ${sanitizeForPrompt(encounter.patient_name) || 'Unknown'}, DOS: ${encounter.encounter_date || 'Unknown'}
+
+Return ONLY valid JSON:
+{
+  "charges": [
+    {
+      "cpt_code": "string",
+      "description": "string",
+      "units": number,
+      "modifier": "string or null",
+      "charge_amount": number,
+      "place_of_service": "string",
+      "confidence": number (0-100)
+    }
+  ],
+  "diagnoses": [
+    {
+      "icd_code": "string",
+      "description": "string",
+      "is_primary": boolean,
+      "confidence": number (0-100)
+    }
+  ],
+  "em_level": "string or null",
+  "em_rationale": "string",
+  "total_estimated_charge": number,
+  "missing_documentation": ["string"]
+}`;
+
+  try {
+    const resp = await bedrock.send(new InvokeModelCommand({
+      modelId: BEDROCK_MODEL,
+      contentType: 'application/json',
+      accept: 'application/json',
+      body: JSON.stringify({
+        anthropic_version: 'bedrock-2023-05-31',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    }));
+
+    const aiResult = JSON.parse(new TextDecoder().decode(resp.body));
+    const text = aiResult.content?.[0]?.text || '{}';
+    const charges = extractJSON(text) || {};
+
+    // Store results
+    await pool.query(
+      `INSERT INTO charge_captures (id, org_id, client_id, encounter_id, patient_id, provider_id,
+        dos, charges_json, diagnoses_json, em_level, total_charge, ai_confidence, status, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending_review', NOW())`,
+      [uuid(), orgId, encounter.client_id, encounterId, encounter.patient_id, encounter.provider_id,
+       encounter.encounter_date, JSON.stringify(charges.charges || []),
+       JSON.stringify(charges.diagnoses || []), charges.em_level,
+       charges.total_estimated_charge || 0,
+       charges.charges?.length ? Math.round(charges.charges.reduce((s, c) => s + (c.confidence || 0), 0) / charges.charges.length) : 0]
+    );
+
+    return {
+      encounter_id: encounterId,
+      charges: charges.charges || [],
+      diagnoses: charges.diagnoses || [],
+      em_level: charges.em_level,
+      em_rationale: charges.em_rationale,
+      total_estimated_charge: charges.total_estimated_charge || 0,
+      missing_documentation: charges.missing_documentation || [],
+      source: 'bedrock_ai',
+    };
+  } catch (aiErr) {
+    console.error('Bedrock charge capture error:', aiErr);
+    return {
+      encounter_id: encounterId,
+      charges: [],
+      diagnoses: [],
+      em_level: null,
+      total_estimated_charge: 0,
+      missing_documentation: ['AI charge capture unavailable — manual entry required'],
+      source: 'fallback',
+      error: aiErr.message,
+    };
+  }
+}
+
+// ─── Document Classification AI ────────────────────────────────────────────────
+async function classifyDocument(documentId, orgId) {
+  const doc = await getById('documents', documentId);
+  if (!doc || doc.org_id !== orgId) throw new Error('Document not found');
+
+  // If Textract results exist, use that text; otherwise classify by metadata
+  let docText = '';
+  if (doc.textract_result?.text) {
+    docText = doc.textract_result.text.substring(0, 3000);
+  } else if (doc.file_name) {
+    docText = doc.file_name;
+  }
+
+  const DOCUMENT_TYPES = [
+    'superbill', 'insurance_card', 'eob', 'clinical_note', 'lab_result',
+    'radiology_report', 'referral', 'prior_auth', 'denial_letter',
+    'appeal_letter', 'patient_statement', 'contract', 'credential',
+    'driver_license', 'consent_form', 'operative_report', 'discharge_summary',
+    'fax', 'other'
+  ];
+
+  // Try filename-based classification first (fast path)
+  const fnLower = (doc.file_name || '').toLowerCase();
+  const filePatterns = {
+    superbill: /superbill|charge.?slip|encounter.?form/i,
+    insurance_card: /insurance.?card|ins.?card|member.?card/i,
+    eob: /eob|explanation.?of.?benefit|remittance|era/i,
+    clinical_note: /clinical.?note|progress.?note|visit.?note|soap/i,
+    lab_result: /lab|pathology|blood.?work|cbc|bmp|cmp/i,
+    radiology_report: /radiology|x.?ray|mri|ct.?scan|ultrasound/i,
+    denial_letter: /denial|denied|adverse/i,
+    credential: /credential|license|certification|cme/i,
+    consent_form: /consent|hipaa.?auth/i,
+    fax: /fax/i,
+  };
+
+  let classification = null;
+  let confidence = 0;
+  let method = 'filename';
+
+  for (const [docType, pattern] of Object.entries(filePatterns)) {
+    if (pattern.test(fnLower)) {
+      classification = docType;
+      confidence = 75;
+      break;
+    }
+  }
+
+  // If we have Textract text and no filename match (or low confidence), use Bedrock
+  if (docText.length > 50 && (!classification || confidence < 70)) {
+    try {
+      const { BedrockRuntimeClient, InvokeModelCommand } = await import('@aws-sdk/client-bedrock-runtime');
+      const bedrock = new BedrockRuntimeClient({ region: BEDROCK_REGION });
+
+      const prompt = `Classify this medical document. Return ONLY JSON: {"type": "<one of: ${DOCUMENT_TYPES.join(', ')}>", "confidence": <0-100>, "key_entities": ["string"]}
+
+Document text:
+${sanitizeForPrompt(docText)}`;
+
+      const resp = await bedrock.send(new InvokeModelCommand({
+        modelId: BEDROCK_MODEL,
+        contentType: 'application/json',
+        accept: 'application/json',
+        body: JSON.stringify({
+          anthropic_version: 'bedrock-2023-05-31',
+          max_tokens: 300,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      }));
+
+      const aiResult = JSON.parse(new TextDecoder().decode(resp.body));
+      const text = aiResult.content?.[0]?.text || '{}';
+      const parsed = extractJSON(text);
+      if (parsed) {
+        classification = DOCUMENT_TYPES.includes(parsed.type) ? parsed.type : classification || 'other';
+        confidence = parsed.confidence || 80;
+        method = 'bedrock_ai';
+      }
+    } catch (aiErr) {
+      console.error('Bedrock classification error:', aiErr);
+      if (!classification) { classification = 'other'; confidence = 30; method = 'fallback'; }
+    }
+  }
+
+  if (!classification) { classification = 'other'; confidence = 20; method = 'metadata'; }
+
+  // Update document record
+  await pool.query(
+    `UPDATE documents SET classification = $1, ai_confidence = $2, updated_at = NOW() WHERE id = $3`,
+    [classification, confidence, documentId]
+  );
+
+  return {
+    document_id: documentId,
+    file_name: doc.file_name,
+    classification,
+    confidence,
+    method,
+    document_types: DOCUMENT_TYPES,
+  };
+}
+
+// ─── Prior Auth Workflow ───────────────────────────────────────────────────────
+async function createPriorAuth(body, orgId, userId) {
+  const { claim_id, patient_id, payer_id, cpt_codes, icd_codes, provider_id,
+          urgency, clinical_rationale, dos_from, dos_to } = body;
+
+  const id = uuid();
+  const authNumber = `PA-${Date.now().toString(36).toUpperCase()}`;
+
+  await pool.query(
+    `INSERT INTO prior_auth_requests (id, org_id, client_id, claim_id, patient_id, payer_id,
+      provider_id, auth_number, cpt_codes, icd_codes, urgency, clinical_rationale,
+      dos_from, dos_to, status, requested_by, requested_at, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', $15, NOW(), NOW())`,
+    [id, orgId, body.client_id || null, claim_id || null, patient_id, payer_id,
+     provider_id || null, authNumber, JSON.stringify(cpt_codes || []),
+     JSON.stringify(icd_codes || []), urgency || 'standard', clinical_rationale || null,
+     dos_from || null, dos_to || null, userId]
+  );
+
+  // Auto-create task for the auth team
+  await pool.query(
+    `INSERT INTO tasks (id, org_id, client_id, title, description, status, priority, assigned_to, due_date, created_at)
+     VALUES ($1, $2, $3, $4, $5, 'open', $6, $7, $8, NOW())`,
+    [uuid(), orgId, body.client_id, `Prior Auth Required: ${authNumber}`,
+     `CPT: ${(cpt_codes || []).join(', ')} | Patient: ${patient_id} | Payer: ${payer_id}`,
+     urgency === 'urgent' ? 'high' : 'medium', userId,
+     new Date(Date.now() + (urgency === 'urgent' ? 1 : 3) * 86400000).toISOString().slice(0, 10)]
+  );
+
+  return { id, auth_number: authNumber, status: 'pending' };
+}
+
+async function updatePriorAuth(authId, body, orgId, userId) {
+  const auth = await getById('prior_auth_requests', authId);
+  if (!auth) throw new Error('Prior auth not found');
+
+  const updates = {};
+  if (body.status) updates.status = body.status;
+  if (body.auth_number_payer) updates.auth_number_payer = body.auth_number_payer;
+  if (body.approved_units) updates.approved_units = body.approved_units;
+  if (body.approved_from) updates.approved_from = body.approved_from;
+  if (body.approved_to) updates.approved_to = body.approved_to;
+  if (body.denial_reason) updates.denial_reason = body.denial_reason;
+  if (body.peer_to_peer_date) updates.peer_to_peer_date = body.peer_to_peer_date;
+  if (body.notes) updates.notes = body.notes;
+  updates.updated_at = new Date().toISOString();
+  updates.updated_by = userId;
+
+  // If status changes to approved/denied, set resolved_at
+  if (['approved', 'denied', 'partially_approved'].includes(body.status)) {
+    updates.resolved_at = new Date().toISOString();
+  }
+
+  const result = await update('prior_auth_requests', authId, updates);
+  return result;
+}
+
+// ─── Patient Statement Generation ──────────────────────────────────────────────
+async function generatePatientStatement(patientId, orgId) {
+  const patient = await getById('patients', patientId);
+  if (!patient) throw new Error('Patient not found');
+
+  // Find all claims with patient responsibility
+  const claimsR = await pool.query(
+    `SELECT c.id, c.claim_number, c.dos_from, c.dos_to, c.total_charge, c.status,
+            p.name AS payer_name, c.patient_responsibility, c.allowed_amount
+     FROM claims c
+     LEFT JOIN payers p ON c.payer_id = p.id
+     WHERE c.patient_id = $1 AND c.org_id = $2
+       AND c.status IN ('paid','partial_pay','patient_balance')
+       AND (c.patient_responsibility > 0 OR c.status = 'patient_balance')
+     ORDER BY c.dos_from DESC`,
+    [patientId, orgId]
+  );
+
+  // Get existing payments by patient
+  const paymentsR = await pool.query(
+    `SELECT SUM(amount_paid) AS total_patient_paid
+     FROM payments WHERE patient_id = $1 AND org_id = $2 AND status = 'posted'
+       AND payment_source = 'patient'`,
+    [patientId, orgId]
+  );
+
+  const lines = claimsR.rows.map(c => ({
+    claim_number: c.claim_number,
+    dos: c.dos_from,
+    description: `Services ${c.dos_from || 'N/A'}`,
+    total_charge: Number(c.total_charge || 0),
+    insurance_paid: Number(c.allowed_amount || 0) - Number(c.patient_responsibility || 0),
+    patient_responsibility: Number(c.patient_responsibility || 0),
+    payer: c.payer_name,
+  }));
+
+  const totalOwed = lines.reduce((s, l) => s + l.patient_responsibility, 0);
+  const totalPaid = Number(paymentsR.rows[0]?.total_patient_paid || 0);
+  const balanceDue = totalOwed - totalPaid;
+
+  const statementId = uuid();
+  const statementNumber = `STMT-${Date.now().toString(36).toUpperCase()}`;
+
+  // Store statement
+  await pool.query(
+    `INSERT INTO patient_statements (id, org_id, client_id, patient_id, statement_number,
+      statement_date, total_charges, insurance_payments, patient_payments, balance_due,
+      line_items, status, created_at)
+     VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9, $10, 'generated', NOW())`,
+    [statementId, orgId, patient.client_id, patientId, statementNumber,
+     lines.reduce((s, l) => s + l.total_charge, 0),
+     lines.reduce((s, l) => s + l.insurance_paid, 0),
+     totalPaid, balanceDue, JSON.stringify(lines)]
+  );
+
+  return {
+    statement_id: statementId,
+    statement_number: statementNumber,
+    patient_name: `${patient.first_name || ''} ${patient.last_name || ''}`.trim(),
+    patient_address: {
+      line1: patient.address_line1, city: patient.city, state: patient.state, zip: patient.zip,
+    },
+    statement_date: new Date().toISOString().slice(0, 10),
+    lines,
+    summary: {
+      total_charges: lines.reduce((s, l) => s + l.total_charge, 0),
+      insurance_adjustments: lines.reduce((s, l) => s + l.insurance_paid, 0),
+      prior_payments: totalPaid,
+      balance_due: balanceDue,
+    },
+    payment_options: {
+      online_portal: true,
+      payment_plan_eligible: balanceDue > 200,
+      payment_plan_months: balanceDue > 1000 ? 12 : balanceDue > 500 ? 6 : 3,
+    },
+  };
+}
+
+// ─── Secondary Claim / COB Workflow ────────────────────────────────────────────
+async function triggerSecondaryClaim(claimId, orgId, userId) {
+  const claim = await getById('claims', claimId);
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
+  if (!['paid', 'partial_pay'].includes(claim.status)) {
+    throw new Error('Primary claim must be paid or partially paid before filing secondary');
+  }
+
+  // Check if patient has secondary insurance
+  const patient = claim.patient_id ? await getById('patients', claim.patient_id) : null;
+  if (!patient?.secondary_payer_id) {
+    throw new Error('Patient has no secondary payer on file');
+  }
+
+  // Get primary payment info
+  const primaryPayR = await pool.query(
+    `SELECT SUM(amount_paid) AS primary_paid, SUM(allowed_amount) AS primary_allowed,
+            SUM(patient_responsibility) AS patient_resp
+     FROM payments WHERE claim_id = $1 AND org_id = $2 AND status = 'posted'`, [claimId, orgId]
+  );
+  const primaryPaid = Number(primaryPayR.rows[0]?.primary_paid || 0);
+  const primaryAllowed = Number(primaryPayR.rows[0]?.primary_allowed || 0);
+
+  // Clone claim for secondary payer
+  const newClaimId = uuid();
+  const claimNumber = `${claim.claim_number}-S`;
+
+  await pool.query(
+    `INSERT INTO claims (id, org_id, client_id, patient_id, provider_id, payer_id,
+      claim_number, claim_type, dos_from, dos_to, total_charge, status,
+      primary_claim_id, primary_payer_paid, primary_allowed_amount,
+      billing_sequence, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'draft', $12, $13, $14, 'secondary', NOW(), NOW())`,
+    [newClaimId, orgId, claim.client_id, claim.patient_id, claim.provider_id,
+     patient.secondary_payer_id, claimNumber, claim.claim_type,
+     claim.dos_from, claim.dos_to, claim.total_charge,
+     claimId, primaryPaid, primaryAllowed]
+  );
+
+  // Copy claim lines
+  const linesR = await pool.query('SELECT * FROM claim_lines WHERE claim_id = $1', [claimId]);
+  for (const line of linesR.rows) {
+    await pool.query(
+      `INSERT INTO claim_lines (id, org_id, claim_id, line_number, cpt_code, modifier,
+        units, charge_amount, dos_from, dos_to, place_of_service, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())`,
+      [uuid(), orgId, newClaimId, line.line_number, line.cpt_code, line.modifier,
+       line.units, line.charge_amount, line.dos_from, line.dos_to, line.place_of_service]
+    );
+  }
+
+  // Copy diagnoses
+  const dxR = await pool.query('SELECT * FROM claim_diagnoses WHERE claim_id = $1', [claimId]);
+  for (const dx of dxR.rows) {
+    await pool.query(
+      `INSERT INTO claim_diagnoses (id, org_id, claim_id, icd_code, description, sequence, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+      [uuid(), orgId, newClaimId, dx.icd_code, dx.description, dx.sequence]
+    );
+  }
+
+  // Update original claim
+  await pool.query(
+    `UPDATE claims SET secondary_claim_id = $1, updated_at = NOW() WHERE id = $2`,
+    [newClaimId, claimId]
+  );
+
+  return {
+    secondary_claim_id: newClaimId,
+    claim_number: claimNumber,
+    primary_claim_id: claimId,
+    secondary_payer_id: patient.secondary_payer_id,
+    primary_paid: primaryPaid,
+    remaining_charge: Number(claim.total_charge) - primaryPaid,
+    status: 'draft',
+    next_step: 'Run scrubbing, then submit to secondary payer',
+  };
+}
+
+// ─── Credentialing Workflow ────────────────────────────────────────────────────
+async function getCredentialingDashboard(orgId, clientId) {
+  let cf = ''; const params = [orgId];
+  if (clientId) { cf = ' AND client_id = $2'; params.push(clientId); }
+
+  // Active credentialing items with expiry tracking
+  const activeR = await pool.query(
+    `SELECT c.*, p.name AS provider_name, p.npi, py.name AS payer_name
+     FROM credentialing c
+     LEFT JOIN providers p ON c.provider_id = p.id
+     LEFT JOIN payers py ON c.payer_id = py.id
+     WHERE c.org_id = $1${cf}
+     ORDER BY c.expiry_date ASC NULLS LAST`, params
+  );
+
+  const now = new Date();
+  const items = activeR.rows.map(c => {
+    const expiry = c.expiry_date ? new Date(c.expiry_date) : null;
+    const daysUntilExpiry = expiry ? Math.ceil((expiry.getTime() - now.getTime()) / 86400000) : null;
+    let alert = 'none';
+    if (daysUntilExpiry !== null) {
+      if (daysUntilExpiry < 0) alert = 'expired';
+      else if (daysUntilExpiry <= 30) alert = 'critical';
+      else if (daysUntilExpiry <= 60) alert = 'warning';
+      else if (daysUntilExpiry <= 90) alert = 'upcoming';
+    }
+    return { ...c, days_until_expiry: daysUntilExpiry, alert };
+  });
+
+  const expiringSoon = items.filter(i => ['critical', 'warning'].includes(i.alert));
+  const expired = items.filter(i => i.alert === 'expired');
+  const pending = items.filter(i => ['pending', 'submitted', 'in_review'].includes(i.status));
+
+  return {
+    total: items.length,
+    active: items.filter(i => i.status === 'active').length,
+    pending: pending.length,
+    expiring_soon: expiringSoon.length,
+    expired: expired.length,
+    alerts: [...expired, ...expiringSoon].slice(0, 20),
+    items,
+  };
+}
+
+async function createEnrollment(body, orgId, userId) {
+  const { provider_id, payer_id, enrollment_type, effective_date, notes } = body;
+  const id = uuid();
+
+  await pool.query(
+    `INSERT INTO credentialing (id, org_id, client_id, provider_id, payer_id,
+      credential_type, status, application_date, effective_date, notes, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, 'pending', NOW(), $7, $8, NOW(), NOW())`,
+    [id, orgId, body.client_id || null, provider_id, payer_id,
+     enrollment_type || 'initial', effective_date || null, notes || null]
+  );
+
+  // Create follow-up task
+  await pool.query(
+    `INSERT INTO tasks (id, org_id, title, description, status, priority, due_date, created_at)
+     VALUES ($1, $2, $3, $4, 'open', 'medium', $5, NOW())`,
+    [uuid(), orgId, `Credentialing Follow-up: Provider ${provider_id}`,
+     `Track enrollment status with payer ${payer_id}`,
+     new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10)]
+  );
+
+  return { id, status: 'pending', enrollment_type: enrollment_type || 'initial' };
+}
+
+// ─── Report Export Engine ──────────────────────────────────────────────────────
+async function generateReport(reportType, orgId, clientId, params) {
+  let cf = ''; const qp = [orgId]; let pidx = 2;
+  if (clientId) { cf = ` AND client_id = $${pidx}`; qp.push(clientId); pidx++; }
+  const dateFrom = params.from || new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+  const dateTo = params.to || new Date().toISOString().slice(0, 10);
+  cf += ` AND created_at >= $${pidx}`; qp.push(dateFrom); pidx++;
+  cf += ` AND created_at <= $${pidx}`; qp.push(dateTo + 'T23:59:59Z'); pidx++;
+
+  const reports = {
+    // ── AR Aging Report ─────────────────────────────────────────────────────
+    ar_aging: async () => {
+      const r = await pool.query(
+        `SELECT c.claim_number, c.dos_from, c.total_charge, c.status,
+                p.first_name || ' ' || p.last_name AS patient_name,
+                py.name AS payer_name,
+                EXTRACT(DAY FROM NOW() - c.dos_from)::int AS age_days
+         FROM claims c
+         LEFT JOIN patients p ON c.patient_id = p.id
+         LEFT JOIN payers py ON c.payer_id = py.id
+         WHERE c.org_id = $1 AND c.status NOT IN ('paid','write_off','draft')${cf}
+         ORDER BY age_days DESC`,
+        qp
+      );
+      return {
+        report: 'AR Aging Detail',
+        generated: new Date().toISOString(),
+        columns: ['claim_number','patient_name','payer_name','dos_from','total_charge','age_days','status'],
+        rows: r.rows,
+        summary: {
+          total_ar: r.rows.reduce((s, r) => s + Number(r.total_charge || 0), 0),
+          count: r.rows.length,
+          buckets: {
+            '0-30': r.rows.filter(r => r.age_days <= 30).reduce((s, r) => s + Number(r.total_charge || 0), 0),
+            '31-60': r.rows.filter(r => r.age_days > 30 && r.age_days <= 60).reduce((s, r) => s + Number(r.total_charge || 0), 0),
+            '61-90': r.rows.filter(r => r.age_days > 60 && r.age_days <= 90).reduce((s, r) => s + Number(r.total_charge || 0), 0),
+            '91-120': r.rows.filter(r => r.age_days > 90 && r.age_days <= 120).reduce((s, r) => s + Number(r.total_charge || 0), 0),
+            '120+': r.rows.filter(r => r.age_days > 120).reduce((s, r) => s + Number(r.total_charge || 0), 0),
+          },
+        },
+      };
+    },
+
+    // ── Denial Analysis Report ──────────────────────────────────────────────
+    denial_analysis: async () => {
+      const r = await pool.query(
+        `SELECT d.id, d.claim_id, c.claim_number, d.denial_reason, d.carc_code, d.rarc_code,
+                d.amount, d.status AS denial_status, d.appeal_level,
+                p.first_name || ' ' || p.last_name AS patient_name,
+                py.name AS payer_name, d.created_at
+         FROM denials d
+         LEFT JOIN claims c ON d.claim_id = c.id
+         LEFT JOIN patients p ON c.patient_id = p.id
+         LEFT JOIN payers py ON c.payer_id = py.id
+         WHERE d.org_id = $1${cf}
+         ORDER BY d.created_at DESC`,
+        qp
+      );
+      // Summarize by CARC code
+      const carcSummary = {};
+      r.rows.forEach(row => {
+        const k = row.carc_code || 'UNKNOWN';
+        if (!carcSummary[k]) carcSummary[k] = { code: k, count: 0, total: 0 };
+        carcSummary[k].count++;
+        carcSummary[k].total += Number(row.amount || 0);
+      });
+      return {
+        report: 'Denial Analysis',
+        generated: new Date().toISOString(),
+        columns: ['claim_number','patient_name','payer_name','carc_code','denial_reason','amount','denial_status','appeal_level'],
+        rows: r.rows,
+        summary: {
+          total_denials: r.rows.length,
+          total_amount: r.rows.reduce((s, r) => s + Number(r.amount || 0), 0),
+          by_carc: Object.values(carcSummary).sort((a, b) => b.count - a.count),
+          by_status: {
+            new: r.rows.filter(r => r.denial_status === 'new').length,
+            in_review: r.rows.filter(r => r.denial_status === 'in_review').length,
+            appealed: r.rows.filter(r => ['appeal_l1','appeal_l2','appeal_l3'].includes(r.denial_status)).length,
+            resolved: r.rows.filter(r => ['overturned','upheld','write_off'].includes(r.denial_status)).length,
+          },
+        },
+      };
+    },
+
+    // ── Payment Summary Report ──────────────────────────────────────────────
+    payment_summary: async () => {
+      const r = await pool.query(
+        `SELECT p.id, p.amount_paid, p.payment_date, p.check_number, p.status,
+                p.cpt_code, p.billed_amount, p.allowed_amount, p.adjustment_amount,
+                c.claim_number, c.dos_from,
+                pt.first_name || ' ' || pt.last_name AS patient_name,
+                py.name AS payer_name, e.file_name AS era_file
+         FROM payments p
+         LEFT JOIN claims c ON p.claim_id = c.id
+         LEFT JOIN patients pt ON c.patient_id = pt.id
+         LEFT JOIN payers py ON c.payer_id = py.id
+         LEFT JOIN era_files e ON p.era_file_id = e.id
+         WHERE p.org_id = $1${cf}
+         ORDER BY p.payment_date DESC NULLS LAST`,
+        qp
+      );
+      return {
+        report: 'Payment Summary',
+        generated: new Date().toISOString(),
+        columns: ['claim_number','patient_name','payer_name','cpt_code','billed_amount','allowed_amount','amount_paid','adjustment_amount','payment_date','era_file'],
+        rows: r.rows,
+        summary: {
+          total_payments: r.rows.length,
+          total_collected: r.rows.reduce((s, r) => s + Number(r.amount_paid || 0), 0),
+          total_billed: r.rows.reduce((s, r) => s + Number(r.billed_amount || 0), 0),
+          total_adjustments: r.rows.reduce((s, r) => s + Number(r.adjustment_amount || 0), 0),
+        },
+      };
+    },
+
+    // ── Production / Coding Report ──────────────────────────────────────────
+    coding_production: async () => {
+      const r = await pool.query(
+        `SELECT cq.id, cq.patient_name, cq.cpt_codes, cq.icd_codes, cq.status,
+                cq.coding_method, cq.assigned_to, cq.completed_at, cq.created_at,
+                u.email AS assigned_email
+         FROM coding_queue cq
+         LEFT JOIN users u ON cq.assigned_to = u.id
+         WHERE cq.org_id = $1${cf}
+         ORDER BY cq.created_at DESC`,
+        qp
+      );
+      return {
+        report: 'Coding Production',
+        generated: new Date().toISOString(),
+        columns: ['patient_name','cpt_codes','icd_codes','status','coding_method','assigned_email','completed_at','created_at'],
+        rows: r.rows,
+        summary: {
+          total: r.rows.length,
+          completed: r.rows.filter(r => r.status === 'completed').length,
+          pending: r.rows.filter(r => ['pending_review','in_progress'].includes(r.status)).length,
+          ai_coded: r.rows.filter(r => ['ai_auto','ai_assisted'].includes(r.coding_method)).length,
+          manual: r.rows.filter(r => r.coding_method === 'manual').length,
+        },
+      };
+    },
+
+    // ── Payer Performance Report ────────────────────────────────────────────
+    payer_performance: async () => {
+      const r = await pool.query(
+        `SELECT py.name AS payer_name,
+                COUNT(c.id) AS total_claims,
+                COUNT(c.id) FILTER (WHERE c.status = 'paid') AS paid,
+                COUNT(c.id) FILTER (WHERE c.status IN ('denied','appealed')) AS denied,
+                COALESCE(SUM(c.total_charge), 0) AS total_billed,
+                COALESCE(SUM(CASE WHEN c.status = 'paid' THEN c.total_charge END), 0) AS total_paid,
+                ROUND(AVG(EXTRACT(DAY FROM COALESCE(c.paid_at, NOW()) - c.submitted_at))::numeric, 1) AS avg_days_to_pay
+         FROM claims c
+         LEFT JOIN payers py ON c.payer_id = py.id
+         WHERE c.org_id = $1 AND c.status != 'draft'${cf}
+         GROUP BY py.name
+         ORDER BY total_billed DESC`,
+        qp
+      );
+      return {
+        report: 'Payer Performance',
+        generated: new Date().toISOString(),
+        columns: ['payer_name','total_claims','paid','denied','total_billed','total_paid','avg_days_to_pay'],
+        rows: r.rows,
+      };
+    },
+
+    // ── Eligibility Verification Report ─────────────────────────────────────
+    eligibility_summary: async () => {
+      const r = await pool.query(
+        `SELECT ec.id, ec.result, ec.plan_name, ec.group_number,
+                p.first_name || ' ' || p.last_name AS patient_name,
+                py.name AS payer_name, ec.created_at, ec.copay, ec.coinsurance,
+                ec.deductible_met, ec.out_of_pocket_max
+         FROM eligibility_checks ec
+         LEFT JOIN patients p ON ec.patient_id = p.id
+         LEFT JOIN payers py ON ec.payer_id = py.id
+         WHERE ec.org_id = $1${cf}
+         ORDER BY ec.created_at DESC`,
+        qp
+      );
+      return {
+        report: 'Eligibility Verification Summary',
+        generated: new Date().toISOString(),
+        columns: ['patient_name','payer_name','result','plan_name','copay','coinsurance','deductible_met','created_at'],
+        rows: r.rows,
+        summary: {
+          total_checks: r.rows.length,
+          active: r.rows.filter(r => r.result === 'active').length,
+          inactive: r.rows.filter(r => r.result === 'inactive').length,
+          error: r.rows.filter(r => r.result === 'error').length,
+        },
+      };
+    },
+  };
+
+  if (!reports[reportType]) {
+    return {
+      error: 'Invalid report type',
+      available_reports: Object.keys(reports),
+    };
+  }
+
+  const data = await reports[reportType]();
+
+  // Convert to CSV if requested
+  if (params.format === 'csv' && data.rows?.length > 0) {
+    const cols = data.columns || Object.keys(data.rows[0]);
+    const header = cols.join(',');
+    const rows = data.rows.map(r =>
+      cols.map(c => {
+        const val = r[c];
+        if (val === null || val === undefined) return '';
+        const str = String(val);
+        return str.includes(',') || str.includes('"') || str.includes('\n')
+          ? `"${str.replace(/"/g, '""')}"` : str;
+      }).join(',')
+    );
+    data.csv = [header, ...rows].join('\n');
+  }
+
+  return data;
+}
+
+// ─── Auto-Appeals Engine (AI Feature #4) ───────────────────────────────────────
+async function generateAppeal(denialId, orgId, userId) {
+  const denial = await getById('denials', denialId);
+  if (!denial || denial.org_id !== orgId) throw new Error('Denial not found');
+
+  const claim = denial.claim_id ? await getById('claims', denial.claim_id) : null;
+  const patient = claim?.patient_id ? await getById('patients', claim.patient_id) : null;
+  const provider = claim?.provider_id ? await getById('providers', claim.provider_id) : null;
+  const payer = claim?.payer_id ? await getById('payers', claim.payer_id) : null;
+
+  // Get claim lines + diagnoses for clinical context
+  const linesR = claim ? await pool.query('SELECT * FROM claim_lines WHERE claim_id = $1 ORDER BY line_number', [claim.id]) : { rows: [] };
+  const dxR = claim ? await pool.query('SELECT * FROM claim_diagnoses WHERE claim_id = $1 ORDER BY sequence', [claim.id]) : { rows: [] };
+
+  // Get SOAP note if available
+  const soapR = claim ? await pool.query(
+    'SELECT * FROM soap_notes WHERE encounter_id = $1 ORDER BY created_at DESC LIMIT 1',
+    [claim.encounter_id || '00000000-0000-0000-0000-000000000000']
+  ) : { rows: [] };
+  const soap = soapR.rows[0];
+
+  // Get prior call log for this denial
+  const callsR = await pool.query(
+    'SELECT * FROM ar_call_log WHERE denial_id = $1 ORDER BY call_date DESC LIMIT 5', [denialId]
+  );
+
+  // Determine appeal level
+  const currentLevel = denial.appeal_level || 0;
+  const nextLevel = currentLevel + 1;
+  const appealType = nextLevel === 1 ? 'Internal Review (L1)' : nextLevel === 2 ? 'External Review (L2)' : 'State Department Review (L3)';
+
+  // CARC/RARC lookup for denial reason context
+  const carcR = denial.carc_code ? await pool.query(
+    'SELECT * FROM carc_codes WHERE code = $1 LIMIT 1', [denial.carc_code]
+  ) : { rows: [] };
+  const carcDesc = carcR.rows[0]?.description || denial.denial_reason || 'Unknown';
+
+  // Build clinical summary
+  const clinicalContext = [
+    soap ? `CLINICAL NOTE:\nSubjective: ${sanitizeForPrompt(soap.subjective) || 'N/A'}\nObjective: ${sanitizeForPrompt(soap.objective) || 'N/A'}\nAssessment: ${sanitizeForPrompt(soap.assessment) || 'N/A'}\nPlan: ${sanitizeForPrompt(soap.plan) || 'N/A'}` : '',
+    dxR.rows.length ? `DIAGNOSES: ${dxR.rows.map(d => `${d.icd_code} - ${sanitizeForPrompt(d.description) || ''}`).join('; ')}` : '',
+    linesR.rows.length ? `PROCEDURES: ${linesR.rows.map(l => `${l.cpt_code} x${l.units || 1} ($${l.charge_amount || 0})`).join('; ')}` : '',
+    callsR.rows.length ? `PRIOR CALLS: ${callsR.rows.map(c => `${c.call_date?.toISOString?.()?.slice(0,10) || 'N/A'}: ${sanitizeForPrompt(c.outcome)} - ${sanitizeForPrompt(c.notes) || ''}`).join(' | ')}` : '',
+  ].filter(Boolean).join('\n\n');
+
+  // Call Bedrock for appeal letter generation
+  const { BedrockRuntimeClient, InvokeModelCommand } = await import('@aws-sdk/client-bedrock-runtime');
+  const bedrock = new BedrockRuntimeClient({ region: BEDROCK_REGION });
+
+  const prompt = `You are a medical billing appeal specialist. Generate a professional appeal letter for a denied claim.
+
+DENIAL DETAILS:
+- Denial Reason (CARC ${denial.carc_code || 'N/A'}): ${sanitizeForPrompt(carcDesc)}
+- RARC: ${denial.rarc_code || 'N/A'}
+- Denied Amount: $${denial.amount || 0}
+- Claim Number: ${claim?.claim_number || 'N/A'}
+- DOS: ${claim?.dos_from || 'N/A'}
+- Appeal Level: ${appealType} (Level ${nextLevel})
+
+PATIENT: ${patient ? `${sanitizeForPrompt(patient.first_name)} ${sanitizeForPrompt(patient.last_name)}, DOB: ${patient.date_of_birth}` : 'N/A'}
+PROVIDER: ${provider ? `${sanitizeForPrompt(provider.first_name || '')} ${sanitizeForPrompt(provider.last_name || '')}, NPI: ${provider.npi || ''}` : 'N/A'}
+PAYER: ${sanitizeForPrompt(payer?.name) || 'N/A'}
+
+${clinicalContext}
+
+Generate a JSON response ONLY:
+{
+  "appeal_letter": "Full appeal letter text with proper formatting, medical necessity arguments, and regulatory citations",
+  "appeal_strategy": "Brief strategy description",
+  "supporting_evidence": ["List of recommended supporting documents to attach"],
+  "regulatory_citations": ["Relevant CMS/payer policy citations"],
+  "success_probability": number (0-100),
+  "recommended_actions": ["Action items before sending"]
+}`;
+
+  try {
+    const resp = await bedrock.send(new InvokeModelCommand({
+      modelId: BEDROCK_MODEL,
+      contentType: 'application/json',
+      accept: 'application/json',
+      body: JSON.stringify({
+        anthropic_version: 'bedrock-2023-05-31',
+        max_tokens: 3000,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    }));
+
+    const aiResult = JSON.parse(new TextDecoder().decode(resp.body));
+    const text = aiResult.content?.[0]?.text || '{}';
+    const appeal = extractJSON(text) || {};
+
+    // Store appeal
+    const appealId = uuid();
+    await pool.query(
+      `INSERT INTO appeals (id, org_id, client_id, denial_id, claim_id, appeal_level, appeal_type,
+        appeal_letter, strategy, supporting_evidence, regulatory_citations, success_probability,
+        status, generated_by, generated_at, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'draft', $13, NOW(), NOW())`,
+      [appealId, orgId, denial.client_id, denialId, denial.claim_id, nextLevel, appealType,
+       appeal.appeal_letter || '', appeal.appeal_strategy || '',
+       JSON.stringify(appeal.supporting_evidence || []),
+       JSON.stringify(appeal.regulatory_citations || []),
+       appeal.success_probability || 0, userId]
+    );
+
+    // Update denial status
+    await pool.query(
+      `UPDATE denials SET status = 'appeal_in_progress', appeal_level = $1, updated_at = NOW() WHERE id = $2`,
+      [nextLevel, denialId]
+    );
+
+    return {
+      appeal_id: appealId,
+      denial_id: denialId,
+      claim_number: claim?.claim_number,
+      appeal_level: nextLevel,
+      appeal_type: appealType,
+      ...appeal,
+      source: 'bedrock_ai',
+    };
+  } catch (aiErr) {
+    console.error('Bedrock appeal generation error:', aiErr);
+    // Return template fallback
+    return {
+      denial_id: denialId,
+      claim_number: claim?.claim_number,
+      appeal_level: nextLevel,
+      appeal_type: appealType,
+      appeal_letter: `[TEMPLATE — AI unavailable]\n\nDate: ${new Date().toISOString().slice(0,10)}\n\nTo: ${payer?.name || 'Insurance Company'}\nRe: Appeal of Claim ${claim?.claim_number || 'N/A'}\nPatient: ${patient ? `${patient.first_name} ${patient.last_name}` : 'N/A'}\nDOS: ${claim?.dos_from || 'N/A'}\nDenial Reason: ${carcDesc}\n\nDear Appeals Department,\n\nI am writing to appeal the denial of the above-referenced claim. The services provided were medically necessary as documented in the enclosed clinical records.\n\n[INSERT MEDICAL NECESSITY ARGUMENT]\n\nPlease reconsider this claim for payment.\n\nSincerely,\n${provider ? `${provider.first_name || ''} ${provider.last_name || ''}` : 'Provider'}`,
+      supporting_evidence: ['Clinical notes', 'Lab results', 'Prior authorization (if applicable)'],
+      success_probability: 0,
+      source: 'template_fallback',
+      error: aiErr.message,
+    };
+  }
+}
+
+// ─── Denial Categorization Engine ──────────────────────────────────────────────
+const DENIAL_CATEGORIES = {
+  authorization: {
+    name: 'Authorization / Referral',
+    carcs: ['1','2','3','15','16','18','38','177','197','198','242','243','B7','B20'],
+    priority: 1,
+  },
+  eligibility: {
+    name: 'Eligibility / Enrollment',
+    carcs: ['22','23','24','25','26','27','29','31','32','33','34','39','50','51','52','54','55','56','58','109','170','180','183','186','234','235','N30'],
+    priority: 2,
+  },
+  coding: {
+    name: 'Coding / Billing Errors',
+    carcs: ['4','5','6','9','10','11','12','13','16','19','49','53','97','125','140','146','147','148','149','150','151','167','168','169','170','171','172','173','174','175','176','181','182','B1','B4','B5','B7','B8','B9','B10','B11','B12','B13','B14','B15','B16','B22','B23','P1','P2','P3','P4'],
+    priority: 3,
+  },
+  timely_filing: {
+    name: 'Timely Filing',
+    carcs: ['29','136','N5'],
+    priority: 4,
+  },
+  duplicate: {
+    name: 'Duplicate Claim',
+    carcs: ['18','19'],
+    priority: 5,
+  },
+  medical_necessity: {
+    name: 'Medical Necessity',
+    carcs: ['50','55','56','57','58','59','150','151','152','153','154','155','167','196','197','198','199','236','237','238','239','240','241','A1','A5','A6','A7','A8'],
+    priority: 6,
+  },
+  contractual: {
+    name: 'Contractual / Adjustment',
+    carcs: ['45','90','94','95','97','100','101','102','103','104','105','106','107','108','109','110','111','112','113','114','115','116','117','118','119','120','121','122','123','124','128','129','130','131','132','133','134','135','137','138','139','W1','W2','W3','W4'],
+    priority: 7,
+  },
+  other: {
+    name: 'Other',
+    carcs: [],
+    priority: 8,
+  },
+};
+
+function categorizeDenial(carcCode) {
+  if (!carcCode) return { category: 'other', ...DENIAL_CATEGORIES.other };
+  const code = String(carcCode).trim();
+  for (const [key, cat] of Object.entries(DENIAL_CATEGORIES)) {
+    if (key === 'other') continue;
+    if (cat.carcs.includes(code)) return { category: key, ...cat };
+  }
+  return { category: 'other', ...DENIAL_CATEGORIES.other };
+}
+
+async function categorizeDenials(orgId, clientId) {
+  let cf = ''; const params = [orgId];
+  if (clientId) { cf = ' AND d.client_id = $2'; params.push(clientId); }
+
+  const r = await pool.query(
+    `SELECT d.id, d.carc_code, d.rarc_code, d.amount, d.status, d.denial_reason,
+            c.claim_number, c.dos_from, p.first_name || ' ' || p.last_name AS patient_name,
+            py.name AS payer_name
+     FROM denials d
+     LEFT JOIN claims c ON d.claim_id = c.id
+     LEFT JOIN patients p ON c.patient_id = p.id
+     LEFT JOIN payers py ON c.payer_id = py.id
+     WHERE d.org_id = $1${cf}
+     ORDER BY d.created_at DESC`, params
+  );
+
+  const categorized = r.rows.map(d => ({
+    ...d,
+    ...categorizeDenial(d.carc_code),
+  }));
+
+  // Summary by category
+  const summary = {};
+  for (const [key, cat] of Object.entries(DENIAL_CATEGORIES)) {
+    const items = categorized.filter(d => d.category === key);
+    summary[key] = {
+      name: cat.name,
+      count: items.length,
+      total_amount: items.reduce((s, d) => s + Number(d.amount || 0), 0),
+      priority: cat.priority,
+    };
+  }
+
+  // Auto-update denial category in DB
+  for (const d of categorized) {
+    if (d.category !== 'other' || !d.carc_code) {
+      await pool.query(
+        'UPDATE denials SET category = $1, updated_at = NOW() WHERE id = $2',
+        [d.category, d.id]
+      ).catch(() => {});
+    }
+  }
+
+  return {
+    denials: categorized,
+    summary: Object.values(summary).sort((a, b) => a.priority - b.priority),
+    total: categorized.length,
+    total_amount: categorized.reduce((s, d) => s + Number(d.amount || 0), 0),
+  };
+}
+
+// ─── Chart Completeness Check (AI Feature #14) ────────────────────────────────
+async function checkChartCompleteness(encounterId, orgId) {
+  const encounter = await getById('encounters', encounterId);
+  if (!encounter || encounter.org_id !== orgId) throw new Error('Encounter not found');
+
+  const soapR = await pool.query(
+    'SELECT * FROM soap_notes WHERE encounter_id = $1 ORDER BY created_at DESC LIMIT 1', [encounterId]
+  );
+  const soap = soapR.rows[0];
+
+  // Rule-based checks first (fast, no AI needed)
+  const checks = [];
+  let score = 0;
+  const maxScore = 10;
+
+  // 1. SOAP note exists
+  if (soap) { checks.push({ field: 'soap_note', present: true, weight: 1 }); score += 1; }
+  else { checks.push({ field: 'soap_note', present: false, weight: 1, message: 'No SOAP note found' }); }
+
+  // 2. Subjective (HPI)
+  if (soap?.subjective?.length > 20) { checks.push({ field: 'subjective_hpi', present: true, weight: 1 }); score += 1; }
+  else { checks.push({ field: 'subjective_hpi', present: false, weight: 1, message: 'History of Present Illness (HPI) missing or insufficient' }); }
+
+  // 3. Objective (Exam)
+  if (soap?.objective?.length > 20) { checks.push({ field: 'objective_exam', present: true, weight: 1 }); score += 1; }
+  else { checks.push({ field: 'objective_exam', present: false, weight: 1, message: 'Physical exam documentation missing or insufficient' }); }
+
+  // 4. Assessment (Diagnosis)
+  if (soap?.assessment?.length > 10) { checks.push({ field: 'assessment_dx', present: true, weight: 1 }); score += 1; }
+  else { checks.push({ field: 'assessment_dx', present: false, weight: 1, message: 'Assessment / diagnosis missing' }); }
+
+  // 5. Plan
+  if (soap?.plan?.length > 10) { checks.push({ field: 'plan', present: true, weight: 1 }); score += 1; }
+  else { checks.push({ field: 'plan', present: false, weight: 1, message: 'Treatment plan missing' }); }
+
+  // 6. Patient demographics present
+  const patient = encounter.patient_id ? await getById('patients', encounter.patient_id) : null;
+  if (patient?.date_of_birth && patient?.gender) { checks.push({ field: 'patient_demographics', present: true, weight: 1 }); score += 1; }
+  else { checks.push({ field: 'patient_demographics', present: false, weight: 1, message: 'Patient DOB or gender missing' }); }
+
+  // 7. Provider assigned
+  if (encounter.provider_id) { checks.push({ field: 'provider', present: true, weight: 1 }); score += 1; }
+  else { checks.push({ field: 'provider', present: false, weight: 1, message: 'Rendering provider not assigned' }); }
+
+  // 8. Date of service
+  if (encounter.encounter_date) { checks.push({ field: 'dos', present: true, weight: 1 }); score += 1; }
+  else { checks.push({ field: 'dos', present: false, weight: 1, message: 'Date of service missing' }); }
+
+  // 9. Chief complaint
+  if (encounter.chief_complaint?.length > 5) { checks.push({ field: 'chief_complaint', present: true, weight: 1 }); score += 1; }
+  else { checks.push({ field: 'chief_complaint', present: false, weight: 1, message: 'Chief complaint missing' }); }
+
+  // 10. Signature / sign-off
+  if (soap?.signed_off) { checks.push({ field: 'signed_off', present: true, weight: 1 }); score += 1; }
+  else { checks.push({ field: 'signed_off', present: false, weight: 1, message: 'Note not signed off by provider' }); }
+
+  const completenessScore = Math.round((score / maxScore) * 100);
+
+  // If score < 60 and we have SOAP text, run Bedrock for deeper analysis
+  let aiAnalysis = null;
+  if (completenessScore < 60 && soap) {
+    try {
+      const { BedrockRuntimeClient, InvokeModelCommand } = await import('@aws-sdk/client-bedrock-runtime');
+      const bedrock = new BedrockRuntimeClient({ region: BEDROCK_REGION });
+
+      const prompt = `Review this clinical note for coding readiness. What specific documentation is missing or insufficient for accurate E/M coding?
+
+SOAP Note:
+S: ${sanitizeForPrompt(soap.subjective)}
+O: ${sanitizeForPrompt(soap.objective)}
+A: ${sanitizeForPrompt(soap.assessment)}
+P: ${sanitizeForPrompt(soap.plan)}
+
+Return ONLY JSON:
+{
+  "missing_elements": ["specific missing documentation items"],
+  "query_message": "A brief, professional message to send to the provider requesting the missing information",
+  "estimated_em_impact": "How the missing documentation affects E/M level selection",
+  "coding_ready": boolean
+}`;
+
+      const resp = await bedrock.send(new InvokeModelCommand({
+        modelId: BEDROCK_MODEL,
+        contentType: 'application/json',
+        accept: 'application/json',
+        body: JSON.stringify({
+          anthropic_version: 'bedrock-2023-05-31',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      }));
+
+      const aiResult = JSON.parse(new TextDecoder().decode(resp.body));
+      const text = aiResult.content?.[0]?.text || '{}';
+      aiAnalysis = extractJSON(text);
+    } catch (aiErr) {
+      console.error('Bedrock chart completeness error:', aiErr);
+    }
+  }
+
+  // If incomplete, auto-create query task for provider
+  if (completenessScore < 60 && encounter.provider_id) {
+    const missingFields = checks.filter(c => !c.present).map(c => c.message);
+    await pool.query(
+      `INSERT INTO tasks (id, org_id, client_id, title, description, status, priority, assigned_to, due_date, created_at)
+       VALUES ($1, $2, $3, $4, $5, 'open', 'high', $6, $7, NOW())
+       ON CONFLICT DO NOTHING`,
+      [uuid(), orgId, encounter.client_id, `Documentation Query: ${encounter.patient_name || 'Patient'}`,
+       `Encounter ${encounter.encounter_date || 'N/A'} — incomplete documentation (${completenessScore}%).\nMissing: ${missingFields.join('; ')}${aiAnalysis?.query_message ? '\n\nSuggested query: ' + aiAnalysis.query_message : ''}`,
+       encounter.provider_id,
+       new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10)]
+    );
+  }
+
+  return {
+    encounter_id: encounterId,
+    completeness_score: completenessScore,
+    coding_ready: completenessScore >= 60,
+    checks,
+    missing_count: checks.filter(c => !c.present).length,
+    ai_analysis: aiAnalysis,
+    auto_query_sent: completenessScore < 60 && !!encounter.provider_id,
+  };
+}
+
+// ─── Contract Rate Extraction from PDFs (AI Feature #12 enhancement) ──────────
+async function extractContractRates(documentId, payerId, orgId, userId) {
+  const doc = await getById('documents', documentId);
+  if (!doc || doc.org_id !== orgId) throw new Error('Document not found');
+
+  let docText = '';
+  if (doc.textract_result?.text) {
+    docText = doc.textract_result.text;
+  } else {
+    throw new Error('Document must be processed by Textract first (POST /documents/:id/textract)');
+  }
+
+  const payer = payerId ? await getById('payers', payerId) : null;
+
+  const { BedrockRuntimeClient, InvokeModelCommand } = await import('@aws-sdk/client-bedrock-runtime');
+  const bedrock = new BedrockRuntimeClient({ region: BEDROCK_REGION });
+
+  const prompt = `Extract fee schedule / contracted rates from this payer contract document.
+
+Payer: ${sanitizeForPrompt(payer?.name) || 'Unknown'}
+
+Document text (may be messy from OCR):
+${sanitizeForPrompt(docText)}
+
+Return ONLY valid JSON:
+{
+  "contract_effective_date": "YYYY-MM-DD or null",
+  "contract_termination_date": "YYYY-MM-DD or null",
+  "rate_type": "fee_for_service | percent_of_medicare | per_diem | case_rate | capitation",
+  "medicare_percentage": number or null,
+  "rates": [
+    {
+      "cpt_code": "string",
+      "description": "string",
+      "contracted_rate": number,
+      "modifier": "string or null"
+    }
+  ],
+  "general_terms": {
+    "timely_filing_days": number or null,
+    "clean_claim_days": number or null,
+    "appeal_deadline_days": number or null,
+    "auto_adjudication": boolean
+  },
+  "extraction_confidence": number (0-100),
+  "notes": "any important contract terms or caveats"
+}`;
+
+  try {
+    const resp = await bedrock.send(new InvokeModelCommand({
+      modelId: BEDROCK_MODEL,
+      contentType: 'application/json',
+      accept: 'application/json',
+      body: JSON.stringify({
+        anthropic_version: 'bedrock-2023-05-31',
+        max_tokens: 4000,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    }));
+
+    const aiResult = JSON.parse(new TextDecoder().decode(resp.body));
+    const text = aiResult.content?.[0]?.text || '{}';
+    const extracted = extractJSON(text) || {};
+
+    // Auto-insert extracted rates into fee_schedules
+    let inserted = 0;
+    if (extracted.rates?.length && payerId) {
+      for (const rate of extracted.rates) {
+        if (!rate.cpt_code || !rate.contracted_rate) continue;
+        try {
+          await pool.query(
+            `INSERT INTO fee_schedules (id, org_id, payer_id, cpt_code, modifier, contracted_rate,
+              effective_date, termination_date, rate_type, medicare_pct, notes, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+             ON CONFLICT (org_id, payer_id, cpt_code, modifier, effective_date) DO UPDATE
+             SET contracted_rate = EXCLUDED.contracted_rate, updated_at = NOW()`,
+            [uuid(), orgId, payerId, rate.cpt_code, rate.modifier || null,
+             rate.contracted_rate, extracted.contract_effective_date || new Date().toISOString().slice(0, 10),
+             extracted.contract_termination_date || null,
+             extracted.rate_type || 'fee_for_service',
+             extracted.medicare_percentage || null,
+             `AI-extracted from ${doc.file_name || 'contract document'}`]
+          );
+          inserted++;
+        } catch (e) { /* skip duplicates */ }
+      }
+    }
+
+    return {
+      document_id: documentId,
+      payer_id: payerId,
+      payer_name: payer?.name,
+      ...extracted,
+      rates_extracted: extracted.rates?.length || 0,
+      rates_inserted: inserted,
+      source: 'bedrock_ai',
+    };
+  } catch (aiErr) {
+    console.error('Bedrock contract extraction error:', aiErr);
+    return {
+      document_id: documentId,
+      payer_id: payerId,
+      rates: [],
+      rates_extracted: 0,
+      rates_inserted: 0,
+      source: 'fallback',
+      error: aiErr.message,
+    };
+  }
+}
+
+// ─── Payment Reconciliation Engine ─────────────────────────────────────────────
+async function reconcilePayments(eraFileId, orgId, userId) {
+  const eraFile = await getById('era_files', eraFileId);
+  if (!eraFile || eraFile.org_id !== orgId) throw new Error('ERA file not found');
+
+  // Get all payments from this ERA
+  const paymentsR = await pool.query(
+    `SELECT p.*, c.claim_number, c.total_charge, c.status AS claim_status,
+            c.dos_from, c.patient_id, c.payer_id
+     FROM payments p
+     LEFT JOIN claims c ON p.claim_id = c.id
+     WHERE p.era_file_id = $1 AND p.org_id = $2
+     ORDER BY p.created_at`,
+    [eraFileId, orgId]
+  );
+
+  const results = {
+    era_file_id: eraFileId,
+    total_payments: paymentsR.rows.length,
+    matched: [],
+    unmatched: [],
+    recoupments: [],
+    overpayments: [],
+    underpayments: [],
+    zero_pays: [],
+    actions_taken: [],
+  };
+
+  for (const payment of paymentsR.rows) {
+    const amountPaid = Number(payment.amount_paid || 0);
+    const billedAmount = Number(payment.billed_amount || 0);
+    const allowedAmount = Number(payment.allowed_amount || 0);
+    const adjustmentAmount = Number(payment.adjustment_amount || 0);
+
+    // Detect recoupments (negative payments)
+    if (amountPaid < 0) {
+      results.recoupments.push({
+        payment_id: payment.id,
+        claim_number: payment.claim_number,
+        amount: amountPaid,
+        reason: payment.adj_reason_code || 'Unknown recoupment',
+      });
+      await pool.query(
+        `UPDATE payments SET action = 'review', notes = COALESCE(notes, '') || ' | RECOUPMENT DETECTED' WHERE id = $1`,
+        [payment.id]
+      );
+      results.actions_taken.push(`Flagged recoupment on ${payment.claim_number}: $${amountPaid}`);
+      continue;
+    }
+
+    // Zero-pay denials
+    if (amountPaid === 0 && billedAmount > 0) {
+      results.zero_pays.push({
+        payment_id: payment.id,
+        claim_number: payment.claim_number,
+        billed: billedAmount,
+        reason: payment.adj_reason_code,
+      });
+      // Auto-create denial if not exists
+      if (payment.claim_id) {
+        const existingDenial = await pool.query(
+          'SELECT id FROM denials WHERE claim_id = $1 AND org_id = $2 LIMIT 1', [payment.claim_id, orgId]
+        );
+        if (existingDenial.rows.length === 0) {
+          const cat = categorizeDenial(payment.adj_reason_code);
+          await pool.query(
+            `INSERT INTO denials (id, org_id, client_id, claim_id, carc_code, rarc_code,
+              denial_reason, amount, category, status, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'new', NOW())`,
+            [uuid(), orgId, payment.client_id || null, payment.claim_id,
+             payment.adj_reason_code, payment.adj_remark_code,
+             `Zero-pay from ERA ${eraFile.file_name || eraFileId}`,
+             billedAmount, cat.category]
+          );
+          results.actions_taken.push(`Created denial for zero-pay: ${payment.claim_number}`);
+        }
+        // Update claim status
+        await pool.query(
+          'UPDATE claims SET status = $1, updated_at = NOW() WHERE id = $2',
+          ['denied', payment.claim_id]
+        );
+      }
+      continue;
+    }
+
+    // Check for underpayment against fee schedule
+    if (payment.claim_id && payment.cpt_code) {
+      const feeR = await pool.query(
+        `SELECT contracted_rate FROM fee_schedules
+         WHERE org_id = $1 AND payer_id = $2 AND cpt_code = $3
+         AND effective_date <= CURRENT_DATE
+         AND (termination_date IS NULL OR termination_date >= CURRENT_DATE)
+         ORDER BY effective_date DESC LIMIT 1`,
+        [orgId, payment.payer_id || null, payment.cpt_code]
+      );
+      if (feeR.rows[0]) {
+        const expectedRate = Number(feeR.rows[0].contracted_rate);
+        if (amountPaid < expectedRate * 0.95) { // 5% tolerance
+          results.underpayments.push({
+            payment_id: payment.id,
+            claim_number: payment.claim_number,
+            cpt_code: payment.cpt_code,
+            paid: amountPaid,
+            expected: expectedRate,
+            variance: expectedRate - amountPaid,
+          });
+          await pool.query(
+            `UPDATE payments SET action = 'review',
+              notes = COALESCE(notes, '') || ' | UNDERPAYMENT: expected $' || $1 || ', paid $' || $2
+             WHERE id = $3`,
+            [expectedRate.toFixed(2), amountPaid.toFixed(2), payment.id]
+          );
+          results.actions_taken.push(`Flagged underpayment: ${payment.claim_number} CPT ${payment.cpt_code} paid $${amountPaid} vs expected $${expectedRate}`);
+          continue;
+        }
+      }
+    }
+
+    // Check overpayment
+    if (allowedAmount > 0 && amountPaid > allowedAmount * 1.05) {
+      results.overpayments.push({
+        payment_id: payment.id,
+        claim_number: payment.claim_number,
+        paid: amountPaid,
+        allowed: allowedAmount,
+        overage: amountPaid - allowedAmount,
+      });
+      continue;
+    }
+
+    // Normal match
+    results.matched.push({
+      payment_id: payment.id,
+      claim_number: payment.claim_number,
+      amount_paid: amountPaid,
+    });
+
+    // Update claim status for fully paid claims
+    if (payment.claim_id) {
+      const totalPaidR = await pool.query(
+        'SELECT COALESCE(SUM(amount_paid), 0) AS total_paid FROM payments WHERE claim_id = $1 AND status = $2',
+        [payment.claim_id, 'posted']
+      );
+      const totalPaid = Number(totalPaidR.rows[0]?.total_paid || 0) + amountPaid;
+      const patientResp = Number(payment.patient_responsibility || 0);
+
+      if (totalPaid >= (billedAmount - adjustmentAmount - patientResp) * 0.95) {
+        await pool.query(
+          `UPDATE claims SET status = 'paid', patient_responsibility = $1, allowed_amount = $2, paid_at = NOW(), updated_at = NOW() WHERE id = $3`,
+          [patientResp, allowedAmount, payment.claim_id]
+        );
+        results.actions_taken.push(`Claim ${payment.claim_number} marked PAID`);
+
+        // Trigger secondary claim if patient has secondary payer
+        const patR = payment.patient_id ? await pool.query(
+          'SELECT secondary_payer_id FROM patients WHERE id = $1', [payment.patient_id]
+        ) : { rows: [] };
+        if (patR.rows[0]?.secondary_payer_id && patientResp > 0) {
+          results.actions_taken.push(`Secondary payer exists for ${payment.claim_number} — eligible for COB filing`);
+        }
+      }
+    }
+  }
+
+  results.summary = {
+    matched: results.matched.length,
+    zero_pays: results.zero_pays.length,
+    recoupments: results.recoupments.length,
+    underpayments: results.underpayments.length,
+    overpayments: results.overpayments.length,
+    actions_taken: results.actions_taken.length,
+  };
+
+  return results;
+}
+
+// ─── Write-Off Workflow (Tiered Approval) ──────────────────────────────────────
+async function requestWriteOff(body, orgId, userId) {
+  const { claim_id, amount, reason, category } = body;
+  if (!claim_id) throw new Error('claim_id required');
+
+  const claim = await getById('claims', claim_id);
+  if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
+
+  const writeOffAmount = amount || Number(claim.total_charge || 0);
+
+  // Tiered approval logic
+  let approvalRequired = 'none';
+  let autoApproved = false;
+  if (writeOffAmount <= 25) {
+    approvalRequired = 'none';
+    autoApproved = true;
+  } else if (writeOffAmount <= 100) {
+    approvalRequired = 'team_lead';
+  } else if (writeOffAmount <= 500) {
+    approvalRequired = 'manager';
+  } else if (writeOffAmount <= 2000) {
+    approvalRequired = 'director';
+  } else {
+    approvalRequired = 'vp_finance';
+  }
+
+  const id = uuid();
+  await pool.query(
+    `INSERT INTO write_off_requests (id, org_id, client_id, claim_id, amount, reason, category,
+      approval_required, status, requested_by, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())`,
+    [id, orgId, claim.client_id, claim_id, writeOffAmount, reason || 'Not specified',
+     category || 'bad_debt', approvalRequired,
+     autoApproved ? 'approved' : 'pending', userId]
+  );
+
+  // If auto-approved, update claim immediately
+  if (autoApproved) {
+    await pool.query(
+      `UPDATE claims SET status = 'write_off', updated_at = NOW() WHERE id = $1`, [claim_id]
+    );
+  } else {
+    // Create approval task
+    await pool.query(
+      `INSERT INTO tasks (id, org_id, client_id, title, description, status, priority, due_date, created_at)
+       VALUES ($1, $2, $3, $4, $5, 'open', $6, $7, NOW())`,
+      [uuid(), orgId, claim.client_id,
+       `Write-Off Approval: ${claim.claim_number} ($${writeOffAmount.toFixed(2)})`,
+       `Claim: ${claim.claim_number}\nAmount: $${writeOffAmount.toFixed(2)}\nReason: ${reason || 'Not specified'}\nApproval Level: ${approvalRequired}`,
+       writeOffAmount > 500 ? 'high' : 'medium',
+       new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10)]
+    );
+  }
+
+  return {
+    write_off_id: id,
+    claim_id,
+    claim_number: claim.claim_number,
+    amount: writeOffAmount,
+    approval_required: approvalRequired,
+    status: autoApproved ? 'approved' : 'pending',
+    auto_approved: autoApproved,
+  };
+}
+
+async function approveWriteOff(writeOffId, body, orgId, userId) {
+  const wo = await getById('write_off_requests', writeOffId);
+  if (!wo || wo.org_id !== orgId) throw new Error('Write-off request not found');
+  if (wo.status !== 'pending') throw new Error(`Write-off already ${wo.status}`);
+
+  const action = body.action; // 'approve' or 'deny'
+  if (!['approve', 'deny'].includes(action)) throw new Error('action must be approve or deny');
+
+  await pool.query(
+    `UPDATE write_off_requests SET status = $1, approved_by = $2, approved_at = NOW(), 
+      approval_notes = $3, updated_at = NOW() WHERE id = $4`,
+    [action === 'approve' ? 'approved' : 'denied', userId, body.notes || null, writeOffId]
+  );
+
+  if (action === 'approve') {
+    await pool.query(
+      `UPDATE claims SET status = 'write_off', updated_at = NOW() WHERE id = $1`, [wo.claim_id]
+    );
+  }
+
+  return { write_off_id: writeOffId, status: action === 'approve' ? 'approved' : 'denied' };
+}
+
+// ─── Notification Engine ───────────────────────────────────────────────────────
+async function createNotification(orgId, body) {
+  const { user_id, title, message, type, priority, entity_type, entity_id, action_url } = body;
+  const id = uuid();
+  await pool.query(
+    `INSERT INTO notifications (id, org_id, user_id, title, message, type, priority,
+      entity_type, entity_id, action_url, read, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, FALSE, NOW())`,
+    [id, orgId, user_id, title, message,
+     type || 'info', priority || 'normal',
+     entity_type || null, entity_id || null, action_url || null]
+  );
+  return { id, status: 'created' };
+}
+
+async function getNotifications(orgId, userId, qs) {
+  let q = 'SELECT * FROM notifications WHERE org_id = $1 AND user_id = $2';
+  const params = [orgId, userId];
+  if (qs.unread === 'true') { q += ' AND read = FALSE'; }
+  q += ' ORDER BY created_at DESC';
+  if (qs.limit) { q += ` LIMIT $${params.length + 1}`; params.push(qs.limit); }
+  else { q += ' LIMIT 50'; }
+  const r = await pool.query(q, params);
+
+  const unreadR = await pool.query(
+    'SELECT COUNT(*) AS cnt FROM notifications WHERE org_id = $1 AND user_id = $2 AND read = FALSE',
+    [orgId, userId]
+  );
+
+  return { data: r.rows, total: r.rows.length, unread_count: Number(unreadR.rows[0]?.cnt || 0) };
+}
+
 // ════════════════════════════════════════════════════════════════════════════════
 // MAIN HANDLER
 // ════════════════════════════════════════════════════════════════════════════════
@@ -1675,7 +3335,7 @@ export const handler = async (event) => {
       return respond(200, result);
     }
 
-    if (path.includes('/documents') && !path.includes('/upload-url') && !path.includes('/textract')) {
+    if (path.includes('/documents') && !path.includes('/upload-url') && !path.includes('/textract') && !path.includes('/classify') && !path.includes('/extract-rates')) {
       if (method === 'GET' && !pathParams.id) {
         return respond(200, await list('documents', effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
       }
@@ -1697,7 +3357,7 @@ export const handler = async (event) => {
         return respond(200, result);
       }
       if (method === 'GET') {
-        const result = await getTextractResults(pathParams.id);
+        const result = await getTextractResults(pathParams.id, effectiveOrgId);
         return respond(200, result);
       }
     }
@@ -1769,7 +3429,7 @@ export const handler = async (event) => {
 
     // 837P/837I EDI generate
     if (path.includes('/generate-edi') && method === 'POST') {
-      const r = await generateEDI(pathParams.id);
+      const r = await generateEDI(pathParams.id, effectiveOrgId);
       // Log EDI transaction
       await create('edi_transactions', {
         org_id: effectiveOrgId,
@@ -1785,7 +3445,7 @@ export const handler = async (event) => {
 
     // DHA eClaim XML generate (UAE)
     if (path.includes('/generate-dha') && method === 'POST') {
-      const r = await generateDHAeClaim(pathParams.id);
+      const r = await generateDHAeClaim(pathParams.id, effectiveOrgId);
       await create('edi_transactions', {
         org_id: effectiveOrgId,
         client_id: clientId,
@@ -1838,7 +3498,7 @@ export const handler = async (event) => {
     }
 
     // ════ Denials ═══════════════════════════════════════════════════════════
-    if (path.includes('/denials') && !path.includes('/appeal')) {
+    if (path.includes('/denials') && !path.includes('/appeal') && !path.includes('/categorize')) {
       if (method === 'GET' && !pathParams.id) return respond(200, await enrichedDenials(effectiveOrgId, clientId));
       if (method === 'GET' && pathParams.id) {
         const d = await getById('denials', pathParams.id);
@@ -2002,7 +3662,7 @@ export const handler = async (event) => {
       return respond(200, result);
     }
 
-    if (path.includes('/era-files')) {
+    if (path.includes('/era-files') && !path.includes('/parse-835') && !path.includes('/reconcile')) {
       if (method === 'GET' && !pathParams.id) {
         return respond(200, await list('era_files', effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
       }
@@ -2205,21 +3865,266 @@ export const handler = async (event) => {
       'organizations': 'organizations',
     };
 
+    // Sub-routes that should NOT be caught by generic CRUD
+    const entitySubRouteExclusions = {
+      'encounters': ['/charge-capture', '/chart-check'],
+      'credentialing': ['/dashboard', '/enrollment'],
+    };
+
     for (const [route, table] of Object.entries(entityMap)) {
       if (path.includes(`/${route}`)) {
+        // Skip if path matches a known sub-route for this entity
+        const exclusions = entitySubRouteExclusions[route] || [];
+        if (exclusions.some(ex => path.includes(ex))) continue;
         if (method === 'GET' && !pathParams.id) {
           return respond(200, await list(table, effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
         }
         if (method === 'GET' && pathParams.id) {
           const r = await getById(table, pathParams.id);
-          return r ? respond(200, r) : respond(404, { error: 'Not found' });
+          if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+          return respond(200, r);
         }
         if (method === 'POST') return respond(201, await create(table, body, effectiveOrgId));
-        if (method === 'PUT' && pathParams.id) return respond(200, await update(table, pathParams.id, body));
+        if (method === 'PUT' && pathParams.id) {
+          const existing = await getById(table, pathParams.id);
+          if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+          return respond(200, await update(table, pathParams.id, body));
+        }
         if (method === 'DELETE' && pathParams.id) {
           await pool.query(`DELETE FROM ${table} WHERE id = $1 AND org_id = $2`, [pathParams.id, effectiveOrgId]);
           return respond(200, { deleted: true });
         }
+      }
+    }
+
+    // ════ 837I Institutional Claim Generator ════════════════════════════════
+    if (path.includes('/claims') && path.includes('/generate-837i') && method === 'POST') {
+      const result = await generate837I(pathParams.id, effectiveOrgId);
+      return respond(200, result);
+    }
+
+    // ════ Charge Capture AI (Feature #11) ═════════════════════════════════
+    if (path.includes('/encounters') && path.includes('/charge-capture') && method === 'POST') {
+      const result = await chargeCapture(pathParams.id, effectiveOrgId, userId);
+      return respond(200, result);
+    }
+
+    // ════ Document Classification AI ══════════════════════════════════════
+    if (path.includes('/documents') && path.includes('/classify') && method === 'POST') {
+      const result = await classifyDocument(pathParams.id, effectiveOrgId);
+      return respond(200, result);
+    }
+
+    // ════ Prior Auth Workflow ══════════════════════════════════════════════
+    if (path.includes('/prior-auth')) {
+      if (method === 'GET' && !pathParams.id) {
+        let q = `SELECT pa.*, pt.first_name || ' ' || pt.last_name AS patient_name,
+                        py.name AS payer_name, pv.last_name AS provider_name
+                 FROM prior_auth_requests pa
+                 LEFT JOIN patients pt ON pa.patient_id = pt.id
+                 LEFT JOIN payers py ON pa.payer_id = py.id
+                 LEFT JOIN providers pv ON pa.provider_id = pv.id
+                 WHERE pa.org_id = $1`;
+        const p = [effectiveOrgId];
+        if (clientId) { q += ' AND pa.client_id = $2'; p.push(clientId); }
+        if (qs.status) { q += ` AND pa.status = $${p.length + 1}`; p.push(qs.status); }
+        q += ' ORDER BY pa.created_at DESC';
+        if (qs.limit) { q += ` LIMIT $${p.length + 1}`; p.push(qs.limit); }
+        const r = await pool.query(q, p);
+        return respond(200, { data: r.rows, total: r.rows.length });
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('prior_auth_requests', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
+      }
+      if (method === 'POST') {
+        const result = await createPriorAuth(body, effectiveOrgId, userId);
+        return respond(201, result);
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const result = await updatePriorAuth(pathParams.id, body, effectiveOrgId, userId);
+        return respond(200, result);
+      }
+    }
+
+    // ════ Patient Statements ══════════════════════════════════════════════
+    if (path.includes('/patient-statements')) {
+      // Generate statement for a patient
+      if (method === 'POST' && path.includes('/generate')) {
+        const { patient_id } = body;
+        if (!patient_id) return respond(400, { error: 'patient_id required' });
+        const result = await generatePatientStatement(patient_id, effectiveOrgId);
+        return respond(200, result);
+      }
+      // List statements
+      if (method === 'GET' && !pathParams.id) {
+        let q = 'SELECT * FROM patient_statements WHERE org_id = $1';
+        const p = [effectiveOrgId];
+        if (clientId) { q += ' AND client_id = $2'; p.push(clientId); }
+        if (qs.patient_id) { q += ` AND patient_id = $${p.length + 1}`; p.push(qs.patient_id); }
+        q += ' ORDER BY created_at DESC';
+        if (qs.limit) { q += ` LIMIT $${p.length + 1}`; p.push(qs.limit); }
+        const r = await pool.query(q, p);
+        return respond(200, { data: r.rows, total: r.rows.length });
+      }
+      // Get single statement
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('patient_statements', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
+      }
+      // Update statement (mark sent, mark paid, etc.)
+      if (method === 'PUT' && pathParams.id) {
+        const existing = await getById('patient_statements', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        const result = await update('patient_statements', pathParams.id, { ...body, updated_at: new Date().toISOString() });
+        return respond(200, result);
+      }
+    }
+
+    // ════ Secondary Claim / COB Workflow ═══════════════════════════════════
+    if (path.includes('/claims') && path.includes('/secondary') && method === 'POST') {
+      const result = await triggerSecondaryClaim(pathParams.id, effectiveOrgId, userId);
+      return respond(201, result);
+    }
+
+    // ════ Credentialing Dashboard + Enrollment ════════════════════════════
+    if (path.includes('/credentialing/dashboard') && method === 'GET') {
+      const result = await getCredentialingDashboard(effectiveOrgId, clientId);
+      return respond(200, result);
+    }
+    if (path.includes('/credentialing/enrollment') && method === 'POST') {
+      const result = await createEnrollment(body, effectiveOrgId, userId);
+      return respond(201, result);
+    }
+
+    // ════ Report Export Engine ═════════════════════════════════════════════
+    if (path.includes('/reports') && method === 'GET') {
+      const reportType = qs.type || pathParams.id;
+      if (!reportType) {
+        return respond(200, {
+          available_reports: [
+            'ar_aging', 'denial_analysis', 'payment_summary',
+            'coding_production', 'payer_performance', 'eligibility_summary'
+          ],
+        });
+      }
+      const result = await generateReport(reportType, effectiveOrgId, clientId, qs);
+      return respond(200, result);
+    }
+
+    // ════ Auto-Appeals Engine (AI Feature #4) ═══════════════════════════════
+    if (path.includes('/denials') && path.includes('/generate-appeal') && method === 'POST') {
+      const result = await generateAppeal(pathParams.id, effectiveOrgId, userId);
+      return respond(200, result);
+    }
+
+    // ════ Denial Categorization ════════════════════════════════════════════
+    if (path.includes('/denials/categorize') && method === 'GET') {
+      const result = await categorizeDenials(effectiveOrgId, clientId);
+      return respond(200, result);
+    }
+
+    // ════ Chart Completeness Check (AI Feature #14) ═══════════════════════
+    if (path.includes('/encounters') && path.includes('/chart-check') && method === 'POST') {
+      const result = await checkChartCompleteness(pathParams.id, effectiveOrgId);
+      return respond(200, result);
+    }
+
+    // ════ Contract Rate Extraction from PDFs ══════════════════════════════
+    if (path.includes('/documents') && path.includes('/extract-rates') && method === 'POST') {
+      const { payer_id } = body;
+      if (!payer_id) return respond(400, { error: 'payer_id required in body' });
+      const result = await extractContractRates(pathParams.id, payer_id, effectiveOrgId, userId);
+      return respond(200, result);
+    }
+
+    // ════ Payment Reconciliation ══════════════════════════════════════════
+    if (path.includes('/era-files') && path.includes('/reconcile') && method === 'POST') {
+      const result = await reconcilePayments(pathParams.id, effectiveOrgId, userId);
+      return respond(200, result);
+    }
+
+    // ════ Write-Off Workflow ══════════════════════════════════════════════
+    if (path.includes('/write-offs')) {
+      if (method === 'POST' && !pathParams.id) {
+        const result = await requestWriteOff(body, effectiveOrgId, userId);
+        return respond(201, result);
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const result = await approveWriteOff(pathParams.id, body, effectiveOrgId, userId);
+        return respond(200, result);
+      }
+      if (method === 'GET' && !pathParams.id) {
+        let q = 'SELECT wo.*, c.claim_number FROM write_off_requests wo LEFT JOIN claims c ON wo.claim_id = c.id WHERE wo.org_id = $1';
+        const p = [effectiveOrgId];
+        if (clientId) { q += ' AND wo.client_id = $2'; p.push(clientId); }
+        if (qs.status) { q += ` AND wo.status = $${p.length + 1}`; p.push(qs.status); }
+        q += ' ORDER BY wo.created_at DESC';
+        const r = await pool.query(q, p);
+        return respond(200, { data: r.rows, total: r.rows.length });
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('write_off_requests', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
+      }
+    }
+
+    // ════ Notifications ═══════════════════════════════════════════════════
+    if (path.includes('/notifications')) {
+      if (method === 'GET') {
+        const result = await getNotifications(effectiveOrgId, userId, qs);
+        return respond(200, result);
+      }
+      if (method === 'POST' && !pathParams.id) {
+        const result = await createNotification(effectiveOrgId, body);
+        return respond(201, result);
+      }
+      // Mark as read
+      if (method === 'PUT' && pathParams.id) {
+        await pool.query('UPDATE notifications SET read = TRUE, read_at = NOW() WHERE id = $1', [pathParams.id]);
+        return respond(200, { id: pathParams.id, read: true });
+      }
+      // Mark all read
+      if (method === 'PUT' && path.includes('/mark-all-read')) {
+        await pool.query(
+          'UPDATE notifications SET read = TRUE, read_at = NOW() WHERE org_id = $1 AND user_id = $2 AND read = FALSE',
+          [effectiveOrgId, userId]
+        );
+        return respond(200, { status: 'all_read' });
+      }
+    }
+
+    // ════ Appeals CRUD ════════════════════════════════════════════════════
+    if (path.includes('/appeals')) {
+      if (method === 'GET' && !pathParams.id) {
+        let q = `SELECT a.*, d.carc_code, d.denial_reason, c.claim_number, c.dos_from,
+                        p.first_name || ' ' || p.last_name AS patient_name, py.name AS payer_name
+                 FROM appeals a
+                 LEFT JOIN denials d ON a.denial_id = d.id
+                 LEFT JOIN claims c ON a.claim_id = c.id
+                 LEFT JOIN patients p ON c.patient_id = p.id
+                 LEFT JOIN payers py ON c.payer_id = py.id
+                 WHERE a.org_id = $1`;
+        const p = [effectiveOrgId];
+        if (clientId) { q += ' AND a.client_id = $2'; p.push(clientId); }
+        if (qs.status) { q += ` AND a.status = $${p.length + 1}`; p.push(qs.status); }
+        q += ' ORDER BY a.created_at DESC';
+        const r = await pool.query(q, p);
+        return respond(200, { data: r.rows, total: r.rows.length });
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('appeals', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        return respond(200, r);
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const existing = await getById('appeals', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        const result = await update('appeals', pathParams.id, { ...body, updated_at: new Date().toISOString() });
+        return respond(200, result);
       }
     }
 
