@@ -64,18 +64,26 @@ export async function GET(req: NextRequest) {
       let calls = normalizeCallList(data)
 
       // Tag each call with _agent_name
-      calls = calls.map(c => ({
-        ...c,
-        _agent_name:
-          c.agent_id === RETELL_AGENTS.chris ? 'chris'
-          : c.agent_id === RETELL_AGENTS.cindy ? 'cindy'
-          : 'unknown',
-      }))
+      // Match by agent_id first (exact), then fall back to agent_name string
+      calls = calls.map((c: Record<string, unknown>) => {
+        let agentName: string
+        if (c.agent_id === RETELL_AGENTS.chris) {
+          agentName = 'chris'
+        } else if (c.agent_id === RETELL_AGENTS.cindy) {
+          agentName = 'cindy'
+        } else {
+          // Fallback: match by agent_name field (handles inbound agents, renamed agents, etc.)
+          const name = String(c.agent_name ?? '').toLowerCase()
+          if (name.includes('chris')) agentName = 'chris'
+          else if (name.includes('cindy')) agentName = 'cindy'
+          else agentName = 'unknown'
+        }
+        return { ...c, _agent_name: agentName }
+      })
 
       // Filter by agent if requested
       if (agentFilter === 'chris' || agentFilter === 'cindy') {
-        const targetId = RETELL_AGENTS[agentFilter]
-        if (targetId) calls = calls.filter(c => c.agent_id === targetId)
+        calls = calls.filter((c: Record<string, unknown>) => c._agent_name === agentFilter)
       }
 
       return NextResponse.json({
