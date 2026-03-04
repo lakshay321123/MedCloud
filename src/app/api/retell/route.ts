@@ -120,23 +120,16 @@ export async function GET(req: NextRequest) {
       const agentName = searchParams.get('agent') as 'chris' | 'cindy'
       const agentId = RETELL_AGENTS[agentName]
 
-      // Step 1: list all agents in account
+      // list-agents returns full agent objects — no need for get-agent
       const allAgents: Record<string, unknown>[] = await retellFetch('/v2/list-agents')
         .then(d => Array.isArray(d) ? d : (d.agents ?? d.data ?? []))
-        .catch(() => [])
 
-      // Step 2: match by agent_id (env var) first, then by name substring
-      let agent = allAgents.find((a: Record<string, unknown>) => a.agent_id === agentId)
-      if (!agent && agentName) {
-        agent = allAgents.find((a: Record<string, unknown>) =>
-          String(a.agent_name ?? '').toLowerCase().includes(agentName.toLowerCase())
-        )
-      }
-      // Step 3: if still not found, return all agents for debugging
+      // Match by configured agent_id
+      const agent = allAgents.find((a: Record<string, unknown>) => a.agent_id === agentId)
+
       if (!agent) {
         return NextResponse.json({
           error: `Agent not found`,
-          agent_name_searched: agentName,
           agent_id_searched: agentId,
           available_agents: allAgents.map((a: Record<string, unknown>) => ({
             agent_id: a.agent_id,
@@ -145,16 +138,15 @@ export async function GET(req: NextRequest) {
         }, { status: 404 })
       }
 
-      // Step 4: prompt lives on the LLM, not the agent — fetch it
+      // Prompt lives on the LLM object, not the agent
       const llmId = (agent.response_engine as Record<string, unknown>)?.llm_id as string
       if (llmId) {
         const llm = await retellFetch(`/v2/get-retell-llm/${llmId}`).catch(() => null)
-        if (llm) {
-          return NextResponse.json({ ...agent, general_prompt: llm.general_prompt ?? '' })
+        if (llm?.general_prompt) {
+          return NextResponse.json({ ...agent, general_prompt: llm.general_prompt })
         }
       }
 
-      // Return agent as-is if no LLM found
       return NextResponse.json(agent)
     }
 
