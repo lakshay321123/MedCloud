@@ -394,7 +394,7 @@ function FaxCenterTab() {
                 <label className="text-xs text-content-secondary block mb-1">Attach Document</label>
                 <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
                   <option value="">Select document...</option>
-                  <option value=''>No faxes yet — Sprint 3</option>
+                  <option value=''>No faxes available</option>
                 </select>
               </div>
               <button onClick={()=>{toast.success('Fax queued for delivery');setShowSendFax(false);setFaxTo('');setFaxFrom('');setFaxSubject('')}}
