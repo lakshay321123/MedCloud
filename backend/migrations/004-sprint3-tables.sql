@@ -3,8 +3,7 @@
 -- New tables: appeals, write_off_requests, notifications
 -- Columns: denials (category, appeal_level), documents (extract-rates)
 --
--- Run: psql -h medcloud-db.ck54k4qcenu4.us-east-1.rds.amazonaws.com \
---      -U medcloud_admin -d medcloud -f 004-sprint3-tables.sql
+-- Run: psql -h $MEDCLOUD_DB_HOST -U $MEDCLOUD_DB_USER -d medcloud -f 004-sprint3-tables.sql
 -- ============================================================================
 
 BEGIN;

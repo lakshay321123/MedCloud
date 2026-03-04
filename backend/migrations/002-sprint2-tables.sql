@@ -1,7 +1,7 @@
 -- ============================================================================
 -- MEDCLOUD SPRINT 2 MIGRATION — 002-sprint2-tables.sql
--- Run: psql -h medcloud-db.ck54k4qcenu4.us-east-1.rds.amazonaws.com \
---      -U medcloud_admin -d medcloud -f 002-sprint2-tables.sql
+-- Run: psql -h $MEDCLOUD_DB_HOST \
+--      -U $MEDCLOUD_DB_USER -d medcloud -f 002-sprint2-tables.sql
 -- ============================================================================
 
 BEGIN;

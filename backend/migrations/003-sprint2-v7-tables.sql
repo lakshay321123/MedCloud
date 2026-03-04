@@ -4,8 +4,7 @@
 -- Columns: claims (secondary/institutional), patients (secondary payer),
 --          credentialing (expiry tracking)
 --
--- Run: psql -h medcloud-db.ck54k4qcenu4.us-east-1.rds.amazonaws.com \
---      -U medcloud_admin -d medcloud -f 003-sprint2-v7-tables.sql
+-- Run: psql -h $MEDCLOUD_DB_HOST -U $MEDCLOUD_DB_USER -d medcloud -f 003-sprint2-v7-tables.sql
 -- ============================================================================
 
 BEGIN;
@@ -49,6 +48,7 @@ CREATE INDEX IF NOT EXISTS idx_prior_auth_patient ON prior_auth_requests(patient
 CREATE INDEX IF NOT EXISTS idx_prior_auth_claim ON prior_auth_requests(claim_id);
 CREATE INDEX IF NOT EXISTS idx_prior_auth_status ON prior_auth_requests(status);
 CREATE INDEX IF NOT EXISTS idx_prior_auth_payer ON prior_auth_requests(payer_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_prior_auth_org_auth_number ON prior_auth_requests(org_id, auth_number);
 
 -- ── Patient Statements ─────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS patient_statements (
@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS patient_statements (
 CREATE INDEX IF NOT EXISTS idx_patient_stmt_org ON patient_statements(org_id);
 CREATE INDEX IF NOT EXISTS idx_patient_stmt_patient ON patient_statements(patient_id);
 CREATE INDEX IF NOT EXISTS idx_patient_stmt_status ON patient_statements(status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_patient_stmt_org_statement_number ON patient_statements(org_id, statement_number);
 
 -- ── Charge Captures (AI Feature #11) ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS charge_captures (

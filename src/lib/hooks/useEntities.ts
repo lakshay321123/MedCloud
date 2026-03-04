@@ -1554,7 +1554,7 @@ export interface ApiNotification {
 
 export function useNotifications(extra?: ApiListParams & { unread?: string }) {
   const params = useClientParams(extra)
-  return useApi<{ data: ApiNotification[]; total: number; unread_count: number }>('/notifications', params)
+  return useApi<ApiListResponse<ApiNotification> & { unread_count: number }>('/notifications', params)
 }
 
 export function useCreateNotification() {

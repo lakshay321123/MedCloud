@@ -1,5 +1,5 @@
 -- Sprint 2 v3 Migration: AR Call Logs + Document/SOAP fixes
--- Run against: medcloud-db.ck54k4qcenu4.us-east-1.rds.amazonaws.com
+-- Run against: $MEDCLOUD_DB_HOST
 
 -- ═══════════════════════════════════════════════════════════════
 -- 1. AR Call Logs table (new)
