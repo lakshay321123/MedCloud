@@ -60,8 +60,8 @@ export default function EligibilityPage() {
       setVerificationResult({
         status: result.status || 'active',
         network: result.network_status || 'In-Network',
-        copay: result.copay != null ? `$${result.copay}` : '$25',
-        deductible: result.deductible != null ? `$${result.deductible} remaining` : '$500 remaining',
+        copay: result.copay != null ? `$${result.copay}` : 'N/A',
+        deductible: result.deductible != null ? `$${result.deductible} remaining` : 'N/A',
         coinsurance: String(resultData.coinsurance || '80/20'),
         priorAuth: result.prior_auth_required ? 'Yes — required' : 'No',
       })
