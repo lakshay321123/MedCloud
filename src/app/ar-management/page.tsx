@@ -3,6 +3,7 @@ import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
+import { UAE_CLIENT_NAMES, US_CLIENT_NAMES } from '@/lib/utils/region'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -553,7 +554,7 @@ function InboundCallPanel() {
 }
 
 export default function ARManagementPage() {
-  const { selectedClient } = useApp()
+  const { selectedClient, country } = useApp()
   const { t } = useT()
   const { toast } = useToast()
   const [accounts, setAccounts] = useState<ARAccount[]>(initialAccounts)
@@ -562,7 +563,12 @@ export default function ARManagementPage() {
   const [callMode, setCallMode] = useState<'accounts' | 'inbound' | 'credits' | 'sla'>('accounts')
   const { mutate: logCallAPI } = useLogARCall()
 
-  const filtered = accounts.filter(a => !selectedClient || a.client.includes(selectedClient.name.split(' ')[0]))
+  const filtered = accounts.filter(a => {
+    if (selectedClient) return a.client.includes(selectedClient.name.split(' ')[0])
+    if (country === 'uae') return UAE_CLIENT_NAMES.some(n => a.client.includes(n.split(' ')[0]))
+    if (country === 'usa') return US_CLIENT_NAMES.some(n => a.client.includes(n.split(' ')[0]))
+    return true
+  })
 
   function updateAccount(id: string, update: Partial<ARAccount>) {
     setAccounts(prev => prev.map(a => a.id === id ? { ...a, ...update } : a))
@@ -630,7 +636,7 @@ export default function ARManagementPage() {
         <KPICard label={t("ar","totalAR")} value={`$${(totalAR/1000).toFixed(0)}K`} icon={<TrendingUp size={20} />} />
         <KPICard label={t("ar","workedToday")} value={String(workedToday)} trend="up" />
         <KPICard label={t("ar","followupsDue")} value={String(followupsDue)} />
-        <KPICard label="Avg Days Outstanding" value={`${avgAge}`} />
+        <KPICard label={t('ar','avgDaysOutstanding')} value={`${avgAge}`} />
       </div>
 
       {/* Tab bar */}

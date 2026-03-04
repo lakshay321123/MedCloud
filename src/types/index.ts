@@ -58,7 +58,7 @@ export interface ModuleConfig {
 }
 
 export type AppointmentStatus = 'booked' | 'confirmed' | 'checked_in' | 'in_progress' | 'completed' | 'no_show' | 'cancelled' | 'rescheduled' | 'walk_in' | 'late'
-export type ClaimStatus = 'draft' | 'scrubbing' | 'scrub_failed' | 'ready' | 'submitted' | 'accepted' | 'in_process' | 'paid' | 'partial_pay' | 'denied' | 'appealed' | 'corrected' | 'write_off'
+export type ClaimStatus = 'draft' | 'scrubbing' | 'scrubbed' | 'scrub_failed' | 'ready' | 'submitted' | 'accepted' | 'in_process' | 'paid' | 'partial_pay' | 'denied' | 'appealed' | 'corrected' | 'write_off'
 export type MessageEntityType = 'patient' | 'claim' | 'submission' | 'appointment' | 'general'
 export type TaskStatus = 'open' | 'in_progress' | 'blocked' | 'completed'
 export type Priority = 'low' | 'medium' | 'high' | 'urgent'

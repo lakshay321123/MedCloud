@@ -61,7 +61,11 @@ const pool = new Pool({
   password: process.env.DB_PASS,
   port: 5432,
   max: 10,
-  ssl: { rejectUnauthorized: false },
+  // PRODUCTION: Set DB_SSL=true and provide RDS CA via SSL_CA env var
+  // For Aurora, rejectUnauthorized should be true with the AWS RDS CA bundle
+  ssl: process.env.DB_HOST ? { rejectUnauthorized: process.env.DB_SSL_STRICT !== 'false' } : false,
+  idleTimeoutMillis: 60000,
+  connectionTimeoutMillis: 10000,
 });
 
 // ─── AWS SDK Imports ───────────────────────────────────────────────────────────
@@ -146,6 +150,8 @@ async function list(table, orgId, clientId, extra = '') {
   const params = [orgId];
   if (clientId) { params.push(clientId); q += ` AND client_id = $${params.length}`; }
   if (extra) q += ' ' + extra;
+  // Enforce default LIMIT if caller didn't specify one
+  if (!/LIMIT/i.test(extra)) q += ' LIMIT 1000';
   return (await pool.query(q, params)).rows;
 }
 
@@ -153,13 +159,22 @@ async function getById(table, id) {
   return (await pool.query(`SELECT * FROM ${table} WHERE id = $1`, [id])).rows[0] || null;
 }
 
+// Column name whitelist regex — only allow alphanumeric + underscore
+const SAFE_COL = /^[a-z][a-z0-9_]{0,62}$/i;
+
 async function create(table, data, orgId) {
   data.id = data.id || uuid();
   data.org_id = orgId;
   data.created_at = data.created_at || new Date().toISOString();
   data.updated_at = new Date().toISOString();
-  const keys = Object.keys(data);
-  const vals = Object.values(data);
+  // Strip keys that fail column name validation to prevent SQL injection
+  const safeData = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (SAFE_COL.test(k)) safeData[k] = v;
+    else console.warn(`create(${table}): rejected unsafe column name: ${k}`);
+  }
+  const keys = Object.keys(safeData);
+  const vals = Object.values(safeData);
   const ph = keys.map((_, i) => `$${i + 1}`).join(', ');
   const q = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${ph}) RETURNING *`;
   return (await pool.query(q, vals)).rows[0];
@@ -167,8 +182,19 @@ async function create(table, data, orgId) {
 
 async function update(table, id, data) {
   data.updated_at = new Date().toISOString();
-  const keys = Object.keys(data);
-  const vals = Object.values(data);
+  // Never allow overwriting org_id or id via update body
+  delete data.org_id;
+  delete data.id;
+  // Strip keys that fail column name validation
+  const safeData = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (SAFE_COL.test(k)) safeData[k] = v;
+    else console.warn(`update(${table}): rejected unsafe column name: ${k}`);
+  }
+  const keys = Object.keys(safeData);
+  // updated_at is always added, so if it's the only key there's nothing to update
+  if (keys.length <= 1) return await getById(table, id);
+  const vals = Object.values(safeData);
   const sets = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
   const q = `UPDATE ${table} SET ${sets} WHERE id = $${keys.length + 1} RETURNING *`;
   return (await pool.query(q, [...vals, id])).rows[0];
@@ -280,6 +306,9 @@ async function enrichedPatients(orgId, clientId) {
 // ─── 835 ERA Parser ────────────────────────────────────────────────────────────
 // Parses X12 835 EDI content into structured payment records
 function parse835Content(ediContent) {
+  if (!ediContent || typeof ediContent !== 'string') {
+    return { check_number: '', payer_name: '', payment_date: '', total_paid: 0, claims: [] };
+  }
   const segments = ediContent.split('~').map(s => s.trim()).filter(Boolean);
   const payments = [];
   let currentClaim = null;
@@ -321,8 +350,8 @@ function parse835Content(ediContent) {
       };
     }
 
-    // CAS — Claim-level adjustments
-    if (segId === 'CAS' && currentClaim) {
+    // CAS — Claim-level adjustments (only before any SVC lines)
+    if (segId === 'CAS' && currentClaim && currentClaim.lines.length === 0) {
       const group = els[1]; // CO, PR, OA, PI, CR
       for (let i = 2; i < els.length; i += 3) {
         if (els[i]) {
@@ -1117,6 +1146,7 @@ async function autoPostPayments(eraFileId, orgId, userId) {
 async function parse271Response(eligibilityCheckId, ediContent, orgId, userId) {
   const elig = await getById('eligibility_checks', eligibilityCheckId);
   if (!elig || elig.org_id !== orgId) throw new Error('Eligibility check not found');
+  if (!ediContent || typeof ediContent !== 'string') throw new Error('EDI content is required');
 
   const segments = ediContent.split('~').map(s => s.trim()).filter(Boolean);
   const result = {
@@ -1471,6 +1501,7 @@ async function generate276(claimId, orgId) {
 async function parse277Response(claimId, ediContent, orgId, userId) {
   const claim = await getById('claims', claimId);
   if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
+  if (!ediContent || typeof ediContent !== 'string') throw new Error('EDI content is required');
   const segments = ediContent.split('~').map(s => s.trim()).filter(Boolean);
   const result = { claim_id: claimId, claim_number: claim.claim_number, statuses: [] };
 
@@ -1696,15 +1727,15 @@ async function generate837I(claimId, orgId) {
   // Billing provider (Facility)
   if (provider) {
     edi += `NM1*85*2*${provider.last_name || provider.name || 'FACILITY'}*****XX*${provider.npi || '0000000000'}~\n`;
-    edi += `N3*${provider.address_line1 || '123 MAIN ST'}~\n`;
+    edi += `N3*${provider.address || provider.address_line1 || '123 MAIN ST'}~\n`;
     edi += `N4*${provider.city || 'CITY'}*${provider.state || 'CA'}*${provider.zip || '00000'}~\n`;
     if (provider.tax_id) edi += `REF*EI*${provider.tax_id}~\n`;
   }
 
   // Subscriber / Patient
   if (patient) {
-    edi += `NM1*IL*1*${patient.last_name || ''}*${patient.first_name || ''}****MI*${patient.insurance_member_id || ''}~\n`;
-    edi += `N3*${patient.address_line1 || ''}~\n`;
+    edi += `NM1*IL*1*${patient.last_name || ''}*${patient.first_name || ''}****MI*${patient.member_id || patient.insurance_member_id || ''}~\n`;
+    edi += `N3*${patient.address || patient.address_line1 || ''}~\n`;
     edi += `N4*${patient.city || ''}*${patient.state || ''}*${patient.zip || ''}~\n`;
     edi += `DMG*D8*${(patient.date_of_birth || '19700101').replace(/-/g, '')}*${patient.gender === 'female' ? 'F' : patient.gender === 'male' ? 'M' : 'U'}~\n`;
   }
@@ -1729,7 +1760,7 @@ async function generate837I(claimId, orgId) {
   // Attending physician
   if (provider) {
     edi += `NM1*71*1*${provider.last_name || 'DOC'}*${provider.first_name || ''}****XX*${provider.npi || ''}~\n`;
-    if (provider.taxonomy) edi += `PRV*AT*PXC*${provider.taxonomy}~\n`;
+    if (provider.taxonomy_code || provider.taxonomy) edi += `PRV*AT*PXC*${provider.taxonomy_code || provider.taxonomy}~\n`;
   }
 
   // Principal + secondary diagnoses (HI segments — ICD-10)
@@ -1751,7 +1782,7 @@ async function generate837I(claimId, orgId) {
     const rc = line.revenue_code || '0250'; // 0250 = General pharmacy
     const hcpcs = line.cpt_code || '';
     edi += `LX*${segCount}~\n`;
-    edi += `SV2*${rc}*HC:${hcpcs}*${line.charge_amount || 0}*UN*${line.units || 1}~\n`;
+    edi += `SV2*${rc}*HC:${hcpcs}*${line.charge || 0}*UN*${line.units || 1}~\n`;
     if (line.dos_from) edi += `DTP*472*D8*${line.dos_from.replace(/-/g, '')}~\n`;
   }
 
@@ -1804,9 +1835,10 @@ async function chargeCapture(encounterId, orgId, userId) {
   const client = encounter.client_id ? await getById('clients', encounter.client_id) : null;
   const isUAE = client?.region === 'uae';
 
-  // Call Bedrock for charge extraction
-  const { BedrockRuntimeClient, InvokeModelCommand } = await import('@aws-sdk/client-bedrock-runtime');
-  const bedrock = new BedrockRuntimeClient({ region: BEDROCK_REGION });
+  // Call Bedrock for charge extraction (reuse global client)
+  if (!bedrockClient || !InvokeModelCommand) {
+    throw new Error('Bedrock SDK not available — charge capture requires AI');
+  }
 
   const prompt = `You are a medical charge capture specialist. Extract billable charges from this clinical documentation.
 
@@ -1845,7 +1877,7 @@ Return ONLY valid JSON:
 }`;
 
   try {
-    const resp = await bedrock.send(new InvokeModelCommand({
+    const resp = await bedrockClient.send(new InvokeModelCommand({
       modelId: BEDROCK_MODEL,
       contentType: 'application/json',
       accept: 'application/json',
@@ -1946,17 +1978,15 @@ async function classifyDocument(documentId, orgId) {
   }
 
   // If we have Textract text and no filename match (or low confidence), use Bedrock
-  if (docText.length > 50 && (!classification || confidence < 70)) {
+  if (docText.length > 50 && (!classification || confidence < 70) && bedrockClient && InvokeModelCommand) {
     try {
-      const { BedrockRuntimeClient, InvokeModelCommand } = await import('@aws-sdk/client-bedrock-runtime');
-      const bedrock = new BedrockRuntimeClient({ region: BEDROCK_REGION });
 
       const prompt = `Classify this medical document. Return ONLY JSON: {"type": "<one of: ${DOCUMENT_TYPES.join(', ')}>", "confidence": <0-100>, "key_entities": ["string"]}
 
 Document text:
 ${sanitizeForPrompt(docText)}`;
 
-      const resp = await bedrock.send(new InvokeModelCommand({
+      const resp = await bedrockClient.send(new InvokeModelCommand({
         modelId: BEDROCK_MODEL,
         contentType: 'application/json',
         accept: 'application/json',
@@ -2116,7 +2146,7 @@ async function generatePatientStatement(patientId, orgId) {
     statement_number: statementNumber,
     patient_name: `${patient.first_name || ''} ${patient.last_name || ''}`.trim(),
     patient_address: {
-      line1: patient.address_line1, city: patient.city, state: patient.state, zip: patient.zip,
+      line1: patient.address || patient.address_line1, city: patient.city, state: patient.state, zip: patient.zip,
     },
     statement_date: new Date().toISOString().slice(0, 10),
     lines,
@@ -2178,10 +2208,10 @@ async function triggerSecondaryClaim(claimId, orgId, userId) {
   for (const line of linesR.rows) {
     await pool.query(
       `INSERT INTO claim_lines (id, org_id, claim_id, line_number, cpt_code, modifier,
-        units, charge_amount, dos_from, dos_to, place_of_service, created_at)
+        units, charge, dos_from, dos_to, place_of_service, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())`,
       [uuid(), orgId, newClaimId, line.line_number, line.cpt_code, line.modifier,
-       line.units, line.charge_amount, line.dos_from, line.dos_to, line.place_of_service]
+       line.units, line.charge, line.dos_from, line.dos_to, line.place_of_service]
     );
   }
 
@@ -2547,13 +2577,11 @@ async function generateAppeal(denialId, orgId, userId) {
   const clinicalContext = [
     soap ? `CLINICAL NOTE:\nSubjective: ${sanitizeForPrompt(soap.subjective) || 'N/A'}\nObjective: ${sanitizeForPrompt(soap.objective) || 'N/A'}\nAssessment: ${sanitizeForPrompt(soap.assessment) || 'N/A'}\nPlan: ${sanitizeForPrompt(soap.plan) || 'N/A'}` : '',
     dxR.rows.length ? `DIAGNOSES: ${dxR.rows.map(d => `${d.icd_code} - ${sanitizeForPrompt(d.description) || ''}`).join('; ')}` : '',
-    linesR.rows.length ? `PROCEDURES: ${linesR.rows.map(l => `${l.cpt_code} x${l.units || 1} ($${l.charge_amount || 0})`).join('; ')}` : '',
+    linesR.rows.length ? `PROCEDURES: ${linesR.rows.map(l => `${l.cpt_code} x${l.units || 1} ($${l.charge || l.charges || l.charge_amount || 0})`).join('; ')}` : '',
     callsR.rows.length ? `PRIOR CALLS: ${callsR.rows.map(c => `${c.call_date?.toISOString?.()?.slice(0,10) || 'N/A'}: ${sanitizeForPrompt(c.outcome)} - ${sanitizeForPrompt(c.notes) || ''}`).join(' | ')}` : '',
   ].filter(Boolean).join('\n\n');
 
   // Call Bedrock for appeal letter generation
-  const { BedrockRuntimeClient, InvokeModelCommand } = await import('@aws-sdk/client-bedrock-runtime');
-  const bedrock = new BedrockRuntimeClient({ region: BEDROCK_REGION });
 
   const prompt = `You are a medical billing appeal specialist. Generate a professional appeal letter for a denied claim.
 
@@ -2582,7 +2610,7 @@ Generate a JSON response ONLY:
 }`;
 
   try {
-    const resp = await bedrock.send(new InvokeModelCommand({
+    const resp = await bedrockClient.send(new InvokeModelCommand({
       modelId: BEDROCK_MODEL,
       contentType: 'application/json',
       accept: 'application/json',
@@ -2810,8 +2838,6 @@ async function checkChartCompleteness(encounterId, orgId) {
   let aiAnalysis = null;
   if (completenessScore < 60 && soap) {
     try {
-      const { BedrockRuntimeClient, InvokeModelCommand } = await import('@aws-sdk/client-bedrock-runtime');
-      const bedrock = new BedrockRuntimeClient({ region: BEDROCK_REGION });
 
       const prompt = `Review this clinical note for coding readiness. What specific documentation is missing or insufficient for accurate E/M coding?
 
@@ -2829,7 +2855,7 @@ Return ONLY JSON:
   "coding_ready": boolean
 }`;
 
-      const resp = await bedrock.send(new InvokeModelCommand({
+      const resp = await bedrockClient.send(new InvokeModelCommand({
         modelId: BEDROCK_MODEL,
         contentType: 'application/json',
         accept: 'application/json',
@@ -2887,8 +2913,6 @@ async function extractContractRates(documentId, payerId, orgId, userId) {
 
   const payer = payerId ? await getById('payers', payerId) : null;
 
-  const { BedrockRuntimeClient, InvokeModelCommand } = await import('@aws-sdk/client-bedrock-runtime');
-  const bedrock = new BedrockRuntimeClient({ region: BEDROCK_REGION });
 
   const prompt = `Extract fee schedule / contracted rates from this payer contract document.
 
@@ -2922,7 +2946,7 @@ Return ONLY valid JSON:
 }`;
 
   try {
-    const resp = await bedrock.send(new InvokeModelCommand({
+    const resp = await bedrockClient.send(new InvokeModelCommand({
       modelId: BEDROCK_MODEL,
       contentType: 'application/json',
       accept: 'application/json',
@@ -3994,7 +4018,11 @@ export const handler = async (event) => {
     const method = event.httpMethod || event.requestContext?.http?.method || 'GET';
     const path = event.path || event.rawPath || event.resource || '';
     const rawParams = event.pathParameters || {};
-    const body = event.body ? JSON.parse(event.body) : {};
+    let body = {};
+    if (event.body) {
+      try { body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body; }
+      catch (_) { return respond(400, { error: 'Invalid JSON in request body' }); }
+    }
     const qs = event.queryStringParameters || {};
     const headers = event.headers || {};
 
@@ -4022,6 +4050,8 @@ export const handler = async (event) => {
     // Parse path params (for /:id patterns)
     const pathParts = path.replace(/^\/+|\/+$/g, '').split('/');
     const pathParams = { id: rawParams.id || rawParams.proxy || null };
+    // Strip API Gateway stage prefix (prod/staging) to get resource name
+    const resource = (pathParts[0] === 'prod' || pathParts[0] === 'staging') ? pathParts[1] : pathParts[0];
     // Auto-detect ID from path: /entity/uuid
     if (!pathParams.id && pathParts.length >= 2) {
       const maybeId = pathParts[pathParts.length - 1];
@@ -4043,7 +4073,8 @@ export const handler = async (event) => {
       }
       if (method === 'GET' && pathParams.id) {
         const d = await getById('documents', pathParams.id);
-        return d ? respond(200, d) : respond(404, { error: 'Document not found' });
+        if (!d || d.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
+        return respond(200, d);
       }
       if (method === 'POST') {
         const doc = await create('documents', body, effectiveOrgId);
@@ -4073,10 +4104,11 @@ export const handler = async (event) => {
         // Can get by ID or by encounter_id
         let note = await getById('soap_notes', pathParams.id);
         if (!note) {
-          const r = await pool.query('SELECT * FROM soap_notes WHERE encounter_id = $1 LIMIT 1', [pathParams.id]);
+          const r = await pool.query('SELECT * FROM soap_notes WHERE encounter_id = $1 AND org_id = $2 LIMIT 1', [pathParams.id, effectiveOrgId]);
           note = r.rows[0] || null;
         }
-        return note ? respond(200, note) : respond(404, { error: 'SOAP note not found' });
+        if (!note || note.org_id !== effectiveOrgId) return respond(404, { error: 'SOAP note not found' });
+        return respond(200, note);
       }
       if (method === 'POST') {
         const note = await create('soap_notes', body, effectiveOrgId);
@@ -4101,7 +4133,8 @@ export const handler = async (event) => {
       if (method === 'GET' && !pathParams.id) return respond(200, await enrichedClaims(effectiveOrgId, clientId));
       if (method === 'GET' && pathParams.id) {
         const c = await getById('claims', pathParams.id);
-        return c ? respond(200, c) : respond(404, { error: 'Claim not found' });
+        if (!c || c.org_id !== effectiveOrgId) return respond(404, { error: 'Claim not found' });
+        return respond(200, c);
       }
       if (method === 'POST') {
         body.claim_number = body.claim_number || await nextClaimNumber(effectiveOrgId);
@@ -4111,16 +4144,48 @@ export const handler = async (event) => {
         return respond(201, c);
       }
       if (method === 'PUT' && pathParams.id) {
+        // Prevent bypassing state machine via direct PUT — use /transition endpoint
+        delete body.status;
         const c = await update('claims', pathParams.id, body);
+        await auditLog(effectiveOrgId, userId, 'update', 'claims', pathParams.id, { fields: Object.keys(body) });
         return respond(200, c);
       }
     }
 
-    // Claim transition
+    // Claim transition — with state machine validation (AD-2)
     if (path.includes('/transition') && method === 'POST') {
-      const { status } = body;
-      const c = await update('claims', pathParams.id, { status });
-      await auditLog(effectiveOrgId, userId, 'transition', 'claims', pathParams.id, { new_status: status });
+      const VALID_TRANSITIONS = {
+        'draft':       ['ready', 'scrubbing'],
+        'ready':       ['scrubbing', 'submitted'],
+        'scrubbing':   ['scrubbed', 'scrub_failed'],
+        'scrub_failed':['corrected', 'draft'],
+        'scrubbed':    ['submitted', 'corrected'],
+        'corrected':   ['scrubbing', 'submitted'],
+        'submitted':   ['accepted', 'denied', 'in_process'],
+        'accepted':    ['in_process', 'paid', 'partial_pay', 'denied'],
+        'in_process':  ['paid', 'partial_pay', 'denied'],
+        'denied':      ['appealed', 'corrected', 'write_off'],
+        'appealed':    ['paid', 'partial_pay', 'denied', 'write_off'],
+        'paid':        ['write_off'],
+        'partial_pay': ['paid', 'write_off', 'denied'],
+        'write_off':   [],
+      };
+      const { status: newStatus } = body;
+      if (!newStatus) return respond(400, { error: 'Missing status field' });
+      const claim = await getById('claims', pathParams.id);
+      if (!claim || claim.org_id !== effectiveOrgId) return respond(404, { error: 'Claim not found' });
+      const allowed = VALID_TRANSITIONS[claim.status] || [];
+      if (!allowed.includes(newStatus)) {
+        return respond(422, {
+          error: `Invalid transition: ${claim.status} → ${newStatus}`,
+          allowed_transitions: allowed,
+          current_status: claim.status,
+        });
+      }
+      const c = await update('claims', pathParams.id, { status: newStatus });
+      await auditLog(effectiveOrgId, userId, 'transition', 'claims', pathParams.id, {
+        from: claim.status, to: newStatus,
+      });
       return respond(200, c);
     }
 
@@ -4205,7 +4270,8 @@ export const handler = async (event) => {
       if (method === 'GET' && !pathParams.id) return respond(200, await enrichedDenials(effectiveOrgId, clientId));
       if (method === 'GET' && pathParams.id) {
         const d = await getById('denials', pathParams.id);
-        return d ? respond(200, d) : respond(404, { error: 'Denial not found' });
+        if (!d || d.org_id !== effectiveOrgId) return respond(404, { error: 'Denial not found' });
+        return respond(200, d);
       }
       if (method === 'POST') {
         body.status = body.status || 'new';
@@ -4237,7 +4303,8 @@ export const handler = async (event) => {
       if (method === 'GET' && !pathParams.id) return respond(200, await enrichedCoding(effectiveOrgId, clientId));
       if (method === 'GET' && pathParams.id) {
         const c = await getById('coding_queue', pathParams.id);
-        return c ? respond(200, c) : respond(404, { error: 'Coding item not found' });
+        if (!c || c.org_id !== effectiveOrgId) return respond(404, { error: 'Coding item not found' });
+        return respond(200, c);
       }
       if (method === 'POST') {
         const item = await create('coding_queue', { ...body, status: body.status || 'pending' }, effectiveOrgId);
@@ -4344,7 +4411,8 @@ export const handler = async (event) => {
       }
       if (method === 'GET' && pathParams.id) {
         const fs = await getById('fee_schedules', pathParams.id);
-        return fs ? respond(200, fs) : respond(404, { error: 'Fee schedule entry not found' });
+        if (!fs || fs.org_id !== effectiveOrgId) return respond(404, { error: 'Fee schedule entry not found' });
+        return respond(200, fs);
       }
       if (method === 'POST') {
         const fs = await create('fee_schedules', body, effectiveOrgId);
@@ -4371,7 +4439,8 @@ export const handler = async (event) => {
       }
       if (method === 'GET' && pathParams.id) {
         const e = await getById('era_files', pathParams.id);
-        return e ? respond(200, e) : respond(404, { error: 'ERA file not found' });
+        if (!e || e.org_id !== effectiveOrgId) return respond(404, { error: 'ERA file not found' });
+        return respond(200, e);
       }
       if (method === 'POST') {
         const e = await create('era_files', body, effectiveOrgId);
@@ -4390,7 +4459,8 @@ export const handler = async (event) => {
       if (method === 'GET' && !pathParams.id) return respond(200, await enrichedPayments(effectiveOrgId, clientId));
       if (method === 'GET' && pathParams.id) {
         const p = await getById('payments', pathParams.id);
-        return p ? respond(200, p) : respond(404, { error: 'Payment not found' });
+        if (!p || p.org_id !== effectiveOrgId) return respond(404, { error: 'Payment not found' });
+        return respond(200, p);
       }
       if (method === 'POST') return respond(201, await create('payments', body, effectiveOrgId));
       if (method === 'PUT' && pathParams.id) return respond(200, await update('payments', pathParams.id, body));
@@ -4541,7 +4611,8 @@ export const handler = async (event) => {
       if (method === 'GET' && !pathParams.id) return respond(200, await enrichedPatients(effectiveOrgId, clientId));
       if (method === 'GET' && pathParams.id) {
         const p = await getById('patients', pathParams.id);
-        return p ? respond(200, p) : respond(404, { error: 'Patient not found' });
+        if (!p || p.org_id !== effectiveOrgId) return respond(404, { error: 'Patient not found' });
+        return respond(200, p);
       }
       if (method === 'POST') return respond(201, await create('patients', body, effectiveOrgId));
       if (method === 'PUT' && pathParams.id) return respond(200, await update('patients', pathParams.id, body));
@@ -4582,7 +4653,9 @@ export const handler = async (event) => {
         const exclusions = entitySubRouteExclusions[route] || [];
         if (exclusions.some(ex => path.includes(ex))) continue;
         if (method === 'GET' && !pathParams.id) {
-          return respond(200, await list(table, effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
+          const limit = Math.min(parseInt(qs.limit) || 100, 1000);
+          const offset = parseInt(qs.offset) || 0;
+          return respond(200, await list(table, effectiveOrgId, clientId, `ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`));
         }
         if (method === 'GET' && pathParams.id) {
           const r = await getById(table, pathParams.id);
@@ -4596,7 +4669,15 @@ export const handler = async (event) => {
           return respond(200, await update(table, pathParams.id, body));
         }
         if (method === 'DELETE' && pathParams.id) {
+          // Block delete on immutable entities
+          const IMMUTABLE = ['audit_log', 'edi_transactions'];
+          if (IMMUTABLE.includes(table)) {
+            return respond(403, { error: `Cannot delete from ${route} — immutable entity` });
+          }
+          const existing = await getById(table, pathParams.id);
+          if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
           await pool.query(`DELETE FROM ${table} WHERE id = $1 AND org_id = $2`, [pathParams.id, effectiveOrgId]);
+          await auditLog(effectiveOrgId, userId, 'delete', route, pathParams.id, { table: route });
           return respond(200, { deleted: true });
         }
       }

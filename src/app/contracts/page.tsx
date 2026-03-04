@@ -8,6 +8,7 @@ import { demoContracts } from '@/lib/demo-data'
 import type { DemoContract } from '@/lib/demo-data'
 import { useFeeSchedules, usePayerConfigs, usePayers, useUnderpaymentCheck, useExtractContractRates, useCreateFeeSchedule, useUpdateFeeSchedule } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
+import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import { Scale, Search, AlertTriangle, Edit2, Plus } from 'lucide-react'
 
 const statusStyles: Record<DemoContract['status'], { label: string; className: string }> = {
@@ -37,6 +38,7 @@ function ContractStatusBadge({ status }: { status: DemoContract['status'] }) {
 }
 
 export default function ContractsPage() {
+  const { selectedClient, country } = useApp()
   const { toast } = useToast()
   const { t } = useT()
   const [search, setSearch] = useState('')
@@ -77,7 +79,12 @@ export default function ContractsPage() {
     })
   })()
 
-  const allContracts = apiContracts.length ? apiContracts : demoContracts
+  const allContracts = (apiContracts.length ? apiContracts : demoContracts).filter(c => {
+    if (selectedClient) return c.clientId === selectedClient.id
+    if (country === 'uae') return UAE_ORG_IDS.includes(c.clientId)
+    if (country === 'usa') return US_ORG_IDS.includes(c.clientId)
+    return true
+  })
   const filtered = allContracts.filter(c =>
     !search || c.payer.toLowerCase().includes(search.toLowerCase()) || c.client.toLowerCase().includes(search.toLowerCase())
   )
@@ -97,10 +104,10 @@ export default function ContractsPage() {
     <ModuleShell title="Contract Manager" subtitle="Payer contracts, fee schedules, and underpayment detection">
       {!apiContracts.length && <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-400'><AlertTriangle size={13} className='shrink-0'/>Connecting to live contract data…</div>}
       <div className="grid grid-cols-4 gap-4 mb-5">
-        <KPICard label="Active Contracts" value={activeCount} icon={<Scale size={20}/>} />
-        <KPICard label="Expiring (90 days)" value={expiringSoon} trend="down" />
-        <KPICard label="Underpayment Alerts" value={totalUnderpayments} />
-        <KPICard label="Total Payers" value={allContracts.length} />
+        <KPICard label={t('contracts','activeContracts')} value={activeCount} icon={<Scale size={20}/>} />
+        <KPICard label={t('contracts','expiring90')} value={expiringSoon} trend="down" />
+        <KPICard label={t('contracts','underpayAlerts')} value={totalUnderpayments} />
+        <KPICard label={t('contracts','totalPayers')} value={allContracts.length} />
       </div>
 
       {expiringSoon > 0 && (
