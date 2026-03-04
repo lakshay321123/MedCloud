@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
-import { demoDocs, demoFaxes, DemoDocRecord } from '@/lib/demo-data'
+import { demoFaxes, DemoDocRecord } from '@/lib/demo-data'
 import { useDocuments, useTriggerTextract, useClassifyDocument, useRequestUploadUrl, useCreateDocument, useTextractResults } from '@/lib/hooks'
 import type { ApiDocument } from '@/lib/hooks'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
@@ -158,7 +158,7 @@ function AllDocsTab() {
   const types = ['Superbill','Clinical Note','Insurance Card','EOB','Denial Letter','Contract','Credential','Fax']
   const toggleType = (t: string) => setTypeFilter(p => p.includes(t) ? p.filter(x=>x!==t) : [...p,t])
 
-  const filtered = (apiDocs.length ? apiDocs : demoDocs).filter(d => {
+  const filtered = apiDocs.filter(d => {
     if (d.clientId) {
       if (selectedClient && d.clientId !== selectedClient.id) return false
       if (!selectedClient && country === 'uae' && !UAE_ORG_IDS.includes(d.clientId)) return false
@@ -200,7 +200,15 @@ function AllDocsTab() {
             <th className="text-left px-4 py-3">Date</th><th className="text-left px-4 py-3">Source</th>
             <th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3">Actions</th>
           </tr></thead>
-          <tbody>{filtered.map(d=>(
+          <tbody>{filtered.length === 0 ? (
+            <tr><td colSpan={8}>
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center mb-3"><FileText size={20} className="text-content-tertiary" /></div>
+                <p className="text-sm font-medium text-content-primary mb-1">No documents yet</p>
+                <p className="text-xs text-content-secondary">Upload documents to see them here. Supports superbills, EOBs, insurance cards, and clinical notes.</p>
+              </div>
+            </td></tr>
+          ) : filtered.map(d=>(
             <tr key={d.id} onClick={()=>setSelectedDoc(d)} className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
@@ -241,7 +249,7 @@ function UnlinkedQueueTab() {
     type: d.document_type || 'other', patient: (d as any).patient_name || '—',
     client: (d as any).client_name || '—', status: d.status || 'uploaded',
   })) as any[]
-  const unlinked = (apiDocs2.length ? apiDocs2 : demoDocs).filter((d: any)=>d.status==='Unlinked')
+  const unlinked = apiDocs2.filter((d: any)=>d.status==='Unlinked')
   return (
     <div className="space-y-4">
       <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
@@ -419,6 +427,8 @@ function AIProcessingTab() {
 
   const [triggerDocId, setTriggerDocId] = useState<string | null>(null)
   const triggerTextract = useTriggerTextract(triggerDocId || '')
+  const [classifyDocId, setClassifyDocId] = useState<string | null>(null)
+  const classifyDoc = useClassifyDocument(classifyDocId || '')
 
   async function handleTrigger(docId: string) {
     setTriggerDocId(docId)
@@ -426,6 +436,14 @@ function AIProcessingTab() {
       await triggerTextract.mutate({} as Record<string, never>)
       toast.success('Textract processing started')
     } catch { toast.error('Failed to start Textract') }
+  }
+
+  async function handleClassify(docId: string) {
+    setClassifyDocId(docId)
+    try {
+      const result = await classifyDoc.mutate({} as Record<string, never>)
+      toast.success(`Classified as: ${result?.classification || 'unknown'} (${result?.confidence || 0}% confidence)`)
+    } catch { toast.error('Failed to classify document') }
   }
 
   // Show docs that can be processed (have s3_key but no textract result yet)
@@ -461,10 +479,16 @@ function AIProcessingTab() {
                   <p className="text-xs font-mono">{d.file_name}</p>
                   <p className="text-[10px] text-content-tertiary">{d.document_type} · {d.content_type}</p>
                 </div>
-                <button onClick={() => handleTrigger(d.id)}
-                  className="text-[10px] bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-colors">
-                  Run Textract
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => handleClassify(d.id)}
+                    className="text-[10px] bg-blue-500/10 text-blue-500 px-3 py-1.5 rounded-lg hover:bg-blue-500/20 transition-colors">
+                    AI Classify
+                  </button>
+                  <button onClick={() => handleTrigger(d.id)}
+                    className="text-[10px] bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-colors">
+                    Run Textract
+                  </button>
+                </div>
               </div>
             ))}
           </div>

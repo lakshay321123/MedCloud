@@ -13,7 +13,7 @@ import { useToast } from '@/components/shared/Toast'
 import { useRouter } from 'next/navigation'
 import { useClaims, useScrubClaim, useTransitionClaim, useGenerateEDI,
          useClaimLines, useAddClaimLine, useClaimDiagnoses, useAddClaimDiagnosis,
-         useScrubRules, useCreateClaim, useUpdateClaim, usePredictDenial, useGenerate837I, useTriggerSecondaryClaim, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useParse277, useEDITransactions, useCreateEDITransaction, useScrubResults, useCARCCodes, useRARCCodes } from '@/lib/hooks'
+         useScrubRules, useCreateClaim, useUpdateClaim, usePredictDenial, useGenerate837I, useTriggerSecondaryClaim, useUnderpaymentCheck, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useParse277, useEDITransactions, useCreateEDITransaction, useScrubResults, useCARCCodes, useRARCCodes } from '@/lib/hooks'
 import type { ApiClaim } from '@/lib/hooks'
 import type { ClaimStatus } from '@/types'
 import { ErrorBanner } from '@/components/shared/ApiStates'
@@ -128,6 +128,9 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
   const [localMessages, setLocalMessages] = useState(demoMessages.filter(m => m.entityId === claim.id))
   const [msgInput, setMsgInput] = useState('')
   const [ediOutput, setEdiOutput] = useState<string | null>(null)
+  const [edi837IOutput, setEdi837IOutput] = useState<string | null>(null)
+  const [underpayResult, setUnderpayResult] = useState<{ total_underpaid: number; underpayments: Array<{ cpt_code: string; expected_payment: number; actual_allowed: number; underpaid_amount: number; variance_pct: string }> } | null>(null)
+  const [secondaryResult, setSecondaryResult] = useState<{ secondary_claim_id?: string; claim_number?: string } | null>(null)
 
   // Edit mode state
   const [editMode, setEditMode] = useState(false)
@@ -145,6 +148,9 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
   const { mutate: scrubClaim, loading: scrubbing } = useScrubClaim(claimApiId)
   const { mutate: transitionClaim, loading: transitioning } = useTransitionClaim(claimApiId)
   const { mutate: generateEDI, loading: generatingEDI } = useGenerateEDI(claimApiId)
+  const { mutate: generate837I, loading: generating837I } = useGenerate837I(claimApiId)
+  const { mutate: underpaymentCheck, loading: checkingUnderpay } = useUnderpaymentCheck(claimApiId)
+  const { mutate: triggerSecondary, loading: triggeringSecondary } = useTriggerSecondaryClaim(claimApiId)
   const { data: linesData, refetch: refetchLines } = useClaimLines(claimApiId || null)
   const { data: dxData, refetch: refetchDx } = useClaimDiagnoses(claimApiId || null)
   const { mutate: addLine } = useAddClaimLine(claimApiId)
@@ -249,6 +255,34 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
     if (result?.edi) {
       setEdiOutput(result.edi)
       toast.success('837P EDI generated')
+    }
+  }
+
+  async function handleGenerate837I() {
+    if (!claimApiId) { toast.warning('No API ID — demo claim cannot generate 837I'); return }
+    const result = await generate837I({} as Record<string, never>)
+    if (result?.edi_content) {
+      setEdi837IOutput(result.edi_content)
+      toast.success('837I Institutional EDI generated')
+    }
+  }
+
+  async function handleUnderpaymentCheck() {
+    if (!claimApiId) { toast.warning('No API ID'); return }
+    const result = await underpaymentCheck({} as Record<string, never>)
+    if (result) {
+      setUnderpayResult(result as typeof underpayResult)
+      toast.success(result.total_underpaid > 0 ? `Underpayment detected: $${result.total_underpaid.toFixed(2)}` : 'No underpayment detected')
+    }
+  }
+
+  async function handleTriggerSecondary() {
+    if (!claimApiId) { toast.warning('No API ID'); return }
+    const result = await triggerSecondary({} as Record<string, never>)
+    if (result) {
+      setSecondaryResult(result as typeof secondaryResult)
+      toast.success(`Secondary claim created: ${result.claim_number || result.secondary_claim_id}`)
+      onRefetch?.()
     }
   }
 
@@ -510,10 +544,41 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                     </>
                   )}
                   {claim.status === 'paid' && <button onClick={statusAction} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium">View Payment</button>}
+                  {(claim.status === 'paid' || claim.status === 'partial_pay') && (
+                    <>
+                      <button onClick={handleUnderpaymentCheck} disabled={checkingUnderpay} className="w-full bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{checkingUnderpay ? 'Checking…' : 'Check Underpayment'}</button>
+                      <button onClick={handleTriggerSecondary} disabled={triggeringSecondary} className="w-full bg-blue-500/10 border border-blue-500/30 text-blue-600 rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{triggeringSecondary ? 'Creating…' : 'File Secondary Claim'}</button>
+                    </>
+                  )}
+                  <button onClick={handleGenerate837I} disabled={generating837I} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generating837I ? 'Generating…' : 'Generate 837I Institutional'}</button>
                   {ediOutput && (
                     <div className="mt-2">
                       <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-1">Generated 837P EDI</p>
                       <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[10px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{ediOutput}</pre>
+                    </div>
+                  )}
+                  {edi837IOutput && (
+                    <div className="mt-2">
+                      <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-1">Generated 837I Institutional EDI</p>
+                      <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[10px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{edi837IOutput}</pre>
+                    </div>
+                  )}
+                  {underpayResult && (
+                    <div className="mt-2 p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                      <p className="text-[11px] uppercase tracking-wider text-amber-600 font-semibold mb-1">Underpayment Analysis</p>
+                      <p className="text-[13px] font-semibold text-content-primary">Total Underpaid: <span className={underpayResult.total_underpaid > 0 ? 'text-red-500' : 'text-emerald-500'}>${underpayResult.total_underpaid.toFixed(2)}</span></p>
+                      {underpayResult.underpayments?.map((u, i) => (
+                        <div key={i} className="flex justify-between text-[11px] text-content-secondary mt-1">
+                          <span>{u.cpt_code}</span>
+                          <span>Expected ${u.expected_payment} → Got ${u.actual_allowed} ({u.variance_pct})</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {secondaryResult && (
+                    <div className="mt-2 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
+                      <p className="text-[11px] uppercase tracking-wider text-blue-600 font-semibold mb-1">Secondary Claim Filed</p>
+                      <p className="text-[13px] text-content-primary">Claim #{secondaryResult.claim_number || secondaryResult.secondary_claim_id}</p>
                     </div>
                   )}
                 </div>
