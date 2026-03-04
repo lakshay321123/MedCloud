@@ -8,7 +8,15 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
-import { demoVisits, demoPatients, demoAppointments, DemoVisit } from '@/lib/demo-data'
+// Visit type (was DemoVisit from demo-data, now local)
+interface DemoVisit {
+  id: string; patientId: string; patientName: string; dos: string
+  provider: string; encounterType: string; status: string
+  soap: { s: string; o: string; a: string; p: string }
+  suggestedCodes: Array<{ cpt?: string; icd?: string; confidence: number; description?: string; modifiers?: string[] }>
+  transcript?: string
+  apiId?: string
+}
 import {
   Mic, Square, Check, ChevronLeft, BrainCircuit, Clock,
   FileText, Activity, AlertTriangle, Loader2, Sparkles,

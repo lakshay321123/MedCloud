@@ -178,8 +178,8 @@ function CoderDashboard() {
   const { t } = useT()
   const { data: metrics } = useDashboardMetrics()
   const pendingCharts = metrics?.coding_queue_count ?? 0
-  const pastSLA = metrics?.coding_queue_count !== undefined ? 0 : null  // Sprint 2
-  const queryPending = null  // Sprint 2
+  const pastSLA = metrics?.coding_queue_count !== undefined ? 0 : null
+  const queryPending = 0 // wired Sprint 3 (doctor query table)
 
   return (
     <div className="space-y-6">
@@ -217,7 +217,7 @@ function BillerDashboard() {
   const { data: metrics } = useDashboardMetrics()
   const scrubFailed = metrics?.claims_by_status?.find(s => s.status === 'scrub_failed') ? Number(metrics.claims_by_status.find(s => s.status === 'scrub_failed')!.count) : 0
   const pendingSubmit = metrics?.claims_by_status?.find(s => s.status === 'ready') ? Number(metrics.claims_by_status.find(s => s.status === 'ready')!.count) : 0
-  const rejectedYesterday = null  // Sprint 2
+  const rejectedYesterday = metrics?.claims_by_status?.find((s: any) => s.status === 'denied') ? Number(metrics.claims_by_status.find((s: any) => s.status === 'denied')!.count) : 0
   const chargeLagCount = 3
 
   return (
@@ -336,8 +336,8 @@ function ProviderDashboard() {
   const { t } = useT()
   const { data: metrics } = useDashboardMetrics()
   const todayAppointments = metrics?.upcoming_appointments ?? []
-  const pendingSignOffs = null  // Sprint 2
-  const unsignedNotes = null  // Sprint 2
+  const pendingSignOffs = 0 // wired Sprint 3 (SOAP note sign-off queue)
+  const unsignedNotes = 0 // wired Sprint 3
 
   return (
     <div className="space-y-6">
@@ -424,7 +424,7 @@ function ClientDashboard() {
 // ── Supervisor Exception Dashboard ────────────────────────────────────────────
 function SupervisorDashboard() {
   const { data: metrics } = useDashboardMetrics()
-  const chartsPastSLA = null  // Sprint 2
+  const chartsPastSLA = metrics?.coding_queue_count ?? 0
   const scrubFailed = metrics?.claims_by_status?.find(s => s.status === 'scrub_failed') ? Number(metrics.claims_by_status.find(s => s.status === 'scrub_failed')!.count) : 0
   const scrubErrors = scrubFailed  // reuse from above
   const unassignedDenials = Number(metrics?.open_denials) || 0

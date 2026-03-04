@@ -777,7 +777,7 @@ async function ingest835(eraFileId, ediContent, orgId, clientId, userId) {
       check_number: parsed.check_number,
       payment_date: parsed.payment_date || new Date().toISOString(),
       status: matchedClaim ? 'pending' : 'unmatched',
-      billed_amount: clp.total_charge,
+      billed_amount: clp.total_charges,
       patient_responsibility: clp.patient_responsibility,
       action: 'pending',
       adj_reason_code: clp.adjustments.map(a => `${a.group_code}-${a.reason_code}`).join(','),
@@ -819,7 +819,7 @@ async function ingest835(eraFileId, ediContent, orgId, clientId, userId) {
           client_id: clientId,
           claim_id: matchedClaim.id,
           carc_code: primaryAdj.reason_code,
-          amount: clp.total_charge,
+          amount: clp.total_charges,
           status: 'new',
           denial_date: parsed.payment_date || new Date().toISOString(),
           source: 'era_835',
@@ -880,9 +880,9 @@ async function generateDHAeClaim(claimId, orgId) {
     <PayerID>${escXml(claim.payer_id)}</PayerID>
     <ProviderID>${escXml(provider?.npi)}</ProviderID>
     <EmiratesIDNumber>${escXml(patient?.emirates_id)}</EmiratesIDNumber>
-    <Gross>${escXml(claim.total_charge || 0)}</Gross>
+    <Gross>${escXml(claim.total_charges || 0)}</Gross>
     <PatientShare>0</PatientShare>
-    <Net>${escXml(claim.total_charge || 0)}</Net>
+    <Net>${escXml(claim.total_charges || 0)}</Net>
     <Encounter>
       <FacilityID>COSENTUS-UAE</FacilityID>
       <Type>${claim.claim_type === '837I' ? 'INPATIENT' : 'OUTPATIENT'}</Type>
@@ -974,7 +974,7 @@ async function generateEDI(claimId, orgId) {
   }
 
   // Claim info
-  edi += `CLM*${claim.claim_number || claimId.slice(0, 8)}*${claim.total_charge || 0}***${claim.pos || '11'}:B:1*Y*A*Y*Y~\n`;
+  edi += `CLM*${claim.claim_number || claimId.slice(0, 8)}*${claim.total_charges || 0}***${claim.pos || '11'}:B:1*Y*A*Y*Y~\n`;
 
   // Diagnoses (HI segment)
   if (dxR.rows.length > 0) {
@@ -1034,7 +1034,7 @@ async function scrubClaim(claimId, orgId, userId) {
   check('npi_present', 'Provider/NPI present', 'error', !!claim.provider_id, 'Provider/NPI missing');
   check('payer_linked', 'Payer linked to claim', 'error', !!claim.payer_id, 'No payer linked');
   check('patient_linked', 'Patient linked to claim', 'error', !!claim.patient_id, 'No patient linked');
-  check('total_positive', 'Total charge is positive', 'error', claim.total_charge && Number(claim.total_charge) > 0, 'Total charge is zero or negative');
+  check('total_positive', 'Total charge is positive', 'error', claim.total_charges && Number(claim.total_charges) > 0, 'Total charge is zero or negative');
   check('claim_type', 'Valid claim type', 'error', ['837P', '837I', 'DHA'].includes(claim.claim_type), 'Invalid claim type');
   check('primary_dx', 'Primary diagnosis exists', 'error', !!dxCodes.find(d => d.sequence === 1), 'No primary diagnosis (sequence=1)');
 
@@ -1056,7 +1056,7 @@ async function scrubClaim(claimId, orgId, userId) {
     'Service line DOS after claim DOS end');
   const totalCalc = lines.reduce((s, l) => s + Number(l.charge || 0) * Number(l.units || 1), 0);
   check('total_matches_lines', 'Total charge matches line sum', 'warning',
-    Math.abs(totalCalc - Number(claim.total_charge || 0)) < 0.02, `Total charge ${claim.total_charge} doesn't match line sum ${totalCalc.toFixed(2)}`);
+    Math.abs(totalCalc - Number(claim.total_charges || 0)) < 0.02, `Total charge ${claim.total_charges} doesn't match line sum ${totalCalc.toFixed(2)}`);
   check('pos_valid', 'Place of service valid', 'warning',
     !claim.pos || ['11','12','21','22','23','24','31','32','33','41','42','49','50','51','52','53','61','65','71','72','81','99'].includes(claim.pos),
     `Unrecognized POS code: ${claim.pos}`);
@@ -2210,7 +2210,7 @@ async function detectUnderpayments(claimId, orgId, userId) {
     claim_id: claimId,
     claim_number: claim.claim_number,
     payer_id: claim.payer_id,
-    total_billed: Number(claim.total_charge) || 0,
+    total_billed: Number(claim.total_charges) || 0,
     total_paid: Number(payment.amount_paid) || 0,
     underpayments: [],
     total_underpaid: 0,
@@ -2366,7 +2366,7 @@ async function predictDenial(claimId, orgId, userId) {
   if (dupR.rows.length > 0) { riskScore += 20; risks.push({ category: 'duplicate', score: 20, detail: `Possible duplicates: ${dupR.rows.map(r => r.claim_number).join(', ')}` }); }
 
   // 7. High-dollar flag
-  if (Number(claim.total_charge) > 10000) { riskScore += 5; risks.push({ category: 'high_dollar', score: 5, detail: `$${claim.total_charge} — payers often review manually` }); }
+  if (Number(claim.total_charges) > 10000) { riskScore += 5; risks.push({ category: 'high_dollar', score: 5, detail: `$${claim.total_charges} — payers often review manually` }); }
 
   riskScore = Math.min(100, riskScore);
   const riskLevel = riskScore >= 60 ? 'high' : riskScore >= 30 ? 'medium' : 'low';
@@ -2379,7 +2379,7 @@ async function predictDenial(claimId, orgId, userId) {
       const claimLines = linesR.rows.map(l => `${l.cpt_code}${l.modifier ? '-'+l.modifier : ''} x${l.units||1} $${l.charge||0}`).join(', ');
       const aiPrompt = `You are a denial prevention specialist. A claim has been flagged with a ${riskLevel.toUpperCase()} denial risk score of ${riskScore}/100.
 
-CLAIM: #${claim.claim_number || 'N/A'}, DOS: ${claim.dos_from || 'N/A'}, Total: $${claim.total_charge || 0}
+CLAIM: #${claim.claim_number || 'N/A'}, DOS: ${claim.dos_from || 'N/A'}, Total: $${claim.total_charges || 0}
 PAYER: ${claim.payer_id ? 'Payer on file' : 'Unknown'}
 PROCEDURES: ${claimLines || 'None listed'}
 
@@ -2447,7 +2447,7 @@ async function generate276(claimId, orgId) {
   edi += `TRN*1*${claim.claim_number || claimId.slice(0, 12)}*COSENTUS~\n`;
   if (claim.payer_claim_number) edi += `REF*1K*${claim.payer_claim_number}~\n`;
   edi += `DTP*472*RD8*${(claim.dos_from || '').replace(/-/g, '')}-${(claim.dos_to || claim.dos_from || '').replace(/-/g, '')}~\n`;
-  edi += `AMT*T3*${claim.total_charge || 0}~\n`;
+  edi += `AMT*T3*${claim.total_charges || 0}~\n`;
   const segCount = edi.split('~').filter(Boolean).length;
   edi += `SE*${segCount + 1}*0001~\n`;
   edi += `GE*1*${ctrlNum}~\n`;
@@ -2502,7 +2502,7 @@ async function parse277Response(claimId, ediContent, orgId, userId) {
     // Auto-create denial record
     if (['A3','R0','R1','R3','F1'].includes(c)) {
       await create('denials', { org_id: orgId, client_id: claim.client_id, claim_id: claimId,
-        amount: claim.total_charge, status: 'new', denial_date: new Date().toISOString(), source: 'claim_status_277' }, orgId);
+        amount: claim.total_charges, status: 'new', denial_date: new Date().toISOString(), source: 'claim_status_277' }, orgId);
     }
   }
   result.new_claim_status = newStatus;
@@ -2524,26 +2524,26 @@ async function getAnalyticsKPIs(orgId, clientId, dateRange) {
 
   const [claimStats, denialBreak, payStats, arAging, payerPerf, codingStats] = await Promise.all([
     pool.query(`SELECT COUNT(*)::int AS total, SUM(CASE WHEN status NOT IN ('scrub_failed','denied') THEN 1 ELSE 0 END)::int AS clean,
-      SUM(total_charge)::numeric AS billed, SUM(CASE WHEN status='paid' THEN 1 ELSE 0 END)::int AS paid_ct,
+      SUM(total_charges)::numeric AS billed, SUM(CASE WHEN status='paid' THEN 1 ELSE 0 END)::int AS paid_ct,
       SUM(CASE WHEN status='denied' THEN 1 ELSE 0 END)::int AS denied_ct FROM claims WHERE org_id = $1${cf}${df}`, params),
-    pool.query(`SELECT COALESCE(carc_code,'unknown') AS carc, COUNT(*)::int AS cnt, SUM(amount)::numeric AS amt
+    pool.query(`SELECT COALESCE(carc_code,'unknown') AS carc, COUNT(*)::int AS cnt, SUM(denied_amount)::numeric AS amt
       FROM denials WHERE org_id = $1${cf}${df} GROUP BY carc_code ORDER BY cnt DESC LIMIT 20`, params),
-    pool.query(`SELECT COUNT(*)::int AS total, SUM(amount_paid)::numeric AS collected,
-      SUM(CASE WHEN action='posted' THEN amount_paid ELSE 0 END)::numeric AS auto_posted
-      FROM payments WHERE org_id = $1 AND status != 'line_detail'${cf}${df}`, params),
+    pool.query(`SELECT COUNT(*)::int AS total, SUM(paid)::numeric AS collected,
+      SUM(CASE WHEN action='posted' THEN paid ELSE 0 END)::numeric AS auto_posted
+      FROM payments WHERE org_id = $1${cf}${df}`, params),
     pool.query(`SELECT
-      SUM(CASE WHEN NOW()-dos_from <= '30 days'::interval THEN total_charge ELSE 0 END)::numeric AS b0_30,
-      SUM(CASE WHEN NOW()-dos_from > '30 days'::interval AND NOW()-dos_from <= '60 days'::interval THEN total_charge ELSE 0 END)::numeric AS b31_60,
-      SUM(CASE WHEN NOW()-dos_from > '60 days'::interval AND NOW()-dos_from <= '90 days'::interval THEN total_charge ELSE 0 END)::numeric AS b61_90,
-      SUM(CASE WHEN NOW()-dos_from > '90 days'::interval AND NOW()-dos_from <= '120 days'::interval THEN total_charge ELSE 0 END)::numeric AS b91_120,
-      SUM(CASE WHEN NOW()-dos_from > '120 days'::interval THEN total_charge ELSE 0 END)::numeric AS b120_plus
+      SUM(CASE WHEN NOW()-dos_from <= '30 days'::interval THEN total_charges ELSE 0 END)::numeric AS b0_30,
+      SUM(CASE WHEN NOW()-dos_from > '30 days'::interval AND NOW()-dos_from <= '60 days'::interval THEN total_charges ELSE 0 END)::numeric AS b31_60,
+      SUM(CASE WHEN NOW()-dos_from > '60 days'::interval AND NOW()-dos_from <= '90 days'::interval THEN total_charges ELSE 0 END)::numeric AS b61_90,
+      SUM(CASE WHEN NOW()-dos_from > '90 days'::interval AND NOW()-dos_from <= '120 days'::interval THEN total_charges ELSE 0 END)::numeric AS b91_120,
+      SUM(CASE WHEN NOW()-dos_from > '120 days'::interval THEN total_charges ELSE 0 END)::numeric AS b120_plus
       FROM claims WHERE org_id = $1 AND status NOT IN ('paid','write_off','draft')${cf}`, params),
     pool.query(`SELECT py.name, COUNT(c.id)::int AS total, SUM(CASE WHEN c.status='paid' THEN 1 ELSE 0 END)::int AS paid,
-      SUM(CASE WHEN c.status='denied' THEN 1 ELSE 0 END)::int AS denied, SUM(c.total_charge)::numeric AS billed
+      SUM(CASE WHEN c.status='denied' THEN 1 ELSE 0 END)::int AS denied, SUM(c.total_charges)::numeric AS billed
       FROM claims c JOIN payers py ON c.payer_id = py.id WHERE c.org_id = $1${cf}${df}
       GROUP BY py.name ORDER BY billed DESC LIMIT 15`, params),
     pool.query(`SELECT COUNT(*)::int AS total, SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END)::int AS completed,
-      SUM(CASE WHEN coding_method IN ('ai_auto','ai_assisted') THEN 1 ELSE 0 END)::int AS ai_coded
+      SUM(CASE WHEN source IN ('ai_auto','ai_assisted') THEN 1 ELSE 0 END)::int AS ai_coded
       FROM coding_queue WHERE org_id = $1${cf}${df}`, params),
   ]);
 
@@ -2706,7 +2706,7 @@ async function generate837I(claimId, orgId) {
   const admitType = claim.admit_type || '1'; // 1=Emergency, 2=Urgent, 3=Elective
   const admitSource = claim.admit_source || '1'; // 1=Physician referral
   const patientStatus = claim.patient_status || '01'; // 01=Discharged home
-  edi += `CLM*${claim.claim_number}*${claim.total_charge || 0}***${typeOfBill}:B:1*Y*A*Y*Y~\n`;
+  edi += `CLM*${claim.claim_number}*${claim.total_charges || 0}***${typeOfBill}:B:1*Y*A*Y*Y~\n`;
 
   // Admission date (DTP*435) and discharge date (DTP*096)
   edi += `DTP*435*D8*${(claim.dos_from || dateStr).replace(/-/g, '')}~\n`;
@@ -2869,7 +2869,7 @@ Return ONLY valid JSON:
     // Store results
     await pool.query(
       `INSERT INTO charge_captures (id, org_id, client_id, encounter_id, patient_id, provider_id,
-        dos, charges_json, diagnoses_json, em_level, total_charge, ai_confidence, status, created_at)
+        dos, charges_json, diagnoses_json, em_level, total_charges, ai_confidence, status, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending_review', NOW())`,
       [uuid(), orgId, encounter.client_id, encounterId, encounter.patient_id, encounter.provider_id,
        encounter.encounter_date, JSON.stringify(charges.charges || []),
@@ -3109,7 +3109,7 @@ async function generatePatientStatement(patientId, orgId) {
 
   // Find all claims with patient responsibility
   const claimsR = await pool.query(
-    `SELECT c.id, c.claim_number, c.dos_from, c.dos_to, c.total_charge, c.status,
+    `SELECT c.id, c.claim_number, c.dos_from, c.dos_to, c.total_charges, c.status,
             p.name AS payer_name, c.patient_responsibility, c.allowed_amount
      FROM claims c
      LEFT JOIN payers p ON c.payer_id = p.id
@@ -3132,7 +3132,7 @@ async function generatePatientStatement(patientId, orgId) {
     claim_number: c.claim_number,
     dos: c.dos_from,
     description: `Services ${c.dos_from || 'N/A'}`,
-    total_charge: Number(c.total_charge || 0),
+    total_charge: Number(c.total_charges || 0),
     insurance_paid: Number(c.allowed_amount || 0) - Number(c.patient_responsibility || 0),
     patient_responsibility: Number(c.patient_responsibility || 0),
     payer: c.payer_name,
@@ -3152,7 +3152,7 @@ async function generatePatientStatement(patientId, orgId) {
       line_items, status, created_at)
      VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9, $10, 'generated', NOW())`,
     [statementId, orgId, patient.client_id, patientId, statementNumber,
-     lines.reduce((s, l) => s + l.total_charge, 0),
+     lines.reduce((s, l) => s + l.total_charges, 0),
      lines.reduce((s, l) => s + l.insurance_paid, 0),
      totalPaid, balanceDue, JSON.stringify(lines)]
   );
@@ -3209,13 +3209,13 @@ async function triggerSecondaryClaim(claimId, orgId, userId) {
 
   await pool.query(
     `INSERT INTO claims (id, org_id, client_id, patient_id, provider_id, payer_id,
-      claim_number, claim_type, dos_from, dos_to, total_charge, status,
+      claim_number, claim_type, dos_from, dos_to, total_charges, status,
       primary_claim_id, primary_payer_paid, primary_allowed_amount,
       billing_sequence, created_at, updated_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'draft', $12, $13, $14, 'secondary', NOW(), NOW())`,
     [newClaimId, orgId, claim.client_id, claim.patient_id, claim.provider_id,
      patient.secondary_payer_id, claimNumber, claim.claim_type,
-     claim.dos_from, claim.dos_to, claim.total_charge,
+     claim.dos_from, claim.dos_to, claim.total_charges,
      claimId, primaryPaid, primaryAllowed]
   );
 
@@ -3253,7 +3253,7 @@ async function triggerSecondaryClaim(claimId, orgId, userId) {
     primary_claim_id: claimId,
     secondary_payer_id: patient.secondary_payer_id,
     primary_paid: primaryPaid,
-    remaining_charge: Number(claim.total_charge) - primaryPaid,
+    remaining_charge: Number(claim.total_charges) - primaryPaid,
     status: 'draft',
     next_step: 'Run scrubbing, then submit to secondary payer',
   };
@@ -3340,7 +3340,7 @@ async function generateReport(reportType, orgId, clientId, params) {
     // ── AR Aging Report ─────────────────────────────────────────────────────
     ar_aging: async () => {
       const r = await pool.query(
-        `SELECT c.claim_number, c.dos_from, c.total_charge, c.status,
+        `SELECT c.claim_number, c.dos_from, c.total_charges, c.status,
                 p.first_name || ' ' || p.last_name AS patient_name,
                 py.name AS payer_name,
                 EXTRACT(DAY FROM NOW() - c.dos_from)::int AS age_days
@@ -3357,14 +3357,14 @@ async function generateReport(reportType, orgId, clientId, params) {
         columns: ['claim_number','patient_name','payer_name','dos_from','total_charge','age_days','status'],
         rows: r.rows,
         summary: {
-          total_ar: r.rows.reduce((s, r) => s + Number(r.total_charge || 0), 0),
+          total_ar: r.rows.reduce((s, r) => s + Number(r.total_charges || 0), 0),
           count: r.rows.length,
           buckets: {
-            '0-30': r.rows.filter(r => r.age_days <= 30).reduce((s, r) => s + Number(r.total_charge || 0), 0),
-            '31-60': r.rows.filter(r => r.age_days > 30 && r.age_days <= 60).reduce((s, r) => s + Number(r.total_charge || 0), 0),
-            '61-90': r.rows.filter(r => r.age_days > 60 && r.age_days <= 90).reduce((s, r) => s + Number(r.total_charge || 0), 0),
-            '91-120': r.rows.filter(r => r.age_days > 90 && r.age_days <= 120).reduce((s, r) => s + Number(r.total_charge || 0), 0),
-            '120+': r.rows.filter(r => r.age_days > 120).reduce((s, r) => s + Number(r.total_charge || 0), 0),
+            '0-30': r.rows.filter(r => r.age_days <= 30).reduce((s, r) => s + Number(r.total_charges || 0), 0),
+            '31-60': r.rows.filter(r => r.age_days > 30 && r.age_days <= 60).reduce((s, r) => s + Number(r.total_charges || 0), 0),
+            '61-90': r.rows.filter(r => r.age_days > 60 && r.age_days <= 90).reduce((s, r) => s + Number(r.total_charges || 0), 0),
+            '91-120': r.rows.filter(r => r.age_days > 90 && r.age_days <= 120).reduce((s, r) => s + Number(r.total_charges || 0), 0),
+            '120+': r.rows.filter(r => r.age_days > 120).reduce((s, r) => s + Number(r.total_charges || 0), 0),
           },
         },
       };
@@ -3477,8 +3477,8 @@ async function generateReport(reportType, orgId, clientId, params) {
                 COUNT(c.id) AS total_claims,
                 COUNT(c.id) FILTER (WHERE c.status = 'paid') AS paid,
                 COUNT(c.id) FILTER (WHERE c.status IN ('denied','appealed')) AS denied,
-                COALESCE(SUM(c.total_charge), 0) AS total_billed,
-                COALESCE(SUM(CASE WHEN c.status = 'paid' THEN c.total_charge END), 0) AS total_paid,
+                COALESCE(SUM(c.total_charges), 0) AS total_billed,
+                COALESCE(SUM(CASE WHEN c.status = 'paid' THEN c.total_charges END), 0) AS total_paid,
                 ROUND(AVG(EXTRACT(DAY FROM COALESCE(c.paid_at, NOW()) - c.submitted_at))::numeric, 1) AS avg_days_to_pay
          FROM claims c
          LEFT JOIN payers py ON c.payer_id = py.id
@@ -4194,7 +4194,7 @@ async function reconcilePayments(eraFileId, orgId, userId) {
 
   // Get all payments from this ERA
   const paymentsR = await pool.query(
-    `SELECT p.*, c.claim_number, c.total_charge, c.status AS claim_status,
+    `SELECT p.*, c.claim_number, c.total_charges, c.status AS claim_status,
             c.dos_from, c.patient_id, c.payer_id
      FROM payments p
      LEFT JOIN claims c ON p.claim_id = c.id
@@ -4371,7 +4371,7 @@ async function requestWriteOff(body, orgId, userId) {
   const claim = await getById('claims', claim_id);
   if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
 
-  const writeOffAmount = amount || Number(claim.total_charge || 0);
+  const writeOffAmount = amount || Number(claim.total_charges || 0);
 
   // Tiered approval logic
   let approvalRequired = 'none';
@@ -4645,14 +4645,14 @@ async function calculateTimelyFilingDeadlines(orgId, clientId) {
 // ─── Credit Balance Identification ──────────────────────────────────────────
 async function identifyCreditBalances(orgId, clientId) {
   let q = `SELECT c.id as claim_id, c.claim_number, c.patient_id, c.payer_id,
-            c.total_charge, c.total_paid, c.adjustment_amount,
+            c.total_charges, c.total_paid, c.adjustment_amount,
             p.first_name || ' ' || p.last_name as patient_name, py.name as payer_name,
-            (c.total_paid - (c.total_charge - COALESCE(c.adjustment_amount, 0))) as overpayment
+            (c.total_paid - (c.total_charges - COALESCE(c.adjustment_amount, 0))) as overpayment
            FROM claims c JOIN patients p ON c.patient_id = p.id JOIN payers py ON c.payer_id = py.id
-           WHERE c.org_id = $1 AND c.total_paid > (c.total_charge - COALESCE(c.adjustment_amount, 0)) AND c.total_paid > 0`;
+           WHERE c.org_id = $1 AND c.total_paid > (c.total_charges - COALESCE(c.adjustment_amount, 0)) AND c.total_paid > 0`;
   const params = [orgId];
   if (clientId) { q += ` AND c.client_id = $${params.length + 1}`; params.push(clientId); }
-  q += ' ORDER BY (c.total_paid - (c.total_charge - COALESCE(c.adjustment_amount, 0))) DESC';
+  q += ' ORDER BY (c.total_paid - (c.total_charges - COALESCE(c.adjustment_amount, 0))) DESC';
   const r = await pool.query(q, params);
   // Batch-load existing unresolved credit balances to avoid N+1 queries
   const existingR = await pool.query(
@@ -4773,7 +4773,7 @@ async function calculateClientHealth(orgId, clientId) {
   const cleanRate = cleanR.rows[0].total > 0 ? (cleanR.rows[0].clean / cleanR.rows[0].total) * 100 : 50;
 
   const collR = await pool.query(
-    `SELECT SUM(total_paid) as collected, SUM(total_charge) as charged
+    `SELECT SUM(total_paid) as collected, SUM(total_charges) as charged
      FROM claims WHERE org_id = $1 AND client_id = $2 AND status = 'paid'
      AND created_at > NOW() - INTERVAL '90 days'`, [orgId, cid]);
   const collectionRate = Number(collR.rows[0].charged) > 0
@@ -5899,19 +5899,67 @@ export const handler = async (event) => {
 
       const [claims, denials, payments, tasks, eligibility] = await Promise.all([
         pool.query(`SELECT status, COUNT(*)::int as count, SUM(total_charges)::numeric as total FROM claims WHERE org_id = $1${cf} GROUP BY status`, pClient),
-        // denials joined with claims for client filter; use explicit aliases
         pool.query(`SELECT d.status AS status, COUNT(*)::int as count FROM denials d LEFT JOIN claims c ON d.claim_id = c.id WHERE d.org_id = $1${cfJoin} GROUP BY d.status`, pClient),
         pool.query(`SELECT action AS status, COUNT(*)::int as count, SUM(paid)::numeric as total FROM payments WHERE org_id = $1${cf} GROUP BY action`, pClient),
         pool.query(`SELECT status, COUNT(*)::int as count FROM tasks WHERE org_id = $1${cf} GROUP BY status`, pClient),
-        pool.query(`SELECT COUNT(*)::int as total, SUM(CASE WHEN result='active' THEN 1 ELSE 0 END)::int as active FROM eligibility_checks WHERE org_id = $1${cf}`, pClient),
+        pool.query(`SELECT COUNT(*)::int as total, SUM(CASE WHEN coverage_status='active' THEN 1 ELSE 0 END)::int as active FROM eligibility_checks WHERE org_id = $1${cf}`, pClient),
       ]);
 
+      // Reshape to match frontend useDashboardMetrics expectations
+      const claimsRows = claims.rows;
+      const totalClaims = claimsRows.reduce((s, r) => s + Number(r.count), 0);
+      const totalBilled = claimsRows.reduce((s, r) => s + Number(r.total || 0), 0);
+      const openDenials = denials.rows.filter(r => r.status !== 'resolved' && r.status !== 'paid').reduce((s, r) => s + Number(r.count), 0);
+      const totalCollected = payments.rows.reduce((s, r) => s + Number(r.total || 0), 0);
+
+      // AR aging from claims - cast total_charges to numeric for SUM
+      const arAging = await pool.query(`SELECT
+        SUM(CASE WHEN NOW()-dos_from <= interval '30 days' THEN total_charges::numeric ELSE 0 END)::int AS bucket_0_30,
+        SUM(CASE WHEN NOW()-dos_from > interval '30 days' AND NOW()-dos_from <= interval '60 days' THEN total_charges::numeric ELSE 0 END)::int AS bucket_31_60,
+        SUM(CASE WHEN NOW()-dos_from > interval '60 days' AND NOW()-dos_from <= interval '90 days' THEN total_charges::numeric ELSE 0 END)::int AS bucket_61_90,
+        SUM(CASE WHEN NOW()-dos_from > interval '90 days' AND NOW()-dos_from <= interval '120 days' THEN total_charges::numeric ELSE 0 END)::int AS bucket_91_120,
+        SUM(CASE WHEN NOW()-dos_from > interval '120 days' THEN total_charges::numeric ELSE 0 END)::int AS bucket_120_plus
+        FROM claims WHERE org_id = $1 AND status NOT IN ('paid','write_off','draft')`, [effectiveOrgId]);
+
+      // Recent claims with patient names
+      const recentClaims = await pool.query(`SELECT c.id, c.claim_number, c.status, c.total_charges, c.dos_from,
+        p.first_name, p.last_name FROM claims c LEFT JOIN patients p ON p.id = c.patient_id
+        WHERE c.org_id = $1 ORDER BY c.created_at DESC LIMIT 10`, [effectiveOrgId]);
+
+      // Patient count
+      const patientCount = await pool.query(`SELECT COUNT(*)::int as total FROM patients WHERE org_id = $1`, [effectiveOrgId]);
+
+      // Coding queue count
+      const codingCount = await pool.query(`SELECT COUNT(*)::int as total FROM coding_queue WHERE org_id = $1 AND status NOT IN ('approved','billed')`, [effectiveOrgId]);
+
+      // Upcoming appointments - cast timestamp to date
+      const upcomingApts = await pool.query(`SELECT a.id, a.appointment_date, a.appointment_time, p.first_name, p.last_name
+        FROM appointments a LEFT JOIN patients p ON p.id = a.patient_id
+        WHERE a.org_id = $1 AND DATE(a.appointment_date) = CURRENT_DATE ORDER BY a.appointment_time LIMIT 10`, [effectiveOrgId]);
+
       return respond(200, {
-        claims: claims.rows,
+        // Legacy shape
+        claims: claimsRows,
         denials: denials.rows,
         payments: payments.rows,
         tasks: tasks.rows,
         eligibility: eligibility.rows[0] || { total: 0, active: 0 },
+        // Frontend useDashboardMetrics shape
+        total_claims: totalClaims,
+        total_patients: Number(patientCount.rows[0]?.total || 0),
+        open_denials: openDenials,
+        total_collections_mtd: totalCollected,
+        claims_by_status: claimsRows,
+        ar_aging: {
+          '0_30': arAging.rows[0]?.bucket_0_30 || 0,
+          '31_60': arAging.rows[0]?.bucket_31_60 || 0,
+          '61_90': arAging.rows[0]?.bucket_61_90 || 0,
+          '91_120': arAging.rows[0]?.bucket_91_120 || 0,
+          '120_plus': arAging.rows[0]?.bucket_120_plus || 0,
+        },
+        recent_claims: recentClaims.rows,
+        coding_queue_count: Number(codingCount.rows[0]?.total || 0),
+        upcoming_appointments: upcomingApts.rows,
       });
     }
 
@@ -5936,6 +5984,21 @@ export const handler = async (event) => {
     }
 
     // ════ Generic Entity Routes ════════════════════════════════════════════
+    // ════ Organizations (special - IS the org, no org_id self-filter) ═══════
+    if (resource === 'organizations') {
+      if (method === 'GET' && !pathParams.id) {
+        const rows = await pool.query(`SELECT id, name, address, phone, email, npi, tax_id, is_active, created_at FROM organizations WHERE id = $1 LIMIT 1`, [effectiveOrgId]);
+        return respond(200, { data: rows.rows, meta: { total: rows.rows.length } });
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await pool.query(`SELECT * FROM organizations WHERE id = $1`, [pathParams.id]);
+        return respond(200, r.rows[0] || {});
+      }
+      if (method === 'PUT' && pathParams.id) {
+        return respond(200, await update('organizations', pathParams.id, body));
+      }
+    }
+
     const entityMap = {
       'appointments': 'appointments',
       'providers': 'providers',
@@ -5945,7 +6008,6 @@ export const handler = async (event) => {
       'encounters': 'encounters',
       'tasks': 'tasks',
       'credentialing': 'credentialing',
-      'organizations': 'organizations',
     };
 
     // Sub-routes that should NOT be caught by generic CRUD
@@ -6281,6 +6343,19 @@ export const handler = async (event) => {
 
     // Payer Config (timely filing, phones, IVR scripts)
     if (resource === 'payer-config') {
+      // Auto-seed top 20 US payers on first access if table empty
+      const pcCount = await pool.query(`SELECT COUNT(*)::int as n FROM payer_config WHERE org_id = $1`, [effectiveOrgId]);
+      if (Number(pcCount.rows[0]?.n) === 0) {
+        const seedPayers = await pool.query(`SELECT id, name FROM payers WHERE org_id = $1 OR region = 'us' LIMIT 20`, [effectiveOrgId]);
+        if (seedPayers.rows.length > 0) {
+          for (const py of seedPayers.rows) {
+            const tfDays = py.name?.includes('Medicare') ? 365 : py.name?.includes('Medicaid') ? 180 : 90;
+            await pool.query(`INSERT INTO payer_config (org_id, payer_id, timely_filing_days_initial, timely_filing_days_appeal, era_enabled, eft_enabled)
+              VALUES ($1, $2, $3, $4, true, true) ON CONFLICT DO NOTHING`,
+              [effectiveOrgId, py.id, tfDays, tfDays * 2]);
+          }
+        }
+      }
       if (method === 'GET' && qs.payer_id) {
         try { return respond(200, await getPayerConfig(effectiveOrgId, qs.payer_id)); }
         catch(e) { if (e.message?.includes('does not exist')) return respond(200, null); throw e; }
@@ -6927,7 +7002,7 @@ export const handler = async (event) => {
           SELECT
             COUNT(*) as total_coded,
             COUNT(*) FILTER (WHERE ai_suggestion_id IS NOT NULL) as ai_coded,
-            COUNT(*) FILTER (WHERE coding_method = 'manual') as manual_coded,
+            COUNT(*) FILTER (WHERE source = 'manual') as manual_coded,
             COUNT(*) FILTER (WHERE ai_suggestion_id IS NOT NULL AND status = 'approved') as ai_approved,
             CASE WHEN COUNT(*) FILTER (WHERE ai_suggestion_id IS NOT NULL) > 0
               THEN ROUND(COUNT(*) FILTER (WHERE ai_suggestion_id IS NOT NULL AND status = 'approved')::numeric
@@ -7412,7 +7487,7 @@ export const handler = async (event) => {
         const days = daysMap[period] || 30;
         // Revenue trend — claims billed per day
         const revenue = await orgQuery(effectiveOrgId, `
-          SELECT DATE_TRUNC('day', dos_from) as date, SUM(billed_amount) as billed,
+          SELECT DATE_TRUNC('day', dos_from) as date, SUM(total_charges::numeric) as billed,
                  COUNT(*) as claim_count
           FROM claims WHERE org_id = $1 AND dos_from >= NOW() - INTERVAL '${days} days'
             ${clientId ? 'AND client_id = $2' : ''}
@@ -7434,7 +7509,7 @@ export const handler = async (event) => {
         // By payer — US payers only (filter by region)
         const byPayer = await orgQuery(effectiveOrgId, `
           SELECT py.name as payer_name, py.region,
-                 COUNT(c.id) as claims, SUM(c.billed_amount) as billed,
+                 COUNT(c.id) as claims, SUM(c.total_charges::numeric) as billed,
                  COUNT(d.id) as denials,
                  CASE WHEN COUNT(c.id) > 0 THEN ROUND(COUNT(d.id)::numeric/COUNT(c.id)::numeric*100,2) ELSE 0 END as denial_pct
           FROM claims c LEFT JOIN payers py ON py.id = c.payer_id
@@ -7444,11 +7519,11 @@ export const handler = async (event) => {
           clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
         // Coding productivity
         const coding = await orgQuery(effectiveOrgId, `
-          SELECT coding_method,
+          SELECT COALESCE(source, 'manual') as coding_method,
                  COUNT(*) as count, COUNT(*) FILTER (WHERE status='approved') as approved,
                  ROUND(AVG(EXTRACT(EPOCH FROM (updated_at - created_at))/60)::numeric, 1) as avg_minutes
           FROM coding_queue WHERE org_id = $1 AND created_at >= NOW() - INTERVAL '${days} days'
-          GROUP BY coding_method`, [effectiveOrgId]);
+          GROUP BY source`, [effectiveOrgId]);
         return respond(200, {
           period, days,
           revenue_trend: revenue.rows,
