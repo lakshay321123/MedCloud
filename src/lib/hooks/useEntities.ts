@@ -1198,3 +1198,188 @@ export function useAnalyticsKPIs(extra?: ApiListParams & { from?: string; to?: s
   const params = useClientParams(extra)
   return useApi<ApiAnalyticsKPIs>('/analytics', params)
 }
+
+// ── Sprint 2 v7: 837I Institutional Generator ─────────────────────────────────
+export function useGenerate837I(claimId: string) {
+  return useMutation<{ edi_content: string; claim_id: string; claim_number: string; format: string }, Record<string, never>>(
+    'post', `/claims/${claimId}/generate-837i`
+  )
+}
+
+// ── Sprint 2 v7: Charge Capture AI (Feature #11) ─────────────────────────────
+export interface ApiChargeCapture {
+  encounter_id: string
+  charges: Array<{ cpt_code: string; description: string; units: number; modifier?: string; charge_amount: number; confidence: number }>
+  diagnoses: Array<{ icd_code: string; description: string; is_primary: boolean; confidence: number }>
+  em_level?: string
+  em_rationale?: string
+  total_estimated_charge: number
+  missing_documentation: string[]
+  source: string
+}
+
+export function useChargeCapture(encounterId: string) {
+  return useMutation<ApiChargeCapture, Record<string, never>>('post', `/encounters/${encounterId}/charge-capture`)
+}
+
+// ── Sprint 2 v7: Document Classification AI ──────────────────────────────────
+export interface ApiDocClassification {
+  document_id: string
+  file_name: string
+  classification: string
+  confidence: number
+  method: string
+}
+
+export function useClassifyDocument(documentId: string) {
+  return useMutation<ApiDocClassification, Record<string, never>>('post', `/documents/${documentId}/classify`)
+}
+
+// ── Sprint 2 v7: Prior Auth Workflow ─────────────────────────────────────────
+export interface ApiPriorAuth {
+  id: string
+  org_id: string
+  client_id?: string
+  claim_id?: string
+  patient_id: string
+  payer_id: string
+  provider_id?: string
+  auth_number: string
+  auth_number_payer?: string
+  cpt_codes: string[]
+  icd_codes: string[]
+  urgency: string
+  clinical_rationale?: string
+  dos_from?: string
+  dos_to?: string
+  approved_units?: number
+  status: string
+  patient_name?: string
+  payer_name?: string
+  provider_name?: string
+  created_at: string
+}
+
+export function usePriorAuths(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiPriorAuth>>('/prior-auth', params)
+}
+
+export function usePriorAuth(id: string) {
+  return useApi<ApiPriorAuth>(`/prior-auth/${id}`)
+}
+
+export function useCreatePriorAuth() {
+  return useMutation<ApiPriorAuth, {
+    patient_id: string
+    payer_id: string
+    claim_id?: string
+    provider_id?: string
+    cpt_codes?: string[]
+    icd_codes?: string[]
+    urgency?: string
+    clinical_rationale?: string
+    dos_from?: string
+    dos_to?: string
+  }>('post', '/prior-auth')
+}
+
+export function useUpdatePriorAuth(id: string) {
+  return useMutation<ApiPriorAuth, {
+    status?: string
+    auth_number_payer?: string
+    approved_units?: number
+    approved_from?: string
+    approved_to?: string
+    denial_reason?: string
+    peer_to_peer_date?: string
+    notes?: string
+  }>('put', `/prior-auth/${id}`)
+}
+
+// ── Sprint 2 v7: Patient Statements ──────────────────────────────────────────
+export interface ApiPatientStatement {
+  id: string
+  org_id: string
+  patient_id: string
+  statement_number: string
+  statement_date: string
+  total_charges: number
+  insurance_payments: number
+  patient_payments: number
+  balance_due: number
+  line_items: Array<{ claim_number: string; dos: string; total_charge: number; patient_responsibility: number; payer: string }>
+  status: string
+  created_at: string
+}
+
+export function usePatientStatements(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiPatientStatement>>('/patient-statements', params)
+}
+
+export function useGenerateStatement() {
+  return useMutation<ApiPatientStatement, { patient_id: string }>('post', '/patient-statements/generate')
+}
+
+export function useUpdateStatement(id: string) {
+  return useMutation<ApiPatientStatement, { status?: string; sent_via?: string; notes?: string }>('put', `/patient-statements/${id}`)
+}
+
+// ── Sprint 2 v7: Secondary Claim / COB ───────────────────────────────────────
+export interface ApiSecondaryClaim {
+  secondary_claim_id: string
+  claim_number: string
+  primary_claim_id: string
+  secondary_payer_id: string
+  primary_paid: number
+  remaining_charge: number
+  status: string
+  next_step: string
+}
+
+export function useTriggerSecondaryClaim(claimId: string) {
+  return useMutation<ApiSecondaryClaim, Record<string, never>>('post', `/claims/${claimId}/secondary`)
+}
+
+// ── Sprint 2 v7: Credentialing Dashboard + Enrollment ────────────────────────
+export interface ApiCredentialingDashboard {
+  total: number
+  active: number
+  pending: number
+  expiring_soon: number
+  expired: number
+  alerts: Array<{ id: string; provider_name: string; payer_name: string; expiry_date: string; days_until_expiry: number; alert: string }>
+  items: Array<Record<string, unknown>>
+}
+
+export function useCredentialingDashboard() {
+  const params = useClientParams()
+  return useApi<ApiCredentialingDashboard>('/credentialing/dashboard', params)
+}
+
+export function useCreateEnrollment() {
+  return useMutation<{ id: string; status: string }, {
+    provider_id: string
+    payer_id: string
+    enrollment_type?: string
+    effective_date?: string
+    notes?: string
+  }>('post', '/credentialing/enrollment')
+}
+
+// ── Sprint 2 v7: Report Export ───────────────────────────────────────────────
+export interface ApiReport {
+  report: string
+  generated: string
+  columns: string[]
+  rows: Array<Record<string, unknown>>
+  summary?: Record<string, unknown>
+  csv?: string
+}
+
+export function useReport(reportType: string, extra?: ApiListParams & { from?: string; to?: string; format?: string }) {
+  const params = useClientParams({ ...extra, type: reportType })
+  return useApi<ApiReport>('/reports', params)
+}
+
