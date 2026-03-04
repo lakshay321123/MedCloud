@@ -917,6 +917,11 @@ function CoderView() {
         ))}
       </div>
       <div className="col-span-2 card flex flex-col overflow-hidden">
+        {!selectedVisit ? (
+          <div className="flex-1 flex items-center justify-center text-content-secondary text-sm">
+            Select a signed note to review
+          </div>
+        ) : (<>
         {selectedVisit.status === 'signed' && (
           <div className="px-4 py-2.5 bg-emerald-500/10 border-b border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
             <Check size={13} /> Signed by {selectedVisit.provider} on {selectedVisit.dos}
@@ -954,6 +959,7 @@ function CoderView() {
             <ChevronLeft size={14} /> Back to Coding Queue
           </button>
         </div>
+        </>)}
       </div>
     </div>
   )
