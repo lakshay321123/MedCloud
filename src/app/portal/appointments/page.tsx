@@ -2,7 +2,6 @@
 import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
-import { getClientName } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
@@ -368,7 +367,7 @@ export default function AppointmentsPage() {
                   <div className="flex items-center gap-3 ml-9">
                     <span className="text-[11px] text-content-secondary">{a.provider}</span>
                     <span className="text-[10px] bg-surface-elevated px-2 py-0.5 rounded border border-separator">{a.type}</span>
-                    {isStaff && <span className="text-[10px] text-content-tertiary">{getClientName(a.clientId)}</span>}
+                    {isStaff && <span className="text-[10px] text-content-tertiary">{((id: string) => id)(a.clientId)}</span>}
                   </div>
                 </div>
 

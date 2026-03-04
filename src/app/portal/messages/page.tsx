@@ -2,7 +2,7 @@
 import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
-import { demoMessages, DemoMessage } from '@/lib/demo-data'
+import type { DemoMessage } from '@/lib/demo-data'
 import { useMessages, useSendMessage, useMarkMessageRead } from '@/lib/hooks'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -47,19 +47,17 @@ export default function MessagesPage() {
   const { toast } = useToast()
   const { getError } = useAbuseFilter()
   // API threads take priority; demo data fills in when API is unavailable
-  const [localThreads, setLocalThreads] = useState<any[]>(demoMessages)
+  const [localThreads, setLocalThreads] = useState<any[]>([])
   const [selected, setSelected] = useState<DemoMessage | null>(null)
   const [filter, setFilter] = useState('')
   const [reply, setReply] = useState('')
   const isStaff = !['client','provider'].includes(currentUser.role)
 
-  // Merge: API threads overlay demo data by ID; purely local new threads at front
-  const mergedThreads = apiThreads.length > 0
-    ? [
-        ...localThreads.filter(l => !apiThreads.some(a => a.id === l.id)), // local-only (newly sent)
-        ...apiThreads,
-      ]
-    : localThreads
+  // Merge: API threads + any locally-sent threads not yet returned by API
+  const mergedThreads = [
+    ...localThreads.filter(l => !apiThreads.some(a => a.id === l.id)),
+    ...apiThreads,
+  ]
 
   const messages = mergedThreads.filter(m => {
     if (filter && m.entityType !== filter) return false
@@ -125,9 +123,9 @@ export default function MessagesPage() {
           <span>✓</span><span>Live messages loaded — {apiThreads.length} thread{apiThreads.length !== 1 ? 's' : ''} from server</span>
         </div>
       )}
-      {(!apiMsgResult || apiThreads.length === 0) && (
-        <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2.5 flex items-center gap-3 text-xs text-amber-700 dark:text-amber-400">
-          <span>💬</span><span>Showing demo threads — messages you send will sync when API is connected</span>
+      {apiMsgResult && apiThreads.length === 0 && (
+        <div className="mb-4 bg-surface-elevated border border-separator rounded-lg px-4 py-2.5 flex items-center gap-3 text-xs text-content-secondary">
+          <span>💬</span><span>No messages yet — messages will appear here when sent.</span>
         </div>
       )}      <div className="grid grid-cols-3 gap-4 h-[calc(100vh-220px)]">
         {/* Thread List */}

@@ -10,7 +10,6 @@ import { ShieldAlert, FileText, AlertTriangle, Send } from 'lucide-react'
 import { useToast } from '@/components/shared/Toast'
 import { useDenials, useGenerateAppeal, useDenialCategories, useAppealsList, useBatchGenerateAppeals, useUpdateDenial, useCreateDenial, useSubmitAppeal, useAppealDetail, useUpdateAppealStatus, useAppealTemplates, useCreateAppealTemplate, useCheckAppealDeadlines } from '@/lib/hooks'
 import { filterByRegion } from '@/lib/utils/region'
-import { demoDenialsData } from '@/lib/demo-data'
 import { ErrorBanner } from '@/components/shared/ApiStates'
 import { useRouter } from 'next/navigation'
 import { sanitizeForPrompt } from '@/lib/ai-utils'
@@ -80,15 +79,10 @@ export default function DenialsPage() {
     carc_description: d.carc_description,
     rarc_description: d.rarc_description,
   })) || []
-
-  const demoDenials: DenialRow[] = demoDenialsData.map(d => ({
-    id: d.id, patientName: d.patientName, payer: d.payer,
-    denialReason: d.denialReason, clientId: d.clientId, clientName: d.clientName,
-    dos: d.dos, source: 'demo', appealLevel: d.appealLevel, status: d.status,
-  }))
+  const demoDenials: DenialRow[] = []
 
   const denials: DenialRow[] = filterByRegion(
-    apiDenials.length ? apiDenials : demoDenials,
+    apiDenials,
     currentUser.organization_id,
     currentUser.role,
     selectedClient?.id,

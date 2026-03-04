@@ -3,12 +3,12 @@ import { useT } from '@/lib/i18n'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context'
-import { useSOAPNotes, useCreateSOAPNote, useCreateCoding } from '@/lib/hooks'
+import { useSOAPNotes, useCreateSOAPNote, useCreateCoding, useApi } from '@/lib/hooks'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
-import { demoVisits, demoPatients, demoAppointments, DemoVisit } from '@/lib/demo-data'
+import type { DemoVisit } from '@/lib/demo-data'
 import {
   Mic, Square, Check, ChevronLeft, BrainCircuit, Clock,
   FileText, Activity, AlertTriangle, Loader2, Sparkles,
@@ -96,15 +96,15 @@ function ProviderView() {
     suggestedCodes: [], duration: '0:00', transcript: '',
   }))
 
-  const visits = apiVisits.length ? apiVisits : demoVisits
+  const visits = apiVisits
   const pending = visits.filter(v => v.status === 'pending_signoff')
   const completed = visits.filter(v => v.status === 'signed')
 
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
   const [selectedVisit, setSelectedVisit] = useState<DemoVisit | null>(null)
-  const selectedPatient = demoPatients.find(p => p.id === selectedPatientId)
-  const selectedAppt = demoAppointments.find(a => a.patientId === selectedPatientId)
-  const todayAppts = demoAppointments
+  const selectedPatient: any = null // populated from API when patient selected
+  const selectedAppt: any = null // populated from API
+  const todayAppts: any[] = []
 
   // Recording state
   const [transcript, setTranscript] = useState('')
@@ -331,7 +331,7 @@ function ProviderView() {
       </div>
       <div className="space-y-2">
         {todayAppts.map(a => {
-          const pat = demoPatients.find(p => p.id === a.patientId)
+          const pat: any = null
           return (
             <button key={a.id} onClick={() => { setSelectedPatientId(a.patientId); setUiState('review_patient') }}
               className="w-full text-left card p-4 hover:border-brand/30 transition-all flex items-center gap-4">
@@ -391,7 +391,7 @@ function ProviderView() {
       )}
       {/* Prior visits preview */}
       {(() => {
-        const priorVisits = demoVisits.filter(v => v.patientId === selectedPatientId)
+        const priorVisits: DemoVisit[] = []
         return priorVisits.length > 0 ? (
           <div className="card p-4">
             <div className="text-xs font-semibold text-content-secondary mb-2 uppercase tracking-wide flex items-center gap-2"><History size={12} /> Prior Visits ({priorVisits.length})</div>
@@ -547,7 +547,7 @@ function ProviderView() {
       ...manualCodes,
     ]
 
-    const priorVisits = demoVisits.filter(v => v.patientId === selectedVisit.patientId && v.id !== selectedVisit.id)
+    const priorVisits: DemoVisit[] = []
 
     return (
       <>
@@ -898,14 +898,16 @@ function ProviderView() {
 
 // ── Coder View ───────────────────────────────────────────────────────────────
 function CoderView() {
-  const [selectedVisit, setSelectedVisit] = useState<DemoVisit>(demoVisits[0])
+  const [selectedVisit, setSelectedVisit] = useState<DemoVisit | null>(null)
   const router = useRouter()
+  const { data: visitsData } = useApi<{ data: DemoVisit[] }>('/visits', { limit: 50 })
+  const apiVisits: DemoVisit[] = visitsData?.data ?? []
   return (
     <div className="grid grid-cols-3 gap-5 h-[calc(100vh-280px)]">
       <div className="card overflow-auto">
         <div className="px-3 py-2 border-b border-separator text-xs font-semibold text-content-secondary uppercase tracking-wider">Signed Notes — Read Only</div>
-        {demoVisits.map(v => (
-          <button key={v.id} onClick={() => setSelectedVisit(v)} className={`w-full text-left px-3 py-3 border-b border-separator last:border-0 ${selectedVisit.id === v.id ? 'bg-brand/5' : ''}`}>
+        {(apiVisits as DemoVisit[]).map(v => (
+          <button key={v.id} onClick={() => setSelectedVisit(v)} className={`w-full text-left px-3 py-3 border-b border-separator last:border-0 ${selectedVisit?.id === v.id ? 'bg-brand/5' : ''}`}>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">{v.patientName}</span>
               <StatusBadge status={v.status === 'signed' ? 'completed' : 'in_progress'} small />
