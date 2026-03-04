@@ -49,10 +49,7 @@ async function retell(action: string, params: Record<string, string> = {}) {
   const qs = new URLSearchParams({ action, ...params })
   const res = await fetch(`/api/retell?${qs}`)
   const data = await res.json().catch(() => ({ error: res.statusText }))
-  if (!res.ok) {
-    if (data.fallback) return data          // Let hooks handle fallback gracefully
-    throw new Error(data.error || `Retell API ${res.status}`)
-  }
+  if (!res.ok) throw new Error(data.error || `Retell API ${res.status}`)
   return data
 }
 
@@ -67,47 +64,20 @@ async function retellPost(body: Record<string, unknown>) {
   return data
 }
 
-// ─── Demo data for fallback mode ───────────────────────────────────────────
-const now = Date.now()
-const DEMO_CALLS: RetellCall[] = [
-  { call_id: 'demo-001', agent_id: 'demo-chris', call_status: 'ended', call_type: 'phone_call', from_number: '+19499905052', to_number: '+18005551234', start_timestamp: now - 3600000, end_timestamp: now - 3300000, duration_ms: 300000, transcript: 'Agent: Hi, this is Chris calling from MedCloud regarding claim number 4501.\nUser: Yes, let me pull that up.\nAgent: I am calling to check the status of a clean claim submitted on February 28th for patient John Smith.\nUser: That claim is currently in adjudication. You should see payment within 10 business days.\nAgent: Thank you. Can you confirm the expected reimbursement amount?\nUser: The allowed amount is $247.00 per your contract.\nAgent: Perfect, thank you for your help. Have a great day.', call_analysis: { call_summary: 'Called Aetna to check status of claim 4501. Claim is in adjudication, expected payment of $247 within 10 business days.', user_sentiment: 'Neutral', call_successful: true }, retell_llm_dynamic_variables: { claim_id: 'CLM-4501', patient_name: 'John Smith', payer: 'Aetna', campaign_type: 'Payer Status Check' } },
-  { call_id: 'demo-002', agent_id: 'demo-chris', call_status: 'ended', call_type: 'phone_call', from_number: '+19499905052', to_number: '+18005559876', start_timestamp: now - 7200000, end_timestamp: now - 6900000, duration_ms: 300000, call_analysis: { call_summary: 'BCBS confirmed appeal received for claim 4488. Under medical director review, decision expected in 5 days.', user_sentiment: 'Positive', call_successful: true }, retell_llm_dynamic_variables: { claim_id: 'CLM-4488', payer: 'BCBS', campaign_type: 'Appeal Follow-up' } },
-  { call_id: 'demo-003', agent_id: 'demo-cindy', call_status: 'ended', call_type: 'phone_call', from_number: '+19495229502', to_number: '+15105553333', start_timestamp: now - 10800000, end_timestamp: now - 10500000, duration_ms: 180000, call_analysis: { call_summary: 'Patient agreed to payment plan of $50/month for outstanding balance of $320. First payment due March 15.', user_sentiment: 'Positive', call_successful: true }, retell_llm_dynamic_variables: { patient_name: 'Sarah Lee', balance: '$320.00', campaign_type: 'Patient Balance Reminder' } },
-  { call_id: 'demo-004', agent_id: 'demo-chris', call_status: 'ended', call_type: 'phone_call', from_number: '+19499905052', to_number: '+18005554444', start_timestamp: now - 14400000, end_timestamp: now - 14280000, duration_ms: 120000, call_analysis: { call_summary: 'United voicemail — left message requesting callback for claim 4495 status check.', user_sentiment: 'Unknown', call_successful: false }, disconnection_reason: 'voicemail_reached', retell_llm_dynamic_variables: { claim_id: 'CLM-4495', payer: 'United', campaign_type: 'Payer Status Check' } },
-  { call_id: 'demo-005', agent_id: 'demo-chris', call_status: 'ongoing', call_type: 'phone_call', from_number: '+19499905052', to_number: '+18005557777', start_timestamp: now - 120000, duration_ms: 120000, transcript: 'Agent: Hi, this is Chris calling from MedCloud regarding a prior authorization request.\nUser: One moment please, let me transfer you to the auth department.', retell_llm_dynamic_variables: { claim_id: 'CLM-4512', payer: 'Cigna', campaign_type: 'Payer Status Check' } },
-]
-
-const DEMO_BATCHES: RetellBatch[] = [
-  { batch_id: 'demo-batch-1', name: 'Weekly Payer Status Check — Mar 3', status: 'completed', total_count: 24, completed_count: 22, failed_count: 2, created_at: now - 86400000 },
-  { batch_id: 'demo-batch-2', name: 'Patient Balance Reminders — Feb 28', status: 'completed', total_count: 15, completed_count: 14, failed_count: 1, created_at: now - 4 * 86400000 },
-  { batch_id: 'demo-batch-3', name: 'Appeal Follow-ups — Mar 4', status: 'running', total_count: 8, completed_count: 3, failed_count: 0, created_at: now - 3600000 },
-]
-
 // ─── Hooks ─────────────────────────────────────────────────────────────────
 export function useRetellCalls(status?: 'ongoing' | 'ended') {
   const [calls, setCalls] = useState<RetellCall[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [fallback, setFallback] = useState(false)
 
   const fetch_ = useCallback(async () => {
     try {
       const params: Record<string, string> = { limit: '100' }
       if (status) params.status = status
       const data = await retell('list-calls', params)
-      if (data.fallback) {
-        setFallback(true)
-        const demo = status ? DEMO_CALLS.filter(c => c.call_status === status) : DEMO_CALLS
-        setCalls(demo)
-        return
-      }
       setCalls(data.call_list ?? data ?? [])
-      setFallback(false)
     } catch (e) {
       setError(String(e))
-      setFallback(true)
-      const demo = status ? DEMO_CALLS.filter(c => c.call_status === status) : DEMO_CALLS
-      setCalls(demo)
     } finally {
       setLoading(false)
     }
@@ -122,7 +92,7 @@ export function useRetellCalls(status?: 'ongoing' | 'ended') {
     return () => clearInterval(id)
   }, [status, fetch_])
 
-  return { calls, loading, error, fallback, refetch: fetch_ }
+  return { calls, loading, error, refetch: fetch_ }
 }
 
 export function useRetellCall(callId: string | null) {
@@ -144,19 +114,15 @@ export function useRetellCall(callId: string | null) {
 export function useRetellBatches() {
   const [batches, setBatches] = useState<RetellBatch[]>([])
   const [loading, setLoading] = useState(true)
-  const [fallback, setFallback] = useState(false)
 
   useEffect(() => {
     retell('list-batches')
-      .then(d => {
-        if (d.fallback) { setFallback(true); setBatches(DEMO_BATCHES); return }
-        setBatches(d.batch_list ?? [])
-      })
-      .catch(() => { setFallback(true); setBatches(DEMO_BATCHES) })
+      .then(d => setBatches(d.batch_list ?? []))
+      .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
 
-  return { batches, loading, fallback }
+  return { batches, loading }
 }
 
 export function useRetellAgents() {

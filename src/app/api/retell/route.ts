@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   } catch (err) {
     console.error('[Retell API]', err)
-    return NextResponse.json({ error: String(err), fallback: true }, { status: 502 })
+    return NextResponse.json({ error: String(err) }, { status: 502 })
   }
 }
 
@@ -134,6 +134,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   } catch (err) {
     console.error('[Retell API]', err)
-    return NextResponse.json({ error: String(err), fallback: true }, { status: 502 })
+    return NextResponse.json({ error: String(err) }, { status: 502 })
   }
 }
