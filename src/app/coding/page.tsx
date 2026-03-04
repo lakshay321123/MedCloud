@@ -9,6 +9,7 @@ import { getSLAStatus } from '@/lib/utils/time'
 import { useCodingQueue } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { sanitizeForPrompt } from '@/lib/ai-utils'
+import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import {
   BrainCircuit, CheckCircle2, Activity, Clock, MessageCircle, Mic, FileUp,
   ChevronDown, ChevronUp, Play, FileText, AlertTriangle, Plus, PauseCircle,
@@ -195,7 +196,7 @@ export default function CodingPage() {
   ]
 
   // UAE org IDs
-  const uaeClientIds = ['org-101', 'org-104']
+  const uaeClientIds = UAE_ORG_IDS
 
   const queue = (() => {
     const base = apiMapped.length > 0 ? apiMapped : []
@@ -232,7 +233,7 @@ export default function CodingPage() {
   async function generateAICodes(soapAssessment: string, soapPlan: string, specialty: string) {
     if (!item) return
     setAiCoding(true)
-    const isUAE = ['org-101', 'org-104'].includes(item.clientId)
+    const isUAE = UAE_ORG_IDS.includes(item.clientId)
     const codeSystem = isUAE ? 'ICD-10-AM (Australian modification, used in UAE/DHA)' : 'ICD-10-CM and CPT'
     try {
       // Sanitize all user-controlled input before prompt interpolation (prompt injection defence)

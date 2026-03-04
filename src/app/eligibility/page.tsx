@@ -64,18 +64,10 @@ export default function EligibilityPage() {
         priorAuth: result.prior_auth_required ? 'Yes — required' : 'No',
       })
       toast.success(`Eligibility verified — ${selectedPatient?.firstName} ${selectedPatient?.lastName} is ${result.status || 'active'}`)
-    } catch {
-      // Fallback to demo result
-      setVerified(true)
-      setVerificationResult({
-        status: 'active',
-        network: 'In-Network',
-        copay: '$30',
-        deductible: '$450 remaining',
-        coinsurance: '80/20',
-        priorAuth: 'No',
-      })
-      toast.success(`Eligibility verified — ${selectedPatient?.firstName} ${selectedPatient?.lastName} is active`)
+    } catch (err) {
+      console.error('[eligibility] verification failed:', err)
+      setVerified(false)
+      toast.error('Eligibility check failed — please verify patient insurance details and try again')
     } finally {
       setVerifying(false)
     }

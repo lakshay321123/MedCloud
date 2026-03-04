@@ -5,6 +5,7 @@ import { demoPatients, demoSubmissions } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { Upload, CheckCircle2, FileText, X, Plus, ArrowRight } from 'lucide-react'
+import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 
 const MAX_FILES = 10
 
@@ -17,7 +18,7 @@ export default function ScanSubmitPage() {
   const isClinic = currentUser.role === 'client' || currentUser.role === 'provider'
   const clientId = isClinic
     ? currentUser.organization_id
-    : selectedClient?.id ?? (country === 'uae' ? 'org-101' : 'org-102')
+    : selectedClient?.id ?? (country === 'uae' ? UAE_ORG_IDS[0] : US_ORG_IDS[0])
   const myPatients = demoPatients.filter(p => p.clientId === clientId)
 
   const [step, setStep] = useState<Step>(1)
