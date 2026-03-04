@@ -134,7 +134,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
 function AllDocsTab() {
   const { selectedClient, country } = useApp()
   const { data: apiDocRaw } = useDocuments()
-  const apiDocs: any[] = (apiDocRaw || []).map((d: any) => ({
+  const apiDocs: any[] = (Array.isArray(apiDocRaw) ? apiDocRaw : []).map((d: any) => ({
     id: d.id, name: d.file_name || d.original_filename || 'document',
     fileName: d.file_name || d.original_filename || 'document',
     type: d.classification || d.document_type || 'other',
@@ -232,7 +232,7 @@ function UnlinkedQueueTab() {
   const [patientSearch, setPatientSearch] = useState<Record<string,string>>({})
   const [linking, setLinking] = useState<string|null>(null)
   const { data: apiDocRaw2 } = useDocuments()
-  const apiDocs2: DemoDocRecord[] = (apiDocRaw2 || []).map((d: any) => ({
+  const apiDocs2: any[] = (Array.isArray(apiDocRaw2) ? apiDocRaw2 : []).map((d: any) => ({
     id: d.id, name: d.file_name || d.original_filename || 'document',
     type: d.classification || d.document_type || 'other', patient: d.patient_name || '—',
     client: d.client_name || '—', status: d.status || 'uploaded',
