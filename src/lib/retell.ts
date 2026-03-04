@@ -1,10 +1,11 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
-// ─── Types matching Retell API response shapes ─────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────
 export interface RetellCall {
   call_id: string
   agent_id: string
+  _agent_name?: 'chris' | 'cindy' | 'unknown'
   call_status: 'registered' | 'ongoing' | 'ended' | 'error'
   call_type: 'phone_call' | 'web_call'
   from_number: string
@@ -13,7 +14,7 @@ export interface RetellCall {
   end_timestamp?: number
   duration_ms?: number
   transcript?: string
-  transcript_object?: { role: 'agent' | 'user'; content: string; words?: { word: string; start: number; end: number }[] }[]
+  transcript_object?: { role: 'agent' | 'user'; content: string }[]
   call_analysis?: {
     call_summary?: string
     user_sentiment?: 'Positive' | 'Negative' | 'Neutral' | 'Unknown'
@@ -23,7 +24,6 @@ export interface RetellCall {
   }
   retell_llm_dynamic_variables?: Record<string, string>
   disconnection_reason?: string
-  metadata?: Record<string, unknown>
 }
 
 export interface RetellBatch {
@@ -44,13 +44,22 @@ export interface RetellAgent {
   configured: boolean
 }
 
-// ─── Client helpers ────────────────────────────────────────────────────────
-async function retell(action: string, params: Record<string, string> = {}) {
+export interface PayerStat {
+  payer: string
+  total: number
+  resolved: number
+  failed: number
+  successRate: number
+  avgDuration: number
+  calls: RetellCall[]
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+async function retellGet(action: string, params: Record<string, string> = {}) {
   const qs = new URLSearchParams({ action, ...params })
   const res = await fetch(`/api/retell?${qs}`)
-  const data = await res.json().catch(() => ({ error: res.statusText }))
-  if (!res.ok) throw new Error(data.error || `Retell API ${res.status}`)
-  return data
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
 }
 
 async function retellPost(body: Record<string, unknown>) {
@@ -59,70 +68,77 @@ async function retellPost(body: Record<string, unknown>) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  const data = await res.json().catch(() => ({ error: res.statusText }))
-  if (!res.ok) throw new Error(data.error || `Retell API ${res.status}`)
-  return data
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+function getPayerFromCall(call: RetellCall): string {
+  const vars = call.retell_llm_dynamic_variables ?? {}
+  return vars['primary_carrier_name'] ?? vars['primaryinsurance'] ?? vars['Primary_Carrier_Name'] ?? 'Unknown'
 }
 
 // ─── Hooks ─────────────────────────────────────────────────────────────────
-export function useRetellCalls(status?: 'ongoing' | 'ended') {
+export function useRetellCalls(opts: {
+  status?: 'ongoing' | 'ended'
+  agent?: 'chris' | 'cindy'
+  limit?: number
+  startDate?: string
+  endDate?: string
+} = {}) {
   const [calls, setCalls] = useState<RetellCall[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [fallback, setFallback] = useState(false)
 
   const fetch_ = useCallback(async () => {
     try {
-      const params: Record<string, string> = { limit: '100' }
-      if (status) params.status = status
-      const data = await retell('list-calls', params)
-      setCalls(data.call_list ?? data ?? [])
-    } catch (e) {
-      setError(String(e))
+      const params: Record<string, string> = { limit: String(opts.limit ?? 500) }
+      if (opts.agent) params.agent = opts.agent
+      if (opts.startDate) params.start_date = opts.startDate
+      if (opts.endDate) params.end_date = opts.endDate
+
+      const data = await retellGet('list-calls', params)
+      if (data.fallback) { setFallback(true); return }
+
+      let list: RetellCall[] = data.call_list ?? []
+      if (opts.status) list = list.filter(c => {
+        if (opts.status === 'ongoing') return c.call_status === 'ongoing' || c.call_status === 'registered'
+        if (opts.status === 'ended') return c.call_status === 'ended' || c.call_status === 'error'
+        return true
+      })
+      setCalls(list)
+      setFallback(false)
+    } catch {
+      setFallback(true)
     } finally {
       setLoading(false)
     }
-  }, [status])
+  }, [opts.agent, opts.status, opts.limit, opts.startDate, opts.endDate])
 
   useEffect(() => { fetch_() }, [fetch_])
 
-  // Poll active calls every 10s
+  // Poll live calls every 10s
   useEffect(() => {
-    if (status !== 'ongoing') return
+    if (opts.status !== 'ongoing') return
     const id = setInterval(fetch_, 10000)
     return () => clearInterval(id)
-  }, [status, fetch_])
+  }, [opts.status, fetch_])
 
-  return { calls, loading, error, refetch: fetch_ }
-}
-
-export function useRetellCall(callId: string | null) {
-  const [call, setCall] = useState<RetellCall | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    if (!callId) return
-    setLoading(true)
-    retell('get-call', { call_id: callId })
-      .then(d => setCall(d))
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [callId])
-
-  return { call, loading }
+  return { calls, loading, fallback, refetch: fetch_ }
 }
 
 export function useRetellBatches() {
   const [batches, setBatches] = useState<RetellBatch[]>([])
   const [loading, setLoading] = useState(true)
+  const [fallback, setFallback] = useState(false)
 
   useEffect(() => {
-    retell('list-batches')
-      .then(d => setBatches(d.batch_list ?? []))
-      .catch(console.error)
+    retellGet('list-batches')
+      .then(d => { if (d.fallback) { setFallback(true); return }; setBatches(d.batch_list ?? []) })
+      .catch(() => setFallback(true))
       .finally(() => setLoading(false))
   }, [])
 
-  return { batches, loading }
+  return { batches, loading, fallback }
 }
 
 export function useRetellAgents() {
@@ -131,11 +147,8 @@ export function useRetellAgents() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    retell('agents')
-      .then(d => {
-        setAgents(d.agents ?? [])
-        setApiConfigured(d.api_configured ?? false)
-      })
+    retellGet('agents')
+      .then(d => { setAgents(d.agents ?? []); setApiConfigured(d.api_configured ?? false) })
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
@@ -143,54 +156,101 @@ export function useRetellAgents() {
   return { agents, apiConfigured, loading }
 }
 
-export function useLaunchCall() {
+export function useAgentPrompt(agentName: 'chris' | 'cindy' | null) {
+  const [prompt, setPrompt] = useState<string>('')
+  const [agentData, setAgentData] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const launch = useCallback(async (params: {
-    agent_name: 'chris' | 'cindy'
-    to_number: string
-    variables?: Record<string, string>
-  }) => {
+  const fetch_ = useCallback(async () => {
+    if (!agentName) return
     setLoading(true)
     setError(null)
     try {
-      const result = await retellPost({
-        action: 'create-call',
-        agent_name: params.agent_name,
-        to_number: params.to_number,
-        retell_llm_dynamic_variables: params.variables ?? {},
-      })
-      return result as RetellCall
+      const qs = new URLSearchParams({ action: 'get-agent', agent: agentName })
+      const res = await fetch(`/api/retell?${qs}`)
+      const data = await res.json()
+      if (!res.ok || data.error) {
+        setError(data.error ?? `Failed to load ${agentName} prompt (${res.status})`)
+        return
+      }
+      setAgentData(data)
+      setPrompt(String(data.general_prompt ?? ''))
     } catch (e) {
-      const msg = String(e)
-      setError(msg)
-      throw e
+      setError(String(e))
+    } finally {
+      setLoading(false)
+    }
+  }, [agentName])
+
+  useEffect(() => { fetch_() }, [fetch_])
+  return { prompt, agentData, loading, error, refetch: fetch_, setPrompt }
+}
+
+export function useUpdateAgentPrompt() {
+  const [loading, setLoading] = useState(false)
+
+  const update = useCallback(async (agentName: 'chris' | 'cindy', newPrompt: string) => {
+    setLoading(true)
+    try {
+      return await retellPost({ action: 'update-agent', agent_name: agentName, general_prompt: newPrompt })
     } finally {
       setLoading(false)
     }
   }, [])
 
-  return { launch, loading, error }
+  return { update, loading }
+}
+
+export function useLaunchCall() {
+  const [loading, setLoading] = useState(false)
+  const launch = useCallback(async (params: { agent_name: 'chris' | 'cindy'; to_number: string; variables?: Record<string, string> }) => {
+    setLoading(true)
+    try {
+      return await retellPost({ action: 'create-call', agent_name: params.agent_name, to_number: params.to_number, retell_llm_dynamic_variables: params.variables ?? {} })
+    } finally { setLoading(false) }
+  }, [])
+  return { launch, loading }
 }
 
 export function useLaunchBatch() {
   const [loading, setLoading] = useState(false)
-
-  const launch = useCallback(async (params: {
-    agent_name: 'chris' | 'cindy'
-    batch_name: string
-    recipients: { to_number: string; variables?: Record<string, string> }[]
-  }) => {
+  const launch = useCallback(async (params: { agent_name: 'chris' | 'cindy'; batch_name: string; recipients: { to_number: string; variables?: Record<string, string> }[] }) => {
     setLoading(true)
     try {
       return await retellPost({ action: 'create-batch', ...params })
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }, [])
-
   return { launch, loading }
+}
+
+// ─── Payer analytics computed from call list ───────────────────────────────
+export function computePayerStats(calls: RetellCall[]): PayerStat[] {
+  const map = new Map<string, RetellCall[]>()
+  for (const call of calls) {
+    if (call.call_status !== 'ended') continue
+    const payer = getPayerFromCall(call)
+    if (!map.has(payer)) map.set(payer, [])
+    map.get(payer)!.push(call)
+  }
+
+  return Array.from(map.entries())
+    .map(([payer, cs]) => {
+      const resolved = cs.filter(c => c.call_analysis?.call_successful === true).length
+      const failed = cs.filter(c => c.call_analysis?.call_successful === false).length
+      const avgDuration = cs.reduce((s, c) => s + (c.duration_ms ?? 0), 0) / cs.length
+      return {
+        payer,
+        total: cs.length,
+        resolved,
+        failed,
+        successRate: cs.length > 0 ? Math.round((resolved / cs.length) * 100) : 0,
+        avgDuration,
+        calls: cs,
+      }
+    })
+    .filter(p => p.payer !== 'Unknown')
+    .sort((a, b) => b.total - a.total)
 }
 
 // ─── Formatters ────────────────────────────────────────────────────────────

@@ -3,15 +3,18 @@ import { NextRequest, NextResponse } from 'next/server'
 const RETELL_API_KEY = process.env.RETELL_API_KEY
 const RETELL_BASE = 'https://api.retellai.com'
 
-// Agent IDs from Retell dashboard — set in Vercel env vars
 const RETELL_AGENTS = {
-  chris: process.env.RETELL_AGENT_CHRIS ?? '', // Payer follow-up
-  cindy: process.env.RETELL_AGENT_CINDY ?? '', // AR collections
+  chris: process.env.RETELL_AGENT_CHRIS ?? '',
+  cindy: process.env.RETELL_AGENT_CINDY ?? '',
 }
-
 const RETELL_PHONES = {
   chris: process.env.RETELL_PHONE_CHRIS ?? '+19499905052',
   cindy: process.env.RETELL_PHONE_CINDY ?? '+19495229502',
+}
+
+const RETELL_LLMS = {
+  chris: process.env.RETELL_LLM_CHRIS ?? '',
+  cindy: process.env.RETELL_LLM_CINDY ?? '',
 }
 
 async function retellFetch(path: string, options: RequestInit = {}) {
@@ -26,9 +29,24 @@ async function retellFetch(path: string, options: RequestInit = {}) {
   })
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`Retell API ${res.status}: ${err}`)
+    throw new Error(`Retell ${res.status} ${path}: ${err}`)
   }
-  return res.json()
+  // Retell returns either an array or an object depending on endpoint
+  const text = await res.text()
+  try { return JSON.parse(text) } catch { return text }
+}
+
+// Normalize Retell call list — handles both array and {call_list:[]} shapes
+function normalizeCallList(data: unknown): Record<string, unknown>[] {
+  if (Array.isArray(data)) return data
+  if (data && typeof data === 'object') {
+    const d = data as Record<string, unknown>
+    if (Array.isArray(d.call_list)) return d.call_list as Record<string, unknown>[]
+    if (Array.isArray(d.calls)) return d.calls as Record<string, unknown>[]
+    // Some endpoints wrap in data key
+    if (Array.isArray(d.data)) return d.data as Record<string, unknown>[]
+  }
+  return []
 }
 
 export async function GET(req: NextRequest) {
@@ -36,23 +54,55 @@ export async function GET(req: NextRequest) {
   const action = searchParams.get('action')
 
   try {
+    // ── List calls ────────────────────────────────────────────────────────
     if (action === 'list-calls') {
-      // GET /v2/list-calls — paginated call history
-      const limit = searchParams.get('limit') ?? '100'
-      const filterStatus = searchParams.get('status') // ongoing | ended
-      const agentId = searchParams.get('agent_id')
+      const limit = Number(searchParams.get('limit') ?? '500')
+      const agentFilter = searchParams.get('agent') // 'chris' | 'cindy' | null
 
-      const body: Record<string, unknown> = { limit: Number(limit) }
-      if (filterStatus) body.filter_criteria = { call_status: [filterStatus] }
-      if (agentId) body.filter_criteria = { ...(body.filter_criteria as object ?? {}), agent_id: [agentId] }
-
+      // Fetch without filter_criteria — Retell's filter format varies by version
+      // We tag and filter client-side for reliability
       const data = await retellFetch('/v2/list-calls', {
-        method: 'POST', // Retell uses POST for listing with filters
-        body: JSON.stringify(body),
+        method: 'POST',
+        body: JSON.stringify({ limit }),
       })
-      return NextResponse.json(data)
+
+      let calls = normalizeCallList(data)
+
+      // Tag each call with _agent_name
+      // Match by agent_id first (exact), then fall back to agent_name string
+      calls = calls.map((c: Record<string, unknown>) => {
+        let agentName: string
+        if (c.agent_id === RETELL_AGENTS.chris) {
+          agentName = 'chris'
+        } else if (c.agent_id === RETELL_AGENTS.cindy) {
+          agentName = 'cindy'
+        } else {
+          // Fallback: match by agent_name field (handles inbound agents, renamed agents, etc.)
+          const name = String(c.agent_name ?? '').toLowerCase()
+          if (name.includes('chris')) agentName = 'chris'
+          else if (name.includes('cindy')) agentName = 'cindy'
+          else agentName = 'unknown'
+        }
+        return { ...c, _agent_name: agentName }
+      })
+
+      // Filter by agent if requested
+      if (agentFilter === 'chris' || agentFilter === 'cindy') {
+        calls = calls.filter((c: Record<string, unknown>) => c._agent_name === agentFilter)
+      }
+
+      return NextResponse.json({
+        call_list: calls,
+        total: calls.length,
+        _debug: {
+          raw_type: Array.isArray(data) ? 'array' : typeof data,
+          raw_keys: data && typeof data === 'object' ? Object.keys(data as object) : [],
+          agent_ids_configured: { chris: !!RETELL_AGENTS.chris, cindy: !!RETELL_AGENTS.cindy },
+        },
+      })
     }
 
+    // ── Get single call ───────────────────────────────────────────────────
     if (action === 'get-call') {
       const callId = searchParams.get('call_id')
       if (!callId) return NextResponse.json({ error: 'call_id required' }, { status: 400 })
@@ -60,13 +110,37 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(data)
     }
 
+    // ── List batches ──────────────────────────────────────────────────────
     if (action === 'list-batches') {
-      const data = await retellFetch('/v2/list-batches', { method: 'POST', body: JSON.stringify({ limit: 50 }) })
+      const data = await retellFetch('/v2/list-batches', {
+        method: 'POST',
+        body: JSON.stringify({ limit: 100 }),
+      })
+      const batches = normalizeCallList(data)
+      return NextResponse.json({ batch_list: batches })
+    }
+
+    // ── Get agent (for prompt editor) ─────────────────────────────────────
+    if (action === 'get-agent') {
+      const agentName = searchParams.get('agent') as 'chris' | 'cindy'
+      const llmId = RETELL_LLMS[agentName]
+
+      if (!llmId) {
+        return NextResponse.json({ error: `RETELL_LLM_${agentName?.toUpperCase()} not set in Vercel env vars` }, { status: 400 })
+      }
+
+      const data = await retellFetch(`/get-retell-llm/${llmId}`)
+      return NextResponse.json({ general_prompt: data.general_prompt ?? '', llm_id: llmId, ...data })
+    }
+
+    // ── List all agents (to discover correct agent IDs) ───────────────────
+    if (action === 'list-agents') {
+      const data = await retellFetch('/v2/list-agents')
       return NextResponse.json(data)
     }
 
+    // ── Agent info ────────────────────────────────────────────────────────
     if (action === 'agents') {
-      // Return configured agents (without exposing full API key)
       return NextResponse.json({
         agents: [
           { id: RETELL_AGENTS.chris, name: 'Chris', role: 'Payer Follow-up', phone: RETELL_PHONES.chris, configured: !!RETELL_AGENTS.chris },
@@ -76,10 +150,26 @@ export async function GET(req: NextRequest) {
       })
     }
 
+    // ── Debug: raw API response ───────────────────────────────────────────
+    if (action === 'debug') {
+      const data = await retellFetch('/v2/list-calls', {
+        method: 'POST',
+        body: JSON.stringify({ limit: 2 }),
+      })
+      return NextResponse.json({
+        raw: data,
+        type: Array.isArray(data) ? 'array' : typeof data,
+        keys: data && typeof data === 'object' ? Object.keys(data as object) : [],
+        agent_ids: RETELL_AGENTS,
+        api_key_set: !!RETELL_API_KEY,
+      })
+    }
+
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+
   } catch (err) {
-    console.error('[Retell API]', err)
-    return NextResponse.json({ error: String(err) }, { status: 502 })
+    console.error('[Retell GET]', err)
+    return NextResponse.json({ error: String(err), fallback: true }, { status: 502 })
   }
 }
 
@@ -88,34 +178,25 @@ export async function POST(req: NextRequest) {
   const { action } = body
 
   try {
+    // ── Single call ───────────────────────────────────────────────────────
     if (action === 'create-call') {
-      // Launch a single outbound call
       const { agent_name, to_number, retell_llm_dynamic_variables } = body
-      const agentId = agent_name === 'cindy' ? RETELL_AGENTS.cindy : RETELL_AGENTS.chris
-      const fromNumber = agent_name === 'cindy' ? RETELL_PHONES.cindy : RETELL_PHONES.chris
-
-      if (!agentId) throw new Error(`Agent ${agent_name} not configured (add RETELL_AGENT_${agent_name?.toUpperCase()} to Vercel env)`)
-
+      const agentId = RETELL_AGENTS[agent_name as 'chris' | 'cindy']
+      const fromNumber = RETELL_PHONES[agent_name as 'chris' | 'cindy']
+      if (!agentId) throw new Error(`Agent ${agent_name} not configured`)
       const data = await retellFetch('/v2/create-phone-call', {
         method: 'POST',
-        body: JSON.stringify({
-          agent_id: agentId,
-          from_number: fromNumber,
-          to_number,
-          retell_llm_dynamic_variables: retell_llm_dynamic_variables ?? {},
-        }),
+        body: JSON.stringify({ agent_id: agentId, from_number: fromNumber, to_number, retell_llm_dynamic_variables: retell_llm_dynamic_variables ?? {} }),
       })
       return NextResponse.json(data)
     }
 
+    // ── Batch campaign ────────────────────────────────────────────────────
     if (action === 'create-batch') {
-      // Launch a batch campaign
       const { agent_name, recipients, batch_name } = body
-      const agentId = agent_name === 'cindy' ? RETELL_AGENTS.cindy : RETELL_AGENTS.chris
-      const fromNumber = agent_name === 'cindy' ? RETELL_PHONES.cindy : RETELL_PHONES.chris
-
+      const agentId = RETELL_AGENTS[agent_name as 'chris' | 'cindy']
+      const fromNumber = RETELL_PHONES[agent_name as 'chris' | 'cindy']
       if (!agentId) throw new Error(`Agent ${agent_name} not configured`)
-
       const data = await retellFetch('/v2/create-batch-call', {
         method: 'POST',
         body: JSON.stringify({
@@ -131,9 +212,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(data)
     }
 
+    // ── Update agent prompt ───────────────────────────────────────────────
+    if (action === 'update-agent') {
+      const { agent_name, general_prompt } = body
+      const llmId = RETELL_LLMS[agent_name as 'chris' | 'cindy']
+      if (!llmId) throw new Error(`RETELL_LLM_${agent_name?.toUpperCase()} not set in Vercel env vars`)
+      const data = await retellFetch(`/update-retell-llm/${llmId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ general_prompt }),
+      })
+      return NextResponse.json(data)
+    }
+
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+
   } catch (err) {
-    console.error('[Retell API]', err)
-    return NextResponse.json({ error: String(err) }, { status: 502 })
+    console.error('[Retell POST]', err)
+    return NextResponse.json({ error: String(err), fallback: true }, { status: 502 })
   }
 }
