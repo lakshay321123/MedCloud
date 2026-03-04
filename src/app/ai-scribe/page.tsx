@@ -13,7 +13,7 @@ import {
   Mic, Square, Check, ChevronLeft, BrainCircuit, Clock,
   FileText, Activity, AlertTriangle, Loader2, Sparkles,
   Stethoscope, Clipboard, ChevronRight, Zap, History,
-  Send, X, RefreshCw, BookOpen,
+  Send, X, RefreshCw, BookOpen, Plus, Pencil,
 } from 'lucide-react'
 import { formatDOB } from '@/lib/utils/region'
 
@@ -66,6 +66,14 @@ const SPECIALISTS = [
   'Dermatologist', 'Oncologist', 'Physical Therapist', 'Psychiatrist',
 ]
 
+const SPECIALTIES = [
+  'General Medicine', 'Family Medicine', 'Internal Medicine',
+  'Cardiology', 'Neurology', 'Orthopedics', 'Pulmonology',
+  'Gastroenterology', 'Endocrinology', 'Rheumatology', 'Urology',
+  'Dermatology', 'Oncology', 'Psychiatry', 'Pediatrics', 'OB/GYN',
+  'Emergency Medicine', 'Physical Medicine & Rehab',
+]
+
 // ── Provider View ───────────────────────────────────────────────────────────
 function ProviderView() {
   const { t } = useT()
@@ -107,6 +115,12 @@ function ProviderView() {
   const [soap, setSoap] = useState({ s: '', o: '', a: '', p: '' })
   const [aiError, setAiError] = useState('')
   const [keptCodes, setKeptCodes] = useState<Record<string, boolean>>({})
+  const [selectedSpecialty, setSelectedSpecialty] = useState('General Medicine')
+  const [isSigning, setIsSigning] = useState(false)
+  const [isTranscriptEditable, setIsTranscriptEditable] = useState(false)
+  const [manualCode, setManualCode] = useState('')
+  const [manualCodeType, setManualCodeType] = useState<'icd' | 'cpt'>('icd')
+  const [manualCodes, setManualCodes] = useState<Array<{ code: string; desc: string; type: 'icd' | 'cpt'; confidence: number; is_primary: boolean; modifiers: string[]; reasoning: string }>>([])
 
   // Voice macros panel
   const [showMacros, setShowMacros] = useState(false)
@@ -205,7 +219,7 @@ function ProviderView() {
           allergies: selectedPatient?.allergies?.join(', ') || 'NKDA',
           medications: selectedPatient?.medications?.join(', ') || 'None',
           visitType: selectedAppt?.type || 'Office Visit',
-          specialty: 'General Medicine',
+          specialty: selectedSpecialty,
           codeSystem,
         }),
       })
@@ -222,6 +236,7 @@ function ProviderView() {
       result.icd.forEach(c => { kept[c.code] = true })
       result.cpt.forEach(c => { kept[c.code] = true })
       setKeptCodes(kept)
+      setManualCodes([])
       setNoteLeftTab('transcript')
 
       const fakeVisit: DemoVisit = {
@@ -390,6 +405,13 @@ function ProviderView() {
           </div>
         ) : null
       })()}
+      <div className="card p-4">
+        <label className="text-xs font-semibold text-content-secondary uppercase tracking-wider block mb-2">Specialty</label>
+        <select value={selectedSpecialty} onChange={e => setSelectedSpecialty(e.target.value)}
+          className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm outline-none focus:border-brand/40">
+          {SPECIALTIES.map(s => <option key={s}>{s}</option>)}
+        </select>
+      </div>
       <button onClick={() => { setUiState('recording'); setTimeout(startRecording, 300) }}
         className="w-full bg-emerald-500 text-white rounded-lg py-3 text-sm font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2 transition-colors">
         <Mic size={16} /> Start Recording — {selectedPatient.firstName}
@@ -457,11 +479,25 @@ function ProviderView() {
         <div className="flex items-center gap-2 mb-3">
           {isListening ? <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" /> : <span className="w-2 h-2 bg-amber-500 rounded-full" />}
           <span className="text-xs font-semibold text-red-500">{isListening ? 'RECORDING — Speak clearly' : 'Mic starting…'}</span>
-          <span className="ml-auto text-[10px] text-content-tertiary">Web Speech API · Not stored</span>
+          <span className="ml-auto flex items-center gap-2 text-[10px] text-content-tertiary">
+            <span className="bg-brand/10 text-brand px-1.5 py-0.5 rounded">{selectedSpecialty}</span>
+            <button onClick={() => setIsTranscriptEditable(p => !p)} className="hover:text-content-primary flex items-center gap-0.5">
+              <Pencil size={9} /> {isTranscriptEditable ? 'Lock' : 'Edit'}
+            </button>
+          </span>
         </div>
         <Waveform active={isListening} />
-        <div className="flex-1 mt-3 overflow-y-auto text-sm text-content-primary leading-relaxed font-mono whitespace-pre-wrap min-h-[200px] max-h-[400px]">
-          {transcript || <span className="text-content-tertiary">Listening… speak now</span>}
+        <div className="flex-1 mt-3 overflow-y-auto min-h-[200px] max-h-[400px]">
+          {isTranscriptEditable ? (
+            <textarea value={transcript}
+              onChange={e => { setTranscript(e.target.value); transcriptRef.current = e.target.value }}
+              className="w-full h-full min-h-[200px] bg-transparent text-sm font-mono leading-relaxed resize-none outline-none text-content-primary"
+              placeholder="Transcript will appear here. You can edit it before processing." />
+          ) : (
+            <div className="text-sm text-content-primary leading-relaxed font-mono whitespace-pre-wrap">
+              {transcript || <span className="text-content-tertiary">Listening… speak now</span>}
+            </div>
+          )}
         </div>
         {transcript && (
           <div className="mt-2 pt-2 border-t border-separator flex items-center justify-between">
@@ -489,25 +525,28 @@ function ProviderView() {
 
   // ── Note View ─────────────────────────────────────────────────────────────
   if (uiState === 'note' && selectedVisit) {
-    const allCodes = aiResult
-      ? [
-          ...aiResult.icd.map(c => ({
-            code: c.code, desc: c.desc, confidence: c.confidence,
-            type: 'icd' as const, is_primary: c.is_primary ?? false,
-            modifiers: [] as string[], reasoning: '',
-          })),
-          ...aiResult.cpt.map(c => ({
-            code: c.code, desc: c.desc, confidence: c.confidence,
-            type: 'cpt' as const, is_primary: false,
-            modifiers: c.modifiers, reasoning: c.reasoning ?? '',
-          })),
-        ]
-      : selectedVisit.suggestedCodes.map(c => ({
-          code: c.icd || c.cpt || '',
-          desc: c.description, confidence: c.confidence,
-          type: c.icd ? 'icd' as const : 'cpt' as const,
-          is_primary: false, modifiers: c.modifiers || [], reasoning: '',
-        }))
+    const allCodes = [
+      ...(aiResult
+        ? [
+            ...aiResult.icd.map(c => ({
+              code: c.code, desc: c.desc, confidence: c.confidence,
+              type: 'icd' as const, is_primary: c.is_primary ?? false,
+              modifiers: [] as string[], reasoning: '',
+            })),
+            ...aiResult.cpt.map(c => ({
+              code: c.code, desc: c.desc, confidence: c.confidence,
+              type: 'cpt' as const, is_primary: false,
+              modifiers: c.modifiers, reasoning: c.reasoning ?? '',
+            })),
+          ]
+        : selectedVisit.suggestedCodes.map(c => ({
+            code: c.icd || c.cpt || '',
+            desc: c.description, confidence: c.confidence,
+            type: c.icd ? 'icd' as const : 'cpt' as const,
+            is_primary: false, modifiers: c.modifiers || [], reasoning: '',
+          }))),
+      ...manualCodes,
+    ]
 
     const priorVisits = demoVisits.filter(v => v.patientId === selectedVisit.patientId && v.id !== selectedVisit.id)
 
@@ -635,7 +674,7 @@ function ProviderView() {
                   {aiResult?.em_rationale && <span className="ml-auto text-[10px] text-content-tertiary">{aiResult.em_rationale}</span>}
                 </div>
                 {allCodes.map((code, i) => (
-                  <div key={i} className={`card p-3 mb-2 transition-opacity ${keptCodes[code.code] === false ? 'opacity-40' : ''}`}>
+                  <div key={`${code.code}-${i}`} className={`card p-3 mb-2 transition-opacity ${keptCodes[code.code] === false ? 'opacity-40' : ''}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
@@ -644,6 +683,7 @@ function ProviderView() {
                           </span>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${code.confidence >= 90 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : code.confidence >= 75 ? 'bg-amber-500/10 text-amber-600' : 'bg-gray-500/10 text-gray-400'}`}>{code.confidence}%</span>
                           {code.is_primary && <span className="text-[10px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-full">Primary</span>}
+                          {manualCodes.some(m => m.code === code.code) && <span className="text-[10px] bg-purple-500/10 text-purple-500 px-1.5 py-0.5 rounded-full">Manual</span>}
                           {code.modifiers?.map((m: string) => <span key={m} className="text-[10px] bg-purple-500/10 text-purple-500 px-1.5 py-0.5 rounded">-{m}</span>)}
                         </div>
                         <p className="text-xs">{code.desc}</p>
@@ -656,43 +696,78 @@ function ProviderView() {
                     </div>
                   </div>
                 ))}
+                {/* Manual code add */}
+                <div className="mt-2 flex gap-2 items-center">
+                  <select value={manualCodeType} onChange={e => setManualCodeType(e.target.value as 'icd' | 'cpt')}
+                    className="bg-surface-elevated border border-separator rounded px-2 py-1.5 text-[11px] outline-none focus:border-brand/40 w-16">
+                    <option value="icd">ICD</option>
+                    <option value="cpt">CPT</option>
+                  </select>
+                  <input value={manualCode} onChange={e => setManualCode(e.target.value.toUpperCase())}
+                    placeholder="e.g. M54.5 or 99213" maxLength={10}
+                    className="flex-1 bg-surface-elevated border border-separator rounded px-2 py-1.5 text-[11px] outline-none focus:border-brand/40 font-mono"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && manualCode.trim()) {
+                        const code = manualCode.trim()
+                        if (allCodes.some(c => c.code === code)) { setManualCode(''); return }
+                        setManualCodes(p => [...p, { code, desc: 'Manually added', type: manualCodeType, confidence: 100, is_primary: false, modifiers: [], reasoning: '' }])
+                        setKeptCodes(p => ({ ...p, [code]: true }))
+                        setManualCode('')
+                      }
+                    }} />
+                  <button onClick={() => {
+                    const code = manualCode.trim()
+                    if (!code) return
+                    if (allCodes.some(c => c.code === code)) { setManualCode(''); return }
+                    setManualCodes(p => [...p, { code, desc: 'Manually added', type: manualCodeType, confidence: 100, is_primary: false, modifiers: [], reasoning: '' }])
+                    setKeptCodes(p => ({ ...p, [code]: true }))
+                    setManualCode('')
+                  }} className="flex items-center gap-1 text-[11px] bg-brand/10 text-brand border border-brand/20 rounded px-2 py-1.5 hover:bg-brand/20 transition-colors">
+                    <Plus size={10} /> Add
+                  </button>
+                </div>
               </div>
             </div>
 
             {selectedVisit.status === 'pending_signoff' && (
               <div className="p-3 border-t border-separator flex gap-2">
-                <button onClick={async () => {
+                <button disabled={isSigning} onClick={async () => {
+                  setIsSigning(true)
+                  const keptIcd = aiResult?.icd.filter(c => keptCodes[c.code] !== false) || []
+                  const keptCpt = aiResult?.cpt.filter(c => keptCodes[c.code] !== false) || []
+                  const manualKept = manualCodes.filter(c => keptCodes[c.code] !== false)
+
+                  // Fire both API calls — don't block on failure (demo mode)
                   try {
-                    await createSOAP.mutate({
-                      patient_id: selectedVisit.patientId || '',
-                      provider_id: currentUser?.id || '',
-                      encounter_id: `ENC-${Date.now()}`,
-                      dos: selectedVisit.dos,
-                      subjective: soap.s, objective: soap.o, assessment: soap.a, plan: soap.p,
-                      transcript: selectedVisit.transcript || '',
-                      signed_off: true,
-                      ai_suggestions: {
-                        icd: aiResult?.icd.filter(c => keptCodes[c.code] !== false) || [],
-                        cpt: aiResult?.cpt.filter(c => keptCodes[c.code] !== false) || [],
-                        em_level: aiResult?.em_level, avs_summary: aiResult?.avs_summary,
-                      },
-                    })
-                    await createCoding.mutate({
-                      patient_id: selectedVisit.patientId || '',
-                      received_at: new Date().toISOString(),
-                      priority: 'normal' as any, status: 'pending',
-                      notes: `From AI Scribe: ${selectedVisit.encounterType} on ${selectedVisit.dos}. ICD: ${aiResult?.icd.map(c => c.code).join(', ')}. CPT: ${aiResult?.cpt.map(c => c.code).join(', ')}`,
-                    })
-                    toast.success(`Note signed. Sent to coding queue — ${selectedVisit.patientName}`)
-                    setUiState('queue')
-                    setTimeout(() => router.push('/coding'), 800)
-                  } catch {
-                    toast.success(`Note signed. Navigating to coding…`)
-                    setUiState('queue')
-                    setTimeout(() => router.push('/coding'), 800)
-                  }
-                }} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep flex items-center justify-center gap-2 transition-colors">
-                  <Check size={16} /> Sign & Send to Coding
+                    await Promise.allSettled([
+                      createSOAP.mutate({
+                        patient_id: selectedVisit.patientId || '',
+                        provider_id: currentUser?.id || '',
+                        encounter_id: `ENC-${Date.now()}`,
+                        dos: selectedVisit.dos,
+                        subjective: soap.s, objective: soap.o, assessment: soap.a, plan: soap.p,
+                        transcript: selectedVisit.transcript || '',
+                        signed_off: true,
+                        ai_suggestions: {
+                          icd: keptIcd, cpt: keptCpt,
+                          em_level: aiResult?.em_level, avs_summary: aiResult?.avs_summary,
+                          manual_codes: manualKept,
+                        },
+                      }),
+                      createCoding.mutate({
+                        patient_id: selectedVisit.patientId || '',
+                        received_at: new Date().toISOString(),
+                        priority: 'normal' as any, status: 'pending',
+                        notes: `AI Scribe: ${selectedVisit.encounterType} · ${selectedVisit.dos} | ICD: ${[...keptIcd.map(c => c.code), ...manualKept.filter(c => c.type === 'icd').map(c => c.code)].join(', ')} | CPT: ${[...keptCpt.map(c => c.code), ...manualKept.filter(c => c.type === 'cpt').map(c => c.code)].join(', ')}`,
+                      }),
+                    ])
+                  } catch { /* swallow — navigate regardless */ }
+
+                  toast.success(`✓ Note signed — sending to Coding Queue`)
+                  // Navigate immediately without setTimeout
+                  router.push('/coding')
+                }} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep flex items-center justify-center gap-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                  {isSigning ? <><Loader2 size={15} className="animate-spin" /> Signing…</> : <><Check size={16} /> Sign & Send to Coding</>}
                 </button>
                 <button onClick={() => toast.info('Draft saved')} className="px-4 py-2.5 rounded-lg border border-separator text-content-secondary text-sm transition-colors">Save Draft</button>
               </div>
