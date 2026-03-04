@@ -1,5 +1,5 @@
-'use client'
 import { useT } from '@/lib/i18n'
+'use client'
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context'
@@ -33,7 +33,6 @@ function RecordingTimer() {
 type UIState = 'queue' | 'select_patient' | 'review_patient' | 'recording' | 'processing' | 'note'
 
 function ProviderView() {
-  const { t } = useT()
   const { toast } = useToast()
   const { setIsScribeRecording } = useApp()
   const [uiState, setUiState] = useState<UIState>('queue')
@@ -265,7 +264,7 @@ function ProviderView() {
     <div className="grid grid-cols-5 gap-5 h-[calc(100vh-340px)]">
       <div className="col-span-2 card flex flex-col overflow-hidden">
         <div className="px-4 py-3 border-b border-separator flex items-center justify-between">
-          <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">{t("scribe","transcript")}</h3>
+          <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Transcript</h3>
           <button onClick={()=>setUiState('queue')} className="text-[10px] text-content-secondary hover:text-content-primary flex items-center gap-1">
             <ChevronLeft size={12}/> Back
           </button>
@@ -313,7 +312,7 @@ function ProviderView() {
                   </div>
                   <div className="flex gap-1 shrink-0">
                     <button onClick={()=>setCodes(p=>p.map((c,j)=>j===i?{...c,kept:true}:c))}
-                      className={`text-[10px] px-2 py-1 rounded border transition-colors ${code.kept!==false?'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20':'border-separator text-content-secondary'}`}>{t("scribe","keep")}</button>
+                      className={`text-[10px] px-2 py-1 rounded border transition-colors ${code.kept!==false?'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20':'border-separator text-content-secondary'}`}>Keep</button>
                     <button onClick={()=>setCodes(p=>p.map((c,j)=>j===i?{...c,kept:false}:c))}
                       className={`text-[10px] px-2 py-1 rounded border transition-colors ${code.kept===false?'bg-red-500/10 text-red-500 border-red-500/20':'border-separator text-content-secondary'}`}>Remove</button>
                   </div>
@@ -346,10 +345,10 @@ function ProviderView() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-4 mb-2">
-        <KPICard label={t("scribe","notesToday")} value={8} icon={<FileText size={20}/>}/>
-        <KPICard label={t("scribe","pendingSignOff")} value={pending.length} icon={<Clock size={20}/>}/>
-        <KPICard label={t("scribe","avgConfidence")} value="91%" icon={<BrainCircuit size={20}/>}/>
-        <KPICard label={t("scribe","codesSuggested")} value={24} icon={<Activity size={20}/>}/>
+        <KPICard label="Notes Today" value={8} icon={<FileText size={20}/>}/>
+        <KPICard label="Pending Sign-off" value={pending.length} icon={<Clock size={20}/>}/>
+        <KPICard label="Avg AI Confidence" value="91%" icon={<BrainCircuit size={20}/>}/>
+        <KPICard label="Codes Suggested" value={24} icon={<Activity size={20}/>}/>
       </div>
       <div className="grid grid-cols-3 gap-5">
         <div className="col-span-1 space-y-3">
@@ -402,7 +401,6 @@ function ProviderView() {
 }
 
 function CoderView() {
-  const { t } = useT()
   const [selectedVisit, setSelectedVisit] = useState<DemoVisit>(demoVisits[0])
   const { toast } = useToast()
   const router = useRouter()
@@ -471,7 +469,7 @@ export default function AIScribePage() {
   const { currentUser } = useApp()
   const isProvider = currentUser.role === 'provider'
   return (
-    <ModuleShell title={t("scribe","title")} subtitle={isProvider?'Dictate and review clinical notes':'Review AI-generated clinical notes'}>
+    <ModuleShell title={t("scribe","title")} subtitle={isProvider ? t("scribe","subtitleProvider") : t("scribe","subtitleCoder")}>
       <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
         <span className="text-lg shrink-0">🔬</span>
         <div>

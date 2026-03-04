@@ -81,8 +81,8 @@ CloudFormation template creates:
 
 ### Step 1: Run Migration
 ```bash
-psql -h medcloud-db.ck54k4qcenu4.us-east-1.rds.amazonaws.com \
-     -U medcloud_admin -d medcloud \
+psql -h $MEDCLOUD_DB_HOST \
+     -U $MEDCLOUD_DB_USER -d medcloud \
      -f backend/migrations/002-sprint2-tables.sql
 ```
 
@@ -113,9 +113,9 @@ aws lambda update-function-code \
 aws lambda update-function-configuration \
   --function-name medcloud-api \
   --environment Variables="{
-    DB_HOST=medcloud-db.ck54k4qcenu4.us-east-1.rds.amazonaws.com,
+    DB_HOST=$MEDCLOUD_DB_HOST,
     DB_NAME=medcloud,
-    DB_USER=medcloud_admin,
+    DB_USER=$MEDCLOUD_DB_USER,
     DB_PASS=<RETRIEVE_FROM_SECRETS_MANAGER>,
     S3_BUCKET=medcloud-documents-us-prod,
     AWS_REGION=us-east-1,

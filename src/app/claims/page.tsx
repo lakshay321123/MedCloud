@@ -787,14 +787,14 @@ export default function ClaimsPage() {
   }
 
   return (
-    <ModuleShell title={t("claims", "title")} subtitle={t("claims", "subtitle")}>
+    <ModuleShell title="Claims Center" subtitle="Manage claims across all clients">
       {apiError && <ErrorBanner error={apiError} onRetry={refetch} />}
       {/* KPI Bar */}
       <div className="grid grid-cols-4 gap-4 mb-5">
-        <KPICard label={t("claims","totalClaims")} value={apiLoading ? '…' : allClaims.length} icon={<FileText size={20}/>} />
-        <KPICard label={t("claims","submittedToday")} value={apiLoading ? '…' : submittedToday} icon={<CheckCircle2 size={20}/>} />
-        <KPICard label="Clean Claim Rate" value={apiLoading ? '…' : `${cleanRate}%`} icon={<Activity size={20}/>} />
-        <KPICard label="Avg Days to Payment" value={apiLoading ? '…' : `${avgDays}d`} icon={<Clock size={20}/>} />
+        <KPICard label="Total Claims" value={apiLoading ? '…' : allClaims.length} icon={<FileText size={20}/>} />
+        <KPICard label="Submitted Today" value={apiLoading ? '…' : submittedToday} icon={<CheckCircle2 size={20}/>} />
+        <KPICard label={t("claims","cleanClaimRate")} value={apiLoading ? '…' : `${cleanRate}%`} icon={<Activity size={20}/>} />
+        <KPICard label={t("claims","avgDaysToPayment")} value={apiLoading ? '…' : `${avgDays}d`} icon={<Clock size={20}/>} />
       </div>
 
       <div className="flex gap-4 h-[calc(100vh-300px)]">

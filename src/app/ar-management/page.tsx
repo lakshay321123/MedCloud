@@ -9,7 +9,6 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import { TrendingUp, X, Phone, Bot, User, PhoneCall, Plus, AlertTriangle, FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { tfDaysRemaining } from '@/lib/utils/time'
 import { useRouter } from 'next/navigation'
-import { useLogARCall } from '@/lib/hooks'
 
 
 
@@ -94,7 +93,6 @@ function LogCallModal({
   onClose: () => void
   onSave: (entry: CallLogEntry, followupDate?: string, promisedDate?: string) => void
 }) {
-  const { t } = useT()
   const { toast } = useToast()
   const phone = payerPhones[account.payer] || 'Contact payer directly'
   const ivr = payerIVR[account.payer] || []
@@ -172,7 +170,7 @@ function LogCallModal({
               <label className="text-[11px] text-content-tertiary block mb-1">Call Outcome *</label>
               <select value={outcome} onChange={e => setOutcome(e.target.value)}
                 className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40">
-                <option value="">{t("ar","selectOutcome")}</option>
+                <option value="">Select outcome…</option>
                 {CALL_OUTCOMES.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
             </div>
@@ -232,13 +230,13 @@ function ARDrawer({
   onUpdateAccount: (update: Partial<ARAccount>) => void
   onAddCall: (entry: CallLogEntry, followupDate?: string, promisedDate?: string) => void
 }) {
-  const { t } = useT()
   const { toast } = useToast()
   const router = useRouter()
   const [drawerTab, setDrawerTab] = useState<'summary' | 'calls' | 'notes' | 'claims'>('summary')
   const [followUpDate, setFollowUpDate] = useState(account.nextFollowup !== '-' ? account.nextFollowup : '')
   const [followUpNote, setFollowUpNote] = useState('')
   const [showCallModal, setShowCallModal] = useState(false)
+  const { t } = useT()
   const [showWriteoffModal, setShowWriteoffModal] = useState(false)
   const [writeoffReason, setWriteoffReason] = useState('')
 
@@ -472,15 +470,15 @@ function ARDrawer({
                   <label className="text-[11px] text-content-tertiary block mb-1">Reason *</label>
                   <select value={writeoffReason} onChange={e => setWriteoffReason(e.target.value)}
                     className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40">
-                    <option value="">{"Select reason…"}</option>
-                    <option value="small_balance">{"Small balance write-off"}</option>
-                    <option value="timely_filing">{"Timely filing exceeded"}</option>
-                    <option value="no_auth">{"No authorization on file"}</option>
-                    <option value="medical_necessity">{"Medical necessity not met"}</option>
-                    <option value="contractual">{"Contractual adjustment"}</option>
-                    <option value="charity_care">{"Charity care"}</option>
-                    <option value="bankruptcy">{"Patient bankruptcy"}</option>
-                    <option value="other">{"Other"}</option>
+                    <option value="">{t("ar","selectReason")}</option>
+                    <option value="small_balance">{t("ar","smallBalanceWriteOff")}</option>
+                    <option value="timely_filing">{t("ar","timelyFilingExceeded")}</option>
+                    <option value="no_auth">{t("ar","noAuthOnFile")}</option>
+                    <option value="medical_necessity">{t("ar","medNecessityNotMet")}</option>
+                    <option value="contractual">{t("ar","contractualAdjustment")}</option>
+                    <option value="charity_care">{t("ar","charityCare")}</option>
+                    <option value="bankruptcy">{t("ar","patientBankruptcy")}</option>
+                    <option value="other">{t("misc","other")}</option>
                   </select>
                 </div>
               </div>
@@ -497,7 +495,6 @@ function ARDrawer({
 }
 
 function InboundCallPanel() {
-  const { t } = useT()
   const { toast } = useToast()
   const [phoneSearch, setPhoneSearch] = useState('')
   const [found, setFound] = useState<ARAccount | null>(null)
@@ -558,12 +555,10 @@ function InboundCallPanel() {
 export default function ARManagementPage() {
   const { t } = useT()
   const { selectedClient } = useApp()
-  const { toast } = useToast()
   const [accounts, setAccounts] = useState<ARAccount[]>(initialAccounts)
   const [callHistory, setCallHistory] = useState<Record<string, CallLogEntry[]>>(initialCallHistory)
   const [selected, setSelected] = useState<ARAccount | null>(null)
   const [callMode, setCallMode] = useState<'accounts' | 'inbound'>('accounts')
-  const { mutate: logCallAPI } = useLogARCall()
 
   const filtered = accounts.filter(a => !selectedClient || a.client.includes(selectedClient.name.split(' ')[0]))
 
@@ -572,36 +567,17 @@ export default function ARManagementPage() {
     if (selected?.id === id) setSelected(prev => prev ? { ...prev, ...update } : prev)
   }
 
-  async function addCallEntry(accountId: string, entry: CallLogEntry, followupDate?: string, promisedDate?: string) {
-    // Optimistic update first — UI feels instant
+  function addCallEntry(accountId: string, entry: CallLogEntry, followupDate?: string, promisedDate?: string) {
     setCallHistory(prev => ({
       ...prev,
       [accountId]: [entry, ...(prev[accountId] || [])],
     }))
-    const updates: Partial<ARAccount> = { lastAction: `Manual call — ${entry.status}` }
+    const updates: Partial<ARAccount> = {
+      lastAction: `Manual call — ${entry.status}`,
+    }
     if (followupDate) updates.nextFollowup = followupDate
     if (promisedDate) updates.paymentPromisedDate = promisedDate
     updateAccount(accountId, updates)
-
-    // Persist to API
-    try {
-      await logCallAPI({
-        claim_id: accountId,
-        call_type: 'manual',
-        outcome: entry.status,
-        reference_number: entry.ref,
-        notes: entry.note,
-        follow_up_date: followupDate,
-      })
-    } catch (err) {
-      console.error('[AR log-call] API failed:', err)
-      // Revert optimistic update so UI stays consistent with server state
-      setCallHistory(prev => ({
-        ...prev,
-        [accountId]: (prev[accountId] || []).filter(e => e.id !== entry.id),
-      }))
-      toast.error('Failed to log call — please try again')
-    }
   }
 
   const totalAR = accounts.reduce((s, a) => s + a.balance, 0)
@@ -624,16 +600,16 @@ export default function ARManagementPage() {
     .filter(c => c.date?.startsWith(new Date().toISOString().slice(0,10))).length
 
   return (
-    <ModuleShell title={t("ar", "title")} subtitle={t("ar", "subtitle")}>
+    <ModuleShell title="A/R Management" subtitle="Accounts receivable follow-up and collections">
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
         Demo data — live data connects in Sprint 2
       </div>
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Total A/R" value={`$${(totalAR/1000).toFixed(0)}K`} icon={<TrendingUp size={20} />} />
-        <KPICard label="Worked Today" value={String(workedToday)} trend="up" />
-        <KPICard label="Follow-ups Due" value={String(followupsDue)} />
-        <KPICard label={t("ar","avgDaysOutstanding")} value={`${avgAge}`} />
+        <KPICard label={t("ar","totalAR")} value={`$${(totalAR/1000).toFixed(0)}K`} icon={<TrendingUp size={20} />} />
+        <KPICard label={t("ar","workedToday")} value={String(workedToday)} trend="up" />
+        <KPICard label={t("ar","followupsDue")} value={String(followupsDue)} />
+        <KPICard label="Avg Days Outstanding" value={`${avgAge}`} />
       </div>
 
       {/* Tab bar */}

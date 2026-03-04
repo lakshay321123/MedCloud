@@ -3,7 +3,7 @@ import translations, { Language } from './translations'
 
 type Section = keyof typeof translations
 type Key<S extends Section> = keyof (typeof translations)[S]
-type Entry = { en: string; ar: string; es: string }
+type Entry = Record<Language, string>
 
 /**
  * useT — Translation hook

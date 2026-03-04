@@ -12,7 +12,6 @@ import {
 } from 'lucide-react'
 // removed all demo imports from dashboard
 import { useDashboardMetrics } from '@/lib/hooks'
-import { useT } from '@/lib/i18n'
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 function QuickLinkCard({ title, subtitle, href, icon }: { title: string; subtitle: string; href: string; icon: React.ReactNode }) {
@@ -44,7 +43,6 @@ function timeAgo(dateStr: string): string {
 // ── Executive (Admin/Director/Manager) Dashboard ──────────────────────────────
 function ExecutiveDashboard() {
   const router = useRouter()
-  const { t } = useT()
   const { data: metrics, loading } = useDashboardMetrics()
 
   const totalClaims = Number(metrics?.total_claims) || 3847
@@ -76,16 +74,16 @@ function ExecutiveDashboard() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-4 gap-5">
-        <KPICard label={t('dashboard', 'revenueCollected')} value={loading ? '…' : `$${(totalCollectionsMtd / 1000000).toFixed(1)}M`} sub="+8.2% vs last month" trend="up" icon={<DollarSign size={20} />} />
-        <KPICard label={t('dashboard', 'claimsSubmitted')} value={loading ? '…' : totalClaims.toLocaleString()} sub="+124 today" trend="up" icon={<FileText size={20} />} />
-        <KPICard label={t('dashboard', 'denialRate')} value={loading ? '…' : `${denialRate}%`} sub="-0.3% vs last month" trend="down" icon={<AlertTriangle size={20} />} />
-        <KPICard label={t('dashboard', 'daysInAR')} value="28.5" sub="-2.1 days" trend="down" icon={<Clock size={20} />} />
+        <KPICard label="Total Revenue (MTD)" value={loading ? '…' : `$${(totalCollectionsMtd / 1000000).toFixed(1)}M`} sub="+8.2% vs last month" trend="up" icon={<DollarSign size={20} />} />
+        <KPICard label="Claims Submitted" value={loading ? '…' : totalClaims.toLocaleString()} sub="+124 today" trend="up" icon={<FileText size={20} />} />
+        <KPICard label="Denial Rate" value={loading ? '…' : `${denialRate}%`} sub="-0.3% vs last month" trend="down" icon={<AlertTriangle size={20} />} />
+        <KPICard label="Avg Days in A/R" value="28.5" sub="-2.1 days" trend="down" icon={<Clock size={20} />} />
       </div>
       <div className="grid grid-cols-4 gap-5">
-        <KPICard label={t('dashboard', 'collectionRate')} value="96.8%" sub="+0.4%" trend="up" icon={<TrendingUp size={20} />} />
-        <KPICard label={t('dashboard', 'pendingClaims')} value={loading ? '…' : totalPatients.toLocaleString()} icon={<Users size={20} />} />
-        <KPICard label={t("dashboard","aiCallsToday")} value="127" icon={<Phone size={20} />} />
-        <KPICard label={t("dashboard","aiCodingAcc")} value="94.2%" icon={<BrainCircuit size={20} />} />
+        <KPICard label="Collection Rate" value="96.8%" sub="+0.4%" trend="up" icon={<TrendingUp size={20} />} />
+        <KPICard label="Active Patients" value={loading ? '…' : totalPatients.toLocaleString()} icon={<Users size={20} />} />
+        <KPICard label="AI Calls Today" value="127" icon={<Phone size={20} />} />
+        <KPICard label="AI Coding Accuracy" value="94.2%" icon={<BrainCircuit size={20} />} />
       </div>
       <div className="grid grid-cols-5 gap-5">
         <div className="col-span-3 card p-6">
@@ -142,7 +140,6 @@ function ExecutiveDashboard() {
 
 // ── Coder Dashboard ───────────────────────────────────────────────────────────
 function CoderDashboard() {
-  const { t } = useT()
   const { data: metrics } = useDashboardMetrics()
   const pendingCharts = metrics?.coding_queue_count ?? 0
   const pastSLA = metrics?.coding_queue_count !== undefined ? 0 : null  // Sprint 2
@@ -155,10 +152,10 @@ function CoderDashboard() {
         <p className="text-sm text-content-secondary">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
       </div>
       <div className="grid grid-cols-4 gap-4">
-        <KPICard label={t("coding","myQueue")} value={pendingCharts} icon={<BrainCircuit size={20} />} />
-        <KPICard label={"Past 24h SLA"} value={pastSLA} icon={<Clock size={20} />} />
-        <KPICard label={"Queries Pending"} value={queryPending} icon={<MessageCircle size={20} />} />
-        <KPICard label={t("coding","codedToday")} value={4} icon={<CheckCircle2 size={20} />} trend="up" />
+        <KPICard label="Charts Waiting" value={pendingCharts} icon={<BrainCircuit size={20} />} />
+        <KPICard label="Past 24h SLA" value={pastSLA} icon={<Clock size={20} />} />
+        <KPICard label="Queries Pending" value={queryPending} icon={<MessageCircle size={20} />} />
+        <KPICard label="Coded Today" value={4} icon={<CheckCircle2 size={20} />} trend="up" />
       </div>
       {(pastSLA ?? 0) > 0 && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
@@ -180,7 +177,6 @@ function CoderDashboard() {
 
 // ── Biller Dashboard ──────────────────────────────────────────────────────────
 function BillerDashboard() {
-  const { t } = useT()
   const { data: metrics } = useDashboardMetrics()
   const scrubFailed = metrics?.claims_by_status?.find(s => s.status === 'scrub_failed') ? Number(metrics.claims_by_status.find(s => s.status === 'scrub_failed')!.count) : 0
   const pendingSubmit = metrics?.claims_by_status?.find(s => s.status === 'ready') ? Number(metrics.claims_by_status.find(s => s.status === 'ready')!.count) : 0
@@ -194,10 +190,10 @@ function BillerDashboard() {
         <p className="text-sm text-content-secondary">Your daily billing summary</p>
       </div>
       <div className="grid grid-cols-4 gap-4">
-        <KPICard label={t("claims","scrubErrors")} value={scrubFailed} icon={<AlertTriangle size={20} />} />
-        <KPICard label={"Ready to Submit"} value={pendingSubmit} icon={<Send size={20} />} />
-        <KPICard label={"Denied"} value={rejectedYesterday} icon={<XCircle size={20} />} />
-        <KPICard label={"Charge Lag Alerts"} value={chargeLagCount} icon={<Clock size={20} />} />
+        <KPICard label="Scrub Errors" value={scrubFailed} icon={<AlertTriangle size={20} />} />
+        <KPICard label="Ready to Submit" value={pendingSubmit} icon={<Send size={20} />} />
+        <KPICard label="Denied" value={rejectedYesterday} icon={<XCircle size={20} />} />
+        <KPICard label="Charge Lag Alerts" value={chargeLagCount} icon={<Clock size={20} />} />
       </div>
       {scrubFailed > 0 && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between">
@@ -230,7 +226,6 @@ function BillerDashboard() {
 
 // ── AR Team Dashboard ─────────────────────────────────────────────────────────
 function ARDashboard() {
-  const { t } = useT()
   const { data: metrics } = useDashboardMetrics()
   const overdueAccounts = metrics?.ar_aging ? (metrics.ar_aging['61_90'] + metrics.ar_aging['91_120'] + metrics.ar_aging['120_plus']) : 0
   const denialsPending = Number(metrics?.open_denials) || 0
@@ -243,10 +238,10 @@ function ARDashboard() {
         <p className="text-sm text-content-secondary">Your accounts receivable summary</p>
       </div>
       <div className="grid grid-cols-4 gap-4">
-        <KPICard label={t("dashboard","overdueAccounts")} value={overdueAccounts} icon={<TrendingUp size={20} />} />
-        <KPICard label={t("dashboard","unworkedDenials")} value={denialsPending} icon={<ShieldAlert size={20} />} />
-        <KPICard label={t("dashboard","appealsDeadline")} value={appealsNearDeadline} icon={<Clock size={20} />} />
-        <KPICard label={t("dashboard","accountsWorked")} value={12} icon={<CheckCircle2 size={20} />} />
+        <KPICard label="Overdue (60+ days)" value={overdueAccounts} icon={<TrendingUp size={20} />} />
+        <KPICard label="Unworked Denials" value={denialsPending} icon={<ShieldAlert size={20} />} />
+        <KPICard label="Appeals Near Deadline" value={appealsNearDeadline} icon={<Clock size={20} />} />
+        <KPICard label="Accounts Worked Today" value={12} icon={<CheckCircle2 size={20} />} />
       </div>
       {appealsNearDeadline > 0 && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between">
@@ -270,7 +265,6 @@ function ARDashboard() {
 
 // ── Posting Team Dashboard ────────────────────────────────────────────────────
 function PostingDashboard() {
-  const { t } = useT()
   const unpostedERAs = 2
   const manualReviewLines = 8
   const pastSLAERAs = 1
@@ -300,7 +294,6 @@ function PostingDashboard() {
 
 // ── Provider Dashboard ────────────────────────────────────────────────────────
 function ProviderDashboard() {
-  const { t } = useT()
   const { data: metrics } = useDashboardMetrics()
   const todayAppointments = metrics?.upcoming_appointments ?? []
   const pendingSignOffs = null  // Sprint 2
@@ -348,7 +341,6 @@ function ProviderDashboard() {
 
 // ── Client Dashboard ──────────────────────────────────────────────────────────
 function ClientDashboard() {
-  const { t } = useT()
   const { selectedClient } = useApp()
   const { data: metrics } = useDashboardMetrics()
   const mtdCollections = 84200

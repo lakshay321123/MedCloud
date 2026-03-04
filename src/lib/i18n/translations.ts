@@ -73,7 +73,8 @@ const translations = {
     selectOutcome: { en: 'Select Outcome',     ar: 'اختر النتيجة',     es: 'Seleccionar Resultado' },
     selectType:    { en: 'Select Type',        ar: 'اختر النوع',       es: 'Seleccionar Tipo' },
     allOutcomes:   { en: 'All Outcomes',       ar: 'جميع النتائج',     es: 'Todos los Resultados' },
-    allTypes:      { en: 'All Types',          ar: 'جميع الأنواع',     es: 'Todos los Tipos' },
+    allTypes:      { en: 'All Types',           ar: 'جميع الأنواع',     es: 'Todos los Tipos' },
+    bulkUpload:    { en: 'Bulk Upload',           ar: 'رفع مجمّع',        es: 'Carga Masiva' },
   },
 
   status: {
@@ -113,7 +114,7 @@ const translations = {
     daysInAR:         { en: 'Avg Days in A/R',           ar: 'متوسط أيام الذمم',             es: 'Promedio Días en C×C' },
     cleanClaimRate:   { en: 'Clean Claim Rate',          ar: 'معدل المطالبات النظيفة',       es: 'Tasa de Reclamaciones Limpias' },
     collectionRate:   { en: 'Net Collection Rate',       ar: 'معدل التحصيل الصافي',          es: 'Tasa Neta de Cobro' },
-    pendingClaims:    { en: 'Active Patients',           ar: 'المرضى النشطون',               es: 'Pacientes Activos' },
+    activePatients:   { en: 'Active Patients',           ar: 'المرضى النشطون',               es: 'Pacientes Activos' },
     openDenials:      { en: 'Open Denials',              ar: 'الرفوض المفتوحة',              es: 'Denegaciones Abiertas' },
     recentActivity:   { en: 'Recent Activity',           ar: 'النشاط الأخير',                es: 'Actividad Reciente' },
     aiCallsToday:     { en: 'AI Calls Today',            ar: 'مكالمات الذكاء اليوم',         es: 'Llamadas IA Hoy' },
@@ -137,7 +138,9 @@ const translations = {
     scrubClaim:     { en: 'Scrub Claim',             ar: 'فحص المطالبة',              es: 'Revisar Reclamación' },
     totalClaims:    { en: 'Total Claims',            ar: 'إجمالي المطالبات',          es: 'Total Reclamaciones' },
     submittedToday: { en: 'Submitted Today',         ar: 'أُرسل اليوم',               es: 'Enviadas Hoy' },
-    scrubErrors:    { en: 'Scrub Errors',            ar: 'أخطاء الفحص',               es: 'Errores de Revisión' },
+    scrubErrors:       { en: 'Scrub Errors',         ar: 'أخطاء الفحص',               es: 'Errores de Revisión' },
+    cleanClaimRate:    { en: 'Clean Claim Rate',         ar: 'معدل المطالبات النظيفة',    es: 'Tasa de Reclamaciones Limpias' },
+    avgDaysToPayment:  { en: 'Avg Days to Payment',      ar: 'متوسط أيام السداد',         es: 'Promedio Días al Pago' },
   },
 
   coding: {
@@ -184,6 +187,16 @@ const translations = {
     followUp:            { en: 'Follow Up Date',         ar: 'تاريخ المتابعة',            es: 'Fecha de Seguimiento' },
     avgDaysOutstanding:  { en: 'Avg Days Outstanding',   ar: 'متوسط أيام التأخر',        es: 'Promedio Días Pendientes' },
     selectOutcome:       { en: 'Select Outcome',         ar: 'اختر النتيجة',              es: 'Seleccionar Resultado' },
+    workedToday:         { en: 'Worked Today',             ar: 'عولج اليوم',               es: 'Trabajadas Hoy' },
+    followupsDue:        { en: 'Follow-ups Due',           ar: 'متابعات مستحقة',           es: 'Seguimientos Pendientes' },
+    selectReason:        { en: 'Select a reason…',         ar: 'اختر سبباً…',              es: 'Seleccionar motivo…' },
+    smallBalanceWriteOff:{ en: 'Small balance (under threshold)', ar: 'رصيد صغير (دون الحد)',  es: 'Saldo pequeño (bajo umbral)' },
+    timelyFilingExceeded:{ en: 'Timely filing deadline passed', ar: 'انتهى موعد التقديم في الوقت', es: 'Plazo de presentación vencido' },
+    noAuthOnFile:        { en: 'No authorization on file', ar: 'لا يوجد تفويض',            es: 'Sin autorización en expediente' },
+    medNecessityNotMet:  { en: 'Medical necessity denial – exhausted appeals', ar: 'رفض الضرورة الطبية – الطعون مُستنفَدة', es: 'Denegación por necesidad médica – apelaciones agotadas' },
+    contractualAdjustment:{ en: 'Contractual adjustment',  ar: 'تعديل تعاقدي',            es: 'Ajuste contractual' },
+    charityCare:         { en: 'Charity care / financial hardship', ar: 'رعاية خيرية / ضائقة مالية', es: 'Atención benéfica / dificultad financiera' },
+    patientBankruptcy:   { en: 'Patient bankruptcy',       ar: 'إفلاس المريض',             es: 'Quiebra del paciente' },
   },
 
   posting: {
@@ -235,7 +248,9 @@ const translations = {
     avgConfidence:  { en: 'Avg Confidence',          ar: 'متوسط الثقة',           es: 'Confianza Promedio' },
     codesSuggested: { en: 'Codes Suggested',         ar: 'رموز مقترحة',           es: 'Códigos Sugeridos' },
     transcript:     { en: 'Transcript',              ar: 'النص',                   es: 'Transcripción' },
-    keep:           { en: 'Keep',                    ar: 'احتفظ',                  es: 'Conservar' },
+    keep:             { en: 'Keep',                  ar: 'احتفظ',                  es: 'Conservar' },
+    subtitleProvider: { en: 'Dictate and review clinical notes', ar: 'إملاء ومراجعة الملاحظات السريرية', es: 'Dictar y revisar notas clínicas' },
+    subtitleCoder:    { en: 'Review AI-generated clinical notes', ar: 'مراجعة الملاحظات السريرية المُولَّدة بالذكاء', es: 'Revisar notas clínicas generadas por IA' },
   },
 
   analytics: {
@@ -259,6 +274,15 @@ const translations = {
     last30:           { en: 'Last 30 Days',             ar: 'آخر 30 يوماً',           es: 'Últimos 30 Días' },
     last90:           { en: 'Last 90 Days',             ar: 'آخر 90 يوماً',           es: 'Últimos 90 Días' },
     ytd:              { en: 'Year to Date',             ar: 'منذ بداية العام',        es: 'Año hasta la Fecha' },
+    sumOfPaidAmounts: { en: 'Sum of paid amounts',        ar: 'مجموع المبالغ المدفوعة',         es: 'Suma de montos pagados' },
+    revenueFormula:   { en: 'Revenue ÷ (Charges − Adj)',     ar: 'الإيراد ÷ (الرسوم − التعديل)', es: 'Ingresos ÷ (Cargos − Ajuste)' },
+    arFormula:        { en: 'AR ÷ (90-day charges ÷ 90)',    ar: 'الذمم ÷ (رسوم 90 يوم ÷ 90)',  es: 'C×C ÷ (Cargos 90 días ÷ 90)' },
+    deniedFormula:    { en: 'Denied ÷ Submitted',            ar: 'المرفوض ÷ المُرسَل',            es: 'Denegadas ÷ Enviadas' },
+    deniedBilled:     { en: 'Denied + Appealed billed',      ar: 'المرفوض والمطعون',              es: 'Denegadas + Apeladas' },
+    ofClaimsPassScrub:{ en: 'of claims pass scrub',          ar: 'من المطالبات تجتاز الفحص',      es: 'de reclamaciones pasan revisión' },
+    paidFirstTry:     { en: 'paid first try',                ar: 'مدفوعة من أول محاولة',         es: 'pagadas al primer intento' },
+    dosToSubmit:      { en: 'DOS to submit',                 ar: 'من تاريخ الخدمة للإرسال',      es: 'DOS a envío' },
+    eraToPost:        { en: 'ERA to post',                   ar: 'من ERA للترحيل',               es: 'ERA a registro' },
     custom:           { en: 'Custom Range',             ar: 'نطاق مخصص',              es: 'Rango Personalizado' },
   },
 
@@ -298,7 +322,8 @@ const translations = {
     searchPatient: { en: 'Search patient…',    ar: 'ابحث عن مريض…',         es: 'Buscar paciente…' },
     selectDoc:     { en: 'Select a document',  ar: 'اختر مستنداً',           es: 'Seleccionar documento' },
     linkToPatient: { en: 'Link to Patient',    ar: 'ربط بالمريض',            es: 'Vincular al Paciente' },
-    discard:       { en: 'Discard',            ar: 'تجاهل',                  es: 'Descartar' },
+    discard:       { en: 'Discard',             ar: 'تجاهل',                  es: 'Descartar' },
+    bulkUpload:    { en: 'Bulk Upload',           ar: 'رفع مجمّع',              es: 'Carga Masiva' },
   },
 
   integrations: {
@@ -322,7 +347,6 @@ const translations = {
     select:       { en: 'Select a patient', ar: 'اختر مريضاً',           es: 'Seleccionar paciente' },
     male:         { en: 'Male',             ar: 'ذكر',                    es: 'Masculino' },
     female:       { en: 'Female',           ar: 'أنثى',                   es: 'Femenino' },
-    other:        { en: 'Other',            ar: 'أخرى',                  es: 'Otro' },
     firstName:    { en: 'First Name',       ar: 'الاسم الأول',            es: 'Nombre' },
     lastName:     { en: 'Last Name',        ar: 'الاسم الأخير',           es: 'Apellido' },
     dateOfBirth:  { en: 'Date of Birth',    ar: 'تاريخ الميلاد',         es: 'Fecha de Nacimiento' },
@@ -337,7 +361,10 @@ const translations = {
     title:     { en: 'Appointments',       ar: 'المواعيد',             es: 'Citas' },
     subtitle:  { en: 'Schedule and manage appointments', ar: 'جدولة وإدارة المواعيد', es: 'Programar y gestionar citas' },
     book:      { en: 'Book Appointment',   ar: 'حجز موعد',             es: 'Reservar Cita' },
-    verifyNow: { en: 'Verify Eligibility', ar: 'التحقق من التأهيلية',  es: 'Verificar Elegibilidad' },
+    verifyNow:       { en: 'Verify Eligibility', ar: 'التحقق من التأهيلية',  es: 'Verificar Elegibilidad' },
+    eligVerified:    { en: '✓ Verified',         ar: '✓ تم التحقق',           es: '✓ Verificado' },
+    eligInactive:    { en: '⚠ Inactive',         ar: '⚠ غير نشط',            es: '⚠ Inactivo' },
+    eligNotChecked:  { en: 'Not Verified',        ar: 'لم يتم التحقق',         es: 'No Verificado' },
   },
 
   scan: {
@@ -357,6 +384,7 @@ const translations = {
     collected:    { en: 'Collected',         ar: 'المحصّل',           es: 'Recaudado' },
     avgDaysToPay: { en: 'Avg Days to Pay',   ar: 'متوسط أيام الدفع', es: 'Promedio Días al Pago' },
     allStatuses:  { en: 'All Statuses',      ar: 'جميع الحالات',      es: 'Todos los Estados' },
+    searchClaims: { en: 'Search claims…',   ar: 'ابحث في المطالبات…', es: 'Buscar reclamaciones…' },
   },
 
   table: {
@@ -386,6 +414,8 @@ const translations = {
     usa:        { en: 'United States',        ar: 'الولايات المتحدة', es: 'Estados Unidos' },
     uae:        { en: 'UAE',                  ar: 'الإمارات',          es: 'Emiratos' },
     demoNotice: { en: 'Demo data — live in Sprint 2', ar: 'بيانات تجريبية', es: 'Datos de demo' },
+    other:      { en: 'Other',  ar: 'أخرى',      es: 'Otro' },
+    errors:     { en: 'Errors',  ar: 'أخطاء',   es: 'Errores' },
   },
 
 } as const

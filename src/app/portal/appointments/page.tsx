@@ -1,5 +1,5 @@
-'use client'
 import { useT } from '@/lib/i18n'
+'use client'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
 import { getClientName } from '@/lib/demo-data'
@@ -82,9 +82,9 @@ function MiniCalendar({ selectedDate, onSelect, apptDates }: { selectedDate: str
 }
 
 const eligibilityConfig = {
-  verified: { color: 'bg-emerald-500', label: '✓ Verified' },
-  inactive: { color: 'bg-amber-500', label: '⚠ Inactive' },
-  not_checked: { color: 'bg-gray-400', label: 'Not Verified' },
+  verified: { color: 'bg-emerald-500', labelKey: 'eligVerified' as const },
+  inactive: { color: 'bg-amber-500', labelKey: 'eligInactive' as const },
+  not_checked: { color: 'bg-gray-400', labelKey: 'eligNotChecked' as const },
 }
 
 // ─── Appointment Drawer ───────────────────────────────────────────────────
@@ -139,8 +139,8 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
           'bg-surface-elevated text-content-secondary'
         }`}>
           <span className={`w-2 h-2 rounded-full ${ec.color}`}/>
-          Eligibility: {ec.label}
-          {elig !== 'verified' && <button onClick={() => toast.info('Verifying eligibility...')} className="ml-auto text-brand underline text-[10px]">{t("appointments","verifyNow")}</button>}
+          Eligibility: {t("appointments", ec.labelKey)}
+          {elig !== 'verified' && <button onClick={() => toast.info('Verifying eligibility...')} className="ml-auto text-brand underline text-[10px]">Verify Now</button>}
         </div>
 
         {/* Content */}
@@ -298,8 +298,8 @@ export default function AppointmentsPage() {
   }
 
   return (
-    <ModuleShell title={t("appointments","title")} subtitle={isStaff ? 'View client appointments and visit status' : 'Manage your schedule'}
-      actions={isClinic ? <button onClick={()=>setShowAdd(true)} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep"><Plus size={16}/>{t("appointments","book")}</button> : undefined}>
+    <ModuleShell title="Appointments" subtitle={isStaff ? 'View client appointments and visit status' : 'Manage your schedule'}
+      actions={isClinic ? <button onClick={()=>setShowAdd(true)} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep"><Plus size={16}/>Book Appointment</button> : undefined}>
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3 mb-4">
@@ -376,7 +376,7 @@ export default function AppointmentsPage() {
                 {/* Eligibility */}
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className={`w-2 h-2 rounded-full ${ec.color}`}/>
-                  <span className="text-[11px] text-content-secondary">{ec.label}</span>
+                  <span className="text-[11px] text-content-secondary">{t("appointments", ec.labelKey)}</span>
                 </div>
 
                 {/* Actions */}

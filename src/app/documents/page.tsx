@@ -5,7 +5,6 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
 import { demoDocs, demoFaxes, DemoDocRecord } from '@/lib/demo-data'
-import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import {
   Search, Upload, X, Download, AlertTriangle, FileText, CreditCard,
   DollarSign, XCircle, Stethoscope, File, Eye, Send
@@ -39,7 +38,6 @@ const statusBadge = (s: string) => {
 
 function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () => void }) {
   const { toast } = useToast()
-  const { t } = useT()
   const [patientSearch, setPatientSearch] = useState('')
   return (
     <div className="fixed inset-y-0 right-0 w-[600px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl animate-fade-in">
@@ -93,14 +91,14 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
         {/* Link to patient section */}
         {doc.status === 'Unlinked' && (
           <div className="mx-4 mb-4 card p-4">
-            <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">{t("documents","linkToPatient")}</h4>
+            <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Link to Patient</h4>
             {doc.aiConfidence && (
               <div className="bg-brand/10 border border-brand/20 rounded-lg p-2 mb-3 text-[11px] text-brand flex items-center gap-2">
                 <span>AI Classification: {doc.type}</span>
                 <span className="ml-auto font-bold">{doc.aiConfidence}% confidence</span>
               </div>
             )}
-            <input value={patientSearch} onChange={e=>setPatientSearch(e.target.value)} placeholder={t("documents","searchPatient")}
+            <input value={patientSearch} onChange={e=>setPatientSearch(e.target.value)} placeholder="Search patient name..."
               className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary mb-3"/>
             <button onClick={()=>toast.success('Document linked to patient')}
               className="w-full bg-brand text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-deep transition-colors">
@@ -134,7 +132,6 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
 }
 
 function AllDocsTab() {
-  const { t } = useT()
   const { selectedClient, country } = useApp()
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string[]>([])
@@ -147,8 +144,8 @@ function AllDocsTab() {
   const filtered = demoDocs.filter(d => {
     if (d.clientId) {
       if (selectedClient && d.clientId !== selectedClient.id) return false
-      if (!selectedClient && country === 'uae' && !UAE_ORG_IDS.includes(d.clientId)) return false
-      if (!selectedClient && country === 'usa' && !US_ORG_IDS.includes(d.clientId)) return false
+      if (!selectedClient && country === 'uae' && !['org-101','org-104'].includes(d.clientId)) return false
+      if (!selectedClient && country === 'usa' && !['org-102','org-103'].includes(d.clientId)) return false
     }
     if (search && !d.name.toLowerCase().includes(search.toLowerCase()) && !d.patient.toLowerCase().includes(search.toLowerCase())) return false
     if (typeFilter.length > 0 && !typeFilter.includes(d.type)) return false
@@ -160,20 +157,20 @@ function AllDocsTab() {
     <div>
       <div className="relative mb-3">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary"/>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t("documents","searchDocs")}
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search documents, patients..."
           className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary"/>
       </div>
       <div className="flex items-center gap-2 mb-4 flex-wrap">
-        {types.map(typ=>(
-          <button key={typ} onClick={()=>toggleType(typ)}
-            className={`text-[11px] px-3 py-1 rounded-full border transition-all ${typeFilter.includes(typ)?'bg-brand/10 text-brand border-brand/30':'border-separator text-content-secondary hover:text-content-primary'}`}>
-            {typ}
+        {types.map(t=>(
+          <button key={t} onClick={()=>toggleType(t)}
+            className={`text-[11px] px-3 py-1 rounded-full border transition-all ${typeFilter.includes(t)?'bg-brand/10 text-brand border-brand/30':'border-separator text-content-secondary hover:text-content-primary'}`}>
+            {t}
           </button>
         ))}
         <div className="ml-auto">
           <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}
             className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
-            <option value="">{"All Statuses"}</option>
+            <option value="">All Statuses</option>
             {['Linked','Unlinked','Processing'].map(s=><option key={s} value={s}>{s}</option>)}
           </select>
         </div>
@@ -218,7 +215,6 @@ function AllDocsTab() {
 }
 
 function UnlinkedQueueTab() {
-  const { t } = useT()
   const { toast } = useToast()
   const [patientSearch, setPatientSearch] = useState<Record<string,string>>({})
   const [linking, setLinking] = useState<string|null>(null)
@@ -248,13 +244,13 @@ function UnlinkedQueueTab() {
                   <input value={patientSearch[d.id]||''} onChange={e=>setPatientSearch(p=>({...p,[d.id]:e.target.value}))}
                     placeholder="Patient name..." className="bg-surface-elevated border border-separator rounded px-2 py-1 text-xs text-content-primary w-40"/>
                   <button onClick={()=>{toast.success('Document linked to patient');setLinking(null)}}
-                    className="text-[10px] bg-brand text-white px-3 py-1.5 rounded-lg">{t("actions","link")}</button>
-                  <button onClick={()=>setLinking(null)} className="text-[10px] border border-separator px-2 py-1.5 rounded-lg text-content-secondary">{t("actions","cancel")}</button>
+                    className="text-[10px] bg-brand text-white px-3 py-1.5 rounded-lg">Link</button>
+                  <button onClick={()=>setLinking(null)} className="text-[10px] border border-separator px-2 py-1.5 rounded-lg text-content-secondary">Cancel</button>
                 </div>
               ) : (
                 <>
-                  <button onClick={()=>setLinking(d.id)} className="text-[10px] bg-brand/10 text-brand px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors">{t("documents","linkToPatient")}</button>
-                  <button onClick={()=>toast.warning('Document discarded')} className="text-[10px] border border-separator text-content-secondary px-3 py-1.5 rounded-lg hover:text-red-500 hover:border-red-500/30 transition-colors">{t("documents","discard")}</button>
+                  <button onClick={()=>setLinking(d.id)} className="text-[10px] bg-brand/10 text-brand px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors">Link to Patient</button>
+                  <button onClick={()=>toast.warning('Document discarded')} className="text-[10px] border border-separator text-content-secondary px-3 py-1.5 rounded-lg hover:text-red-500 hover:border-red-500/30 transition-colors">Discard</button>
                 </>
               )}
             </div>
@@ -266,7 +262,6 @@ function UnlinkedQueueTab() {
 }
 
 function FaxCenterTab() {
-  const { t } = useT()
   const { toast } = useToast()
   const [subTab, setSubTab] = useState<'inbound'|'outbound'>('inbound')
   const [showSendFax, setShowSendFax] = useState(false)
@@ -309,7 +304,7 @@ function FaxCenterTab() {
               <td className="px-4 py-3 text-xs text-brand">{f.document??'—'}</td>
               <td className="px-4 py-3 flex gap-1">
                 {f.document&&<button onClick={e=>{e.stopPropagation();toast.success('Download started')}} className="text-[10px] text-content-secondary hover:text-content-primary border border-separator px-2 py-1 rounded transition-colors">View</button>}
-                {f.direction==='Inbound'&&<button onClick={e=>{e.stopPropagation();toast.success('Fax linked to patient record')}} className="text-[10px] text-brand hover:underline px-2 py-1">{t("actions","link")}</button>}
+                {f.direction==='Inbound'&&<button onClick={e=>{e.stopPropagation();toast.success('Fax linked to patient record')}} className="text-[10px] text-brand hover:underline px-2 py-1">Link</button>}
               </td>
             </tr>
           ))}</tbody>
@@ -366,7 +361,7 @@ function FaxCenterTab() {
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Attach Document</label>
                 <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
-                  <option value="">{t("documents","selectDoc")}</option>
+                  <option value="">Select document...</option>
                   {demoDocs.filter(d=>d.status==='Linked').slice(0,5).map(d=><option key={d.id}>{d.name}</option>)}
                 </select>
               </div>
@@ -394,8 +389,8 @@ export default function DocumentsPage() {
   const { toast } = useToast()
   const [tab, setTab] = useState<TabId>('all')
   return (
-    <ModuleShell title={t("documents","title")} subtitle={t("documents","subtitle")}
-      actions={<button onClick={()=>toast.info('Bulk upload opened')} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep transition-colors"><Upload size={16}/> Bulk Upload</button>}>
+    <ModuleShell title="Documents" subtitle="Document vault, fax center, and unlinked queue"
+      actions={<button onClick={()=>toast.info('Bulk upload opened')} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep transition-colors"><Upload size={16}/> {t("actions","bulkUpload")}</button>}>
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
         Demo data — live data connects in Sprint 2

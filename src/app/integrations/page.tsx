@@ -44,7 +44,6 @@ const statusColor = (s: string) => ({ connected:'text-emerald-600 dark:text-emer
 
 function ConfigModal({ integration, onClose }: { integration: Integration; onClose: () => void }) {
   const { toast } = useToast()
-  const { t } = useT()
   const [loading, setLoading] = useState(false)
   function handleSave() {
     setLoading(true)
@@ -143,12 +142,12 @@ export default function IntegrationsPage() {
   const categories = integrations.map(i=>i.category).filter((c,idx,arr)=>arr.indexOf(c)===idx)
 
   return (
-    <ModuleShell title={t("integrations","title")} subtitle={t("integrations","subtitle")}>
+    <ModuleShell title="Integration Hub" subtitle="External system connections and data pipes">
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <KPICard label={t("integrations","connected")} value={stats.connected} icon={<CheckCircle2 size={20}/>}/>
-        <KPICard label="Errors" value={stats.errors} icon={<AlertTriangle size={20}/>}/>
-        <KPICard label="Pending" value={stats.pending} icon={<Clock size={20}/>}/>
-        <KPICard label="Total" value={stats.total} icon={<Plug size={20}/>}/>
+        <KPICard label="Connected" value={stats.connected} icon={<CheckCircle2 size={20}/>}/>
+        <KPICard label={t("misc","errors")} value={stats.errors} icon={<AlertTriangle size={20}/>}/>
+        <KPICard label={t("status","pending")} value={stats.pending} icon={<Clock size={20}/>}/>
+        <KPICard label={t("misc","total")} value={stats.total} icon={<Plug size={20}/>}/>
       </div>
 
       {categories.map(cat=>(

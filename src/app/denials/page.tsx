@@ -1,5 +1,4 @@
 'use client'
-import { useT } from '@/lib/i18n'
 import React, { useState, useEffect } from 'react'
 import { useApp } from '@/lib/context'
 // removed - no longer using demoClaims
@@ -9,7 +8,6 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import { ShieldAlert, FileText, AlertTriangle, Send } from 'lucide-react'
 import { useToast } from '@/components/shared/Toast'
 import { useDenials } from '@/lib/hooks'
-import { filterByRegion } from '@/lib/utils/region'
 import { ErrorBanner } from '@/components/shared/ApiStates'
 import { useRouter } from 'next/navigation'
 import { sanitizeForPrompt } from '@/lib/ai-utils'
@@ -57,8 +55,7 @@ type DenialRow = {
 }
 
 export default function DenialsPage() {
-  const { t } = useT()
-  const { selectedClient, country, currentUser } = useApp()
+  const { selectedClient, country } = useApp()
   const { toast } = useToast()
   const router = useRouter()
 
@@ -79,13 +76,7 @@ export default function DenialsPage() {
     rarc_description: d.rarc_description,
   })) || []
 
-  const denials: DenialRow[] = filterByRegion(
-    apiDenials,
-    currentUser.organization_id,
-    currentUser.role,
-    selectedClient?.id,
-    country
-  )
+  const denials: DenialRow[] = apiDenials
 
   const [selected, setSelected] = useState(denials[0]?.id || '')
   const [appealLevel, setAppealLevel] = useState<'L1' | 'L2' | 'L3'>('L1')
@@ -162,12 +153,12 @@ export default function DenialsPage() {
   }
 
   return (
-    <ModuleShell title={t("denials", "title")} subtitle={t("denials", "subtitle")}>
+    <ModuleShell title="Denials &amp; Appeals" subtitle="Manage denied claims and appeal workflows">
       {apiError && <ErrorBanner error={apiError} onRetry={refetch} />}
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label={t("denials","openDenials")} value={denials.filter(d => ['denied','open','pending','new'].includes(d.status)).length} icon={<ShieldAlert size={20} />} />
-        <KPICard label={t("denials","inAppeal")} value={denials.filter(d => ['appealed','appeal_pending','in_appeal'].includes(d.status)).length} />
-        <KPICard label={t("denials","appealSuccessRate")} value={(() => {
+        <KPICard label="Open Denials" value={denials.filter(d => ['denied','open','pending','new'].includes(d.status)).length} icon={<ShieldAlert size={20} />} />
+        <KPICard label="In Appeal" value={denials.filter(d => ['appealed','appeal_pending','in_appeal'].includes(d.status)).length} />
+        <KPICard label="Appeal Success Rate" value={(() => {
           const paid = denials.filter(d => d.status === 'paid').length
           const appealed = denials.filter(d => ['appealed','appeal_pending','in_appeal'].includes(d.status)).length
           return paid > 0 ? `${Math.round((paid / Math.max(1, appealed)) * 100)}%` : '—'
@@ -284,7 +275,7 @@ export default function DenialsPage() {
                   {aiGenerating ? (
                     <><span className="animate-spin inline-block w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full"/><span>Generating...</span></>
                   ) : (
-                    <><span>✦</span><span>{t("actions","generateAI")}</span></>
+                    <><span>✦</span><span>Generate with AI</span></>
                   )}
                 </button>
               <button

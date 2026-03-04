@@ -1,11 +1,10 @@
 'use client'
-import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import { BadgeCheck, AlertTriangle, X } from 'lucide-react'
-import { useCredentialing, useUpdateCredentialing, useCreateCredentialing } from '@/lib/hooks'
+import { useCredentialing } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
 import { UAE_CLIENT_NAMES, US_CLIENT_NAMES } from '@/lib/utils/region'
 
@@ -22,12 +21,9 @@ type Provider = typeof providers[0]
 
 export default function CredentialingPage() {
   const { toast } = useToast()
-  const { t } = useT()
   const { selectedClient, country } = useApp()
   const [selected, setSelected] = useState<Provider | null>(null)
   const { data: apiCredResult } = useCredentialing({ limit: 50 })
-  const { mutate: updateCred } = useUpdateCredentialing(selected?.id || '')
-  const { mutate: createCred } = useCreateCredentialing()
 
   const filteredProviders = (apiCredResult?.data?.length
     ? apiCredResult.data.map(p => ({
@@ -59,12 +55,12 @@ export default function CredentialingPage() {
   const expiring = expiringCount
 
   return (
-    <ModuleShell title={t("credentialing","title")} subtitle={t("credentialing","subtitle")}>
+    <ModuleShell title="Credentialing" subtitle="Provider credentials and payer enrollment">
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label={t("credentialing","activeProviders")} value={activeCount} icon={<BadgeCheck size={20}/>}/>
-        <KPICard label={t("credentialing","expiring30")} value={expiringCount} trend="down"/>
-        <KPICard label={t("credentialing","onboarding")} value={onboardingCount}/>
-        <KPICard label={t("credentialing","totalEnrollments")} value={totalEnrollments}/>
+        <KPICard label="Active Providers" value={activeCount} icon={<BadgeCheck size={20}/>}/>
+        <KPICard label="Expiring (30 days)" value={expiringCount} trend="down"/>
+        <KPICard label="Onboarding" value={onboardingCount}/>
+        <KPICard label="Total Enrollments" value={totalEnrollments}/>
       </div>
       {expiring > 0 && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-4 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2">
@@ -137,33 +133,17 @@ export default function CredentialingPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <button onClick={async () => {
-                  try {
-                    await updateCred({ status: 'recredentialing', credential_type: 'recredentialing' })
-                    toast.success('Re-credentialing initiated')
-                  } catch (err) {
-                    console.error('[credentialing] re-cred failed:', err)
-                    toast.error('Failed to initiate re-credentialing')
-                  }
-                }}
+                <button onClick={() => toast.success('Re-credentialing initiated')}
                   className="bg-brand/10 text-brand rounded-lg py-2 text-xs font-medium hover:bg-brand/20 transition-colors">
-                  {t("credentialing","initiateRecred")}
+                  Initiate Re-credentialing
                 </button>
                 <button onClick={() => toast.info('CAQH portal opened')}
                   className="bg-surface-elevated border border-separator rounded-lg py-2 text-xs font-medium">
                   Update CAQH
                 </button>
-                <button onClick={async () => {
-                  try {
-                    await createCred({ provider_id: selected?.id, status: 'pending', credential_type: 'payer_enrollment' })
-                    toast.success('Enrollment started')
-                  } catch (err) {
-                    console.error('[credentialing] enrollment failed:', err)
-                    toast.error('Failed to start enrollment')
-                  }
-                }}
+                <button onClick={() => toast.success('Enrollment started')}
                   className="bg-surface-elevated border border-separator rounded-lg py-2 text-xs font-medium col-span-2">
-                  {t("credentialing","addPayer")}
+                  Add Payer Enrollment
                 </button>
               </div>
             </div>

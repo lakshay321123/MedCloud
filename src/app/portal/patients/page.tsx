@@ -1,5 +1,4 @@
 'use client'
-import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
 import type { DemoPatient } from '@/lib/demo-data'
@@ -52,7 +51,6 @@ function SectionHeader({ title, badge, open, onToggle }: { title: string; badge?
 }
 
 function AddPatientModal({ onClose }: { onClose: () => void }) {
-  const { t } = useT()
   const { country } = useApp()
   const { toast } = useToast()
   const isUAE = country === 'uae'
@@ -80,7 +78,7 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
       <div className="card w-[680px] max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="sticky top-0 bg-surface-secondary z-10 flex items-center justify-between px-5 py-4 border-b border-separator">
-          <h2 className="font-semibold text-content-primary">{t("patients","addPatient")}</h2>
+          <h2 className="font-semibold text-content-primary">Add Patient</h2>
           <button onClick={onClose} className="text-content-secondary hover:text-content-primary"><X size={18}/></button>
         </div>
 
@@ -106,13 +104,13 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
               <div><label className="text-xs text-content-secondary block mb-1">Date of Birth</label>
                 <input type="date" className={ic} value={form.dob} onChange={e => upd('dob', e.target.value)} /></div>
               <div><label className="text-xs text-content-secondary block mb-1">Gender</label>
-                <select className={ic} value={form.gender} onChange={e => upd('gender', e.target.value)}><option value="">{t("patients","select")}</option><option>{t("patients","male")}</option><option>{t("patients","female")}</option><option>{t("patients","other")}</option><option>Prefer not to say</option></select></div>
+                <select className={ic} value={form.gender} onChange={e => upd('gender', e.target.value)}><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option><option>Prefer not to say</option></select></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-xs text-content-secondary block mb-1">Marital Status</label>
-                <select className={ic} value={form.maritalStatus} onChange={e => upd('maritalStatus', e.target.value)}><option value="">{t("patients","select")}</option><option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option><option>Separated</option></select></div>
+                <select className={ic} value={form.maritalStatus} onChange={e => upd('maritalStatus', e.target.value)}><option value="">Select</option><option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option><option>Separated</option></select></div>
               <div><label className="text-xs text-content-secondary block mb-1">Preferred Language</label>
-                <select className={ic} value={form.preferredLanguage} onChange={e => upd('preferredLanguage', e.target.value)}><option>English</option><option>Arabic</option><option>Spanish</option><option>{t("patients","other")}</option></select></div>
+                <select className={ic} value={form.preferredLanguage} onChange={e => upd('preferredLanguage', e.target.value)}><option>English</option><option>Arabic</option><option>Spanish</option><option>Other</option></select></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-xs text-content-secondary block mb-1">Phone (Primary) <span className="text-red-400">*</span></label>
@@ -142,7 +140,7 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
                   <div>
                     <label className="text-xs text-content-secondary block mb-1">{isUAE ? 'Emirate' : 'State'}</label>
                     <select className={ic} value={form.stateEmirate} onChange={e => upd('stateEmirate', e.target.value)}>
-                      <option value="">{t("patients","select")}</option>
+                      <option value="">Select</option>
                       {(isUAE ? uaeEmirates : usStates).map(s => <option key={s}>{s}</option>)}
                     </select>
                   </div>
@@ -187,7 +185,7 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="text-xs text-content-secondary block mb-1">Relationship to Subscriber</label>
-                    <select className={ic} value={form.relationship} onChange={e => upd('relationship', e.target.value)}><option>Self</option><option>Spouse</option><option>Child</option><option>{t("patients","other")}</option></select></div>
+                    <select className={ic} value={form.relationship} onChange={e => upd('relationship', e.target.value)}><option>Self</option><option>Spouse</option><option>Child</option><option>Other</option></select></div>
                   <div><label className="text-xs text-content-secondary block mb-1">Subscriber Name (if not self)</label><input className={ic} value={form.subscriberName} onChange={e => upd('subscriberName', e.target.value)} /></div>
                 </div>
                 <div><label className="text-xs text-content-secondary block mb-1">Subscriber DOB (if not self)</label><input type="date" className={ic} value={form.subscriberDob} onChange={e => upd('subscriberDob', e.target.value)} /></div>
@@ -254,7 +252,7 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="text-xs text-content-secondary block mb-1">Name</label><input className={ic} value={form.ecName} onChange={e => upd('ecName', e.target.value)} /></div>
                   <div><label className="text-xs text-content-secondary block mb-1">Relationship</label>
-                    <select className={ic} value={form.ecRelationship} onChange={e => upd('ecRelationship', e.target.value)}><option value="">{t("patients","select")}</option><option>Spouse</option><option>Parent</option><option>Sibling</option><option>Child</option><option>Friend</option><option>{t("patients","other")}</option></select></div>
+                    <select className={ic} value={form.ecRelationship} onChange={e => upd('ecRelationship', e.target.value)}><option value="">Select</option><option>Spouse</option><option>Parent</option><option>Sibling</option><option>Child</option><option>Friend</option><option>Other</option></select></div>
                 </div>
                 <div><label className="text-xs text-content-secondary block mb-1">Phone</label><input type="tel" className={ic} value={form.ecPhone} onChange={e => upd('ecPhone', e.target.value)} /></div>
               </div>
@@ -328,7 +326,6 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
 type DetailTab = 'demographics' | 'address' | 'insurance' | 'emergency' | 'employment' | 'documents' | 'visits' | 'messages'
 
 function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClose: () => void }) {
-  const { t } = useT()
   const { country } = useApp()
   const { toast } = useToast()
   const [tab, setTab] = useState<DetailTab>('demographics')
@@ -454,7 +451,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
                       <input type="date" className={ic} value={editForm.dob} onChange={e => upd('dob', e.target.value)} /></div>
                     <div><label className="text-xs text-content-secondary block mb-1">Gender</label>
                       <select className={ic} value={editForm.gender} onChange={e => upd('gender', e.target.value)}>
-                        <option value="">{t("patients","select")}</option><option>{t("patients","male")}</option><option>{t("patients","female")}</option><option>{t("patients","other")}</option>
+                        <option value="">Select</option><option>Male</option><option>Female</option><option>Other</option>
                       </select></div>
                   </div>
                   <div><label className="text-xs text-content-secondary block mb-1">Phone</label>
@@ -468,7 +465,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
                         <input className={ic} value={editForm.ssn} onChange={e => upd('ssn', e.target.value)} /></div>
                   }
                   <div className="flex gap-2 pt-2">
-                    <button onClick={handleSave} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium">{t("patients","saveChanges")}</button>
+                    <button onClick={handleSave} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium">Save Changes</button>
                     <button onClick={() => setEditMode(false)} className="px-4 py-2.5 border border-separator rounded-lg text-sm text-content-secondary">Cancel</button>
                   </div>
                 </div>
@@ -610,7 +607,6 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
 }
 
 export default function PatientsPage() {
-  const { t } = useT()
   const { currentUser, selectedClient } = useApp()
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
@@ -632,12 +628,12 @@ export default function PatientsPage() {
     : []
 
   return (
-    <ModuleShell title={t("patients","title")} subtitle={t("patients","subtitle")}
-      actions={<button onClick={() => setShowAdd(true)} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep"><Plus size={16}/>{t("patients","addPatient")}</button>}>
+    <ModuleShell title="Patients" subtitle="Manage patient records"
+      actions={<button onClick={() => setShowAdd(true)} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep"><Plus size={16}/>Add Patient</button>}>
       {apiError && <ErrorBanner error={apiError} onRetry={refetch} />}
       <div className="mb-4 relative max-w-sm">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary"/>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("patients","search")}
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, phone, ID..."
           className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-4 py-2 text-sm text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40 transition-colors"/>
       </div>
       <div className="card overflow-hidden">

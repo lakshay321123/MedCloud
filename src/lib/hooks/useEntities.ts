@@ -1198,3 +1198,713 @@ export function useAnalyticsKPIs(extra?: ApiListParams & { from?: string; to?: s
   const params = useClientParams(extra)
   return useApi<ApiAnalyticsKPIs>('/analytics', params)
 }
+
+// ── Sprint 2 v7: 837I Institutional Generator ─────────────────────────────────
+export function useGenerate837I(claimId: string) {
+  return useMutation<{ edi_content: string; claim_id: string; claim_number: string; format: string }, Record<string, never>>(
+    'post', `/claims/${claimId}/generate-837i`
+  )
+}
+
+// ── Sprint 2 v7: Charge Capture AI (Feature #11) ─────────────────────────────
+export interface ApiChargeCapture {
+  encounter_id: string
+  charges: Array<{ cpt_code: string; description: string; units: number; modifier?: string; charge_amount: number; confidence: number }>
+  diagnoses: Array<{ icd_code: string; description: string; is_primary: boolean; confidence: number }>
+  em_level?: string
+  em_rationale?: string
+  total_estimated_charge: number
+  missing_documentation: string[]
+  source: string
+}
+
+export function useChargeCapture(encounterId: string) {
+  return useMutation<ApiChargeCapture, Record<string, never>>('post', `/encounters/${encounterId}/charge-capture`)
+}
+
+// ── Sprint 2 v7: Document Classification AI ──────────────────────────────────
+export interface ApiDocClassification {
+  document_id: string
+  file_name: string
+  classification: string
+  confidence: number
+  method: string
+}
+
+export function useClassifyDocument(documentId: string) {
+  return useMutation<ApiDocClassification, Record<string, never>>('post', `/documents/${documentId}/classify`)
+}
+
+// ── Sprint 2 v7: Prior Auth Workflow ─────────────────────────────────────────
+export interface ApiPriorAuth {
+  id: string
+  org_id: string
+  client_id?: string
+  claim_id?: string
+  patient_id: string
+  payer_id: string
+  provider_id?: string
+  auth_number: string
+  auth_number_payer?: string
+  cpt_codes: string[]
+  icd_codes: string[]
+  urgency: string
+  clinical_rationale?: string
+  dos_from?: string
+  dos_to?: string
+  approved_units?: number
+  status: string
+  patient_name?: string
+  payer_name?: string
+  provider_name?: string
+  created_at: string
+}
+
+export function usePriorAuths(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiPriorAuth>>('/prior-auth', params)
+}
+
+export function usePriorAuth(id: string) {
+  return useApi<ApiPriorAuth>(`/prior-auth/${id}`)
+}
+
+export function useCreatePriorAuth() {
+  return useMutation<ApiPriorAuth, {
+    patient_id: string
+    payer_id: string
+    claim_id?: string
+    provider_id?: string
+    cpt_codes?: string[]
+    icd_codes?: string[]
+    urgency?: string
+    clinical_rationale?: string
+    dos_from?: string
+    dos_to?: string
+  }>('post', '/prior-auth')
+}
+
+export function useUpdatePriorAuth(id: string) {
+  return useMutation<ApiPriorAuth, {
+    status?: string
+    auth_number_payer?: string
+    approved_units?: number
+    approved_from?: string
+    approved_to?: string
+    denial_reason?: string
+    peer_to_peer_date?: string
+    notes?: string
+  }>('put', `/prior-auth/${id}`)
+}
+
+// ── Sprint 2 v7: Patient Statements ──────────────────────────────────────────
+export interface ApiPatientStatement {
+  id: string
+  org_id: string
+  patient_id: string
+  statement_number: string
+  statement_date: string
+  total_charges: number
+  insurance_payments: number
+  patient_payments: number
+  balance_due: number
+  line_items: Array<{ claim_number: string; dos: string; total_charge: number; patient_responsibility: number; payer: string }>
+  status: string
+  created_at: string
+}
+
+export function usePatientStatements(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiPatientStatement>>('/patient-statements', params)
+}
+
+export function useGenerateStatement() {
+  return useMutation<ApiPatientStatement, { patient_id: string }>('post', '/patient-statements/generate')
+}
+
+export function useUpdateStatement(id: string) {
+  return useMutation<ApiPatientStatement, { status?: string; sent_via?: string; notes?: string }>('put', `/patient-statements/${id}`)
+}
+
+// ── Sprint 2 v7: Secondary Claim / COB ───────────────────────────────────────
+export interface ApiSecondaryClaim {
+  secondary_claim_id: string
+  claim_number: string
+  primary_claim_id: string
+  secondary_payer_id: string
+  primary_paid: number
+  remaining_charge: number
+  status: string
+  next_step: string
+}
+
+export function useTriggerSecondaryClaim(claimId: string) {
+  return useMutation<ApiSecondaryClaim, Record<string, never>>('post', `/claims/${claimId}/secondary`)
+}
+
+// ── Sprint 2 v7: Credentialing Dashboard + Enrollment ────────────────────────
+export interface ApiCredentialingDashboard {
+  total: number
+  active: number
+  pending: number
+  expiring_soon: number
+  expired: number
+  alerts: Array<{ id: string; provider_name: string; payer_name: string; expiry_date: string; days_until_expiry: number; alert: string }>
+  items: Array<Record<string, unknown>>
+}
+
+export function useCredentialingDashboard() {
+  const params = useClientParams()
+  return useApi<ApiCredentialingDashboard>('/credentialing/dashboard', params)
+}
+
+export function useCreateEnrollment() {
+  return useMutation<{ id: string; status: string }, {
+    provider_id: string
+    payer_id: string
+    enrollment_type?: string
+    effective_date?: string
+    notes?: string
+  }>('post', '/credentialing/enrollment')
+}
+
+// ── Sprint 2 v7: Report Export ───────────────────────────────────────────────
+export interface ApiReport {
+  report: string
+  generated: string
+  columns: string[]
+  rows: Array<Record<string, unknown>>
+  summary?: Record<string, unknown>
+  csv?: string
+}
+
+export function useReport(reportType: string, extra?: ApiListParams & { from?: string; to?: string; format?: string }) {
+  const params = useClientParams({ ...extra, type: reportType })
+  return useApi<ApiReport>('/reports', params)
+}
+
+// ── Sprint 3: Auto-Appeals (AI Feature #4) ───────────────────────────────────
+export interface ApiAppealGenerated {
+  appeal_id?: string
+  denial_id: string
+  claim_number?: string
+  appeal_level: number
+  appeal_type: string
+  appeal_letter: string
+  appeal_strategy?: string
+  supporting_evidence: string[]
+  regulatory_citations: string[]
+  success_probability: number
+  source: string
+}
+
+export interface ApiAppealFull {
+  id: string
+  org_id: string
+  denial_id: string
+  claim_id?: string
+  appeal_level: number
+  appeal_type: string
+  appeal_letter: string
+  strategy?: string
+  supporting_evidence: string[]
+  regulatory_citations: string[]
+  success_probability: number
+  status: string
+  patient_name?: string
+  payer_name?: string
+  claim_number?: string
+  carc_code?: string
+  denial_reason?: string
+  created_at: string
+}
+
+export function useGenerateAppeal(denialId: string) {
+  return useMutation<ApiAppealGenerated, Record<string, never>>('post', `/denials/${denialId}/generate-appeal`)
+}
+
+export function useAppealsList(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiAppealFull>>('/appeals', params)
+}
+
+export function useAppealDetail(id: string) {
+  return useApi<ApiAppealFull>(`/appeals/${id}`)
+}
+
+export function useUpdateAppealStatus(id: string) {
+  return useMutation<ApiAppealFull, {
+    status?: string; submitted_at?: string; submitted_via?: string;
+    response_date?: string; response_notes?: string; payer_reference?: string
+  }>('put', `/appeals/${id}`)
+}
+
+// ── Sprint 3: Denial Categorization ──────────────────────────────────────────
+export interface ApiDenialCategorized {
+  denials: Array<Record<string, unknown> & { category: string; name: string; priority: number }>
+  summary: Array<{ name: string; count: number; total_amount: number; priority: number }>
+  total: number
+  total_amount: number
+}
+
+export function useDenialCategories() {
+  const params = useClientParams()
+  return useApi<ApiDenialCategorized>('/denials/categorize', params)
+}
+
+// ── Sprint 3: Chart Completeness Check (AI Feature #14) ──────────────────────
+export interface ApiChartCheck {
+  encounter_id: string
+  completeness_score: number
+  coding_ready: boolean
+  checks: Array<{ field: string; present: boolean; weight: number; message?: string }>
+  missing_count: number
+  ai_analysis?: {
+    missing_elements: string[]
+    query_message: string
+    estimated_em_impact: string
+    coding_ready: boolean
+  }
+  auto_query_sent: boolean
+}
+
+export function useChartCheck(encounterId: string) {
+  return useMutation<ApiChartCheck, Record<string, never>>('post', `/encounters/${encounterId}/chart-check`)
+}
+
+// ── Sprint 3: Contract Rate Extraction (AI Feature #12 enhancement) ──────────
+export interface ApiContractExtraction {
+  document_id: string
+  payer_id: string
+  payer_name?: string
+  rates: Array<{ cpt_code: string; description: string; contracted_rate: number; modifier?: string }>
+  rates_extracted: number
+  rates_inserted: number
+  contract_effective_date?: string
+  contract_termination_date?: string
+  rate_type?: string
+  general_terms?: Record<string, unknown>
+  extraction_confidence?: number
+  source: string
+}
+
+export function useExtractContractRates(documentId: string) {
+  return useMutation<ApiContractExtraction, { payer_id: string }>('post', `/documents/${documentId}/extract-rates`)
+}
+
+// ── Sprint 3: Payment Reconciliation ─────────────────────────────────────────
+export interface ApiReconciliation {
+  era_file_id: string
+  total_payments: number
+  matched: Array<{ payment_id: string; claim_number: string; amount_paid: number }>
+  unmatched: Array<Record<string, unknown>>
+  recoupments: Array<{ payment_id: string; claim_number: string; amount: number; reason: string }>
+  overpayments: Array<{ payment_id: string; claim_number: string; paid: number; allowed: number; overage: number }>
+  underpayments: Array<{ payment_id: string; claim_number: string; cpt_code: string; paid: number; expected: number; variance: number }>
+  zero_pays: Array<{ payment_id: string; claim_number: string; billed: number; reason: string }>
+  actions_taken: string[]
+  summary: Record<string, number>
+}
+
+export function useReconcilePayments(eraFileId: string) {
+  return useMutation<ApiReconciliation, Record<string, never>>('post', `/era-files/${eraFileId}/reconcile`)
+}
+
+// ── Sprint 3: Write-Off Workflow ─────────────────────────────────────────────
+export interface ApiWriteOff {
+  id: string
+  write_off_id?: string
+  claim_id: string
+  claim_number?: string
+  amount: number
+  reason?: string
+  category?: string
+  approval_required: string
+  status: string
+  auto_approved?: boolean
+  created_at?: string
+}
+
+export function useWriteOffs(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiWriteOff>>('/write-offs', params)
+}
+
+export function useRequestWriteOff() {
+  return useMutation<ApiWriteOff, { claim_id: string; amount?: number; reason?: string; category?: string }>('post', '/write-offs')
+}
+
+export function useApproveWriteOff(id: string) {
+  return useMutation<ApiWriteOff, { action: 'approve' | 'deny'; notes?: string }>('put', `/write-offs/${id}`)
+}
+
+// ── Sprint 3: Notifications ──────────────────────────────────────────────────
+export interface ApiNotification {
+  id: string
+  title: string
+  message?: string
+  type: string
+  priority: string
+  entity_type?: string
+  entity_id?: string
+  action_url?: string
+  read: boolean
+  created_at: string
+}
+
+export function useNotifications(extra?: ApiListParams & { unread?: string }) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiNotification> & { unread_count: number }>('/notifications', params)
+}
+
+export function useCreateNotification() {
+  return useMutation<{ id: string }, {
+    user_id: string; title: string; message?: string; type?: string;
+    priority?: string; entity_type?: string; entity_id?: string; action_url?: string
+  }>('post', '/notifications')
+}
+
+export function useMarkNotificationRead(id: string) {
+  return useMutation<{ id: string; read: boolean }, Record<string, never>>('put', `/notifications/${id}`)
+}
+
+// ── Sprint 4: Contextual Messages ───────────────────────────────────────────
+export interface ApiMessage {
+  id: string; org_id: string; client_id?: string; entity_type: string; entity_id?: string
+  parent_id?: string; sender_id: string; sender_email?: string; sender_role?: string
+  recipient_ids?: string[]; subject?: string; body: string
+  attachments?: Array<{ file_name: string; s3_key: string; file_type: string; size_bytes: number }>
+  is_internal: boolean; is_system: boolean; read_by?: string[]; priority: string
+  created_at: string; updated_at: string
+}
+
+export function useMessages(extra?: ApiListParams & { entity_type?: string; entity_id?: string; parent_id?: string; is_internal?: string }) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiMessage> & { unread_count: number }>('/messages', params)
+}
+
+export function useSendMessage() {
+  return useMutation<ApiMessage, Partial<ApiMessage>>('post', '/messages')
+}
+
+export function useMarkMessageRead(id: string) {
+  return useMutation<ApiMessage, Record<string, never>>('put', `/messages/${id}/read`)
+}
+
+// ── Sprint 4: Audit Log ─────────────────────────────────────────────────────
+export interface ApiAuditEntry {
+  id: string; org_id: string; user_id: string; user_email?: string; action: string
+  entity_type: string; entity_id?: string; details?: Record<string, unknown>; created_at: string
+}
+
+export function useAuditLog(extra?: ApiListParams & { entity_type?: string; entity_id?: string; action?: string; from?: string; to?: string }) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiAuditEntry>>('/audit-log', params)
+}
+
+// ── Sprint 4: Payer Config (Timely Filing + Phone + IVR) ────────────────────
+export interface ApiPayerConfig {
+  id: string; org_id: string; payer_id: string; payer_name?: string
+  timely_filing_days_initial?: number; timely_filing_days_corrected?: number
+  timely_filing_days_appeal?: number; timely_filing_days_reconsider?: number
+  phone_claims?: string; phone_auth?: string; phone_eligibility?: string
+  phone_appeals?: string; fax_appeals?: string; portal_url?: string
+  ivr_script_claims?: Array<{ step: number; action: string; note: string }>
+  ivr_script_auth?: Array<{ step: number; action: string; note: string }>
+  ivr_script_appeals?: Array<{ step: number; action: string; note: string }>
+  clean_claim_days?: number; appeal_levels?: number; notes?: string
+  created_at: string; updated_at: string
+}
+
+export function usePayerConfigs() {
+  const params = useClientParams()
+  return useApi<ApiListResponse<ApiPayerConfig>>('/payer-config', params)
+}
+
+export function usePayerConfig(payerId: string) {
+  const params = useClientParams({ payer_id: payerId })
+  return useApi<ApiPayerConfig>('/payer-config', params)
+}
+
+export function useUpsertPayerConfig() {
+  return useMutation<ApiPayerConfig, Partial<ApiPayerConfig>>('post', '/payer-config')
+}
+
+// ── Sprint 4: Timely Filing Deadlines ───────────────────────────────────────
+export interface ApiTimelyFiling {
+  claim_id: string; claim_number: string; payer_name: string; dos_from: string
+  status: string; filing_days_limit: number; deadline: string; days_remaining: number
+  risk: 'expired' | 'critical' | 'warning' | 'approaching' | 'safe'
+}
+
+export function useTimelyFilingDeadlines() {
+  const params = useClientParams()
+  return useApi<{ data: ApiTimelyFiling[]; total: number; summary: Record<string, number> }>('/claims/timely-filing', params)
+}
+
+// ── Sprint 4: Credit Balances ───────────────────────────────────────────────
+export interface ApiCreditBalance {
+  id: string; org_id: string; claim_id?: string; claim_number?: string; patient_id?: string
+  patient_name?: string; payer_id?: string; payer_name?: string; amount: number
+  source: string; status: string; identified_date: string; resolution_date?: string
+  resolution_method?: string; notes?: string; created_at: string
+}
+
+export function useCreditBalances(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiCreditBalance>>('/credit-balances', params)
+}
+
+export function useIdentifyCreditBalances() {
+  const params = useClientParams()
+  return useApi<{ data: ApiCreditBalance[]; total: number; new_identified: number; total_amount: string }>('/credit-balances/identify', params)
+}
+
+export function useResolveCreditBalance(id: string) {
+  return useMutation<ApiCreditBalance, { resolution_method: string; resolution_claim_id?: string; notes?: string }>('put', `/credit-balances/${id}/resolve`)
+}
+
+// ── Sprint 4: Bank Deposits + Reconciliation ────────────────────────────────
+export interface ApiBankDeposit {
+  id: string; org_id: string; deposit_date: string; amount: number; bank_reference?: string
+  payer_id?: string; deposit_method: string; reconciled: boolean; reconciled_at?: string
+  era_file_ids?: string[]; variance?: number; notes?: string; created_at: string
+}
+
+export function useBankDeposits(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiBankDeposit>>('/bank-deposits', params)
+}
+
+export function useCreateBankDeposit() {
+  return useMutation<ApiBankDeposit, Partial<ApiBankDeposit>>('post', '/bank-deposits')
+}
+
+export function useReconcileBankDeposit(id: string) {
+  return useMutation<{
+    deposit_id: string; deposit_amount: number; era_total: string; variance: string
+    reconciled: boolean; matched_era_count: number; matched_eras: Array<{ id: string; payer_name: string; total_paid: number }>
+  }, Record<string, never>>('post', `/bank-deposits/${id}/reconcile`)
+}
+
+// ── Sprint 4: Appeal Templates ──────────────────────────────────────────────
+export interface ApiAppealTemplate {
+  id: string; org_id: string; payer_id?: string; payer_name?: string; carc_code?: string
+  denial_category?: string; appeal_level: number; template_name: string; template_body: string
+  placeholders?: string[]; times_used: number; times_won: number; win_rate: number
+  is_active: boolean; created_at: string
+}
+
+export function useAppealTemplates(extra?: ApiListParams & { payer_id?: string; carc_code?: string; denial_category?: string }) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiAppealTemplate>>('/appeal-templates', params)
+}
+
+export function useCreateAppealTemplate() {
+  return useMutation<ApiAppealTemplate, Partial<ApiAppealTemplate>>('post', '/appeal-templates')
+}
+
+export function useUpdateAppealTemplate(id: string) {
+  return useMutation<ApiAppealTemplate, Partial<ApiAppealTemplate>>('put', `/appeal-templates/${id}`)
+}
+
+// ── Sprint 4: Batch Denial Appeal ───────────────────────────────────────────
+export function useBatchGenerateAppeals() {
+  return useMutation<{
+    total: number; succeeded: number; failed: number
+    appeals: Array<{ denial_id: string; appeal_id?: string; error?: string; status: string }>
+  }, { category?: string; payer_id?: string; denial_ids?: string[] }>('post', '/denials/batch-appeal')
+}
+
+// ── Sprint 4: Client Health Scoring ─────────────────────────────────────────
+export interface ApiClientHealth {
+  client_id: string; client_name?: string; health_score: number; calculated_at: string
+  components: {
+    denial_rate: { value: number; score: number; weight: string; target: string }
+    days_in_ar: { value: number; score: number; weight: string; target: string }
+    clean_claim_rate: { value: number; score: number; weight: string; target: string }
+    collection_rate: { value: number; score: number; weight: string; target: string }
+  }
+}
+
+export function useClientHealthScores() {
+  const params = useClientParams()
+  return useApi<{ data: ApiClientHealth[]; total: number }>('/clients/health', params)
+}
+
+export function useClientHealthScore(clientId: string) {
+  const params = useClientParams({ client_id: clientId })
+  return useApi<ApiClientHealth>('/clients/health', params)
+}
+
+// ── Sprint 4: Appeal Deadline Alerts ────────────────────────────────────────
+export function useCheckAppealDeadlines() {
+  return useMutation<{ alerts_sent: number; alerts: Array<{ denial_id: string; claim_number: string; days_remaining: number; urgency: string }> }, Record<string, never>>('post', '/denials/check-deadlines')
+}
+
+// ── Sprint 4: SLA Escalation Check ──────────────────────────────────────────
+export function useCheckSLAEscalations() {
+  return useMutation<{ escalations_sent: number; escalations: Array<{ task_id: string; title: string; hours_overdue: number; escalation_level: string }> }, Record<string, never>>('post', '/tasks/check-sla')
+}
+
+
+// ── Sprint 4B: Coding QA Audits ─────────────────────────────────────────────
+export interface ApiCodingQAAudit {
+  id: string; org_id: string; coding_id: string; encounter_id?: string
+  auditor_id: string; coder_id?: string
+  ai_codes: Array<{ cpt?: string; icd10?: string; confidence?: number }>
+  coder_codes: Array<{ cpt?: string; icd10?: string }>
+  auditor_codes: Array<{ cpt?: string; icd10?: string }>
+  ai_accuracy: number; coder_accuracy: number
+  discrepancies: Array<{ code: string; expected: string; ai: string; coder: string }>
+  overall_result: 'pass' | 'minor_error' | 'major_error' | 'critical_error'
+  findings?: string; education_needed: boolean; audit_date: string
+}
+
+export function useCodingQAAudits(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiCodingQAAudit>>('/coding-qa', params)
+}
+
+export function useCreateCodingQAAudit() {
+  return useMutation<ApiCodingQAAudit, Partial<ApiCodingQAAudit>>('post', '/coding-qa')
+}
+
+export function useCodingQAStats(extra?: ApiListParams & { coder_id?: string; from?: string; to?: string }) {
+  const params = useClientParams(extra)
+  return useApi<{ summary: Record<string, number>; by_coder: Array<{ coder_id: string; coder_email: string; audits: number; avg_accuracy: number; pass_rate: number }> }>('/coding-qa/stats', params)
+}
+
+export function useCodingQASample(percent?: number) {
+  return useMutation<{ data: Array<{ id: string; encounter_id: string; patient_name: string }>; total: number; sample_percent: number }, { percent?: number }>('post', `/coding-qa/sample?percent=${percent || 5}`)
+}
+
+// ── Sprint 4B: Client Onboarding ────────────────────────────────────────────
+export interface ApiClientOnboarding {
+  id: string; org_id: string; client_id: string; status: string
+  assigned_to?: string; go_live_target?: string; go_live_actual?: string
+  checklist: Array<{
+    item_number: number; title: string; description: string; required: boolean
+    completed: boolean; completed_by?: string; completed_at?: string; notes: string
+  }>
+  started_at: string; completed_at?: string
+}
+
+export function useClientOnboardings(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiClientOnboarding>>('/client-onboarding', params)
+}
+
+export function useClientOnboarding(id: string) {
+  return useApi<ApiClientOnboarding>(`/client-onboarding/${id}`, {})
+}
+
+export function useInitOnboarding() {
+  return useMutation<ApiClientOnboarding, { client_id: string }>('post', '/client-onboarding')
+}
+
+export function useUpdateOnboardingItem(id: string, itemNumber: number) {
+  return useMutation<ApiClientOnboarding, { completed?: boolean; notes?: string }>('put', `/client-onboarding/${id}?item=${itemNumber}`)
+}
+
+// ── Sprint 4B: Note Addendums ───────────────────────────────────────────────
+export interface ApiNoteAddendum {
+  id: string; org_id: string; soap_note_id: string; encounter_id?: string
+  provider_id: string; provider_email?: string; addendum_text: string
+  reason: string; original_text?: string; signed_off: boolean; signed_off_at?: string; created_at: string
+}
+
+export function useNoteAddendums(soapNoteId: string) {
+  return useApi<ApiListResponse<ApiNoteAddendum>>('/note-addendums', { soap_note_id: soapNoteId })
+}
+
+export function useCreateAddendum() {
+  return useMutation<ApiNoteAddendum, { soap_note_id: string; addendum_text: string; reason?: string }>('post', '/note-addendums')
+}
+
+export function useSignOffAddendum(id: string) {
+  return useMutation<ApiNoteAddendum, Record<string, never>>('put', `/note-addendums/${id}/sign-off`)
+}
+
+// ── Sprint 4B: Invoicing ────────────────────────────────────────────────────
+export interface ApiInvoiceConfig {
+  id: string; org_id: string; client_id: string; pricing_model: string
+  per_claim_rate?: number; percentage_rate?: number; flat_rate?: number
+  minimum_monthly?: number; effective_date: string; end_date?: string
+}
+
+export interface ApiInvoice {
+  id: string; org_id: string; client_id: string; invoice_number: string
+  period_start: string; period_end: string; status: string
+  claims_count: number; collections_total: number
+  per_claim_amount: number; percentage_amount: number; flat_amount: number
+  subtotal: number; tax: number; total: number; paid_amount: number
+  line_items: Array<{ description: string; quantity: number; rate: number; amount: number }>
+  issued_date: string; due_date: string; notes?: string
+}
+
+export function useInvoiceConfigs(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiInvoiceConfig>>('/invoice-configs', params)
+}
+
+export function useCreateInvoiceConfig() {
+  return useMutation<ApiInvoiceConfig, Partial<ApiInvoiceConfig>>('post', '/invoice-configs')
+}
+
+export function useUpdateInvoiceConfig(id: string) {
+  return useMutation<ApiInvoiceConfig, Partial<ApiInvoiceConfig>>('put', `/invoice-configs/${id}`)
+}
+
+export function useInvoices(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiInvoice>>('/invoices', params)
+}
+
+export function useInvoice(id: string) {
+  return useApi<ApiInvoice>(`/invoices/${id}`, {})
+}
+
+export function useGenerateInvoice() {
+  return useMutation<ApiInvoice, { client_id: string; period_start: string; period_end: string }>('post', '/invoices/generate')
+}
+
+export function useUpdateInvoice(id: string) {
+  return useMutation<ApiInvoice, Partial<ApiInvoice>>('put', `/invoices/${id}`)
+}
+
+// ── Sprint 4B: Patient Right of Access ──────────────────────────────────────
+export interface ApiPatientAccessRequest {
+  id: string; org_id: string; patient_id: string; patient_name?: string
+  request_date: string; deadline_date: string; status: string
+  request_type: string; delivery_method?: string; records_sent_date?: string
+  denied_reason?: string; assigned_to?: string; notes?: string
+}
+
+export function usePatientAccessRequests(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiPatientAccessRequest>>('/patient-access', params)
+}
+
+export function useCreatePatientAccessRequest() {
+  return useMutation<ApiPatientAccessRequest, { patient_id: string; request_type?: string; delivery_method?: string }>('post', '/patient-access')
+}
+
+export function useUpdatePatientAccessRequest(id: string) {
+  return useMutation<ApiPatientAccessRequest, Partial<ApiPatientAccessRequest>>('put', `/patient-access/${id}`)
+}
+
+export function useCheckAccessDeadlines() {
+  return useMutation<{ alerts_sent: number; open_requests: ApiPatientAccessRequest[] }, Record<string, never>>('post', '/patient-access/check-deadlines')
+}
+
+// ── Sprint 4B: HCC Coding ───────────────────────────────────────────────────
+export interface ApiHCCResult {
+  patient_id: string; total_raf_score: string; needs_reassessment: boolean; next_reassessment: string
+  hcc_codes: Array<{ icd10: string; description: string; hcc_category: number; hcc_label: string; raf_value: number }>
+}
+
+export function useFlagHCCCodes(patientId: string) {
+  return useMutation<ApiHCCResult, Record<string, never>>('post', `/patients/${patientId}/hcc`)
+}
+

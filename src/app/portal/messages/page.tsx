@@ -1,5 +1,4 @@
 'use client'
-import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
 import { demoMessages, DemoMessage } from '@/lib/demo-data'
@@ -15,7 +14,6 @@ const entityIcons: Record<string, React.ReactNode> = {
 }
 
 export default function MessagesPage() {
-  const { t } = useT()
   const { currentUser, selectedClient } = useApp()
   const { toast } = useToast()
   const { getError } = useAbuseFilter()
@@ -58,7 +56,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <ModuleShell title={t("messages","title")} subtitle={t("messages","subtitle")}>
+    <ModuleShell title="Messages" subtitle="Conversations about patients, claims, and submissions">
       <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
         <span className="text-lg shrink-0">💬</span>
         <div>
@@ -125,7 +123,7 @@ export default function MessagesPage() {
               </div>
               <div className="p-3 border-t border-separator flex gap-2">
                 <button onClick={() => toast.info('File attachment — select document from library')} className="text-content-secondary hover:text-content-primary p-2"><Paperclip size={16}/></button>
-                <input value={reply} onChange={e=>setReply(e.target.value)} placeholder={t("messages","placeholder")}
+                <input value={reply} onChange={e=>setReply(e.target.value)} placeholder="Type a message..."
                   className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary"
                   onKeyDown={e => { if (e.key === 'Enter' && reply.trim()) handleSend() }}/>
                 <button onClick={handleSend} className="bg-brand text-white rounded-lg px-3 py-2 hover:bg-brand-deep"><Send size={16}/></button>

@@ -1,12 +1,11 @@
-'use client'
 import { useT } from '@/lib/i18n'
+'use client'
 import React, { useState, useMemo } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { demoClaims, demoClients } from '@/lib/demo-data'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
-import { useAnalyticsKPIs } from '@/lib/hooks'
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine
@@ -117,15 +116,11 @@ function HeatCell({ value }: { value: number }) {
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
+  const { t } = useT()
   const { selectedClient, country } = useApp()
   const [tab, setTab] = useState<'financial' | 'operational' | 'ai' | 'payer'>('financial')
   const [dateRange, setDateRange] = useState('last30')
 
-  // Live API — returns aggregated KPIs from Aurora
-  const { t } = useT()
-  const { data: liveKPIs } = useAnalyticsKPIs()
-
-  // Demo claims used for chart visualisations only (time-series not in API yet)
   const claims = useMemo(() =>
     selectedClient
       ? demoClaims.filter(c => c.clientId === selectedClient.id)
@@ -238,7 +233,7 @@ export default function AnalyticsPage() {
   ] as const
 
   return (
-    <ModuleShell title={t("analytics","title")} subtitle={t("analytics","subtitle")}>
+    <ModuleShell title="Analytics" subtitle="Financial and operational reporting">
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
         Demo data — live data connects in Sprint 2
@@ -247,10 +242,10 @@ export default function AnalyticsPage() {
       <div className="flex items-center gap-3 mb-5">
         <select value={dateRange} onChange={e => setDateRange(e.target.value)}
           className="bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:ring-1 focus:ring-brand/30">
-          <option value="last30">{t("analytics","last30")}</option>
-          <option value="last90">{t("analytics","last90")}</option>
-          <option value="ytd">{t("analytics","ytd")}</option>
-          <option value="custom">{t("analytics","custom")}</option>
+          <option value="last30">Last 30 Days</option>
+          <option value="last90">Last 90 Days</option>
+          <option value="ytd">Year to Date</option>
+          <option value="custom">Custom</option>
         </select>
         <span className="text-[13px] text-content-tertiary">|</span>
         <span className="text-[13px] text-content-secondary">
@@ -272,33 +267,27 @@ export default function AnalyticsPage() {
       {tab === 'financial' && (
         <div className="space-y-6">
           <div className="grid grid-cols-5 gap-4">
-            <KPICard label={t("analytics","revenueCollected")}
-              value={liveKPIs?.overview?.total_collected != null
-                ? `$${(liveKPIs.overview.total_collected / 1000).toFixed(0)}K`
-                : `$${(revenueCollected / 1000).toFixed(0)}K`}
+            <KPICard label="Revenue Collected"
+              value={`$${(revenueCollected / 1000).toFixed(0)}K`}
               icon={<DollarSign size={20}/>}
-              sub={<span>Sum of paid amounts <KPITooltip formula="Sum of all paid amounts for claims with status: paid or partial_pay" /></span> as unknown as string} />
-            <KPICard label={t("analytics","collectionRate")}
-              value={liveKPIs?.overview?.collection_rate != null
-                ? `${liveKPIs.overview.collection_rate}%`
-                : `${netCollectionRate}%`}
+              sub={<span>{t("analytics","sumOfPaidAmounts")} <KPITooltip formula="Sum of all paid amounts for claims with status: paid or partial_pay" /></span> as unknown as string} />
+            <KPICard label="Net Collection Rate"
+              value={`${netCollectionRate}%`}
               trend="up"
               icon={<TrendingUp size={20}/>}
-              sub={<span>Revenue ÷ (Charges − Adj) <KPITooltip formula="Payments ÷ (Total charges − contractual adjustments) × 100. Target: > 95%" /></span> as unknown as string} />
-            <KPICard label={t("analytics","daysInAR")}
+              sub={<span>{t("analytics","revenueFormula")} <KPITooltip formula="Payments ÷ (Total charges − contractual adjustments) × 100. Target: > 95%" /></span> as unknown as string} />
+            <KPICard label="Days in A/R"
               value={daysInAR}
               icon={<Clock size={20}/>}
-              sub={<span>AR ÷ (90-day charges ÷ 90) <KPITooltip formula="Total AR balance ÷ (Charges last 90 days ÷ 90). Target: < 35 days" /></span> as unknown as string} />
-            <KPICard label={t("analytics","denialRate")}
-              value={liveKPIs?.overview?.denial_rate != null
-                ? `${liveKPIs.overview.denial_rate}%`
-                : `${denialRate}%`}
+              sub={<span>{t("analytics","arFormula")} <KPITooltip formula="Total AR balance ÷ (Charges last 90 days ÷ 90). Target: < 35 days" /></span> as unknown as string} />
+            <KPICard label="Denial Rate"
+              value={`${denialRate}%`}
               icon={<AlertTriangle size={20}/>}
-              sub={<span>Denied ÷ Submitted <KPITooltip formula="Count of denied claims ÷ total submitted claims × 100. Target: < 5%" /></span> as unknown as string} />
-            <KPICard label={t("analytics","denialAtRisk")}
+              sub={<span>{t("analytics","deniedFormula")} <KPITooltip formula="Count of denied claims ÷ total submitted claims × 100. Target: < 5%" /></span> as unknown as string} />
+            <KPICard label="Denial $ At Risk"
               value={`$${(denialAtRisk / 1000).toFixed(0)}K`}
               icon={<ShieldAlert size={20}/>}
-              sub={<span>Denied + Appealed billed <KPITooltip formula="Sum of billed amounts for claims with status: denied or appealed" /></span> as unknown as string} />
+              sub={<span>{t("analytics","deniedBilled")} <KPITooltip formula="Sum of billed amounts for claims with status: denied or appealed" /></span> as unknown as string} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -373,17 +362,15 @@ export default function AnalyticsPage() {
       {tab === 'operational' && (
         <div className="space-y-6">
           <div className="grid grid-cols-5 gap-4">
-            <KPICard label={t("analytics","cleanClaimRate")}
-              value={liveKPIs?.overview?.clean_claim_rate != null ? `${liveKPIs.overview.clean_claim_rate}%` : '91.3%'}
-              icon={<CheckCircle2 size={20}/>}
-              sub={<span><KPITooltip formula="Claims that passed scrubbing without errors ÷ total claims × 100. Target: > 95%" />of claims pass scrub</span> as unknown as string} />
-            <KPICard label={t("analytics","firstPassRate")} value="87.6%" icon={<Activity size={20}/>}
-              sub={<span><KPITooltip formula="Claims paid on first submission ÷ total submitted × 100" />paid first try</span> as unknown as string} />
-            <KPICard label={t("analytics","avgCodingTime")} value="16.2m" icon={<Clock size={20}/>} />
-            <KPICard label={t("analytics","submissionLag")} value="1.2d" icon={<FileText size={20}/>}
-              sub={<span><KPITooltip formula="Average days from DOS to submission date" />DOS to submit</span> as unknown as string} />
-            <KPICard label={t("analytics","postingLag")} value="0.8d" icon={<DollarSign size={20}/>}
-              sub={<span><KPITooltip formula="Average days from ERA receipt to payment posting" />ERA to post</span> as unknown as string} />
+            <KPICard label="Clean Claim Rate" value="91.3%" icon={<CheckCircle2 size={20}/>}
+              sub={<span><KPITooltip formula="Claims that passed scrubbing without errors ÷ total claims × 100. Target: > 95%" />{t("analytics","ofClaimsPassScrub")}</span> as unknown as string} />
+            <KPICard label="First Pass Rate" value="87.6%" icon={<Activity size={20}/>}
+              sub={<span><KPITooltip formula="Claims paid on first submission ÷ total submitted × 100" />{t("analytics","paidFirstTry")}</span> as unknown as string} />
+            <KPICard label="Avg Coding Time" value="16.2m" icon={<Clock size={20}/>} />
+            <KPICard label="Submission Lag" value="1.2d" icon={<FileText size={20}/>}
+              sub={<span><KPITooltip formula="Average days from DOS to submission date" />{t("analytics","dosToSubmit")}</span> as unknown as string} />
+            <KPICard label="Posting Lag" value="0.8d" icon={<DollarSign size={20}/>}
+              sub={<span><KPITooltip formula="Average days from ERA receipt to payment posting" />{t("analytics","eraToPost")}</span> as unknown as string} />
           </div>
 
           {/* Staff Productivity */}
@@ -440,11 +427,11 @@ export default function AnalyticsPage() {
       {tab === 'ai' && (
         <div className="space-y-6">
           <div className="grid grid-cols-5 gap-4">
-            <KPICard label={t("analytics","autoCodingAcc")} value="88.3%" icon={<BrainCircuit size={20}/>} trend="up" sub="+2.1% vs last month" />
-            <KPICard label={t("analytics","aiAcceptRate")} value="84.7%" icon={<CheckCircle2 size={20}/>} />
-            <KPICard label={t("analytics","textractConf")} value="91.2%" icon={<Activity size={20}/>} />
-            <KPICard label={t("analytics","autoPostRate")} value="76.4%" icon={<DollarSign size={20}/>} />
-            <KPICard label={t("analytics","voiceSuccess")} value="78.1%" icon={<Phone size={20}/>} trend="up" sub="+3.4%" />
+            <KPICard label="Auto-Coding Accuracy" value="88.3%" icon={<BrainCircuit size={20}/>} trend="up" sub="+2.1% vs last month" />
+            <KPICard label="AI Acceptance Rate" value="84.7%" icon={<CheckCircle2 size={20}/>} />
+            <KPICard label="Textract Confidence" value="91.2%" icon={<Activity size={20}/>} />
+            <KPICard label="Auto-Post Rate" value="76.4%" icon={<DollarSign size={20}/>} />
+            <KPICard label="Voice AI Success" value="78.1%" icon={<Phone size={20}/>} trend="up" sub="+3.4%" />
           </div>
 
           <div className="grid grid-cols-3 gap-4">

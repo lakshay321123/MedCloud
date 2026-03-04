@@ -6,7 +6,6 @@ import { Search, Sun, Moon, Bell, LogOut } from 'lucide-react'
 import Dropdown, { DropdownOption } from '@/components/shared/Dropdown'
 import { useRouter } from 'next/navigation'
 import { demoPatients, demoClaims, demoDocs } from '@/lib/demo-data'
-import { useT } from '@/lib/i18n'
 
 const roleDisplayLabels: Record<UserRole, string> = {
   admin: 'Admin',
@@ -25,8 +24,13 @@ const facilityRoles: UserRole[] = ['provider', 'client']
 const backofficeRoles: UserRole[] = ['admin', 'director', 'supervisor', 'manager', 'coder', 'biller', 'ar_team', 'posting_team']
 
 export default function Topbar() {
+  const supportedLanguages: { lang: 'en' | 'ar' | 'es'; flag: string; nativeName: string }[] = [
+    { lang: 'en', flag: '🇺🇸', nativeName: 'EN' },
+    { lang: 'ar', flag: '🇦🇪', nativeName: 'عربي' },
+    { lang: 'es', flag: '🇪🇸', nativeName: 'ES' },
+  ]
+
   const { theme, setTheme, language, setLanguage, currentUser, setRole, selectedClient, setSelectedClient, clients, country, portalType, isScribeRecording } = useApp()
-  const { t } = useT()
   const isStaff = backofficeRoles.includes(currentUser.role)
   const router = useRouter()
 
@@ -112,7 +116,7 @@ export default function Topbar() {
             }
             if (e.key === 'Escape') { setSearchOpen(false); setSearchQuery('') }
           }}
-          placeholder={t('topbar', 'searchPlaceholder')}
+          placeholder="Search patients, claims, docs..."
           className="w-full bg-surface-elevated rounded-btn pl-9 pr-4 py-2 text-[14px] text-content-primary placeholder:text-content-tertiary outline-none border border-separator focus:border-brand/40 transition-colors"
         />
         {searchOpen && searchQuery.length >= 2 && searchResults.length > 0 && (
@@ -157,12 +161,11 @@ export default function Topbar() {
 
         {/* Language toggle */}
         <button
-          onClick={() => setLanguage(language === 'en' ? 'ar' : language === 'ar' ? 'es' : 'en')}
-          className="px-2.5 py-2 rounded-btn hover:bg-surface-elevated text-content-secondary text-[13px] font-semibold transition-colors flex items-center gap-1.5"
-          title={t('topbar', 'language')}
+          onClick={() => { const idx = supportedLanguages.findIndex(l => l.lang === language); setLanguage(supportedLanguages[(idx + 1) % supportedLanguages.length].lang) }}
+          className="px-2.5 py-2 rounded-btn hover:bg-surface-elevated text-content-secondary text-[13px] font-semibold transition-colors"
         >
-          <span>{language === 'en' ? '🇺🇸' : language === 'ar' ? '🇦🇪' : '🇪🇸'}</span>
-          <span>{language === 'en' ? 'EN' : language === 'ar' ? 'عربي' : 'ES'}</span>
+          <span>{supportedLanguages.find(l => l.lang === language)?.flag}</span>
+          <span>{supportedLanguages.find(l => l.lang === language)?.nativeName}</span>
         </button>
 
         {/* Theme toggle */}
