@@ -2,6 +2,7 @@
 import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useClaims } from '@/lib/hooks'
+import { demoClaims } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -23,7 +24,7 @@ export default function WatchTrackPage() {
     cptCodes: [], icdCodes: [], clientId: c.client_id || '',
   }))
 
-  const allClaims = apiClaims
+  const allClaims = apiClaims.length ? apiClaims : demoClaims
   const myClaims = allClaims.filter(c => {
     if (selectedClient) return c.clientId === selectedClient.id
     if (currentUser.role === 'client' || currentUser.role === 'provider')
@@ -43,7 +44,7 @@ export default function WatchTrackPage() {
 
   return (
     <ModuleShell title="Watch & Track" subtitle="Track your claims and revenue">
-
+      {!apiClaims.length && <div className='mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2.5 text-xs text-amber-400'>API connecting…</div>}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <KPICard label={t('watch','totalClaims')} value={myClaims.length} icon={<FileText size={20}/>}/>
         <KPICard label={t('watch','totalCharges')} value={`$${totalCharges.toLocaleString()}`} icon={<DollarSign size={20}/>}/>

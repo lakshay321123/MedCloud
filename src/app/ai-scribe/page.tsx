@@ -3,12 +3,12 @@ import { useT } from '@/lib/i18n'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context'
-import { useSOAPNotes, useCreateSOAPNote, useCreateCoding, useApi } from '@/lib/hooks'
+import { useSOAPNotes, useCreateSOAPNote, useCreateCoding } from '@/lib/hooks'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
-import type { DemoVisit } from '@/lib/demo-data'
+import { demoVisits, demoPatients, demoAppointments, DemoVisit } from '@/lib/demo-data'
 import {
   Mic, Square, Check, ChevronLeft, BrainCircuit, Clock,
   FileText, Activity, AlertTriangle, Loader2, Sparkles,
@@ -96,15 +96,15 @@ function ProviderView() {
     suggestedCodes: [], duration: '0:00', transcript: '',
   }))
 
-  const visits = apiVisits
+  const visits = apiVisits.length ? apiVisits : demoVisits
   const pending = visits.filter(v => v.status === 'pending_signoff')
   const completed = visits.filter(v => v.status === 'signed')
 
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
   const [selectedVisit, setSelectedVisit] = useState<DemoVisit | null>(null)
-  const selectedPatient: any = null // populated from API when patient selected
-  const selectedAppt: any = null // populated from API
-  const todayAppts: any[] = []
+  const selectedPatient = demoPatients.find(p => p.id === selectedPatientId)
+  const selectedAppt = demoAppointments.find(a => a.patientId === selectedPatientId)
+  const todayAppts = demoAppointments
 
   // Recording state
   const [transcript, setTranscript] = useState('')
@@ -331,7 +331,7 @@ function ProviderView() {
       </div>
       <div className="space-y-2">
         {todayAppts.map(a => {
-          const pat: any = null
+          const pat = demoPatients.find(p => p.id === a.patientId)
           return (
             <button key={a.id} onClick={() => { setSelectedPatientId(a.patientId); setUiState('review_patient') }}
               className="w-full text-left card p-4 hover:border-brand/30 transition-all flex items-center gap-4">
@@ -380,18 +380,18 @@ function ProviderView() {
       {(selectedPatient.allergies?.length ?? 0) > 0 && (
         <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
           <div className="text-xs font-semibold text-red-500 mb-1">⚠ Allergies</div>
-          <div className="text-sm">{(selectedPatient.allergies! as string[]).join(', ')}</div>
+          <div className="text-sm">{selectedPatient.allergies!.join(', ')}</div>
         </div>
       )}
       {(selectedPatient.medications?.length ?? 0) > 0 && (
         <div className="card p-4">
           <div className="text-xs font-semibold text-content-secondary mb-2 uppercase tracking-wide">Medications</div>
-          <ul className="text-sm space-y-1">{selectedPatient.medications!.map((m: string, i: number) => <li key={i}>• {m}</li>)}</ul>
+          <ul className="text-sm space-y-1">{selectedPatient.medications!.map((m, i) => <li key={i}>• {m}</li>)}</ul>
         </div>
       )}
       {/* Prior visits preview */}
       {(() => {
-        const priorVisits: DemoVisit[] = []
+        const priorVisits = demoVisits.filter(v => v.patientId === selectedPatientId)
         return priorVisits.length > 0 ? (
           <div className="card p-4">
             <div className="text-xs font-semibold text-content-secondary mb-2 uppercase tracking-wide flex items-center gap-2"><History size={12} /> Prior Visits ({priorVisits.length})</div>
@@ -547,7 +547,7 @@ function ProviderView() {
       ...manualCodes,
     ]
 
-    const priorVisits: DemoVisit[] = []
+    const priorVisits = demoVisits.filter(v => v.patientId === selectedVisit.patientId && v.id !== selectedVisit.id)
 
     return (
       <>
@@ -898,16 +898,14 @@ function ProviderView() {
 
 // ── Coder View ───────────────────────────────────────────────────────────────
 function CoderView() {
-  const [selectedVisit, setSelectedVisit] = useState<DemoVisit | null>(null)
+  const [selectedVisit, setSelectedVisit] = useState<DemoVisit>(demoVisits[0])
   const router = useRouter()
-  const { data: visitsData } = useApi<{ data: DemoVisit[] }>('/visits', { limit: 50 })
-  const apiVisits: DemoVisit[] = visitsData?.data ?? []
   return (
     <div className="grid grid-cols-3 gap-5 h-[calc(100vh-280px)]">
       <div className="card overflow-auto">
         <div className="px-3 py-2 border-b border-separator text-xs font-semibold text-content-secondary uppercase tracking-wider">Signed Notes — Read Only</div>
-        {(apiVisits as DemoVisit[]).map(v => (
-          <button key={v.id} onClick={() => setSelectedVisit(v)} className={`w-full text-left px-3 py-3 border-b border-separator last:border-0 ${selectedVisit?.id === v.id ? 'bg-brand/5' : ''}`}>
+        {demoVisits.map(v => (
+          <button key={v.id} onClick={() => setSelectedVisit(v)} className={`w-full text-left px-3 py-3 border-b border-separator last:border-0 ${selectedVisit.id === v.id ? 'bg-brand/5' : ''}`}>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">{v.patientName}</span>
               <StatusBadge status={v.status === 'signed' ? 'completed' : 'in_progress'} small />
@@ -917,19 +915,14 @@ function CoderView() {
         ))}
       </div>
       <div className="col-span-2 card flex flex-col overflow-hidden">
-        {!selectedVisit ? (
-          <div className="flex-1 flex items-center justify-center text-content-secondary text-sm">
-            Select a signed note to review
-          </div>
-        ) : (<>
-        {selectedVisit?.status === 'signed' && (
+        {selectedVisit.status === 'signed' && (
           <div className="px-4 py-2.5 bg-emerald-500/10 border-b border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-            <Check size={13} /> Signed by {selectedVisit?.provider} on {selectedVisit?.dos}
+            <Check size={13} /> Signed by {selectedVisit.provider} on {selectedVisit.dos}
           </div>
         )}
         <div className="px-4 py-3 border-b border-separator">
-          <h3 className="text-sm font-semibold">{selectedVisit?.patientName}</h3>
-          <p className="text-[10px] text-content-secondary">{selectedVisit?.provider} · {selectedVisit?.dos}</p>
+          <h3 className="text-sm font-semibold">{selectedVisit.patientName}</h3>
+          <p className="text-[10px] text-content-secondary">{selectedVisit.provider} · {selectedVisit.dos}</p>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {(['s', 'o', 'a', 'p'] as const).map(k => (
@@ -937,7 +930,7 @@ function CoderView() {
               <div className="text-[10px] font-bold text-content-secondary uppercase tracking-wider mb-1">
                 {k === 's' ? 'S — Subjective' : k === 'o' ? 'O — Objective' : k === 'a' ? 'A — Assessment' : 'P — Plan'}
               </div>
-              <div className="text-sm bg-surface-elevated rounded-lg p-3 leading-relaxed">{selectedVisit?.soap[k]}</div>
+              <div className="text-sm bg-surface-elevated rounded-lg p-3 leading-relaxed">{selectedVisit.soap[k]}</div>
             </div>
           ))}
           <div className="border-t border-separator pt-3">
@@ -946,7 +939,7 @@ function CoderView() {
               <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider">AI Codes</h4>
             </div>
             <div className="flex flex-wrap gap-2">
-              {selectedVisit?.suggestedCodes.map((c, i) => (
+              {selectedVisit.suggestedCodes.map((c, i) => (
                 <span key={i} className={`text-xs px-2.5 py-1 rounded-full border ${c.cpt ? 'bg-brand/10 text-brand border-brand/20' : 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20'}`}>
                   {c.cpt ? `CPT ${c.cpt}` : `ICD ${c.icd}`} · {c.confidence}%
                 </span>
@@ -959,7 +952,6 @@ function CoderView() {
             <ChevronLeft size={14} /> Back to Coding Queue
           </button>
         </div>
-        </>)}
       </div>
     </div>
   )

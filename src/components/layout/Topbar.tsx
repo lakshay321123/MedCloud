@@ -7,6 +7,7 @@ import { Search, Sun, Moon, Bell, LogOut, Check, AlertTriangle, Info, X } from '
 import { useNotifications, useMarkNotificationRead } from '@/lib/hooks'
 import Dropdown, { DropdownOption } from '@/components/shared/Dropdown'
 import { useRouter } from 'next/navigation'
+import { demoPatients, demoClaims, demoDocs } from '@/lib/demo-data'
 
 const roleDisplayLabels: Record<UserRole, string> = {
   admin: 'Admin',
@@ -69,7 +70,18 @@ export default function Topbar() {
     if (searchQuery.length < 2) return []
     const q = searchQuery.toLowerCase()
     const results: { type: string; label: string; sub: string; path: string }[] = []
-    // Search results come from API — no local data to search
+    demoPatients
+      .filter(p => `${p.firstName} ${p.lastName}`.toLowerCase().includes(q) || p.phone?.includes(q))
+      .slice(0, 3)
+      .forEach(p => results.push({ type: 'Patient', label: `${p.firstName} ${p.lastName}`, sub: p.phone || '', path: '/portal/patients' }))
+    demoClaims
+      .filter(c => c.id.toLowerCase().includes(q) || c.patientName.toLowerCase().includes(q) || c.payer.toLowerCase().includes(q))
+      .slice(0, 3)
+      .forEach(c => results.push({ type: 'Claim', label: c.id, sub: `${c.patientName} · ${c.payer}`, path: '/claims' }))
+    demoDocs
+      .filter(d => d.name.toLowerCase().includes(q) || d.patient?.toLowerCase().includes(q))
+      .slice(0, 2)
+      .forEach(d => results.push({ type: 'Doc', label: d.name, sub: d.type, path: '/documents' }))
     return results.slice(0, 8)
   }, [searchQuery])
 
