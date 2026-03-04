@@ -780,9 +780,22 @@ export default function ClaimsPage() {
     else { setSortKey(key); setSortDir('desc') }
   }
 
-  const handleBatchSubmit = () => {
-    if (!allReady) return
-    toast.success(`${selectedRows.length} claim(s) submitted to Availity`)
+  const { mutate: batchSubmit, loading: batchLoading } = useBatchSubmitClaims()
+
+  const handleBatchSubmit = async () => {
+    if (!allReady || selectedRows.length === 0) return
+    // Get API IDs for selected claims
+    const apiIds = selectedRows
+      .map(rowId => allClaims.find(c => c.id === rowId)?.apiId)
+      .filter((id): id is string => !!id)
+    if (apiIds.length === 0) { toast.warning('No valid claims selected for submission'); return }
+    try {
+      const result = await batchSubmit({ claim_ids: apiIds })
+      if (result) {
+        toast.success(`${result.submitted} claim(s) submitted to Availity${result.failed > 0 ? `, ${result.failed} failed` : ''}`)
+        refetch()
+      }
+    } catch (err) { toast.error('Batch submission failed') }
     setSelectedRows([])
   }
 
@@ -847,7 +860,7 @@ export default function ClaimsPage() {
             <div className="flex items-center gap-3 px-4 py-2.5 bg-brand/5 border-b border-brand/20 shrink-0">
               <CheckSquare size={14} className="text-brand" />
               <span className="text-[13px] text-brand font-medium">{selectedRows.length} selected</span>
-              <button onClick={handleBatchSubmit} disabled={!allReady}
+              <button onClick={handleBatchSubmit} disabled={!allReady || batchLoading}
                 className={`px-3 py-1.5 rounded-btn text-[12px] font-medium transition-colors ${allReady ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-surface-elevated text-content-tertiary cursor-not-allowed'}`}>
                 Submit Selected
               </button>

@@ -1,9 +1,10 @@
 'use client'
 import { useT } from '@/lib/i18n'
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
+import { useEDITransactions } from '@/lib/hooks'
 import { CheckCircle2, AlertTriangle, XCircle, Clock, Plug, X, RotateCcw, FileText } from 'lucide-react'
 
 interface Integration {
@@ -131,6 +132,28 @@ export default function IntegrationsPage() {
   const [configFor, setConfigFor] = useState<Integration | null>(null)
   const [logsFor, setLogsFor] = useState<Integration | null>(null)
 
+  // Real EDI transaction data
+  const { data: ediResult } = useEDITransactions({ limit: 500 })
+  const ediTxs = ediResult?.data || []
+  const ediStats = useMemo(() => {
+    const typeStats = (types: string[], label: string) => {
+      const txs = ediTxs.filter(tx => types.includes(tx.transaction_type))
+      return {
+        type: label,
+        sent: txs.filter(tx => tx.direction === 'outbound').length,
+        accepted: txs.filter(tx => tx.status === 'accepted' || tx.status === 'received' || tx.status === 'parsed').length,
+        rejected: txs.filter(tx => tx.status === 'rejected' || tx.status === 'error').length,
+        last: txs[0]?.submitted_at ? new Date(txs[0].submitted_at).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—',
+      }
+    }
+    return [
+      typeStats(['837P'], '837P (Professional)'),
+      typeStats(['837I'], '837I (Institutional)'),
+      typeStats(['270', '271'], '270/271 (Eligibility)'),
+      typeStats(['276', '277'], '276/277 (Claim Status)'),
+    ]
+  }, [ediTxs])
+
   const stats = {
     connected: integrations.filter(i=>i.status==='connected').length,
     errors: integrations.filter(i=>i.status==='error').length,
@@ -196,11 +219,7 @@ export default function IntegrationsPage() {
           )}
         </div>
         <div className="space-y-2">
-          {[{type:'837P (Professional)',sent:198,accepted:194,rejected:4,last:'2 min ago'},
-            {type:'837I (Institutional)',sent:36,accepted:34,rejected:2,last:'15 min ago'},
-            {type:'270/271 (Eligibility)',sent:890,accepted:885,rejected:5,last:'1 min ago'},
-            {type:'276/277 (Claim Status)',sent:124,accepted:124,rejected:0,last:'5 min ago'}
-          ].map(edi=>(
+          {ediStats.map(edi=>(
             <div key={edi.type} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
               <span className="text-xs font-medium w-48">{edi.type}</span>
               <div className="flex items-center gap-4 text-[10px]">
