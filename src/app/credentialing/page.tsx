@@ -29,7 +29,7 @@ export default function CredentialingPage() {
   const { mutate: updateCred } = useUpdateCredentialing(selected?.id || '')
   const { mutate: createCred } = useCreateCredentialing()
 
-  const filteredProviders = (apiCredResult?.data?.length
+  const apiRows = apiCredResult?.data?.length
     ? apiCredResult.data.map(p => ({
         id: p.id,
         name: p.provider_name || '',
@@ -44,8 +44,12 @@ export default function CredentialingPage() {
         caqh: '—',
         npi: '',
       }))
-    : providers
-  ).filter(p => {
+    : null
+  // Fall back to demo if API returned rows but none have client info (region filter would zero them out)
+  const hasClientInfo = apiRows ? apiRows.some(r => r.client !== '') : false
+  const baseProviders = (apiRows && hasClientInfo) ? apiRows : providers
+
+  const filteredProviders = baseProviders.filter(p => {
     if (selectedClient) return p.client === selectedClient.name
     if (country === 'uae') return UAE_CLIENT_NAMES.includes(p.client as typeof UAE_CLIENT_NAMES[number])
     if (country === 'usa') return US_CLIENT_NAMES.includes(p.client as typeof US_CLIENT_NAMES[number])

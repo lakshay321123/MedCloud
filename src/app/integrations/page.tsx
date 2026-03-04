@@ -14,7 +14,6 @@ interface Integration {
 
 const integrations: Integration[] = [
   // Clearinghouses
-  { id:'availity', name:'Availity', description:'Real-time eligibility & claims', initials:'AV', color:'bg-blue-500', category:'Clearinghouses', status:'connected', lastSync:'2 min ago' },
   { id:'availity', name:'Availity', description:'Primary clearinghouse — claims, eligibility, ERA', initials:'AV', color:'bg-indigo-500', category:'Clearinghouses', status:'connected', lastSync:'5 min ago' },
   { id:'dha', name:'DHA eClaim (UAE)', description:'UAE DOH claims gateway', initials:'DH', color:'bg-emerald-500', category:'Clearinghouses', status:'connected', lastSync:'14 min ago' },
   { id:'eclinical', name:'eClinicalWorks', description:'EHR integration & patient data', initials:'EC', color:'bg-cyan-500', category:'EHR Systems', status:'pending' },

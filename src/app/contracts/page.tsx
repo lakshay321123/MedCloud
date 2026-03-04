@@ -8,6 +8,7 @@ import { demoContracts } from '@/lib/demo-data'
 import type { DemoContract } from '@/lib/demo-data'
 import { useFeeSchedules, usePayerConfigs, usePayers, useUnderpaymentCheck, useExtractContractRates, useCreateFeeSchedule, useUpdateFeeSchedule } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
+import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import { Scale, Search, AlertTriangle, Edit2, Plus } from 'lucide-react'
 
 const statusStyles: Record<DemoContract['status'], { label: string; className: string }> = {
@@ -80,8 +81,8 @@ export default function ContractsPage() {
 
   const allContracts = (apiContracts.length ? apiContracts : demoContracts).filter(c => {
     if (selectedClient) return c.clientId === selectedClient.id
-    if (country === 'uae') return ['org-101', 'org-104'].includes(c.clientId)
-    if (country === 'usa') return ['org-102', 'org-103'].includes(c.clientId)
+    if (country === 'uae') return UAE_ORG_IDS.includes(c.clientId)
+    if (country === 'usa') return US_ORG_IDS.includes(c.clientId)
     return true
   })
   const filtered = allContracts.filter(c =>

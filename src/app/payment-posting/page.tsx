@@ -6,6 +6,7 @@ import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useApp } from '@/lib/context'
 import { demoERAFiles, demoERALineItems, demoUnmatchedPayments } from '@/lib/demo-data'
+import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
@@ -20,8 +21,8 @@ export default function PaymentPostingPage() {
   const [posting, setPosting] = useState(false)
   const demoEras = demoERAFiles.filter(era => {
     if (selectedClient) return era.clientId === selectedClient.id
-    if (country === 'uae') return ['org-101', 'org-104'].includes(era.clientId)
-    if (country === 'usa') return ['org-102', 'org-103'].includes(era.clientId)
+    if (country === 'uae') return UAE_ORG_IDS.includes(era.clientId)
+    if (country === 'usa') return US_ORG_IDS.includes(era.clientId)
     return true
   })
   // Map API ERA files to DemoERAFile shape for display compatibility
