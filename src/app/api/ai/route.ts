@@ -32,6 +32,8 @@ type AiAction =
   | { action: 'denial_risk'; payer: string; cpt: string; icd: string; billed: number; pos: string; status: string }
   | { action: 'scribe_refine_section'; section: string; text: string; patient: string; visitType: string; assessment: string }
   | { action: 'scribe_referral'; patient: string; dob: string; insurance: string; soap: string; icd: string; specialist: string; reason: string }
+  | { action: 'voice_analyze'; agent: string; localPrompt: string; failedSamples: string; successSamples: string; callCount: number; successRate: number }
+  | { action: 'voice_playbook'; payer: string; successRate: number; transcripts: string; callCount: number }
 
 function buildPrompt(params: AiAction): { prompt: string; max_tokens: number } {
   switch (params.action) {
@@ -145,6 +147,62 @@ Payer: ${params.payer} | CPT: ${params.cpt} | ICD: ${params.icd}
 Billed: $${params.billed} | Place of Service: ${params.pos} | Status: ${params.status}
 
 Return ONLY valid JSON: {"risk":"high|medium|low","probability":75,"reasons":["Reason 1","Reason 2"]}`,
+      }
+    }
+    case 'voice_analyze': {
+      return {
+        max_tokens: 2000,
+        prompt: `You are an expert AI prompt engineer specializing in medical billing voice AI agents. You analyze real call performance data and suggest targeted, specific improvements to the agent's system prompt.
+
+Be surgical — only suggest changes that are directly supported by the call data evidence. Do not rewrite the entire prompt. Output a clear diff-style suggestion showing what to add, change, or remove, and why.
+
+Agent: ${params.agent === 'chris' ? 'Chris (Payer Follow-up)' : 'Cindy (AR Collections)'}
+Current success rate from last ${params.callCount} calls: ${params.successRate}%
+
+FAILED CALL PATTERNS:
+${params.failedSamples || 'No failure data yet'}
+
+SUCCESSFUL CALL PATTERNS:
+${params.successSamples || 'No success data yet'}
+
+CURRENT PROMPT:
+${params.localPrompt}
+
+Based on the failure patterns above, what specific changes to the prompt would improve success rate?
+Format your response as:
+## What's Going Wrong
+[specific patterns from failed calls]
+
+## Suggested Changes
+[exact text to add/modify/remove, with rationale]
+
+## Expected Impact
+[what improvement this should drive]`,
+      }
+    }
+    case 'voice_playbook': {
+      return {
+        max_tokens: 1500,
+        prompt: `You are an expert medical billing AI analyst. You analyze real call transcripts between an AI billing agent and insurance company representatives to identify payer-specific patterns and create actionable IVR navigation playbooks.
+
+Output ONLY the playbook section in markdown format — no preamble, no explanation. Write it as a section to be inserted directly into the agent's system prompt.
+
+Payer: ${params.payer} | Success rate: ${params.successRate}% across ${params.callCount} calls
+
+CALL TRANSCRIPTS:
+${params.transcripts}
+
+Based on these real calls, write a payer-specific playbook section for ${params.payer} that covers:
+1. IVR navigation sequence (exact button presses and menu paths)
+2. What commonly causes failures / where the agent gets stuck
+3. What to do / not do when navigating ${params.payer}'s system
+4. Any special phrases, holds, or transfers specific to this payer
+
+Format as:
+# Payer-Specific Rules → ${params.payer}
+[your analysis here]
+
+Be specific and actionable. Reference exact patterns from the transcripts.`,
       }
     }
   }
