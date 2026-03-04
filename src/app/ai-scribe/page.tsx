@@ -922,14 +922,14 @@ function CoderView() {
             Select a signed note to review
           </div>
         ) : (<>
-        {selectedVisit.status === 'signed' && (
+        {selectedVisit?.status === 'signed' && (
           <div className="px-4 py-2.5 bg-emerald-500/10 border-b border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-            <Check size={13} /> Signed by {selectedVisit.provider} on {selectedVisit.dos}
+            <Check size={13} /> Signed by {selectedVisit?.provider} on {selectedVisit?.dos}
           </div>
         )}
         <div className="px-4 py-3 border-b border-separator">
-          <h3 className="text-sm font-semibold">{selectedVisit.patientName}</h3>
-          <p className="text-[10px] text-content-secondary">{selectedVisit.provider} · {selectedVisit.dos}</p>
+          <h3 className="text-sm font-semibold">{selectedVisit?.patientName}</h3>
+          <p className="text-[10px] text-content-secondary">{selectedVisit?.provider} · {selectedVisit?.dos}</p>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {(['s', 'o', 'a', 'p'] as const).map(k => (
@@ -937,7 +937,7 @@ function CoderView() {
               <div className="text-[10px] font-bold text-content-secondary uppercase tracking-wider mb-1">
                 {k === 's' ? 'S — Subjective' : k === 'o' ? 'O — Objective' : k === 'a' ? 'A — Assessment' : 'P — Plan'}
               </div>
-              <div className="text-sm bg-surface-elevated rounded-lg p-3 leading-relaxed">{selectedVisit.soap[k]}</div>
+              <div className="text-sm bg-surface-elevated rounded-lg p-3 leading-relaxed">{selectedVisit?.soap[k]}</div>
             </div>
           ))}
           <div className="border-t border-separator pt-3">
@@ -946,7 +946,7 @@ function CoderView() {
               <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider">AI Codes</h4>
             </div>
             <div className="flex flex-wrap gap-2">
-              {selectedVisit.suggestedCodes.map((c, i) => (
+              {selectedVisit?.suggestedCodes.map((c, i) => (
                 <span key={i} className={`text-xs px-2.5 py-1 rounded-full border ${c.cpt ? 'bg-brand/10 text-brand border-brand/20' : 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20'}`}>
                   {c.cpt ? `CPT ${c.cpt}` : `ICD ${c.icd}`} · {c.confidence}%
                 </span>
