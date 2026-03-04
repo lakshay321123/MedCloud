@@ -1,6 +1,6 @@
 'use client'
 import { useT } from '@/lib/i18n'
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 import { UAE_CLIENT_NAMES, US_CLIENT_NAMES } from '@/lib/utils/region'
@@ -566,7 +566,26 @@ export default function ARManagementPage() {
   const { data: identifiedCredits, loading: identifyingCredits, refetch: refetchCredits } = useIdentifyCreditBalances()
   const { mutate: checkSLA, loading: checkingSLA } = useCheckSLAEscalations()
   const [slaResult, setSlaResult] = useState<Array<{ task_id: string; title: string; hours_overdue: number; escalation_level: string }>>([])
-  const creditBalances = creditBalanceResult?.data || identifiedCredits?.data || []
+  const creditBalances = identifiedCredits?.data || creditBalanceResult?.data || []
+
+  const creditStats = useMemo(() => {
+    if (!creditBalances || creditBalances.length === 0) {
+      return { total: '24,380', open: 18, resolved: '8,200' }
+    }
+    return {
+      total: creditBalances.reduce((s, c) => s + (c.amount || 0), 0).toLocaleString(),
+      open: creditBalances.filter(c => c.status === 'open').length,
+      resolved: creditBalances.filter(c => c.status === 'resolved').reduce((s, c) => s + (c.amount || 0), 0).toLocaleString(),
+    }
+  }, [creditBalances])
+
+  async function handleSlaCheck() {
+    try {
+      const r = await checkSLA({} as Record<string, never>)
+      if (r?.escalations) setSlaResult(r.escalations)
+      toast.success(`Found ${r?.escalations_sent || 0} SLA escalations`)
+    } catch { toast.error('SLA check failed') }
+  }
 
   const filtered = accounts.filter(a => {
     if (selectedClient) return a.client.includes(selectedClient.name.split(' ')[0])
@@ -658,12 +677,12 @@ export default function ARManagementPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-content-secondary">Overpayments and credit balances requiring resolution</p>
-            <button onClick={async () => { refetchCredits(); toast.success('Credit balance scan triggered') }} disabled={identifyingCredits} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors disabled:opacity-50">{identifyingCredits ? 'Scanning…' : 'Identify Credits'}</button>
+            <button onClick={() => { refetchCredits(); toast.success('Credit balance scan triggered') }} disabled={identifyingCredits} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors disabled:opacity-50">{identifyingCredits ? 'Scanning…' : 'Identify Credits'}</button>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-amber-500">${creditBalances.length > 0 ? creditBalances.reduce((s, c) => s + (c.amount || 0), 0).toLocaleString() : '24,380'}</p><p className="text-[10px] text-content-tertiary mt-1">Total Credits</p></div>
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand">{creditBalances.length > 0 ? creditBalances.filter(c => c.status === 'open').length : 18}</p><p className="text-[10px] text-content-tertiary mt-1">Open Credits</p></div>
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-emerald-500">${creditBalances.length > 0 ? creditBalances.filter(c => c.status === 'resolved').reduce((s, c) => s + (c.amount || 0), 0).toLocaleString() : '8,200'}</p><p className="text-[10px] text-content-tertiary mt-1">Resolved This Month</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-amber-500">${creditStats.total}</p><p className="text-[10px] text-content-tertiary mt-1">Total Credits</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand">{creditStats.open}</p><p className="text-[10px] text-content-tertiary mt-1">Open Credits</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-emerald-500">${creditStats.resolved}</p><p className="text-[10px] text-content-tertiary mt-1">Resolved This Month</p></div>
           </div>
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
@@ -687,7 +706,7 @@ export default function ARManagementPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-content-secondary">SLA escalation tracking — accounts approaching or past deadlines</p>
-            <button onClick={async () => { try { const r = await checkSLA({} as Record<string, never>); if (r?.escalations) setSlaResult(r.escalations); toast.success(`Found ${r?.escalations_sent || 0} SLA escalations`) } catch { toast.error('SLA check failed') } }} disabled={checkingSLA} className="flex items-center gap-2 bg-red-500 text-white rounded-lg px-4 py-2 text-sm hover:bg-red-600 transition-colors disabled:opacity-50">{checkingSLA ? 'Checking…' : 'Run SLA Check'}</button>
+            <button onClick={handleSlaCheck} disabled={checkingSLA} className="flex items-center gap-2 bg-red-500 text-white rounded-lg px-4 py-2 text-sm hover:bg-red-600 transition-colors disabled:opacity-50">{checkingSLA ? 'Checking…' : 'Run SLA Check'}</button>
           </div>
           <div className="grid grid-cols-4 gap-3">
             <div className="card p-4 text-center"><p className="text-xl font-bold text-red-500">7</p><p className="text-[10px] text-content-tertiary mt-1">Past SLA</p></div>
