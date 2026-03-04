@@ -474,7 +474,8 @@ async function list(table, orgId, clientId, extra = '') {
   // Enforce default LIMIT if caller didn't specify one
   if (!/LIMIT/i.test(extra)) q += ' LIMIT 1000';
   // Use orgQuery so SET LOCAL app.org_id activates Aurora RLS policies on PHI tables
-  return (await orgQuery(orgId, q, params)).rows;
+  const rows = (await orgQuery(orgId, q, params)).rows;
+  return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
 }
 
 async function getById(table, id, orgId = null) {
@@ -565,7 +566,8 @@ async function enrichedClaims(orgId, clientId) {
   const params = [orgId];
   if (clientId) { params.push(clientId); q += ` AND c.client_id = $${params.length}`; }
   q += ' ORDER BY c.created_at DESC';
-  return (await pool.query(q, params)).rows;
+  const rows = (await orgQuery(orgId, q, params)).rows;
+  return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
 }
 
 async function enrichedDenials(orgId, clientId) {
@@ -577,13 +579,14 @@ async function enrichedDenials(orgId, clientId) {
            LEFT JOIN claims c ON d.claim_id = c.id
            LEFT JOIN patients p ON c.patient_id = p.id
            LEFT JOIN payers py ON c.payer_id = py.id
-           LEFT JOIN clients cl ON d.client_id = cl.id
+           LEFT JOIN clients cl ON c.client_id = cl.id
            LEFT JOIN carc_codes carc ON d.carc_code = carc.code
            WHERE d.org_id = $1`;
   const params = [orgId];
-  if (clientId) { params.push(clientId); q += ` AND d.client_id = $${params.length}`; }
+  if (clientId) { params.push(clientId); q += ` AND c.client_id = $${params.length}`; }
   q += ' ORDER BY d.created_at DESC';
-  return (await pool.query(q, params)).rows;
+  const rows = (await orgQuery(orgId, q, params)).rows;
+  return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
 }
 
 async function enrichedPayments(orgId, clientId) {
@@ -599,7 +602,8 @@ async function enrichedPayments(orgId, clientId) {
   const params = [orgId];
   if (clientId) { params.push(clientId); q += ` AND pm.client_id = $${params.length}`; }
   q += ' ORDER BY pm.created_at DESC';
-  return (await pool.query(q, params)).rows;
+  const rows = (await orgQuery(orgId, q, params)).rows;
+  return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
 }
 
 async function enrichedCoding(orgId, clientId) {
@@ -614,7 +618,8 @@ async function enrichedCoding(orgId, clientId) {
   const params = [orgId];
   if (clientId) { params.push(clientId); q += ` AND cq.client_id = $${params.length}`; }
   q += ' ORDER BY cq.created_at DESC';
-  return (await pool.query(q, params)).rows;
+  const rows = (await orgQuery(orgId, q, params)).rows;
+  return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
 }
 
 async function enrichedPatients(orgId, clientId) {
@@ -625,7 +630,8 @@ async function enrichedPatients(orgId, clientId) {
   const params = [orgId];
   if (clientId) { params.push(clientId); q += ` AND p.client_id = $${params.length}`; }
   q += ' ORDER BY p.last_name, p.first_name';
-  return (await pool.query(q, params)).rows;
+  const rows = (await orgQuery(orgId, q, params)).rows;
+  return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
@@ -3837,7 +3843,7 @@ function categorizeDenial(carcCode) {
 
 async function categorizeDenials(orgId, clientId) {
   let cf = ''; const params = [orgId];
-  if (clientId) { cf = ' AND d.client_id = $2'; params.push(clientId); }
+  if (clientId) { cf = ' AND c.client_id = $2'; params.push(clientId); }
 
   const r = await pool.query(
     `SELECT d.id, d.carc_code, d.rarc_code, d.amount, d.status, d.denial_reason,
@@ -5480,7 +5486,7 @@ export const handler = async (event) => {
     if (path.includes('/lines')) {
       if (method === 'GET') {
         const r = await pool.query('SELECT * FROM claim_lines WHERE claim_id = $1 ORDER BY line_number', [pathParams.id]);
-        return respond(200, r.rows);
+        return respond(200, { data: r.rows, meta: { total: r.rows.length, page: 1, limit: r.rows.length } });
       }
       if (method === 'POST') {
         body.claim_id = pathParams.id;
@@ -5492,7 +5498,7 @@ export const handler = async (event) => {
     if (path.includes('/diagnoses')) {
       if (method === 'GET') {
         const r = await pool.query('SELECT * FROM claim_diagnoses WHERE claim_id = $1 ORDER BY sequence', [pathParams.id]);
-        return respond(200, r.rows);
+        return respond(200, { data: r.rows, meta: { total: r.rows.length, page: 1, limit: r.rows.length } });
       }
       if (method === 'POST') {
         body.claim_id = pathParams.id;
@@ -5511,7 +5517,7 @@ export const handler = async (event) => {
     if (path.includes('/scrub-results')) {
       if (method === 'GET' && pathParams.id) {
         const r = await pool.query('SELECT * FROM scrub_results WHERE claim_id = $1 ORDER BY created_at DESC', [pathParams.id]);
-        return respond(200, r.rows);
+        return respond(200, { data: r.rows, meta: { total: r.rows.length, page: 1, limit: r.rows.length } });
       }
     }
 
@@ -5757,7 +5763,7 @@ export const handler = async (event) => {
          ORDER BY t.due_date ASC`,
         [effectiveOrgId]
       );
-      return respond(200, r.rows);
+      return respond(200, { data: r.rows, meta: { total: r.rows.length, page: 1, limit: r.rows.length } });
     }
 
     // ════ Eligibility ══════════════════════════════════════════════════════
@@ -5954,20 +5960,28 @@ export const handler = async (event) => {
     // ════ Prior Auth Workflow ══════════════════════════════════════════════
     if (path.includes('/prior-auth')) {
       if (method === 'GET' && !pathParams.id) {
-        let q = `SELECT pa.*, pt.first_name || ' ' || pt.last_name AS patient_name,
-                        py.name AS payer_name, pv.last_name AS provider_name
-                 FROM prior_auth_requests pa
-                 LEFT JOIN patients pt ON pa.patient_id = pt.id
-                 LEFT JOIN payers py ON pa.payer_id = py.id
-                 LEFT JOIN providers pv ON pa.provider_id = pv.id
-                 WHERE pa.org_id = $1`;
-        const p = [effectiveOrgId];
-        if (clientId) { q += ' AND pa.client_id = $2'; p.push(clientId); }
-        if (qs.status) { q += ` AND pa.status = $${p.length + 1}`; p.push(qs.status); }
-        q += ' ORDER BY pa.created_at DESC';
-        if (qs.limit) { q += ` LIMIT $${p.length + 1}`; p.push(qs.limit); }
-        const r = await pool.query(q, p);
-        return respond(200, { data: r.rows, total: r.rows.length });
+        try {
+          let q = `SELECT pa.*, pt.first_name || ' ' || pt.last_name AS patient_name,
+                          py.name AS payer_name, pv.last_name AS provider_name
+                   FROM prior_auth_requests pa
+                   LEFT JOIN patients pt ON pa.patient_id = pt.id
+                   LEFT JOIN payers py ON pa.payer_id = py.id
+                   LEFT JOIN providers pv ON pa.provider_id = pv.id
+                   WHERE pa.org_id = $1`;
+          const p = [effectiveOrgId];
+          if (clientId) { q += ' AND pa.client_id = $2'; p.push(clientId); }
+          if (qs.status) { q += ` AND pa.status = $${p.length + 1}`; p.push(qs.status); }
+          q += ' ORDER BY pa.created_at DESC';
+          if (qs.limit) { q += ` LIMIT $${p.length + 1}`; p.push(qs.limit); }
+          const r = await pool.query(q, p);
+          return respond(200, { data: r.rows, total: r.rows.length });
+        } catch (e) {
+          // Table may not exist yet (Sprint 2) — return empty gracefully
+          if (e.message && e.message.includes('does not exist')) {
+            return respond(200, { data: [], total: 0 });
+          }
+          throw e;
+        }
       }
       if (method === 'GET' && pathParams.id) {
         const r = await getById('prior_auth_requests', pathParams.id);

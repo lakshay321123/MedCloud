@@ -127,7 +127,7 @@ export default function MessagesPage() {
       )}
       {(!apiMsgResult || apiThreads.length === 0) && (
         <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2.5 flex items-center gap-3 text-xs text-amber-700 dark:text-amber-400">
-          <span>💬</span><span>Showing demo threads — messages you send will sync when API is connected</span>
+          <span>💬</span><span>No messages yet — send a message and threads will appear here</span>
         </div>
       )}      <div className="grid grid-cols-3 gap-4 h-[calc(100vh-220px)]">
         {/* Thread List */}
