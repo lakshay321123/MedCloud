@@ -1,63 +1,77 @@
 'use client'
 import { useT } from '@/lib/i18n'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import {
   Phone, PhoneCall, PhoneMissed, Clock, Play, X, ChevronRight,
-  Plus, Edit2, Zap, BarChart2, Settings2, Radio, AlertTriangle
+  Plus, Edit2, Zap, BarChart2, Settings2, Radio, AlertTriangle,
+  CheckCircle, XCircle, Mic, Users, RefreshCw, ExternalLink,
+  PhoneOutgoing, Activity,
 } from 'lucide-react'
-import {
-  demoActiveCalls, demoCallLog, demoCampaigns, demoScripts,
-  DemoCall, DemoCampaign, DemoScript
-} from '@/lib/demo-data'
 import { useApp } from '@/lib/context'
-import { useNotifications, useMessages, useCreateNotification, useMarkNotificationRead } from '@/lib/hooks'
-import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
+import {
+  useRetellCalls, useRetellBatches, useRetellAgents, useLaunchCall, useLaunchBatch,
+  formatDuration, formatCallStatus, RetellCall, RetellBatch,
+} from '@/lib/retell'
+import { demoScripts, DemoScript } from '@/lib/demo-data'
 
-// ─── Status Dot ───────────────────────────────────────────────────────────
-function StatusDot({ status }: { status: DemoCall['status'] }) {
+// ─── Status Dot ──────────────────────────────────────────────────────────────
+function StatusDot({ status }: { status: RetellCall['call_status'] }) {
   const map: Record<string, string> = {
-    connected: 'bg-emerald-500 animate-pulse',
-    on_hold: 'bg-amber-500 animate-pulse',
-    ivr: 'bg-blue-500 animate-pulse',
-    queued: 'bg-gray-400',
-    completed: 'bg-emerald-500',
-    failed: 'bg-red-500',
+    ongoing: 'bg-emerald-500 animate-pulse',
+    registered: 'bg-blue-500 animate-pulse',
+    ended: 'bg-gray-400',
+    error: 'bg-red-500',
   }
   return <span className={`inline-block w-2.5 h-2.5 rounded-full ${map[status] ?? 'bg-gray-400'}`} />
 }
 
-// ─── Call Detail Drawer ───────────────────────────────────────────────────
-function CallDetailDrawer({ call, onClose }: { call: DemoCall; onClose: () => void }) {
-  const { toast } = useToast()
+// ─── Sentiment Badge ──────────────────────────────────────────────────────────
+function SentimentBadge({ sentiment }: { sentiment?: string }) {
+  if (!sentiment || sentiment === 'Unknown') return null
+  const c = sentiment === 'Positive' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+    : sentiment === 'Negative' ? 'bg-red-500/10 text-red-500'
+    : 'bg-gray-500/10 text-content-secondary'
+  return <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${c}`}>{sentiment}</span>
+}
+
+// ─── Call Detail Drawer ───────────────────────────────────────────────────────
+function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => void }) {
   const transcriptRef = useRef<HTMLDivElement>(null)
-  const [outcome, setOutcome] = useState(call.outcome ?? '')
-  const isActive = ['connected', 'on_hold', 'ivr'].includes(call.status)
+  const isActive = call.call_status === 'ongoing' || call.call_status === 'registered'
+  const { label: statusLabel, color: statusColor } = formatCallStatus(call.call_status)
 
   useEffect(() => {
     if (transcriptRef.current) {
       transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight
     }
-  }, [call.id])
+  }, [call.transcript])
 
-  const roleColor: Record<string, string> = {
-    AI: 'text-brand font-semibold',
-    IVR: 'text-amber-500 font-semibold',
-    REP: 'text-emerald-500 font-semibold',
-  }
+  const transcriptLines = call.transcript_object ?? (call.transcript
+    ? call.transcript.split('\n').filter(Boolean).map(line => {
+        const isAgent = line.startsWith('Agent:')
+        return { role: (isAgent ? 'agent' : 'user') as 'agent' | 'user', content: line.replace(/^(Agent|User):/, '').trim() }
+      })
+    : [])
+
+  const variables = call.retell_llm_dynamic_variables ?? {}
+  const analysis = call.call_analysis
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[500px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl animate-fade-in">
+    <div className="fixed inset-y-0 right-0 w-[520px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl animate-fade-in">
+      {/* Header */}
       <div className="p-4 border-b border-separator flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <StatusDot status={call.status} />
-            <span className="text-sm font-semibold text-content-primary">{call.type}</span>
+            <StatusDot status={call.call_status} />
+            <span className={`text-sm font-semibold ${statusColor}`}>{statusLabel}</span>
+            {analysis?.call_successful === true && <CheckCircle size={13} className="text-emerald-500" />}
+            {analysis?.call_successful === false && <XCircle size={13} className="text-red-500" />}
           </div>
-          <p className="text-xs text-content-secondary">{call.target}</p>
-          {call.claimRef && <p className="text-[10px] text-content-tertiary mt-0.5">Ref: {call.claimRef}</p>}
+          <p className="text-xs text-content-secondary font-mono">{call.to_number}</p>
+          <p className="text-[10px] text-content-tertiary mt-0.5">ID: {call.call_id.slice(0, 16)}…</p>
         </div>
         <button onClick={onClose} className="p-1 hover:bg-surface-elevated rounded-btn transition-colors">
           <X size={16} className="text-content-secondary" />
@@ -65,170 +79,168 @@ function CallDetailDrawer({ call, onClose }: { call: DemoCall; onClose: () => vo
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {/* Live Transcript */}
+        {/* Stats row */}
+        <div className="p-4 grid grid-cols-3 gap-3 border-b border-separator">
+          {[
+            { label: 'Duration', value: formatDuration(call.duration_ms) },
+            { label: 'Sentiment', value: analysis?.user_sentiment ?? '—' },
+            { label: 'Outcome', value: analysis?.call_successful ? 'Resolved' : call.call_status === 'ended' ? 'Ended' : '…' },
+          ].map(s => (
+            <div key={s.label} className="bg-surface-elevated rounded-lg p-2.5 text-center">
+              <p className="text-[10px] text-content-tertiary mb-1">{s.label}</p>
+              <p className="text-xs font-semibold text-content-primary">{s.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Summary */}
+        {analysis?.call_summary && (
+          <div className="p-4 border-b border-separator">
+            <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">AI Summary</h4>
+            <p className="text-xs text-content-primary leading-relaxed">{analysis.call_summary}</p>
+          </div>
+        )}
+
+        {/* Transcript */}
         <div className="p-4 border-b border-separator">
-          <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">Live Transcript</h4>
-          <div ref={transcriptRef} className="bg-surface-elevated rounded-lg p-3 h-52 overflow-y-auto font-mono text-[11px] space-y-2">
-            {call.transcript && call.transcript.length > 0 ? (
+          <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">Transcript</h4>
+          <div ref={transcriptRef} className="bg-surface-elevated rounded-lg p-3 h-52 overflow-y-auto text-[11px] space-y-2">
+            {transcriptLines.length > 0 ? (
               <>
-                {call.transcript.map((t, i) => (
+                {transcriptLines.map((line, i) => (
                   <div key={i} className="flex gap-2">
-                    <span className={`shrink-0 w-8 ${roleColor[t.role] ?? 'text-content-secondary'}`}>[{t.role}]</span>
-                    <span className="text-content-primary leading-relaxed">{t.text}</span>
+                    <span className={`shrink-0 font-semibold ${line.role === 'agent' ? 'text-brand' : 'text-content-secondary'}`}>
+                      [{line.role === 'agent' ? 'AI' : 'User'}]
+                    </span>
+                    <span className="text-content-primary leading-relaxed">{line.content}</span>
                   </div>
                 ))}
                 {isActive && (
                   <div className="flex gap-2">
-                    <span className={`shrink-0 w-8 ${roleColor['AI']}`}>[AI]</span>
+                    <span className="shrink-0 font-semibold text-brand">[AI]</span>
                     <span className="inline-block w-2 h-3 bg-brand animate-pulse rounded-sm mt-0.5" />
                   </div>
                 )}
               </>
             ) : (
-              <span className="text-content-tertiary">Awaiting call start...</span>
+              <span className="text-content-tertiary">{isActive ? 'Call in progress…' : 'No transcript available'}</span>
             )}
           </div>
         </div>
 
-        {/* IVR Progress */}
-        {call.ivrSteps && call.ivrSteps.length > 0 && (
+        {/* Dynamic variables used in the call */}
+        {Object.keys(variables).length > 0 && (
           <div className="p-4 border-b border-separator">
-            <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-3">IVR Progress</h4>
-            <div className="flex items-center gap-1 flex-wrap">
-              {call.ivrSteps.map((step, i) => (
-                <React.Fragment key={i}>
-                  <div className={`text-[10px] px-2 py-1 rounded-full font-medium ${
-                    step.done ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' :
-                    step.current ? 'bg-brand/20 text-brand border border-brand/30' :
-                    'bg-surface-elevated text-content-tertiary'
-                  }`}>
-                    {step.done && <span className="mr-1">✓</span>}
-                    {step.label}
-                  </div>
-                  {i < call.ivrSteps!.length - 1 && <ChevronRight size={10} className="text-content-tertiary shrink-0" />}
-                </React.Fragment>
+            <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">Call Context</h4>
+            <div className="space-y-1.5">
+              {Object.entries(variables).map(([k, v]) => (
+                <div key={k} className="flex justify-between text-xs">
+                  <span className="text-content-tertiary capitalize">{k.replace(/_/g, ' ')}</span>
+                  <span className="text-content-primary font-medium">{String(v)}</span>
+                </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Linked Claim */}
-        {call.claimRef && (
-          <div className="p-4 border-b border-separator">
-            <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">Linked Claim</h4>
-            <button
-              onClick={() => toast.info(`Opening claim ${call.claimRef}...`)}
-              className="w-full text-left card p-3 hover:border-brand/30 transition-all group"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-brand">{call.claimRef}</p>
-                  <p className="text-[10px] text-content-secondary">{call.target.split('—')[0].trim()}</p>
-                </div>
-                <ChevronRight size={14} className="text-content-tertiary group-hover:text-brand transition-colors" />
-              </div>
-            </button>
-          </div>
-        )}
-
-        {/* Outcome for completed */}
-        {call.status === 'completed' && (
+        {/* Disconnection reason */}
+        {call.disconnection_reason && (
           <div className="p-4">
-            <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">Outcome</h4>
-            <select
-              value={outcome}
-              onChange={e => setOutcome(e.target.value)}
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"
-            >
-              <option value="">Select outcome...</option>
-              {['Got Status', 'Voicemail', 'Transferred', 'Failed'].map(o => (
-                <option key={o} value={o}>{o}</option>
-              ))}
-            </select>
+            <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-1">Disconnection</h4>
+            <p className="text-xs text-content-secondary">{call.disconnection_reason}</p>
           </div>
         )}
       </div>
-
-      {isActive && (
-        <div className="p-4 border-t border-separator">
-          <button
-            onClick={() => { toast.success('Call transferred to your extension'); onClose() }}
-            className="w-full border-2 border-red-500/50 text-red-500 rounded-lg py-2.5 text-sm font-medium hover:bg-red-500/10 transition-colors"
-          >
-            <Phone size={14} className="inline mr-2" />
-            Take Over (Transfer to Extension)
-          </button>
-        </div>
-      )}
     </div>
   )
 }
 
-// ─── Tab 1: Active Calls ──────────────────────────────────────────────────
+// ─── Tab 1: Live Calls ────────────────────────────────────────────────────────
 function ActiveCallsTab() {
+  const { calls, loading, fallback, refetch } = useRetellCalls('ongoing')
+  const { calls: allCalls } = useRetellCalls()
+  const [selectedCall, setSelectedCall] = useState<RetellCall | null>(null)
   const { toast } = useToast()
-  const [selectedCall, setSelectedCall] = useState<DemoCall | null>(null)
 
-  const { selectedClient, country } = useApp()
-  const uaeOrgIds = UAE_ORG_IDS
-  const usOrgIds = US_ORG_IDS
-
-  const filteredCalls = demoActiveCalls.filter(c => {
-    if (selectedClient) return c.clientId === selectedClient.id
-    if (country === 'uae') return uaeOrgIds.includes(c.clientId)
-    if (country === 'usa') return usOrgIds.includes(c.clientId)
-    return true
+  const todayCalls = allCalls.filter(c => {
+    if (!c.start_timestamp) return false
+    return Date.now() - c.start_timestamp < 86400000
   })
+  const successRate = todayCalls.length > 0
+    ? Math.round((todayCalls.filter(c => c.call_analysis?.call_successful).length / todayCalls.length) * 100)
+    : 0
+  const avgDuration = todayCalls.length > 0
+    ? formatDuration(todayCalls.reduce((s, c) => s + (c.duration_ms ?? 0), 0) / todayCalls.length)
+    : '—'
 
   return (
     <div>
-      <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label="Calls Today" value={47} icon={<Phone size={20} />} />
-        <KPICard label="Avg Duration" value="4:32" icon={<Clock size={20} />} />
-        <KPICard label="Success Rate" value="78%" />
-        <KPICard label="On Hold Right Now" value={filteredCalls.filter(c => c.status === 'on_hold').length} icon={<PhoneCall size={20} />} />
+      <div className="flex items-center justify-between mb-4">
+        <div className="grid grid-cols-4 gap-4 flex-1">
+          <KPICard label="Calls Today" value={todayCalls.length} icon={<Phone size={20} />} />
+          <KPICard label="Live Now" value={calls.length} icon={<Activity size={20} />} />
+          <KPICard label="Avg Duration" value={avgDuration} icon={<Clock size={20} />} />
+          <KPICard label="Success Rate" value={`${successRate}%`} icon={<CheckCircle size={20} />} />
+        </div>
+        <button onClick={refetch} className="ml-4 p-2 hover:bg-surface-elevated rounded-btn text-content-secondary transition-colors" title="Refresh">
+          <RefreshCw size={15} />
+        </button>
       </div>
 
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-separator text-xs text-content-secondary">
-              <th className="text-left px-4 py-3 w-8"></th>
-              <th className="text-left px-4 py-3">Type</th>
-              <th className="text-left px-4 py-3">Target</th>
-              <th className="text-left px-4 py-3">Client</th>
-              <th className="text-left px-4 py-3">Duration</th>
-              <th className="text-left px-4 py-3">Stage</th>
-              <th className="text-left px-4 py-3">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredCalls.map(call => (
-              <tr key={call.id} onClick={() => setSelectedCall(call)}
-                className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
-                <td className="px-4 py-3"><StatusDot status={call.status} /></td>
-                <td className="px-4 py-3 text-xs font-medium">{call.type}</td>
-                <td className="px-4 py-3 text-xs">{call.target}</td>
-                <td className="px-4 py-3 text-xs text-content-secondary">{call.client}</td>
-                <td className="px-4 py-3 font-mono text-xs">
-                  {call.status === 'on_hold'
-                    ? <span className="text-amber-500">Hold {call.holdTime}</span>
-                    : call.duration}
-                </td>
-                <td className="px-4 py-3 text-xs text-content-secondary">{call.stage}</td>
-                <td className="px-4 py-3">
-                  {['connected', 'on_hold', 'ivr'].includes(call.status) && (
-                    <button onClick={e => { e.stopPropagation(); toast.success('Call transferred to your extension') }}
-                      className="text-[10px] border border-red-500/40 text-red-500 px-2 py-1 rounded hover:bg-red-500/10 transition-colors">
-                      Take Over
-                    </button>
-                  )}
-                </td>
+      {fallback && (
+        <div className="mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+          <AlertTriangle size={13} className="shrink-0" />
+          Showing demo data — add RETELL_API_KEY + agent IDs to Vercel env to go live
+        </div>
+      )}
+
+      {loading ? (
+        <div className="card p-12 text-center text-sm text-content-tertiary">Loading live calls…</div>
+      ) : calls.length === 0 ? (
+        <div className="card p-12 text-center">
+          <Phone size={32} className="mx-auto mb-3 text-content-tertiary opacity-40" />
+          <p className="text-sm text-content-secondary">No active calls right now</p>
+          <p className="text-xs text-content-tertiary mt-1">Launch a campaign to start calling</p>
+        </div>
+      ) : (
+        <div className="card overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-separator text-xs text-content-secondary">
+                <th className="text-left px-4 py-3 w-8"></th>
+                <th className="text-left px-4 py-3">To Number</th>
+                <th className="text-left px-4 py-3">Agent</th>
+                <th className="text-left px-4 py-3">Duration</th>
+                <th className="text-left px-4 py-3">Status</th>
+                <th className="text-left px-4 py-3">Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {calls.map(call => {
+                const { label, color } = formatCallStatus(call.call_status)
+                return (
+                  <tr key={call.call_id} onClick={() => setSelectedCall(call)}
+                    className="border-b border-separator last:border-0 cursor-pointer hover:bg-surface-elevated transition-colors">
+                    <td className="px-4 py-3"><StatusDot status={call.call_status} /></td>
+                    <td className="px-4 py-3 font-mono text-xs">{call.to_number}</td>
+                    <td className="px-4 py-3 text-xs text-content-secondary">{call.from_number}</td>
+                    <td className="px-4 py-3 font-mono text-xs">{formatDuration(call.duration_ms)}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-[11px] font-medium ${color}`}>{label}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button onClick={e => { e.stopPropagation(); toast.error('Manual takeover not available via API') }}
+                        className="text-[10px] border border-red-500/40 text-red-500 px-2 py-1 rounded hover:bg-red-500/10 transition-colors">
+                        Details
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {selectedCall && <>
         <div className="fixed inset-0 bg-black/20 z-30" onClick={() => setSelectedCall(null)} />
@@ -238,88 +250,86 @@ function ActiveCallsTab() {
   )
 }
 
-// ─── Tab 2: Call Log ──────────────────────────────────────────────────────
+// ─── Tab 2: Call Log ──────────────────────────────────────────────────────────
 function CallLogTab() {
-  const { toast } = useToast()
-  const [typeFilter, setTypeFilter] = useState('')
-  const [outcomeFilter, setOutcomeFilter] = useState('')
-  const [selectedCall, setSelectedCall] = useState<DemoCall | null>(null)
+  const { calls, loading, fallback } = useRetellCalls('ended')
+  const [selectedCall, setSelectedCall] = useState<RetellCall | null>(null)
+  const [outcomeFilter, setOutcomeFilter] = useState<string>('')
+  const [search, setSearch] = useState('')
 
-  const { selectedClient, country } = useApp()
-  const uaeOrgIds = UAE_ORG_IDS
-  const usOrgIds = US_ORG_IDS
-
-  const filtered = demoCallLog.filter(c => {
-    if (selectedClient && c.clientId !== selectedClient.id) return false
-    if (!selectedClient && country === 'uae' && !uaeOrgIds.includes(c.clientId)) return false
-    if (!selectedClient && country === 'usa' && !usOrgIds.includes(c.clientId)) return false
-    if (typeFilter && c.type !== typeFilter) return false
-    if (outcomeFilter && c.outcome !== outcomeFilter) return false
+  const filtered = calls.filter(c => {
+    if (search && !c.to_number.includes(search)) return false
+    if (outcomeFilter === 'success' && !c.call_analysis?.call_successful) return false
+    if (outcomeFilter === 'failed' && c.call_analysis?.call_successful !== false) return false
     return true
   })
 
   return (
     <div>
       <div className="flex gap-3 mb-4">
-        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
-          <option value="">All Types</option>
-          {['Payer Status Check', 'Payer Appeal Follow-up', 'Patient Balance Reminder', 'Appointment Reminder'].map(t => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Search by number…"
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40 w-48" />
         <select value={outcomeFilter} onChange={e => setOutcomeFilter(e.target.value)}
           className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
           <option value="">All Outcomes</option>
-          {['Got Status', 'Voicemail', 'Transferred', 'Failed'].map(o => (
-            <option key={o} value={o}>{o}</option>
-          ))}
+          <option value="success">Resolved</option>
+          <option value="failed">Failed / Voicemail</option>
         </select>
+        {fallback && (
+          <span className="ml-auto flex items-center gap-1.5 text-xs text-amber-500">
+            <AlertTriangle size={12} /> Demo mode — add Retell env vars to go live
+          </span>
+        )}
       </div>
 
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-separator text-xs text-content-secondary">
-              <th className="text-left px-4 py-3">Date</th>
-              <th className="text-left px-4 py-3">Type</th>
-              <th className="text-left px-4 py-3">Target / Patient</th>
-              <th className="text-left px-4 py-3">Duration</th>
-              <th className="text-left px-4 py-3">Outcome</th>
-              <th className="text-left px-4 py-3">Claim</th>
-              <th className="text-left px-4 py-3">Recording</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(call => (
-              <tr key={call.id} onClick={() => setSelectedCall(call)}
-                className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
-                <td className="px-4 py-3 text-xs text-content-secondary">Mar 2, 2026</td>
-                <td className="px-4 py-3 text-xs">{call.type}</td>
-                <td className="px-4 py-3 text-xs">{call.target}</td>
-                <td className="px-4 py-3 font-mono text-xs">{call.duration}</td>
-                <td className="px-4 py-3">
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                    call.outcome === 'Got Status' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
-                    call.outcome === 'Voicemail' ? 'bg-blue-500/10 text-blue-500' :
-                    call.outcome === 'Transferred' ? 'bg-brand/10 text-brand' :
-                    'bg-red-500/10 text-red-500'
-                  }`}>{call.outcome}</span>
-                </td>
-                <td className="px-4 py-3 text-xs text-brand">{call.claimRef || '—'}</td>
-                <td className="px-4 py-3">
-                  <button onClick={e => {
-                    e.stopPropagation()
-                    toast.info(`Playing recording — ${call.duration}`)
-                  }} className="p-1.5 rounded hover:bg-surface-elevated text-content-secondary hover:text-content-primary transition-colors">
-                    <Play size={12} />
-                  </button>
-                </td>
+      {loading ? (
+        <div className="card p-12 text-center text-sm text-content-tertiary">Loading call history…</div>
+      ) : (
+        <div className="card overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-separator text-xs text-content-secondary">
+                <th className="text-left px-4 py-3">Date</th>
+                <th className="text-left px-4 py-3">To</th>
+                <th className="text-left px-4 py-3">Duration</th>
+                <th className="text-left px-4 py-3">Outcome</th>
+                <th className="text-left px-4 py-3">Sentiment</th>
+                <th className="text-left px-4 py-3">Summary</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filtered.map(call => (
+                <tr key={call.call_id} onClick={() => setSelectedCall(call)}
+                  className="border-b border-separator last:border-0 cursor-pointer hover:bg-surface-elevated transition-colors">
+                  <td className="px-4 py-3 text-xs text-content-secondary">
+                    {call.start_timestamp ? new Date(call.start_timestamp).toLocaleDateString() : '—'}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs">{call.to_number}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{formatDuration(call.duration_ms)}</td>
+                  <td className="px-4 py-3">
+                    {call.call_analysis?.call_successful === true
+                      ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium">Resolved</span>
+                      : call.call_analysis?.call_successful === false
+                      ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 font-medium">Failed</span>
+                      : <span className="text-[10px] text-content-tertiary">—</span>
+                    }
+                  </td>
+                  <td className="px-4 py-3">
+                    <SentimentBadge sentiment={call.call_analysis?.user_sentiment} />
+                  </td>
+                  <td className="px-4 py-3 text-xs text-content-secondary max-w-[220px] truncate">
+                    {call.call_analysis?.call_summary ?? '—'}
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-content-tertiary">No calls found</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {selectedCall && <>
         <div className="fixed inset-0 bg-black/20 z-30" onClick={() => setSelectedCall(null)} />
@@ -329,49 +339,131 @@ function CallLogTab() {
   )
 }
 
-// ─── Tab 3: Campaign Launcher ─────────────────────────────────────────────
+// ─── Tab 3: Campaign Launcher ─────────────────────────────────────────────────
 function CampaignLauncherTab() {
   const { toast } = useToast()
-  const [selected, setSelected] = useState<DemoCampaign | null>(null)
-  const [name, setName] = useState('')
+  const { agents, apiConfigured } = useRetellAgents()
+  const { batches, loading: batchLoading, fallback } = useRetellBatches()
+  const { launch: launchBatch, loading: launching } = useLaunchBatch()
+  const { launch: launchCall, loading: singleLoading } = useLaunchCall()
+
+  const [mode, setMode] = useState<'batch' | 'single'>('batch')
+  const [name, setCampaignName] = useState('')
+  const [agentKey, setAgentKey] = useState<'chris' | 'cindy'>('chris')
   const [type, setType] = useState('Payer Status Check')
-  const [schedule, setSchedule] = useState<'now' | 'daily' | 'weekly'>('now')
-  const [selectedDays, setSelectedDays] = useState<string[]>(['Mon', 'Wed', 'Fri'])
-  const [scheduleTime, setScheduleTime] = useState('09:00')
-  const estCalls = type === 'Payer Status Check' ? 12 : type === 'Patient Balance Reminder' ? 27 : type === 'Payer Appeal Follow-up' ? 6 : 18
+  const [singleNumber, setSingleNumber] = useState('')
+  const [csvText, setCsvText] = useState('')
+
+  const selectedAgent = agents.find(a => a.id === agentKey || (agentKey === 'chris' && a.name === 'Chris') || (agentKey === 'cindy' && a.name === 'Cindy'))
+
+  async function handleLaunchBatch() {
+    const lines = csvText.trim().split('\n').filter(Boolean)
+    if (!lines.length) { toast.error('Add at least one phone number'); return }
+    const recipients = lines.map(l => ({ to_number: l.split(',')[0].trim() }))
+    try {
+      const r = await launchBatch({ agent_name: agentKey, batch_name: name || type, recipients })
+      toast.success(`Batch launched — ${recipients.length} calls queued`)
+      setCsvText('')
+    } catch (e) {
+      toast.error(`Failed to launch: ${e}`)
+    }
+  }
+
+  async function handleLaunchSingle() {
+    if (!singleNumber) { toast.error('Enter a phone number'); return }
+    try {
+      await launchCall({ agent_name: agentKey, to_number: singleNumber, variables: { campaign_type: type } })
+      toast.success(`Call to ${singleNumber} initiated`)
+      setSingleNumber('')
+    } catch (e) {
+      toast.error(`Failed to call: ${e}`)
+    }
+  }
 
   return (
     <div className="grid grid-cols-5 gap-5">
+      {/* Past campaigns */}
       <div className="col-span-2 space-y-3">
-        <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Saved Campaigns</h3>
-        {demoCampaigns.map(c => (
-          <button key={c.id} onClick={() => { setSelected(c); setName(c.name); setType(c.type) }}
-            className={`w-full text-left card p-4 hover:border-brand/30 transition-all ${selected?.id === c.id ? 'border-brand/30 bg-brand/5' : ''}`}>
+        <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">
+          Past Campaigns {fallback && <span className="text-amber-500 normal-case font-normal">(demo)</span>}
+        </h3>
+        {batchLoading ? (
+          <div className="text-xs text-content-tertiary p-4">Loading…</div>
+        ) : batches.length === 0 ? (
+          <div className="card p-6 text-center text-xs text-content-tertiary">No campaigns yet</div>
+        ) : batches.map(b => (
+          <div key={b.batch_id} className="card p-4">
             <div className="flex items-start justify-between mb-1.5">
-              <p className="text-sm font-semibold text-content-primary">{c.name}</p>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                c.status === 'active' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
-                c.status === 'paused' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
-                'bg-surface-elevated text-content-tertiary'
-              }`}>{c.status}</span>
+              <p className="text-sm font-semibold text-content-primary truncate">{b.name}</p>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ml-2 ${
+                b.status === 'running' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+                b.status === 'completed' ? 'bg-brand/10 text-brand' :
+                'bg-amber-500/10 text-amber-500'
+              }`}>{b.status}</span>
             </div>
-            <p className="text-[10px] text-content-secondary">{c.type}</p>
-            <p className="text-[10px] text-content-tertiary mt-0.5">{c.schedule}</p>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded-full">{c.estimatedCalls} calls</span>
-              {c.lastRun && <span className="text-[10px] text-content-tertiary">Last: {c.lastRun}</span>}
+            <div className="flex items-center gap-3 text-[10px] text-content-secondary mt-2">
+              <span>{b.completed_count}/{b.total_count} completed</span>
+              {b.failed_count > 0 && <span className="text-red-500">{b.failed_count} failed</span>}
             </div>
-          </button>
+            {b.status === 'running' && (
+              <div className="mt-2 h-1.5 bg-surface-elevated rounded-full overflow-hidden">
+                <div className="h-full bg-brand rounded-full transition-all"
+                  style={{ width: `${Math.round((b.completed_count / b.total_count) * 100)}%` }} />
+              </div>
+            )}
+          </div>
         ))}
       </div>
 
+      {/* Builder */}
       <div className="col-span-3 card p-5 space-y-4">
-        <h3 className="text-sm font-semibold text-content-primary">Campaign Builder</h3>
-        <div>
-          <label className="text-xs text-content-secondary block mb-1">Campaign Name</label>
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Weekly Payer Status Check"
-            className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40" />
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-content-primary">Launch Calls</h3>
+          <div className="flex gap-1 bg-surface-elevated rounded-lg p-0.5">
+            {(['batch', 'single'] as const).map(m => (
+              <button key={m} onClick={() => setMode(m)}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${mode === m ? 'bg-surface-secondary text-content-primary shadow-sm' : 'text-content-secondary'}`}>
+                {m === 'batch' ? 'Batch Campaign' : 'Single Call'}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {!apiConfigured && (
+          <div className="px-3 py-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-600 dark:text-amber-400">
+            Add <code className="font-mono bg-amber-500/10 px-1 rounded">RETELL_API_KEY</code>, <code className="font-mono bg-amber-500/10 px-1 rounded">RETELL_AGENT_CHRIS</code>, and <code className="font-mono bg-amber-500/10 px-1 rounded">RETELL_AGENT_CINDY</code> to Vercel to go live.
+          </div>
+        )}
+
+        {/* Agent selection */}
+        <div>
+          <label className="text-xs text-content-secondary block mb-1.5">Agent</label>
+          <div className="flex gap-2">
+            {agents.length > 0 ? agents.map(a => (
+              <button key={a.name} onClick={() => setAgentKey(a.name.toLowerCase() as 'chris' | 'cindy')}
+                className={`flex-1 p-3 rounded-lg border text-left transition-all ${agentKey === a.name.toLowerCase() ? 'border-brand/40 bg-brand/5' : 'border-separator hover:border-brand/20'}`}>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <div className={`w-2 h-2 rounded-full ${a.configured ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                  <span className="text-xs font-semibold text-content-primary">{a.name}</span>
+                </div>
+                <p className="text-[10px] text-content-tertiary">{a.role}</p>
+                <p className="text-[10px] font-mono text-content-tertiary">{a.phone}</p>
+              </button>
+            )) : (
+              <>
+                {(['chris', 'cindy'] as const).map(n => (
+                  <button key={n} onClick={() => setAgentKey(n)}
+                    className={`flex-1 p-3 rounded-lg border text-left transition-all ${agentKey === n ? 'border-brand/40 bg-brand/5' : 'border-separator'}`}>
+                    <p className="text-xs font-semibold text-content-primary capitalize">{n}</p>
+                    <p className="text-[10px] text-content-tertiary">{n === 'chris' ? 'Payer Follow-up' : 'AR Collections'}</p>
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Campaign type */}
         <div>
           <label className="text-xs text-content-secondary block mb-1">Campaign Type</label>
           <select value={type} onChange={e => setType(e.target.value)}
@@ -381,58 +473,51 @@ function CampaignLauncherTab() {
             ))}
           </select>
         </div>
-        <div>
-          <label className="text-xs text-content-secondary block mb-1">Target Filter</label>
-          <div className="flex gap-2">
-            <select className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
-              <option>Claims &gt; $200 aged &gt; 30 days</option>
-              <option>All denied claims</option>
-              <option>Patient balance &gt; $50</option>
-              <option>Appointments next 48h</option>
-            </select>
-            <div className="bg-brand/10 text-brand text-xs px-3 py-2 rounded-lg font-medium whitespace-nowrap">~{estCalls} calls</div>
-          </div>
-        </div>
-        <div>
-          <label className="text-xs text-content-secondary block mb-2">Schedule</label>
-          <div className="flex gap-2">
-            {(['now', 'daily', 'weekly'] as const).map(s => (
-              <button key={s} onClick={() => setSchedule(s)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${schedule === s ? 'bg-brand/10 text-brand border-brand/30' : 'border-separator text-content-secondary hover:text-content-primary'}`}>
-                {s === 'now' ? 'Run Now' : s === 'daily' ? 'Daily' : 'Weekly'}
+
+        {mode === 'single' ? (
+          <div>
+            <label className="text-xs text-content-secondary block mb-1">Phone Number</label>
+            <div className="flex gap-2">
+              <input value={singleNumber} onChange={e => setSingleNumber(e.target.value)}
+                placeholder="+1 (555) 000-0000"
+                className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40" />
+              <button onClick={handleLaunchSingle} disabled={singleLoading || !singleNumber}
+                className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-deep disabled:opacity-40 transition-colors whitespace-nowrap">
+                <PhoneOutgoing size={14} className="inline mr-1.5" />
+                {singleLoading ? 'Calling…' : 'Call Now'}
               </button>
-            ))}
-          </div>
-          {schedule === 'daily' && (
-            <input type="time" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} className="mt-2 bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" />
-          )}
-          {schedule === 'weekly' && (
-            <div className="mt-2 flex gap-1">
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(d => (
-                <button key={d}
-                  onClick={() => setSelectedDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])}
-                  className={`px-2.5 py-1 text-[10px] font-medium rounded border transition-all ${
-                    selectedDays.includes(d)
-                      ? 'bg-brand/10 text-brand border-brand/30'
-                      : 'border-separator hover:bg-brand/10 hover:text-brand hover:border-brand/30'
-                  }`}>
-                  {d}
-                </button>
-              ))}
             </div>
-          )}
-        </div>
-        <button onClick={() => toast.success(`${estCalls} calls queued. Campaign started.`)} disabled={!name}
-          className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-brand-deep disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-          <Zap size={14} className="inline mr-2" />
-          Launch Campaign
-        </button>
+          </div>
+        ) : (
+          <>
+            <div>
+              <label className="text-xs text-content-secondary block mb-1">Campaign Name</label>
+              <input value={name} onChange={e => setCampaignName(e.target.value)} placeholder="e.g., Weekly Payer Status Check"
+                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40" />
+            </div>
+            <div>
+              <label className="text-xs text-content-secondary flex items-center justify-between mb-1">
+                <span>Phone Numbers (one per line)</span>
+                <span className="font-normal text-brand">{csvText.trim().split('\n').filter(Boolean).length} numbers</span>
+              </label>
+              <textarea value={csvText} onChange={e => setCsvText(e.target.value)}
+                placeholder={"+12125551234\n+13105557890\n+17185554321"}
+                rows={5}
+                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40 font-mono resize-y" />
+            </div>
+            <button onClick={handleLaunchBatch} disabled={launching || !csvText.trim()}
+              className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-brand-deep disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+              <Zap size={14} className="inline mr-2" />
+              {launching ? 'Launching…' : `Launch Campaign`}
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
 }
 
-// ─── Tab 4: Script Builder ────────────────────────────────────────────────
+// ─── Tab 4: Script Builder (kept from before — Retell uses LLM prompts) ───────
 const stepBadge: Record<string, string> = {
   DIAL: 'bg-blue-500/15 text-blue-500',
   DTMF: 'bg-amber-500/15 text-amber-500',
@@ -451,7 +536,6 @@ function ScriptBuilderTab() {
   useEffect(() => {
     setScriptSteps(selected.steps)
     setEditingStep(null)
-    setEditingContent('')
   }, [selected.id])
 
   return (
@@ -469,6 +553,13 @@ function ScriptBuilderTab() {
             <p className="text-[10px] text-content-tertiary mt-0.5">Updated {s.lastUpdated}</p>
           </button>
         ))}
+        <div className="card p-4 border-dashed text-center">
+          <p className="text-[11px] text-content-tertiary">Scripts live in Retell dashboard</p>
+          <a href="https://app.retellai.com" target="_blank" rel="noreferrer"
+            className="text-[11px] text-brand hover:underline flex items-center justify-center gap-1 mt-1">
+            Open Retell <ExternalLink size={10} />
+          </a>
+        </div>
       </div>
 
       <div className="col-span-3 card p-5">
@@ -477,10 +568,9 @@ function ScriptBuilderTab() {
             <h3 className="text-sm font-semibold text-content-primary">{selected.payer}</h3>
             <p className="text-xs text-content-secondary">{selected.type}</p>
           </div>
-          <button onClick={() => toast.info('Test call queued')}
+          <button onClick={() => toast.success('Test call queued')}
             className="px-3 py-1.5 text-xs font-medium border border-brand/30 text-brand rounded-lg hover:bg-brand/10 transition-colors">
-            <Radio size={12} className="inline mr-1.5" />
-            Test Script
+            <Radio size={12} className="inline mr-1.5" />Test Script
           </button>
         </div>
 
@@ -488,9 +578,7 @@ function ScriptBuilderTab() {
           {scriptSteps.map((step, i) => (
             <div key={i} className="flex gap-3 items-start">
               <div className="flex flex-col items-center shrink-0">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold mt-1 ${stepBadge[step.type] ?? 'bg-surface-elevated text-content-secondary'}`}>
-                  {i + 1}
-                </div>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold mt-1 ${stepBadge[step.type] ?? 'bg-surface-elevated text-content-secondary'}`}>{i + 1}</div>
                 {i < scriptSteps.length - 1 && <div className="w-px flex-1 bg-separator min-h-[12px] mt-1" />}
               </div>
               <div className="flex-1 card p-3 flex flex-col gap-2 mb-1.5">
@@ -499,55 +587,22 @@ function ScriptBuilderTab() {
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded mr-2 ${stepBadge[step.type] ?? 'bg-surface-elevated'}`}>{step.type}</span>
                     <span className="text-xs text-content-primary">{step.content}</span>
                   </div>
-                  <button onClick={() => {
-                    if (editingStep === i) {
-                      setEditingStep(null)
-                      setEditingContent('')
-                    } else {
-                      setEditingStep(i)
-                      setEditingContent(step.content)
-                    }
-                  }}
+                  <button onClick={() => { editingStep === i ? (setEditingStep(null), setEditingContent('')) : (setEditingStep(i), setEditingContent(step.content)) }}
                     className="shrink-0 p-1 hover:bg-surface-elevated rounded text-content-tertiary hover:text-content-secondary transition-colors">
                     <Edit2 size={12} />
                   </button>
                 </div>
                 {editingStep === i && (
                   <div className="flex gap-2">
-                    <input
-                      value={editingContent}
-                      onChange={e => setEditingContent(e.target.value)}
+                    <input value={editingContent} onChange={e => setEditingContent(e.target.value)}
                       className="flex-1 bg-surface-elevated border border-separator rounded px-2 py-1 text-xs"
                       onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          const updated = [...scriptSteps]
-                          updated[i] = { ...updated[i], content: editingContent }
-                          setScriptSteps(updated)
-                          toast.success('Step updated')
-                          setEditingStep(null)
-                          setEditingContent('')
-                        }
-                        if (e.key === 'Escape') {
-                          setEditingStep(null)
-                          setEditingContent('')
-                        }
-                      }}
-                    />
-                    <button
-                      onClick={() => {
-                        const updated = [...scriptSteps]
-                        updated[i] = { ...updated[i], content: editingContent }
-                        setScriptSteps(updated)
-                        toast.success('Step updated')
-                        setEditingStep(null)
-                        setEditingContent('')
-                      }}
-                      className="text-[10px] bg-brand text-white px-2 py-1 rounded"
-                    >Save</button>
-                    <button
-                      onClick={() => { setEditingStep(null); setEditingContent('') }}
-                      className="text-[10px] border border-separator px-2 py-1 rounded text-content-secondary"
-                    >Cancel</button>
+                        if (e.key === 'Enter') { const u = [...scriptSteps]; u[i] = { ...u[i], content: editingContent }; setScriptSteps(u); toast.success('Step updated'); setEditingStep(null) }
+                        if (e.key === 'Escape') setEditingStep(null)
+                      }} />
+                    <button onClick={() => { const u = [...scriptSteps]; u[i] = { ...u[i], content: editingContent }; setScriptSteps(u); toast.success('Step updated'); setEditingStep(null) }}
+                      className="text-[10px] bg-brand text-white px-2 py-1 rounded">Save</button>
+                    <button onClick={() => setEditingStep(null)} className="text-[10px] border border-separator px-2 py-1 rounded text-content-secondary">Cancel</button>
                   </div>
                 )}
               </div>
@@ -555,23 +610,18 @@ function ScriptBuilderTab() {
           ))}
         </div>
 
-        <button onClick={() => {
-          const newStep = { type: 'SPEAK' as const, content: 'New step — click edit to update' }
-          setScriptSteps(prev => [...prev, newStep])
-          toast.success('New step added — click ✏ to edit')
-        }}
+        <button onClick={() => { setScriptSteps(p => [...p, { type: 'SPEAK' as const, content: 'New step — click edit to update' }]); toast.success('Step added') }}
           className="mt-3 w-full border border-dashed border-brand/30 text-brand text-xs py-2 rounded-lg hover:bg-brand/5 transition-colors">
-          <Plus size={12} className="inline mr-1" />
-          Add Step
+          <Plus size={12} className="inline mr-1" />Add Step
         </button>
       </div>
     </div>
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'active', label: 'Active Calls', icon: PhoneCall },
+  { id: 'active', label: 'Live Calls', icon: PhoneCall },
   { id: 'log', label: 'Call Log', icon: PhoneMissed },
   { id: 'campaign', label: 'Campaign Launcher', icon: BarChart2 },
   { id: 'scripts', label: 'Script Builder', icon: Settings2 },
@@ -585,21 +635,17 @@ export default function VoiceAIPage() {
   const { t } = useT()
 
   return (
-    <ModuleShell title={t("voice","title")} subtitle="Automated calls to payers and patients">
-      <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
-        <AlertTriangle size={13} className='shrink-0' />
-        Voice AI — Retell integration pending (Alex)
-      </div>
+    <ModuleShell title={t('voice', 'title')} subtitle="Powered by Retell AI — real outbound calls to payers and patients">
       <div className="flex gap-1 mb-5 border-b border-separator">
-        {TABS.map(t => {
-          const Icon = t.icon
+        {TABS.map(tb => {
+          const Icon = tb.icon
           return (
-            <button key={t.id} onClick={() => setTab(t.id)}
+            <button key={tb.id} onClick={() => setTab(tb.id)}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                tab === t.id ? 'border-brand text-brand' : 'border-transparent text-content-secondary hover:text-content-primary'
+                tab === tb.id ? 'border-brand text-brand' : 'border-transparent text-content-secondary hover:text-content-primary'
               }`}>
               <Icon size={14} />
-              {t.label}
+              {tb.label}
             </button>
           )
         })}

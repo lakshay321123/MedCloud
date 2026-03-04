@@ -3,7 +3,8 @@ import { useT } from '@/lib/i18n'
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useApp } from '@/lib/context'
 import { UserRole } from '@/types'
-import { Search, Sun, Moon, Bell, LogOut } from 'lucide-react'
+import { Search, Sun, Moon, Bell, LogOut, Check, AlertTriangle, Info, X } from 'lucide-react'
+import { useNotifications, useMarkNotificationRead } from '@/lib/hooks'
 import Dropdown, { DropdownOption } from '@/components/shared/Dropdown'
 import { useRouter } from 'next/navigation'
 import { demoPatients, demoClaims, demoDocs } from '@/lib/demo-data'
@@ -41,11 +42,18 @@ export default function Topbar() {
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
 
-  const notifications = [
-    { title: 'CLM-4504 appeal deadline in 2 days', time: '1h ago', type: 'urgent', href: '/denials' },
-    { title: 'ERA from BCBS ready to post', time: '3h ago', type: 'info', href: '/payment-posting' },
-    { title: 'Dr. Patel credentials expiring', time: '1d ago', type: 'warning', href: '/credentialing' },
+  const { data: notifData, refetch: refetchNotifs } = useNotifications({ limit: 20 })
+  const liveNotifs = notifData?.data ?? []
+  const unreadCount = notifData?.unread_count ?? 0
+
+  // Fallback static notifications while API warms up
+  const staticNotifs = [
+    { id: 's1', title: 'CLM-4504 appeal deadline in 2 days', created_at: new Date(Date.now() - 3600000).toISOString(), type: 'urgent', action_url: '/denials', read: false },
+    { id: 's2', title: 'ERA from BCBS ready to post', created_at: new Date(Date.now() - 10800000).toISOString(), type: 'info', action_url: '/payment-posting', read: false },
+    { id: 's3', title: 'Dr. Patel credentials expiring', created_at: new Date(Date.now() - 86400000).toISOString(), type: 'warning', action_url: '/credentialing', read: false },
   ]
+  const notifications = liveNotifs.length > 0 ? liveNotifs : staticNotifs
+  const displayUnread = liveNotifs.length > 0 ? unreadCount : staticNotifs.filter(n => !n.read).length
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -180,23 +188,51 @@ export default function Topbar() {
 
         {/* Notification bell */}
         <div className="relative" ref={notifRef}>
-          <button onClick={() => setNotifOpen(o => !o)} className="p-2 rounded-btn hover:bg-surface-elevated text-content-secondary relative transition-colors">
+          <button onClick={() => { setNotifOpen(o => !o); if (!notifOpen) refetchNotifs() }}
+            className="p-2 rounded-btn hover:bg-surface-elevated text-content-secondary relative transition-colors">
             <Bell size={18} />
-            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center">{notifications.length}</span>
+            {displayUnread > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center">
+                {displayUnread > 9 ? '9+' : displayUnread}
+              </span>
+            )}
           </button>
           {notifOpen && (
-            <div className="absolute right-0 top-full mt-2 w-72 bg-surface-secondary border border-separator rounded-card shadow-2xl z-50 overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-separator text-xs font-semibold text-content-secondary uppercase tracking-wide">Notifications</div>
-              {notifications.map((n, i) => (
-                <button key={i} onClick={() => { setNotifOpen(false); router.push(n.href) }}
-                  className="w-full text-left px-4 py-3 hover:bg-surface-elevated border-b border-separator last:border-0 flex items-start gap-3 transition-colors">
-                  <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.type === 'urgent' ? 'bg-red-500' : n.type === 'warning' ? 'bg-amber-500' : 'bg-brand'}`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] text-content-primary leading-snug">{n.title}</p>
-                    <p className="text-[11px] text-content-tertiary mt-0.5">{n.time}</p>
-                  </div>
+            <div className="absolute right-0 top-full mt-2 w-80 bg-surface-secondary border border-separator rounded-card shadow-2xl z-50 overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-separator flex items-center justify-between">
+                <span className="text-xs font-semibold text-content-secondary uppercase tracking-wide">Notifications</span>
+                {displayUnread > 0 && <span className="text-[10px] text-brand font-medium">{displayUnread} unread</span>}
+              </div>
+              <div className="max-h-80 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-sm text-content-tertiary">All caught up ✓</div>
+                ) : notifications.map((n) => {
+                  const dotColor = n.type === 'urgent' || n.type === 'critical' ? 'bg-red-500' : n.type === 'warning' ? 'bg-amber-500' : 'bg-brand'
+                  const timeAgo = (() => {
+                    const diff = Date.now() - new Date(n.created_at).getTime()
+                    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
+                    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
+                    return `${Math.floor(diff / 86400000)}d ago`
+                  })()
+                  return (
+                    <button key={n.id}
+                      onClick={() => { setNotifOpen(false); router.push(('action_url' in n ? n.action_url : '') || '/dashboard') }}
+                      className={`w-full text-left px-4 py-3 hover:bg-surface-elevated border-b border-separator last:border-0 flex items-start gap-3 transition-colors ${!n.read ? 'bg-brand/5' : ''}`}>
+                      <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${dotColor}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-[13px] leading-snug ${!n.read ? 'text-content-primary font-medium' : 'text-content-secondary'}`}>{n.title}</p>
+                        <p className="text-[11px] text-content-tertiary mt-0.5">{timeAgo}</p>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="px-4 py-2 border-t border-separator">
+                <button onClick={() => { setNotifOpen(false); router.push('/tasks') }}
+                  className="text-xs text-brand hover:text-brand/80 font-medium transition-colors">
+                  View all in Tasks →
                 </button>
-              ))}
+              </div>
             </div>
           )}
         </div>
