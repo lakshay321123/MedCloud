@@ -12,12 +12,12 @@ import { api } from '@/lib/api-client'
 import type { ApiEligibilityCheck } from '@/lib/hooks'
 
 export default function EligibilityPage() {
-  const { country } = useApp()
+  const { country, clients, selectedClient } = useApp()
   const { t } = useT()
   const { toast } = useToast()
   const { data: apiEligResult } = useEligibilityChecks({ limit: 20 })
   const [tab, setTab] = useState<'single' | 'batch' | 'priorauth'>('single')
-  const [selectedClientId, setSelectedClientId] = useState('')
+  const [selectedClientId, setSelectedClientId] = useState(selectedClient?.id || '')
   const [selectedPatientId, setSelectedPatientId] = useState('')
   const [payer, setPayer] = useState('')
   const [dos, setDos] = useState(new Date().toISOString().slice(0, 10))
@@ -138,8 +138,8 @@ export default function EligibilityPage() {
           <div className="card p-4 mb-4">
             <div className="grid grid-cols-4 gap-3">
               <select value={selectedClientId} onChange={e => { setSelectedClientId(e.target.value); setSelectedPatientId(''); setVerified(false) }} className="bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px]">
-                <option value=''>All Clients</option>
-                {/* Sprint 2: replace with API client list */}
+                <option value=''>{t('topbar','selectClient')}</option>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               <select value={selectedPatientId} onChange={e => { setSelectedPatientId(e.target.value); setVerified(false) }} className="bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px]">
                 <option value="">Select patient</option>

@@ -553,7 +553,7 @@ function InboundCallPanel() {
 }
 
 export default function ARManagementPage() {
-  const { selectedClient } = useApp()
+  const { selectedClient, country } = useApp()
   const { t } = useT()
   const { toast } = useToast()
   const [accounts, setAccounts] = useState<ARAccount[]>(initialAccounts)
@@ -562,7 +562,12 @@ export default function ARManagementPage() {
   const [callMode, setCallMode] = useState<'accounts' | 'inbound' | 'credits' | 'sla'>('accounts')
   const { mutate: logCallAPI } = useLogARCall()
 
-  const filtered = accounts.filter(a => !selectedClient || a.client.includes(selectedClient.name.split(' ')[0]))
+  const filtered = accounts.filter(a => {
+    if (selectedClient) return a.client.includes(selectedClient.name.split(' ')[0])
+    if (country === 'uae') return ['Gulf Medical Center', 'Dubai Wellness Clinic'].some(n => a.client.includes(n.split(' ')[0]))
+    if (country === 'usa') return ['Irvine Family Practice', 'Patel Cardiology'].some(n => a.client.includes(n.split(' ')[0]))
+    return true
+  })
 
   function updateAccount(id: string, update: Partial<ARAccount>) {
     setAccounts(prev => prev.map(a => a.id === id ? { ...a, ...update } : a))

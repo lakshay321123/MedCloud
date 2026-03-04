@@ -12,13 +12,18 @@ import { getSLAStatus } from '@/lib/utils/time'
 import { useERAFiles, useAutoPostPayments, useParse835, useReconcilePayments, useBankDeposits, useReconcileBankDeposit, usePayments, useUpdatePayment, useCreateBankDeposit } from '@/lib/hooks'
 
 export default function PaymentPostingPage() {
-  const { selectedClient } = useApp()
+  const { selectedClient, country } = useApp()
   const { t } = useT()
   const { toast } = useToast()
   const { data: apiERAResult } = useERAFiles({ limit: 50 })
   const { mutate: autoPost } = useAutoPostPayments()
   const [posting, setPosting] = useState(false)
-  const demoEras = demoERAFiles.filter(era => !selectedClient || era.clientId === selectedClient.id)
+  const demoEras = demoERAFiles.filter(era => {
+    if (selectedClient) return era.clientId === selectedClient.id
+    if (country === 'uae') return ['org-101', 'org-104'].includes(era.clientId)
+    if (country === 'usa') return ['org-102', 'org-103'].includes(era.clientId)
+    return true
+  })
   // Map API ERA files to DemoERAFile shape for display compatibility
   const eras = apiERAResult?.data?.map(e => ({
     id: e.id,

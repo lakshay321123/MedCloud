@@ -37,6 +37,7 @@ function ContractStatusBadge({ status }: { status: DemoContract['status'] }) {
 }
 
 export default function ContractsPage() {
+  const { selectedClient, country } = useApp()
   const { toast } = useToast()
   const { t } = useT()
   const [search, setSearch] = useState('')
@@ -77,7 +78,12 @@ export default function ContractsPage() {
     })
   })()
 
-  const allContracts = apiContracts.length ? apiContracts : demoContracts
+  const allContracts = (apiContracts.length ? apiContracts : demoContracts).filter(c => {
+    if (selectedClient) return c.clientId === selectedClient.id
+    if (country === 'uae') return ['org-101', 'org-104'].includes(c.clientId)
+    if (country === 'usa') return ['org-102', 'org-103'].includes(c.clientId)
+    return true
+  })
   const filtered = allContracts.filter(c =>
     !search || c.payer.toLowerCase().includes(search.toLowerCase()) || c.client.toLowerCase().includes(search.toLowerCase())
   )
