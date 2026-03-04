@@ -1,0 +1,21 @@
+{
+  "name": "medcloud-api-v4",
+  "version": "4.0.0",
+  "type": "module",
+  "description": "MedCloud API v4 — Sprint 2-4 complete backend",
+  "main": "index.mjs",
+  "scripts": {
+    "package": "npm install --omit=dev && zip -r lambda-v4.zip index.mjs node_modules/ && echo 'Packaged: lambda-v4.zip'",
+    "deploy": "npm run package && aws lambda update-function-code --function-name medcloud-api --zip-file fileb://lambda-v4.zip --region us-east-1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.600.0",
+    "@aws-sdk/client-s3": "^3.600.0",
+    "@aws-sdk/client-textract": "^3.600.0",
+    "@aws-sdk/s3-request-presigner": "^3.600.0",
+    "pg": "^8.12.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
