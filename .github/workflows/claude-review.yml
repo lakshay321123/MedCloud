@@ -1,0 +1,47 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  claude-review:
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          model: claude-sonnet-4-6
+          direct-prompt: |
+            You are reviewing a pull request for MedCloud, an AI-powered Revenue Cycle Management (RCM) platform.
+            Read CLAUDE.md in the repo root for full project context before reviewing.
+
+            Focus your review on:
+            1. TypeScript errors or unsafe `any` types that could break the build
+            2. Demo data (`demoXxx`, `initialXxx`) still driving UI when real API hooks exist
+            3. Missing region filters — every module must filter by `client_id` / `country` / `org_id`
+            4. Hardcoded values (org IDs, client names, dollar amounts) that should come from API
+            5. API hooks called but result not used — data fetched but UI ignores it
+            6. Empty catch blocks that swallow errors silently — always show a toast
+            7. RCM domain correctness (CARC/RARC codes, claim statuses, AR aging logic)
+            8. HIPAA concerns — PHI in logs, missing audit trails, unprotected routes
+
+            Be concise. Flag real bugs, not style nits. If the PR looks good, say so clearly.
