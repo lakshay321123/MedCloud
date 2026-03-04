@@ -5,7 +5,6 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useApp } from '@/lib/context'
-import { demoERAFiles, demoERALineItems, demoUnmatchedPayments } from '@/lib/demo-data'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
@@ -19,13 +18,7 @@ export default function PaymentPostingPage() {
   const { data: apiERAResult } = useERAFiles({ limit: 50 })
   const { mutate: autoPost } = useAutoPostPayments()
   const [posting, setPosting] = useState(false)
-  const demoEras = demoERAFiles.filter(era => {
-    if (selectedClient) return era.clientId === selectedClient.id
-    if (country === 'uae') return UAE_ORG_IDS.includes(era.clientId)
-    if (country === 'usa') return US_ORG_IDS.includes(era.clientId)
-    return true
-  })
-  // Map API ERA files to DemoERAFile shape for display compatibility
+  // Map API ERA files to display shape
   const eras = apiERAResult?.data?.map(e => ({
     id: e.id,
     clientId: e.client_id,
@@ -37,9 +30,9 @@ export default function PaymentPostingPage() {
     status: (e.status as 'new' | 'processing' | 'posted') || 'new',
     exceptions: 0,
     receivedAt: e.created_at || '',
-  })) || demoEras
+  })) || []
   const [selectedEra, setSelectedEra] = useState<string | null>(null)
-  const [lineItems, setLineItems] = useState(demoERALineItems)
+  const [lineItems, setLineItems] = useState<{id:string;eraId:string;claimId:string;patient:string;billed:number;allowed:number;paid:number;denied:number;patBalance:number;action:string;note:string}[]>([])
   const [editingCell, setEditingCell] = useState<{ rowId: string; field: string } | null>(null)
   const [editValue, setEditValue] = useState<string>('')
   const [showUploadModal, setShowUploadModal] = useState(false)
@@ -67,7 +60,7 @@ export default function PaymentPostingPage() {
   }
 
   // Silent denials: ERA lines with denied > 0 that have action 'post' (not yet routed)
-  const silentDenials = demoERALineItems.filter(l => l.denied > 0 && l.action === 'post')
+  const silentDenials = lineItems.filter(l => l.denied > 0 && l.action === 'post')
 
   if (!selectedEra) {
     return (
@@ -80,7 +73,7 @@ export default function PaymentPostingPage() {
           <KPICard label={t('posting','erasPending')} value={eras.filter(e => e.status !== 'posted').length} icon={<Receipt size={20} />} />
           <KPICard label={t('posting','postedToday')} value="89" icon={<CheckCircle2 size={20} />} />
           <KPICard label={t('posting','autoPostRate')} value={apiERAResult?.data ? `${Math.round((apiERAResult.data.filter(e => e.status === 'posted').length / Math.max(apiERAResult.data.length, 1)) * 100)}%` : '76%'} icon={<Send size={20} />} />
-          <KPICard label={t('posting','unmatched')} value={demoUnmatchedPayments.length} icon={<AlertTriangle size={20} />} />
+          <KPICard label={t('posting','unmatched')} value={0} icon={<AlertTriangle size={20} />} />
         </div>
 
         {/* Silent denial detection banner */}
@@ -155,12 +148,7 @@ export default function PaymentPostingPage() {
         <div className="card p-4">
           <h3 className="text-[12px] font-semibold text-content-tertiary uppercase tracking-wider mb-2">Unmatched Payments</h3>
           <div className="space-y-2 text-[13px]">
-            {demoUnmatchedPayments.map(item => (
-              <div key={item.id} className="flex items-center justify-between bg-surface-elevated rounded-btn p-2">
-                <span>{item.payer} · {item.reason}</span>
-                <span className="font-mono">${item.amount.toFixed(2)}</span>
-              </div>
-            ))}
+            <div className="text-content-tertiary text-[12px] text-center py-4">No unmatched payments</div>
           </div>
         </div>
 
