@@ -331,8 +331,8 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
     if (!msgInput.trim()) return
     const senderName = currentUser?.name || 'Staff'
     const senderRole = (['provider','client'].includes(currentUser?.role || '')) ? 'client' : 'staff'
-    const newLocal = {
-      id: `MSG-NEW-${crypto.randomUUID()}`, entityType: 'claim', entityId: claim.id,
+    const newLocal: import('@/lib/demo-data').DemoMessage = {
+      id: `MSG-NEW-${crypto.randomUUID()}`, entityType: 'claim' as const, entityId: claim.id,
       entityLabel: `Claim #${claim.id}`, clientId: claim.clientId, clientName: claim.clientName,
       subject: `Claim ${claim.id}`, lastMessage: msgInput, lastSender: senderName, lastSenderRole: senderRole,
       timestamp: new Date().toISOString(), unread: false, status: 'open',
