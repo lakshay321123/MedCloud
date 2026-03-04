@@ -70,24 +70,7 @@ Resources:
               - 'https://*.vercel.app'
             ExposedHeaders: [ETag]
             MaxAge: 3000
-      NotificationConfiguration:
-        LambdaConfigurations:
-          # Auto-trigger OCR on any new document upload
-          - Event: 's3:ObjectCreated:*'
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: 'documents/'
-            Function: !Ref LambdaFunctionArn
-          # Also trigger on documents/ subfolder patterns
-          - Event: 's3:ObjectCreated:*'
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: 'uploads/'
-            Function: !Ref LambdaFunctionArn
+
       Tags:
         - Key: Project
           Value: MedCloud

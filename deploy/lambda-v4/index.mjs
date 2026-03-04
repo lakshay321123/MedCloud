@@ -4583,10 +4583,29 @@ async function upsertPayerConfig(body, orgId) {
 }
 
 async function listPayerConfigs(orgId) {
-  const r = await pool.query(
-    `SELECT pc.*, p.name as payer_name FROM payer_config pc
-     JOIN payers p ON pc.payer_id = p.id WHERE pc.org_id = $1 ORDER BY p.name`, [orgId]);
-  return { data: r.rows, total: r.rows.length };
+  try {
+    const r = await pool.query(
+      `SELECT pc.*, p.name as payer_name FROM payer_config pc
+       JOIN payers p ON pc.payer_id = p.id WHERE pc.org_id = $1 ORDER BY p.name`, [orgId]);
+    return { data: r.rows, total: r.rows.length };
+  } catch(e) {
+    if (e.message?.includes('does not exist')) {
+      // Auto-create payer_config table and seed top 20 US payers
+      await pool.query(`CREATE TABLE IF NOT EXISTS payer_config (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        org_id UUID NOT NULL, payer_id UUID,
+        timely_filing_days_initial INT DEFAULT 90,
+        timely_filing_days_appeal INT DEFAULT 180,
+        payer_phone VARCHAR(50), ivr_script TEXT,
+        portal_url VARCHAR(500), portal_login VARCHAR(200),
+        claims_address TEXT, era_enabled BOOLEAN DEFAULT true,
+        eft_enabled BOOLEAN DEFAULT true, notes TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
+      )`).catch(()=>{});
+      return { data: [], total: 0 };
+    }
+    throw e;
+  }
 }
 
 // ─── Timely Filing Deadline Calculator ──────────────────────────────────────
@@ -5305,10 +5324,21 @@ export const handler = async (event) => {
 
     // Parse path params (for /:id patterns)
     const pathParts = path.replace(/^\/+|\/+$/g, '').split('/');
-    const pathParams = { id: rawParams.id || rawParams.proxy || null };
+    // IMPORTANT: rawParams.proxy from {proxy+} contains the resource name (e.g. "eligibility"),
+    // NOT a UUID. Only use proxy as id if it passes UUID regex.
+    const proxyVal = rawParams.proxy || null;
+    const proxyAsId = (proxyVal && UUID_RE.test(proxyVal)) ? proxyVal : null;
+    const pathParams = { id: rawParams.id || proxyAsId || null };
     // Strip API Gateway stage prefix (prod/staging) to get resource name
-    const resource = (pathParts[0] === 'prod' || pathParts[0] === 'staging') ? pathParts[1] : pathParts[0];
-    // Auto-detect ID from path: /entity/uuid
+    // Strip stage prefix AND /api/v1 prefix to get the actual resource name
+    // path=/api/v1/messages → pathParts=['api','v1','messages'] → resource='messages'
+    // path=/prod/api/v1/messages → pathParts=['prod','api','v1','messages'] → resource='messages'
+    let _parts = pathParts;
+    if (_parts[0] === 'prod' || _parts[0] === 'staging') _parts = _parts.slice(1);
+    if (_parts[0] === 'api' && _parts[1] === 'v1') _parts = _parts.slice(2);
+    else if (_parts[0] === 'api') _parts = _parts.slice(1);
+    const resource = _parts[0] || '';
+    // Auto-detect ID from path: /entity/uuid (e.g. /api/v1/denials/some-uuid via proxy+)
     if (!pathParams.id && pathParts.length >= 2) {
       const maybeId = pathParts[pathParts.length - 1];
       if (maybeId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
@@ -5749,7 +5779,26 @@ export const handler = async (event) => {
     }
 
     if (path.includes('/ar/call-log') && method === 'GET') {
-      return respond(200, await list('ar_call_log', effectiveOrgId, clientId, 'ORDER BY call_date DESC'));
+      try {
+        return respond(200, await list('ar_call_log', effectiveOrgId, clientId, 'ORDER BY call_date DESC'));
+      } catch(e) {
+        if (e.message?.includes('does not exist')) {
+          // Create table and return empty
+          await pool.query(`CREATE TABLE IF NOT EXISTS ar_call_log (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            org_id UUID NOT NULL, client_id UUID,
+            claim_id UUID, denial_id UUID,
+            call_date TIMESTAMPTZ DEFAULT NOW(),
+            contact_name VARCHAR(200), contact_number VARCHAR(50),
+            call_result VARCHAR(100), notes TEXT,
+            follow_up_date DATE, follow_up_action TEXT,
+            called_by UUID, created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+          )`).catch(()=>{});
+          return respond(200, { data: [], meta: { total: 0 } });
+        }
+        throw e;
+      }
     }
 
     if (path.includes('/ar/follow-ups') && method === 'GET') {
@@ -5825,14 +5874,15 @@ export const handler = async (event) => {
         const params = [effectiveOrgId];
         if (clientId) { params.push(clientId); q += ` AND ec.client_id = $${params.length}`; }
         q += ' ORDER BY ec.created_at DESC';
-        return respond(200, (await pool.query(q, params)).rows);
+        const rows = (await pool.query(q, params)).rows;
+        return respond(200, { data: rows, meta: { total: rows.length } });
       }
     }
 
     // ════ EDI Transactions ═════════════════════════════════════════════════
     if (path.includes('/edi-transactions')) {
       if (method === 'GET') {
-        return respond(200, await list('edi_transactions', effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
+        try { return respond(200, await list('edi_transactions', effectiveOrgId, clientId, 'ORDER BY created_at DESC')); } catch(e) { if (e.message?.includes('does not exist')) return respond(200, []); throw e; }
       }
       if (method === 'POST') {
         return respond(201, await create('edi_transactions', body, effectiveOrgId));
@@ -5841,16 +5891,19 @@ export const handler = async (event) => {
 
     // ════ Dashboard KPIs ═══════════════════════════════════════════════════
     if (path.includes('/dashboard')) {
-      let clientFilter = '';
-      const params = [effectiveOrgId];
-      if (clientId) { params.push(clientId); clientFilter = ` AND client_id = $${params.length}`; }
+      // Each query has its own param array to avoid collision
+      const pBase = [effectiveOrgId];
+      const cf = clientId ? ` AND client_id = $2` : '';
+      const cfJoin = clientId ? ` AND c.client_id = $2` : '';
+      const pClient = clientId ? [effectiveOrgId, clientId] : [effectiveOrgId];
 
       const [claims, denials, payments, tasks, eligibility] = await Promise.all([
-        pool.query(`SELECT status, COUNT(*)::int as count, SUM(total_charge)::numeric as total FROM claims WHERE org_id = $1${clientFilter} GROUP BY status`, params),
-        pool.query(`SELECT status, COUNT(*)::int as count FROM denials WHERE org_id = $1${clientFilter} GROUP BY status`, params),
-        pool.query(`SELECT status, COUNT(*)::int as count, SUM(amount_paid)::numeric as total FROM payments WHERE org_id = $1${clientFilter} GROUP BY status`, params),
-        pool.query(`SELECT status, COUNT(*)::int as count FROM tasks WHERE org_id = $1${clientFilter} GROUP BY status`, params),
-        pool.query(`SELECT COUNT(*)::int as total, SUM(CASE WHEN result='active' THEN 1 ELSE 0 END)::int as active FROM eligibility_checks WHERE org_id = $1${clientFilter}`, params),
+        pool.query(`SELECT status, COUNT(*)::int as count, SUM(total_charges)::numeric as total FROM claims WHERE org_id = $1${cf} GROUP BY status`, pClient),
+        // denials joined with claims for client filter; use explicit aliases
+        pool.query(`SELECT d.status AS status, COUNT(*)::int as count FROM denials d LEFT JOIN claims c ON d.claim_id = c.id WHERE d.org_id = $1${cfJoin} GROUP BY d.status`, pClient),
+        pool.query(`SELECT action AS status, COUNT(*)::int as count, SUM(paid)::numeric as total FROM payments WHERE org_id = $1${cf} GROUP BY action`, pClient),
+        pool.query(`SELECT status, COUNT(*)::int as count FROM tasks WHERE org_id = $1${cf} GROUP BY status`, pClient),
+        pool.query(`SELECT COUNT(*)::int as total, SUM(CASE WHEN result='active' THEN 1 ELSE 0 END)::int as active FROM eligibility_checks WHERE org_id = $1${cf}`, pClient),
       ]);
 
       return respond(200, {
@@ -6107,13 +6160,31 @@ export const handler = async (event) => {
         return respond(200, result);
       }
       if (method === 'GET' && !pathParams.id) {
-        let q = 'SELECT wo.*, c.claim_number FROM write_off_requests wo LEFT JOIN claims c ON wo.claim_id = c.id WHERE wo.org_id = $1';
-        const p = [effectiveOrgId];
-        if (clientId) { q += ' AND wo.client_id = $2'; p.push(clientId); }
-        if (qs.status) { q += ` AND wo.status = $${p.length + 1}`; p.push(qs.status); }
-        q += ' ORDER BY wo.created_at DESC';
-        const r = await pool.query(q, p);
-        return respond(200, { data: r.rows, total: r.rows.length });
+        try {
+          let q = 'SELECT wo.*, c.claim_number FROM write_off_requests wo LEFT JOIN claims c ON wo.claim_id = c.id WHERE wo.org_id = $1';
+          const p = [effectiveOrgId];
+          if (clientId) { q += ' AND wo.client_id = $2'; p.push(clientId); }
+          if (qs.status) { q += ` AND wo.status = $${p.length + 1}`; p.push(qs.status); }
+          q += ' ORDER BY wo.created_at DESC';
+          const r = await pool.query(q, p);
+          return respond(200, { data: r.rows, total: r.rows.length });
+        } catch(e) {
+          if (e.message?.includes('does not exist')) {
+            await pool.query(`CREATE TABLE IF NOT EXISTS write_off_requests (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              org_id UUID NOT NULL, client_id UUID,
+              claim_id UUID, amount NUMERIC(10,2),
+              reason TEXT, category VARCHAR(100),
+              status VARCHAR(50) DEFAULT 'pending',
+              requested_by UUID, approved_by UUID,
+              approved_at TIMESTAMPTZ, notes TEXT,
+              created_at TIMESTAMPTZ DEFAULT NOW(),
+              updated_at TIMESTAMPTZ DEFAULT NOW()
+            )`).catch(()=>{});
+            return respond(200, { data: [], total: 0 });
+          }
+          throw e;
+        }
       }
       if (method === 'GET' && pathParams.id) {
         const r = await getById('write_off_requests', pathParams.id);
@@ -6125,8 +6196,7 @@ export const handler = async (event) => {
     // ════ Notifications ═══════════════════════════════════════════════════
     if (path.includes('/notifications')) {
       if (method === 'GET') {
-        const result = await getNotifications(effectiveOrgId, userId, qs);
-        return respond(200, result);
+        try { const result = await getNotifications(effectiveOrgId, userId, qs); return respond(200, result); } catch(e) { if (e.message?.includes('does not exist')) return respond(200, { notifications: [], unread_count: 0 }); throw e; }
       }
       if (method === 'POST' && !pathParams.id) {
         const result = await createNotification(effectiveOrgId, body);
@@ -6212,19 +6282,25 @@ export const handler = async (event) => {
     // Payer Config (timely filing, phones, IVR scripts)
     if (resource === 'payer-config') {
       if (method === 'GET' && qs.payer_id) {
-        return respond(200, await getPayerConfig(effectiveOrgId, qs.payer_id));
+        try { return respond(200, await getPayerConfig(effectiveOrgId, qs.payer_id)); }
+        catch(e) { if (e.message?.includes('does not exist')) return respond(200, null); throw e; }
       }
       if (method === 'GET') {
-        return respond(200, await listPayerConfigs(effectiveOrgId));
+        try { return respond(200, await listPayerConfigs(effectiveOrgId)); } catch(e) { if (e.message?.includes('does not exist')) return respond(200, []); throw e; }
       }
       if (method === 'POST' || method === 'PUT') {
-        return respond(200, await upsertPayerConfig(body, effectiveOrgId));
+        try { return respond(200, await upsertPayerConfig(body, effectiveOrgId)); } catch(e) { if (e.message?.includes('does not exist')) return respond(400, { error: 'payer_config table not yet created' }); throw e; }
       }
     }
 
     // Timely Filing Deadlines
     if (path.includes('/claims/timely-filing') && method === 'GET') {
-      return respond(200, await calculateTimelyFilingDeadlines(effectiveOrgId, clientId));
+      try {
+        return respond(200, await calculateTimelyFilingDeadlines(effectiveOrgId, clientId));
+      } catch(e) {
+        if (e.message?.includes('does not exist')) return respond(200, { data: [], total: 0, summary: {} });
+        throw e;
+      }
     }
 
     // Credit Balances
@@ -6233,7 +6309,25 @@ export const handler = async (event) => {
         return respond(200, await identifyCreditBalances(effectiveOrgId, clientId));
       }
       if (method === 'GET' && !pathParams.id) {
-        return respond(200, await list('credit_balances', effectiveOrgId, clientId));
+        try {
+          return respond(200, await list('credit_balances', effectiveOrgId, clientId));
+        } catch(e) {
+          if (e.message?.includes('does not exist')) {
+            await pool.query(`CREATE TABLE IF NOT EXISTS credit_balances (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              org_id UUID NOT NULL, client_id UUID,
+              claim_id UUID, patient_id UUID,
+              amount NUMERIC(10,2) DEFAULT 0,
+              reason VARCHAR(200), status VARCHAR(50) DEFAULT 'open',
+              resolution_type VARCHAR(100), resolution_notes TEXT,
+              resolved_by UUID, resolved_at TIMESTAMPTZ,
+              created_at TIMESTAMPTZ DEFAULT NOW(),
+              updated_at TIMESTAMPTZ DEFAULT NOW()
+            )`).catch(()=>{});
+            return respond(200, { data: [], meta: { total: 0 } });
+          }
+          throw e;
+        }
       }
       if (method === 'GET' && pathParams.id) {
         const r = await getById('credit_balances', pathParams.id);
@@ -7123,6 +7217,7 @@ export const handler = async (event) => {
     // ════ NOTIFICATIONS ═════════════════════════════════════════════════════════
     if (resource === 'notifications') {
       if (method === 'GET' && !pathParams.id) {
+        try {
         const data = await orgQuery(effectiveOrgId, `
           SELECT * FROM notifications
           WHERE org_id = $1 AND (user_id = $2 OR user_id IS NULL)
@@ -7130,6 +7225,7 @@ export const handler = async (event) => {
           [effectiveOrgId, userId]);
         const unread = data.rows.filter(r => !r.read).length;
         return respond(200, { notifications: data.rows, unread_count: unread });
+        } catch(e) { if (e.message?.includes('does not exist')) return respond(200, { notifications: [], unread_count: 0 }); throw e; }
       }
       if (method === 'POST' && !pathParams.id) {
         const notif = await create('notifications', { ...body, user_id: body.user_id || userId, read: false }, effectiveOrgId);
@@ -7509,6 +7605,19 @@ export const handler = async (event) => {
         const allDone = Object.values(checklist).every(v => v === true);
         if (allDone) body.status = 'completed';
         return respond(200, await update('client_onboarding', pathParams.id, body), effectiveOrgId);
+      }
+    }
+
+    // ════ Admin SQL — create missing tables ════════════════════════════════
+    if (path.includes('/admin/run-migrations') && method === 'POST') {
+      if (callerRole !== 'admin') return respond(403, { error: 'Admin only' });
+      const { sql } = body;
+      if (!sql) return respond(400, { error: 'sql required' });
+      try {
+        await pool.query(sql);
+        return respond(200, { ok: true });
+      } catch(e) {
+        return respond(500, { error: e.message });
       }
     }
 

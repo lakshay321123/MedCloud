@@ -6,7 +6,7 @@ import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 import { getSLAStatus } from '@/lib/utils/time'
-import { useCodingQueue, useAIAutoCode, useChartCheck, useApproveCoding, useAssignCoding, useChargeCapture, useCodingItem, useSubmitCoding, useSendCodingQuery, useAICodingSuggestion, useCodingQAAudits, useCreateCodingQAAudit, useCodingQAStats, useCodingQASample } from '@/lib/hooks'
+import { useCodingQueue, useAIAutoCode, useChartCheck, useApproveCoding, useAssignCoding, useChargeCapture, useCodingItem, useSubmitCoding, useSendCodingQuery, useAICodingSuggestion, useCodingQAAudits, useCreateCodingQAAudit, useCodingQAStats, useCodingQASample, useUsers } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { sanitizeForPrompt } from '@/lib/ai-utils'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
@@ -240,11 +240,11 @@ export default function CodingPage() {
     placeOfService: undefined as string | undefined,
   })) || []
 
-  const coders = [
-    { id: 'demo-002', name: 'Sarah Kim' },
-    { id: 'demo-003', name: 'Amy Chen' },
-    { id: 'demo-004', name: 'James Wilson' },
-  ]
+  const { data: usersResult } = useUsers({ limit: 100 })
+  // Coders pulled from seeded users (role = coder)
+  const coders = (usersResult?.data || [])
+    .filter((u: any) => u.role === 'coder' || u.role === 'coding_specialist')
+    .map((u: any) => ({ id: u.id, name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email }))
 
   // UAE org IDs
   const uaeClientIds = UAE_ORG_IDS

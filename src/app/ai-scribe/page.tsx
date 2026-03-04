@@ -96,7 +96,7 @@ function ProviderView() {
     suggestedCodes: [], duration: '0:00', transcript: '',
   }))
 
-  const visits = apiVisits.length ? apiVisits : demoVisits
+  const visits = apiVisits.length ? apiVisits : []
   const pending = visits.filter(v => v.status === 'pending_signoff')
   const completed = visits.filter(v => v.status === 'signed')
 
@@ -104,13 +104,13 @@ function ProviderView() {
   const [selectedVisit, setSelectedVisit] = useState<DemoVisit | null>(null)
   // Derive patient info from the selected visit (API) or fall back to demoPatients
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const selectedPatient: any = selectedVisit
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const selectedPatient: Record<string, any> | null = selectedVisit
     ? { id: selectedVisit.patientId, name: selectedVisit.patientName, firstName: (selectedVisit.patientName || '').split(' ')[0], lastName: (selectedVisit.patientName || '').split(' ').slice(1).join(' '), dob: '', gender: '', insurance: '', allergies: [], medications: [] }
-    : demoPatients.find(p => p.id === selectedPatientId) ?? null
-  const selectedAppt = demoAppointments.find(a => a.patientId === selectedPatientId)
-  const todayAppts: any[] = apiVisits.length
-    ? apiVisits.map(v => ({ id: v.id, patientId: v.patientId, patientName: v.patientName, time: v.dos, type: v.encounterType, provider: v.provider, status: v.status }))
-    : demoAppointments
+    : null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const selectedAppt: Record<string, any> | null = null
+  const todayAppts: any[] = apiVisits.map(v => ({ id: v.id, patientId: v.patientId, patientName: v.patientName, time: v.dos, type: v.encounterType, provider: v.provider, status: v.status }))
 
   // Recording state
   const [transcript, setTranscript] = useState('')
@@ -337,7 +337,7 @@ function ProviderView() {
       </div>
       <div className="space-y-2">
         {todayAppts.map(a => {
-          const pat = demoPatients.find(p => p.id === a.patientId)
+          const pat = null
           return (
             <button key={a.id} onClick={() => { setSelectedPatientId(a.patientId); setUiState('review_patient') }}
               className="w-full text-left card p-4 hover:border-brand/30 transition-all flex items-center gap-4">
@@ -346,8 +346,8 @@ function ProviderView() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold">{a.patientName}</div>
-                <div className="text-xs text-content-secondary">{a.time} · {a.type} · {a.provider}</div>
-                {pat && <div className="text-[10px] text-content-tertiary">{formatDOB(pat.dob)} · {pat.insurance?.payer || 'No insurance'}</div>}
+                <div className="text-xs text-content-secondary">{(a as any).time} · {(a as any).type} · {(a as any).provider}</div>
+                {pat && <div className="text-[10px] text-content-tertiary">{(pat as any).dob ? formatDOB((pat as any).dob) : ''} · {(pat as any).insurance?.payer || 'No insurance'}</div>}
               </div>
               <div className="flex items-center gap-2">
                 <StatusBadge status={a.status} small />
@@ -374,7 +374,7 @@ function ProviderView() {
           </div>
           <div>
             <div className="font-semibold">{selectedPatient.firstName} {selectedPatient.lastName}</div>
-            <div className="text-xs text-content-secondary">{selectedAppt?.time} · {selectedAppt?.type}</div>
+            <div className="text-xs text-content-secondary">{(selectedAppt as any)?.time} · {(selectedAppt as any)?.type}</div>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-3 text-xs">
@@ -397,7 +397,7 @@ function ProviderView() {
       )}
       {/* Prior visits preview */}
       {(() => {
-        const priorVisits = demoVisits.filter(v => v.patientId === selectedPatientId)
+        const priorVisits = visits.filter(v => v.patientId === selectedPatientId)
         return priorVisits.length > 0 ? (
           <div className="card p-4">
             <div className="text-xs font-semibold text-content-secondary mb-2 uppercase tracking-wide flex items-center gap-2"><History size={12} /> Prior Visits ({priorVisits.length})</div>
@@ -435,7 +435,7 @@ function ProviderView() {
           </div>
           <div>
             <div className="font-semibold text-sm">{selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : 'No patient'}</div>
-            <div className="text-content-tertiary text-[10px]">{selectedAppt?.type}</div>
+            <div className="text-content-tertiary text-[10px]">{(selectedAppt as any)?.type}</div>
           </div>
         </div>
         {selectedPatient && <>
@@ -553,7 +553,7 @@ function ProviderView() {
       ...manualCodes,
     ]
 
-    const priorVisits = demoVisits.filter(v => v.patientId === selectedVisit.patientId && v.id !== selectedVisit.id)
+    const priorVisits = visits.filter(v => v.patientId === selectedVisit.patientId && v.id !== selectedVisit.id)
 
     return (
       <>
@@ -904,14 +904,27 @@ function ProviderView() {
 
 // ── Coder View ───────────────────────────────────────────────────────────────
 function CoderView() {
-  const [selectedVisit, setSelectedVisit] = useState<DemoVisit>(demoVisits[0])
+  const { data: coderSOAPResult } = useSOAPNotes({ limit: 50, status: 'completed' })
+  const coderVisits: DemoVisit[] = (coderSOAPResult?.data || []).map((s: any) => ({
+    id: s.id, patientId: s.patient_id || '', patient: s.patient_name || 'Unknown',
+    patientName: s.patient_name || 'Unknown', provider: s.provider_name || '',
+    dos: s.created_at?.slice(0, 10) || '', date: s.created_at?.slice(0, 10) || '',
+    visitType: 'office_visit' as const, encounterType: 'Office Visit',
+    status: 'signed' as const,
+    soap: { s: s.subjective || '', o: s.objective || '', a: s.assessment || '', p: s.plan || '' },
+    suggestedCodes: [], duration: '0:00', transcript: '',
+  }))
+  const [selectedVisit, setSelectedVisit] = useState<DemoVisit | null>(coderVisits[0] ?? null)
   const router = useRouter()
   return (
     <div className="grid grid-cols-3 gap-5 h-[calc(100vh-280px)]">
       <div className="card overflow-auto">
         <div className="px-3 py-2 border-b border-separator text-xs font-semibold text-content-secondary uppercase tracking-wider">Signed Notes — Read Only</div>
-        {demoVisits.map(v => (
-          <button key={v.id} onClick={() => setSelectedVisit(v)} className={`w-full text-left px-3 py-3 border-b border-separator last:border-0 ${selectedVisit.id === v.id ? 'bg-brand/5' : ''}`}>
+        {coderVisits.length === 0 && (
+          <div className="p-6 text-center text-content-secondary text-sm">No signed notes yet</div>
+        )}
+        {coderVisits.map(v => (
+          <button key={v.id} onClick={() => setSelectedVisit(v as any)} className={`w-full text-left px-3 py-3 border-b border-separator last:border-0 ${selectedVisit?.id === v.id ? 'bg-brand/5' : ''}`}>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">{v.patientName}</span>
               <StatusBadge status={v.status === 'signed' ? 'completed' : 'in_progress'} small />
@@ -921,6 +934,9 @@ function CoderView() {
         ))}
       </div>
       <div className="col-span-2 card flex flex-col overflow-hidden">
+        {!selectedVisit ? (
+          <div className="flex-1 flex items-center justify-center text-content-secondary text-sm">Select a note to view</div>
+        ) : (<>
         {selectedVisit.status === 'signed' && (
           <div className="px-4 py-2.5 bg-emerald-500/10 border-b border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
             <Check size={13} /> Signed by {selectedVisit.provider} on {selectedVisit.dos}
@@ -958,6 +974,7 @@ function CoderView() {
             <ChevronLeft size={14} /> Back to Coding Queue
           </button>
         </div>
+        </>)}
       </div>
     </div>
   )
