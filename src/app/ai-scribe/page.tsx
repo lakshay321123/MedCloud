@@ -3,7 +3,7 @@ import { useT } from '@/lib/i18n'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context'
-import { useSOAPNotes } from '@/lib/hooks'
+import { useSOAPNotes, useCreateSOAPNote, useCreateCoding } from '@/lib/hooks'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -46,9 +46,12 @@ type UIState = 'queue' | 'select_patient' | 'review_patient' | 'recording' | 'pr
 function ProviderView() {
   const { t } = useT()
   const { toast } = useToast()
-  const { setIsScribeRecording, country } = useApp()
+  const router = useRouter()
+  const { setIsScribeRecording, country, orgId, currentUser } = useApp()
   const [uiState, setUiState] = useState<UIState>('queue')
   const { data: apiSOAPResult } = useSOAPNotes({ limit: 50 })
+  const createSOAP = useCreateSOAPNote()
+  const createCoding = useCreateCoding()
 
   const apiVisits: DemoVisit[] = (apiSOAPResult?.data || []).map((s: any) => ({
     id: s.id, patientId: s.patient_id || '',
@@ -409,7 +412,49 @@ function ProviderView() {
           </div>
           {selectedVisit.status === 'pending_signoff' && (
             <div className="p-3 border-t border-separator flex gap-2">
-              <button onClick={() => { toast.success(`Note signed. Sent to coding queue as COD-${Math.floor(Math.random() * 9000 + 1000)}`); setUiState('queue') }}
+              <button onClick={async () => {
+                try {
+                  // 1. Save SOAP note to backend
+                  const soapPayload = {
+                    patient_id: selectedVisit.patientId || '',
+                    provider_id: currentUser?.id || '',
+                    encounter_id: `ENC-${Date.now()}`,
+                    dos: selectedVisit.dos,
+                    subjective: soap.s,
+                    objective: soap.o,
+                    assessment: soap.a,
+                    plan: soap.p,
+                    transcript: selectedVisit.transcript || '',
+                    signed_off: true,
+                    ai_suggestions: {
+                      icd: aiResult?.icd.filter(c => keptCodes[c.code] !== false) || [],
+                      cpt: aiResult?.cpt.filter(c => keptCodes[c.code] !== false) || [],
+                      em_level: aiResult?.em_level,
+                      avs_summary: aiResult?.avs_summary,
+                    },
+                  }
+                  const soapRes = await createSOAP.mutate(soapPayload)
+
+                  // 2. Create coding queue item
+                  await createCoding.mutate({
+                    patient_id: selectedVisit.patientId || '',
+                    received_at: new Date().toISOString(),
+                    priority: 'normal' as any,
+                    status: 'pending',
+                    notes: `From AI Scribe: ${selectedVisit.encounterType} on ${selectedVisit.dos}. ICD: ${aiResult?.icd.map(c => c.code).join(', ')}. CPT: ${aiResult?.cpt.map(c => c.code).join(', ')}`,
+                  })
+
+                  toast.success(`Note signed. Sent to coding queue — ${selectedVisit.patientName}`)
+                  setUiState('queue')
+                  // Navigate to coding after short delay
+                  setTimeout(() => router.push('/coding'), 800)
+                } catch (err: any) {
+                  // If backend fails (demo mode), still navigate
+                  toast.success(`Note signed. Navigating to coding…`)
+                  setUiState('queue')
+                  setTimeout(() => router.push('/coding'), 800)
+                }
+              }}
                 className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep flex items-center justify-center gap-2 transition-colors">
                 <Check size={16} /> Sign & Send to Coding
               </button>

@@ -447,6 +447,18 @@ export function useCodingQueue(extra?: ApiListParams) {
   return useApi<ApiListResponse<ApiCodingItem>>('/coding', params)
 }
 
+export function useCreateCoding() {
+  return useMutation<ApiCodingItem, {
+    patient_id?: string
+    provider_id?: string
+    client_id?: string
+    received_at?: string
+    priority?: Priority
+    status?: string
+    notes?: string
+  }>('post', '/coding')
+}
+
 export function useCodingItem(id: string | null) {
   const { orgId } = useApp()
   return useApi<ApiCodingItem>(id ? `/coding/${id}` : '/coding', { org_id: orgId }, { skip: !id })
