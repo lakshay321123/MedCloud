@@ -266,7 +266,7 @@ export default function PaymentPostingPage() {
                 <td className="px-3 py-2 font-mono">{row.dos}</td>
                 {(['billed', 'allowed', 'paid', 'denied', 'patBalance'] as const).map(field => (
                   <td key={field} className={`px-3 py-2 text-right font-mono ${field === 'denied' && row.denied > 0 ? 'text-red-600 dark:text-red-400' : ''} ${field === 'patBalance' && row.patBalance > 0 ? 'text-blue-600 dark:text-blue-400' : ''}`}>
-                    {editingCell?.rowId === row.id && editingCell.field === field ? (
+                    {editingCell?.rowId === row.id && editingCell?.field === field ? (
                       <input
                         type="number"
                         autoFocus
