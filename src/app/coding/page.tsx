@@ -8,6 +8,7 @@ import { getClientName } from '@/lib/demo-data'
 import { getSLAStatus } from '@/lib/utils/time'
 import { useCodingQueue } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
+import { sanitizeForPrompt } from '@/lib/ai-utils'
 import {
   BrainCircuit, CheckCircle2, Activity, Clock, MessageCircle, Mic, FileUp,
   ChevronDown, ChevronUp, Play, FileText, AlertTriangle, Plus, PauseCircle,
@@ -220,12 +221,150 @@ export default function CodingPage() {
   const [manualCodes, setManualCodes] = useState<ManualCode[]>([])
   const [aiUnavailable, setAiUnavailable] = useState(false)
   const [showQueryModal, setShowQueryModal] = useState(false)
+  const [queryGenerating, setQueryGenerating] = useState(false)
+
+  // AI Auto-Coding state
+  const [aiCoding, setAiCoding] = useState(false)
+  const [aiCodeCache, setAiCodeCache] = useState<Record<string, { icd: import('@/lib/demo-data').AISuggestedCode[], cpt: import('@/lib/demo-data').AISuggestedCode[] }>>({})
+  const [quickSoap, setQuickSoap] = useState<{ assessment: string; plan: string; specialty: string }>({ assessment: '', plan: '', specialty: '' })
+  const [showQuickSoap, setShowQuickSoap] = useState(false)
+
+  async function generateAICodes(soapAssessment: string, soapPlan: string, specialty: string) {
+    if (!item) return
+    setAiCoding(true)
+    const isUAE = ['org-101', 'org-104'].includes(item.clientId)
+    const codeSystem = isUAE ? 'ICD-10-AM (Australian modification, used in UAE/DHA)' : 'ICD-10-CM and CPT'
+    try {
+      // Sanitize all user-controlled input before prompt interpolation (prompt injection defence)
+      const safeAssessment = sanitizeForPrompt(soapAssessment, 600)
+      const safePlan       = sanitizeForPrompt(soapPlan, 400)
+      const safeSpecialty  = sanitizeForPrompt(specialty || item.providerSpecialty, 100)
+      const safePatient    = sanitizeForPrompt(item.patientName, 100)
+
+      const prompt = [
+        `You are an expert medical coder. Generate diagnosis and procedure codes for the following clinical encounter.`,
+        `Code system: ${codeSystem}`,
+        `Patient: ${safePatient}`,
+        `Provider specialty: ${safeSpecialty || 'General Medicine'}`,
+        `Date of Service: ${item.dos}`,
+        ``,
+        `Assessment: ${safeAssessment}`,
+        `Plan: ${safePlan}`,
+        ``,
+        `Return ONLY valid JSON in this exact format, no markdown, no explanation:`,
+        `{`,
+        `  "icd": [{"code":"X00.0","desc":"Description","confidence":95,"reasoning":"Why this code"}],`,
+        `  "cpt": [{"code":"99213","desc":"Description","confidence":90,"modifiers":[],"reasoning":"Why this code"}]`,
+        `}`,
+        ``,
+        `Rules:`,
+        `- ICD: 2-5 codes max, most specific codes available, ordered by clinical relevance`,
+        `- CPT: 1-4 codes max, include E&M code + any procedures`,
+        `- confidence: 0-100 integer`,
+        `- reasoning: 1 sentence explaining the code choice`,
+        `- Only include codes you are confident are correct for this encounter`,
+      ].join('\n')
+
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'auto_code',
+          patient: safePatient,
+          specialty: safeSpecialty,
+          dos: item.dos,
+          assessment: safeAssessment,
+          plan: safePlan,
+          codeSystem,
+        }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+
+      // Strip any markdown fences
+      const cleaned = (data.text || '').replace(/```json|```/g, '').trim()
+      const parsed = JSON.parse(cleaned)
+      const icd = (parsed.icd || []).map((c: { code: string; desc: string; confidence: number; reasoning?: string }) => ({
+        code: c.code, desc: c.desc, confidence: c.confidence, reasoning: c.reasoning,
+      }))
+      const cpt = (parsed.cpt || []).map((c: { code: string; desc: string; confidence: number; modifiers?: string[]; reasoning?: string }) => ({
+        code: c.code, desc: c.desc, confidence: c.confidence, modifiers: c.modifiers || [], reasoning: c.reasoning,
+      }))
+      setAiCodeCache(prev => ({ ...prev, [item.id]: { icd, cpt } }))
+      // Auto-select all generated codes
+      const newSelected: Record<string, boolean> = {}
+      icd.forEach((c: { code: string }) => { newSelected[`icd-${c.code}`] = true })
+      cpt.forEach((c: { code: string }) => { newSelected[`cpt-${c.code}`] = true })
+      setSelectedCodes(prev => ({ ...prev, ...newSelected }))
+      setShowQuickSoap(false)
+      toast.success(`AI generated ${icd.length} diagnosis + ${cpt.length} procedure codes`)
+    } catch (e) {
+      console.error('AI coding error:', e)
+      setAiUnavailable(true)
+      toast.error('AI coding failed — use manual entry below')
+    } finally {
+      setAiCoding(false)
+    }
+  }
+
+  async function generateCDIQuery() {
+    if (!item) return
+    setQueryGenerating(true)
+    // Sanitize code descriptions — these may come from a prior AI call (second-order injection defence)
+    const lowCodes = [
+      ...activeCodes.icd.filter(c => (c.confidence ?? 100) < 75).map(c => `ICD ${sanitizeForPrompt(c.code, 20)} (${sanitizeForPrompt(c.desc, 80)})`),
+      ...activeCodes.cpt.filter(c => (c.confidence ?? 100) < 75).map(c => `CPT ${sanitizeForPrompt(c.code, 20)} (${sanitizeForPrompt(c.desc, 80)})`),
+    ]
+    try {
+      // Sanitize user-controlled fields (prompt injection defence)
+      const safePatient    = sanitizeForPrompt(item.patientName, 100)
+      const safeProvider   = sanitizeForPrompt(item.provider, 100)
+      const safeAssessment = sanitizeForPrompt(item.visitNote.assessment, 400)
+      const safePlan       = sanitizeForPrompt(item.visitNote.plan, 400)
+
+      const parts = [
+        'You are a CDI specialist. Write a brief physician query (2-3 sentences) asking for documentation clarification.',
+        `Patient: ${safePatient} | Provider: ${safeProvider} | DOS: ${item.dos}`,
+        `Assessment: ${safeAssessment}`,
+        `Plan: ${safePlan}`,
+        lowCodes.length > 0 ? `Codes needing clarification: ${lowCodes.join(', ')}` : 'Request diagnostic specificity.',
+        'Be concise and professional. Ask what specific documentation would support more precise coding.',
+      ]
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'cdi_query',
+          patient: safePatient,
+          provider: safeProvider,
+          dos: item.dos,
+          assessment: safeAssessment,
+          plan: safePlan,
+          lowCodes: sanitizeForPrompt(lowCodes.join(', '), 300),
+        }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      if (data.text) setQueryText(data.text)
+      toast.success('AI query generated')
+    } catch (err) {
+      console.error('[CDI query] AI generation failed:', err)
+      toast.error('AI generation failed')
+    } finally {
+      setQueryGenerating(false)
+    }
+  }
   const [showHoldModal, setShowHoldModal] = useState(false)
   const [docOpen, setDocOpen] = useState<'note' | 'superbill' | null>(null)
   const [queryText, setQueryText] = useState('')
   const [holdReason, setHoldReason] = useState('')
 
   const item = queue.find(q => q.id === selected)
+  const cachedCodes = item ? aiCodeCache[item.id] : null
+  const activeCodes = cachedCodes ?? { icd: item?.aiSuggestedIcd ?? [], cpt: item?.aiSuggestedCpt ?? [] }
+  const hasRealCodes = activeCodes.icd.length > 0 || activeCodes.cpt.length > 0
 
   const aiCptCodes = item?.aiSuggestedCpt.map(c => c.code) ?? []
   const superbillOnly = item?.superbillCpt?.filter(c => !aiCptCodes.includes(c)) ?? []
@@ -244,12 +383,14 @@ export default function CodingPage() {
     setManualCodes([])
     setForcedReviewCodes(new Set())
     setSelectedCodes({})
+    setShowQuickSoap(false)
+    setQuickSoap({ assessment: '', plan: '', specialty: '' })
   }
 
   const getApprovedCptCodes = (): string[] => {
     if (!item) return []
     return [
-      ...item.aiSuggestedCpt
+      ...activeCodes.cpt
         .filter(c => selectedCodes[`cpt-${c.code}`] && codeOverrides[`cpt-${c.code}`]?.action !== 'removed')
         .map(c => codeOverrides[`cpt-${c.code}`]?.newCode || c.code),
       ...manualCodes.filter(m => m.type === 'cpt' && selectedCodes[m.key]).map(m => m.code),
@@ -259,12 +400,12 @@ export default function CodingPage() {
   const getUnreviewedLowConfidenceCodes = () => {
     if (!item) return []
     return [
-      ...item.aiSuggestedIcd.filter(c =>
+      ...activeCodes.icd.filter(c =>
         (c.confidence ?? 100) < 70 &&
         !forcedReviewCodes.has(`icd-${c.code}`) &&
         selectedCodes[`icd-${c.code}`]
       ),
-      ...item.aiSuggestedCpt.filter(c =>
+      ...activeCodes.cpt.filter(c =>
         (c.confidence ?? 100) < 70 &&
         !forcedReviewCodes.has(`cpt-${c.code}`) &&
         selectedCodes[`cpt-${c.code}`]
@@ -287,11 +428,11 @@ export default function CodingPage() {
       return
     }
 
-    const approvedIcd = item.aiSuggestedIcd
+    const approvedIcd = activeCodes.icd
       .filter(c => selectedCodes[`icd-${c.code}`] && codeOverrides[`icd-${c.code}`]?.action !== 'removed')
       .map(c => ({ code: codeOverrides[`icd-${c.code}`]?.newCode || c.code, description: c.desc }))
     const manualIcd = manualCodes.filter(m => m.type === 'icd' && selectedCodes[m.key]).map(m => ({ code: m.code, description: m.description }))
-    const approvedCpt = item.aiSuggestedCpt
+    const approvedCpt = activeCodes.cpt
       .filter(c => selectedCodes[`cpt-${c.code}`] && codeOverrides[`cpt-${c.code}`]?.action !== 'removed')
       .map(c => ({ code: codeOverrides[`cpt-${c.code}`]?.newCode || c.code, units: 1, charge: 0 }))
     const manualCpt = manualCodes.filter(m => m.type === 'cpt' && selectedCodes[m.key]).map(m => ({ code: m.code, units: 1, charge: 0 }))
@@ -656,10 +797,101 @@ export default function CodingPage() {
 
                 {!aiUnavailable && (
                   <>
+                    {/* ── AI Generate panel (shown when no codes yet) ── */}
+                    {!hasRealCodes && !aiCoding && (
+                      <div className="mb-4 rounded-xl border border-purple-500/30 bg-purple-500/5 p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-purple-500 text-base">✦</span>
+                          <p className="text-[13px] font-semibold text-content-primary">AI Auto-Coding</p>
+                        </div>
+                        {!showQuickSoap ? (
+                          <>
+                            <p className="text-[12px] text-content-secondary mb-3">
+                              {item?.visitNote?.assessment
+                                ? 'Visit note available — generate ICD-10 + CPT codes instantly.'
+                                : 'No visit note attached. Enter assessment & plan to generate codes.'}
+                            </p>
+                            {item?.visitNote?.assessment ? (
+                              <button
+                                onClick={() => generateAICodes(item.visitNote.assessment, item.visitNote.plan, item.providerSpecialty || '')}
+                                className="w-full bg-purple-600 text-white rounded-lg py-2 text-[13px] font-medium flex items-center justify-center gap-2 hover:bg-purple-700 transition-colors">
+                                <span>✦</span> Generate Codes from Visit Note
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setShowQuickSoap(true)}
+                                className="w-full bg-purple-600/10 border border-purple-500/30 text-purple-600 dark:text-purple-400 rounded-lg py-2 text-[13px] font-medium flex items-center justify-center gap-2 hover:bg-purple-600/20 transition-colors">
+                                <span>✦</span> Enter Clinical Info to Generate Codes
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <div className="space-y-2">
+                            <div>
+                              <label className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Specialty</label>
+                              <input
+                                value={quickSoap.specialty}
+                                onChange={e => setQuickSoap(p => ({ ...p, specialty: e.target.value }))}
+                                placeholder="e.g. Cardiology, Internal Medicine, Family Practice"
+                                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[12px] text-content-primary placeholder:text-content-tertiary focus:border-purple-500/40 outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Assessment / Diagnoses</label>
+                              <textarea
+                                rows={3}
+                                value={quickSoap.assessment}
+                                onChange={e => setQuickSoap(p => ({ ...p, assessment: e.target.value }))}
+                                placeholder="e.g. Type 2 diabetes mellitus with peripheral neuropathy, HTN, hyperlipidemia"
+                                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[12px] text-content-primary placeholder:text-content-tertiary focus:border-purple-500/40 outline-none resize-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Plan / Procedures</label>
+                              <textarea
+                                rows={2}
+                                value={quickSoap.plan}
+                                onChange={e => setQuickSoap(p => ({ ...p, plan: e.target.value }))}
+                                placeholder="e.g. Follow-up in 3 months, A1C ordered, metformin dose adjustment, gabapentin added"
+                                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[12px] text-content-primary placeholder:text-content-tertiary focus:border-purple-500/40 outline-none resize-none"
+                              />
+                            </div>
+                            <div className="flex gap-2 pt-1">
+                              <button onClick={() => setShowQuickSoap(false)} className="flex-1 border border-separator rounded-lg py-2 text-[12px] text-content-secondary">Cancel</button>
+                              <button
+                                onClick={() => generateAICodes(quickSoap.assessment, quickSoap.plan, quickSoap.specialty)}
+                                disabled={!quickSoap.assessment.trim()}
+                                className="flex-1 bg-purple-600 text-white rounded-lg py-2 text-[12px] font-medium disabled:opacity-40 hover:bg-purple-700 transition-colors">
+                                ✦ Generate Codes
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ── AI generating spinner ── */}
+                    {aiCoding && (
+                      <div className="mb-4 rounded-xl border border-purple-500/20 bg-purple-500/5 p-5 flex flex-col items-center gap-3">
+                        <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                        <p className="text-[13px] text-purple-600 dark:text-purple-400 font-medium">Analyzing clinical documentation…</p>
+                        <p className="text-[11px] text-content-tertiary">Generating ICD-10 + CPT codes</p>
+                      </div>
+                    )}
+
+                    {/* Regenerate button when codes exist */}
+                    {hasRealCodes && !aiCoding && (
+                      <button
+                        onClick={() => { setAiCodeCache(p => { const n = {...p}; if (item) delete n[item.id]; return n }); setShowQuickSoap(!item?.visitNote?.assessment) }}
+                        className="text-[10px] text-purple-500 hover:text-purple-600 flex items-center gap-1 mb-2 ml-auto">
+                        ✦ Regenerate codes
+                      </button>
+                    )}
+
                     {/* ICD Codes */}
                     <h4 className="text-[11px] uppercase tracking-wider font-semibold text-content-tertiary mb-2">Diagnosis Codes (ICD-10)</h4>
                     <div className="space-y-2 mb-3">
-                      {item.aiSuggestedIcd.map(code => {
+                      {activeCodes.icd.map(code => {
                         const key = `icd-${code.code}`
                         const isRemoved = codeOverrides[key]?.action === 'removed'
                         const isEdited = codeOverrides[key]?.action === 'edited'
@@ -756,7 +988,7 @@ export default function CodingPage() {
                     {/* CPT Codes */}
                     <h4 className="text-[11px] uppercase tracking-wider font-semibold text-content-tertiary mb-2 mt-3">Procedure Codes (CPT)</h4>
                     <div className="space-y-2 mb-3">
-                      {item.aiSuggestedCpt.map(code => {
+                      {activeCodes.cpt.map(code => {
                         const key = `cpt-${code.code}`
                         const isRemoved = codeOverrides[key]?.action === 'removed'
                         const isEdited = codeOverrides[key]?.action === 'edited'
@@ -931,6 +1163,16 @@ export default function CodingPage() {
           <div className="bg-surface-secondary rounded-2xl p-5 w-full max-w-md mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-content-primary mb-3">Query Doctor — {item.provider}</h3>
             <p className="text-[12px] text-content-secondary mb-2">Re: {item.patientName} · DOS: {item.dos}</p>
+            <button
+              onClick={generateCDIQuery}
+              disabled={queryGenerating}
+              className="w-full mb-2 bg-purple-600/10 border border-purple-500/30 text-purple-600 dark:text-purple-400 rounded-btn py-1.5 text-[12px] font-medium flex items-center justify-center gap-2 hover:bg-purple-600/20 disabled:opacity-50 transition-colors">
+              {queryGenerating ? (
+                <><span className="animate-spin inline-block w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full"/><span>Generating...</span></>
+              ) : (
+                <><span>✦</span><span>Generate CDI Query with AI</span></>
+              )}
+            </button>
             <textarea
               rows={4}
               placeholder="Describe your question about this note's documentation..."

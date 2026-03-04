@@ -10,6 +10,7 @@ import { useToast } from '@/components/shared/Toast'
 import { useDenials } from '@/lib/hooks'
 import { ErrorBanner } from '@/components/shared/ApiStates'
 import { useRouter } from 'next/navigation'
+import { sanitizeForPrompt } from '@/lib/ai-utils'
 
 // ─── Dynamic appeal template ──────────────────────────────────────────────
 function buildAppealLetter(denial: DenialRow, level: 'L1' | 'L2' | 'L3'): string {
@@ -80,6 +81,65 @@ export default function DenialsPage() {
   const [selected, setSelected] = useState(denials[0]?.id || '')
   const [appealLevel, setAppealLevel] = useState<'L1' | 'L2' | 'L3'>('L1')
   const [appealTexts, setAppealTexts] = useState<Record<string, string>>({})
+  const [aiGenerating, setAiGenerating] = useState(false)
+
+  async function generateAppealWithAI(denial: DenialRow) {
+    const key = `${denial.id}-${appealLevel}`
+    setAiGenerating(true)
+    try {
+      const levelLabel = appealLevel === 'L1' ? 'First Level' : appealLevel === 'L2' ? 'Second Level' : 'External Review'
+      // Sanitize all user-controlled fields before prompt interpolation (prompt injection defence)
+      const safePatient = sanitizeForPrompt(denial.patientName, 100)
+      const safePayer   = sanitizeForPrompt(denial.payer, 100)
+      const safeClient  = sanitizeForPrompt(denial.clientName, 100)
+      const safeDenial  = sanitizeForPrompt(denial.denialReason, 300)
+      const safeCarc    = sanitizeForPrompt(denial.carc_description, 200)
+      const safeRarc    = sanitizeForPrompt(denial.rarc_description, 200)
+
+      const prompt = [
+        `You are an expert medical billing appeals specialist. Write a professional ${levelLabel} appeal letter.`,
+        `Claim ID: ${denial.id}`,
+        `Patient: ${safePatient}`,
+        `Payer: ${safePayer}`,
+        `Provider: ${safeClient}`,
+        `Date of Service: ${denial.dos}`,
+        `Denial Reason: ${safeDenial}`,
+        `CARC: ${safeCarc || 'N/A'}`,
+        `RARC: ${safeRarc || 'N/A'}`,
+        `Appeal Level: ${appealLevel}`,
+        '',
+        'Write a compelling professional appeal letter addressing the denial. Cite medical necessity. Format as a business letter. Output the letter text only.',
+      ].join('\n')
+
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'appeal',
+          level: appealLevel,
+          claimId: denial.id,
+          patient: safePatient,
+          payer: safePayer,
+          provider: safeClient,
+          dos: denial.dos,
+          denialReason: safeDenial,
+          carc: safeCarc,
+          rarc: safeRarc,
+        }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setAppealTexts(prev => ({ ...prev, [key]: data.text || buildAppealLetter(denial, appealLevel) }))
+      toast.success('AI appeal letter generated')
+    } catch (err) {
+      console.error('[appeal generator] AI failed:', err)
+      toast.error('AI generation failed — using template')
+      setAppealTexts(prev => ({ ...prev, [key]: buildAppealLetter(denial, appealLevel) }))
+    } finally {
+      setAiGenerating(false)
+    }
+  }
 
   useEffect(() => {
     if (!selected && denials.length > 0) setSelected(denials[0].id)
@@ -207,6 +267,17 @@ export default function DenialsPage() {
                   setAppealTexts(prev => ({ ...prev, [key]: e.target.value }))
                 }}
               />
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => generateAppealWithAI(selectedDenial)}
+                  disabled={aiGenerating}
+                  className="flex-1 bg-purple-600/10 border border-purple-500/30 text-purple-600 dark:text-purple-400 rounded-btn py-2 text-sm font-medium flex items-center justify-center gap-2 hover:bg-purple-600/20 disabled:opacity-50 transition-colors">
+                  {aiGenerating ? (
+                    <><span className="animate-spin inline-block w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full"/><span>Generating...</span></>
+                  ) : (
+                    <><span>✦</span><span>Generate with AI</span></>
+                  )}
+                </button>
               <button
                 onClick={() => {
                   const text = getAppealText(selectedDenial)
@@ -216,9 +287,10 @@ export default function DenialsPage() {
                   }
                   toast.success(`${appealLevel} appeal submitted for ${selectedDenial.id}`)
                 }}
-                className="mt-3 bg-brand text-white rounded-btn py-2 text-sm font-medium flex items-center justify-center gap-2">
+                className="flex-1 bg-brand text-white rounded-btn py-2 text-sm font-medium flex items-center justify-center gap-2">
                 <Send size={14}/>Submit Appeal ({appealLevel})
               </button>
+              </div>
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 text-content-secondary">

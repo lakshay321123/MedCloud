@@ -84,6 +84,12 @@ export default function ScanSubmitPage() {
 
   return (
     <ModuleShell title="Scan & Submit" subtitle="Upload documents to Cosentus for processing">
+      <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
+        <span className="text-lg shrink-0">📄</span>
+        <div>
+          <span className="font-semibold">Demo data</span> — Patient list and submission history connect to live API in Sprint 2.
+        </div>
+      </div>
       <div className="max-w-2xl mx-auto">
         {/* Step indicator */}
         <div className="flex items-center gap-2 mb-6">

@@ -65,6 +65,7 @@ export interface ApiClaim {
   dos_to?: string
   submitted_date?: string
   paid_date?: string
+  place_of_service?: string
   // enriched
   patient_name?: string
   provider_name?: string

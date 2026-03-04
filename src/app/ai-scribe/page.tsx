@@ -468,6 +468,12 @@ export default function AIScribePage() {
   const isProvider = currentUser.role === 'provider'
   return (
     <ModuleShell title="AI Scribe" subtitle={isProvider?'Dictate and review clinical notes':'Review AI-generated clinical notes'}>
+      <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
+        <span className="text-lg shrink-0">🔬</span>
+        <div>
+          <span className="font-semibold">Demo data</span> — Live Bedrock transcription + SOAP generation connects in Sprint 2. Recording, note generation, and sign-off will use real patient encounters.
+        </div>
+      </div>
       {isProvider ? <ProviderView/> : <CoderView/>}
     </ModuleShell>
   )

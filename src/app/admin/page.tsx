@@ -373,6 +373,12 @@ export default function AdminPage() {
 
   return (
     <ModuleShell title="Admin & Settings" subtitle="System administration">
+      <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
+        <span className="text-lg shrink-0">⚙️</span>
+        <div>
+          <span className="font-semibold">Demo data</span> — User management, org settings, and audit log connect to live Cognito + Aurora in Sprint 3.
+        </div>
+      </div>
       <div className="flex gap-1 mb-5 border-b border-separator">
         {tabs.map(t=>{const Icon=t.icon;return(
           <button key={t.id} onClick={()=>setTab(t.id)}

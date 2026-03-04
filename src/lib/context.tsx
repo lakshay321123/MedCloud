@@ -35,13 +35,35 @@ function getInitialUser(): User {
     const savedRole = localStorage.getItem('cosentus_role') as UserRole | null
     if (pt === 'facility') {
       const role = (savedRole && ['provider', 'client'].includes(savedRole)) ? savedRole : 'provider'
-      return { id: 'demo-001', name: 'Demo Provider', email: 'provider@clinic.com', role, organization_id: 'org-102' }
+      // SECURITY: org_id must be authoritative. Production path reads from the
+      // Cognito ID token (custom:org_id claim) decoded server-side and stored
+      // during login. localStorage is only a demo/dev fallback — never used
+      // for actual data access decisions (those are enforced via Aurora RLS + org_id).
+      // TODO Sprint 2: replace with decoded JWT claim from /api/auth/session
+      const orgIdFromToken = getCognitoOrgId()
+      const orgId = orgIdFromToken || localStorage.getItem('cosentus_org_id') || ''
+      return { id: 'demo-001', name: 'Demo Provider', email: 'provider@clinic.com', role, organization_id: orgId }
     }
     if (savedRole) {
       return { id: 'demo-001', name: 'Admin User', email: 'admin@cosentus.ai', role: savedRole, organization_id: 'org-001' }
     }
   }
   return { id: 'demo-001', name: 'Admin User', email: 'admin@cosentus.ai', role: 'admin', organization_id: 'org-001' }
+}
+
+/**
+ * Reads org_id from the Cognito ID token stored in the auth_session cookie.
+ * Returns null if no token is present (demo/unauthenticated state).
+ * In production, Cognito sets custom:org_id on the token during user pool login.
+ */
+function getCognitoOrgId(): string | null {
+  try {
+    // auth_session is an HttpOnly cookie set by /api/auth/callback — not readable here.
+    // The login flow stores the decoded org claim in a non-sensitive session key.
+    const claim = sessionStorage.getItem('cosentus_jwt_org_id')
+    if (claim && /^[a-zA-Z0-9_-]+$/.test(claim)) return claim
+  } catch { /* sessionStorage unavailable in SSR */ }
+  return null
 }
 
 const AppContext = createContext<AppState | null>(null)

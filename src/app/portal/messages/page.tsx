@@ -57,7 +57,12 @@ export default function MessagesPage() {
 
   return (
     <ModuleShell title="Messages" subtitle="Conversations about patients, claims, and submissions">
-      <div className="grid grid-cols-3 gap-4 h-[calc(100vh-220px)]">
+      <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
+        <span className="text-lg shrink-0">💬</span>
+        <div>
+          <span className="font-semibold">Demo data</span> — Live messaging connects in Sprint 2.
+        </div>
+      </div>      <div className="grid grid-cols-3 gap-4 h-[calc(100vh-220px)]">
         {/* Thread List */}
         <div className="card overflow-hidden flex flex-col">
           <div className="p-3 border-b border-separator">

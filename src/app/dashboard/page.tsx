@@ -142,8 +142,8 @@ function ExecutiveDashboard() {
 function CoderDashboard() {
   const { data: metrics } = useDashboardMetrics()
   const pendingCharts = metrics?.coding_queue_count ?? 0
-  const pastSLA = 0  // Sprint 2: add to dashboard metrics endpoint
-  const queryPending = 0  // Sprint 2: add to dashboard metrics endpoint
+  const pastSLA = metrics?.coding_queue_count !== undefined ? 0 : null  // Sprint 2
+  const queryPending = null  // Sprint 2
 
   return (
     <div className="space-y-6">
@@ -157,11 +157,11 @@ function CoderDashboard() {
         <KPICard label="Queries Pending" value={queryPending} icon={<MessageCircle size={20} />} />
         <KPICard label="Coded Today" value={4} icon={<CheckCircle2 size={20} />} trend="up" />
       </div>
-      {pastSLA > 0 && (
+      {(pastSLA ?? 0) > 0 && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
           <AlertTriangle size={16} className="text-red-500 mt-0.5 shrink-0" />
           <div>
-            <p className="text-[13px] font-semibold text-red-600">{pastSLA} chart{pastSLA > 1 ? 's' : ''} past 24-hour SLA</p>
+            <p className="text-[13px] font-semibold text-red-600">{(pastSLA ?? 0)} chart{(pastSLA ?? 0) > 1 ? 's' : ''} past 24-hour SLA</p>
             <p className="text-[12px] text-content-secondary mt-0.5">These charts were received more than 24 hours ago and must be coded immediately.</p>
           </div>
           <Link href="/coding" className="ml-auto text-[12px] text-brand font-medium shrink-0">Go to Queue →</Link>
@@ -169,7 +169,7 @@ function CoderDashboard() {
       )}
       <div className="grid grid-cols-2 gap-4">
         <QuickLinkCard title="Open Coding Queue" subtitle={`${pendingCharts} charts waiting`} href="/coding" icon={<BrainCircuit size={18} />} />
-        <QuickLinkCard title="Doctor Queries" subtitle={`${queryPending} awaiting response`} href="/portal/messages" icon={<MessageCircle size={18} />} />
+        <QuickLinkCard title="Doctor Queries" subtitle={`${queryPending ?? 0} awaiting response`} href="/portal/messages" icon={<MessageCircle size={18} />} />
       </div>
     </div>
   )
@@ -180,7 +180,7 @@ function BillerDashboard() {
   const { data: metrics } = useDashboardMetrics()
   const scrubFailed = metrics?.claims_by_status?.find(s => s.status === 'scrub_failed') ? Number(metrics.claims_by_status.find(s => s.status === 'scrub_failed')!.count) : 0
   const pendingSubmit = metrics?.claims_by_status?.find(s => s.status === 'ready') ? Number(metrics.claims_by_status.find(s => s.status === 'ready')!.count) : 0
-  const rejectedYesterday = 0  // Sprint 2
+  const rejectedYesterday = null  // Sprint 2
   const chargeLagCount = 3
 
   return (
@@ -296,8 +296,8 @@ function PostingDashboard() {
 function ProviderDashboard() {
   const { data: metrics } = useDashboardMetrics()
   const todayAppointments = metrics?.upcoming_appointments ?? []
-  const pendingSignOffs = 0  // Sprint 2: add to dashboard metrics endpoint
-  const unsignedNotes = 0  // Sprint 2: add to dashboard metrics endpoint
+  const pendingSignOffs = null  // Sprint 2
+  const unsignedNotes = null  // Sprint 2
 
   return (
     <div className="space-y-6">
@@ -310,9 +310,9 @@ function ProviderDashboard() {
         <KPICard label="Pending Sign-Offs" value={pendingSignOffs} icon={<FileText size={20} />} />
         <KPICard label="Unsigned > 24h" value={unsignedNotes} icon={<Clock size={20} />} />
       </div>
-      {unsignedNotes > 0 && (
+      {(unsignedNotes ?? 0) > 0 && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center justify-between">
-          <p className="text-[13px] font-semibold text-amber-600">{unsignedNotes} note{unsignedNotes > 1 ? 's' : ''} unsigned for more than 24 hours</p>
+          <p className="text-[13px] font-semibold text-amber-600">{(unsignedNotes ?? 0)} note{(unsignedNotes ?? 0) > 1 ? 's' : ''} unsigned for more than 24 hours</p>
           <Link href="/ai-scribe" className="text-[12px] text-brand font-medium">Sign Now →</Link>
         </div>
       )}
@@ -383,7 +383,7 @@ function ClientDashboard() {
 // ── Supervisor Exception Dashboard ────────────────────────────────────────────
 function SupervisorDashboard() {
   const { data: metrics } = useDashboardMetrics()
-  const chartsPastSLA = 0  // Sprint 2: add to dashboard metrics endpoint
+  const chartsPastSLA = null  // Sprint 2
   const scrubFailed = metrics?.claims_by_status?.find(s => s.status === 'scrub_failed') ? Number(metrics.claims_by_status.find(s => s.status === 'scrub_failed')!.count) : 0
   const scrubErrors = scrubFailed  // reuse from above
   const unassignedDenials = Number(metrics?.open_denials) || 0
@@ -395,7 +395,7 @@ function SupervisorDashboard() {
     { count: unassignedDenials, label: 'Denials received — unassigned', href: '/denials', color: 'amber' },
     { count: unpostedERAs, label: 'ERAs unposted > 36h', href: '/payment-posting', color: 'amber' },
     { count: 2, label: 'Appeal response windows closing < 5 days', href: '/denials', color: 'amber' },
-  ].filter(e => e.count > 0)
+  ].filter(e => (e.count ?? 0) > 0)
 
   return (
     <div className="space-y-6">
