@@ -1,7 +1,8 @@
 'use client'
 
 export const CINDY_COLUMNS = ['ID','phone number','practicename','patientId','patientdob','patientfirstname','patientlastname','patientbalance','1ststatementdate','laststatementdate','lastoutreachdate','lastpaymentdate','balanceage','aginggroup','statementcount','smscount','emailcount','callcount','address','city','state','zip','email','sms','servicedate','physicianname','primaryinsurance','source_file'] as const
-export const CHRIS_COLUMNS = ['ID','phone number','Practice_Name','NPI','Tax_ID','Billing_Address','Call_Back#','Acct#','Provider','Service_Location','Patient_Name','Patient_Birth_Date','Primary_Carrier_Name','Primary_Carrier_Policy#','Service_Date','Total_Charge','Our_Fax#'] as const
+// Exact column names — case must match {{variable}} tokens in the Chris LLM prompt
+export const CHRIS_COLUMNS = ['ID','phone number','Practice_Name','NPI','Tax_ID','Billing_Address','Call_Back#','Acct#','Provider','Service_Location','Patient_Name','Patient_Birth_Date','Primary_Carrier_Name','Primary_Carrier_Policy#','Service_Date','Total_Charge','Status'] as const
 export type AgentKey = 'cindy' | 'chris'
 
 export interface ParsedRow {
@@ -19,8 +20,11 @@ export interface ExcelParseResult {
   practiceNames: string[]
 }
 
+// Preserve original case — Retell variable substitution is case-sensitive.
+// {{NPI}} in LLM prompt needs variable key "NPI", not "npi".
+// Only strip chars that are invalid in Retell variable names (# spaces etc).
 function toVarKey(col: string): string {
-  return col.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/__+/g, '_').replace(/^_|_$/g, '')
+  return col.replace(/[^a-zA-Z0-9_]/g, '_').replace(/__+/g, '_').replace(/^_|_$/g, '')
 }
 
 function detectAgent(columns: string[]): AgentKey | null {
