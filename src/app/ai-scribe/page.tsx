@@ -3,7 +3,7 @@ import { useT } from '@/lib/i18n'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context'
-import { useSOAPNotes, useCreateSOAPNote, useCreateCoding } from '@/lib/hooks'
+import { useSOAPNotes, useCreateSOAPNote, useCreateCoding, useAppointments } from '@/lib/hooks'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -90,6 +90,7 @@ function ProviderView() {
   const { setIsScribeRecording, country, orgId, currentUser } = useApp()
   const [uiState, setUiState] = useState<UIState>('queue')
   const { data: apiSOAPResult } = useSOAPNotes({ limit: 50 })
+  const { data: apptResult } = useAppointments({ limit: 100 })
   const createSOAP = useCreateSOAPNote()
   const createCoding = useCreateCoding()
 
@@ -108,6 +109,27 @@ function ProviderView() {
   const pending = visits.filter(v => v.status === 'pending_signoff')
   const completed = visits.filter(v => v.status === 'signed')
 
+  // Pull today's appointments for the Select Patient screen
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const apiAppts = (apptResult?.data || [])
+  const todayAppts: any[] = apiAppts.length
+    ? apiAppts.map((a: any) => ({
+        id: a.id,
+        patientId: a.patient_id || '',
+        patientName: a.patient_name || a.chief_complaint || 'Patient',
+        time: a.appointment_date ? new Date(a.appointment_date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '—',
+        type: a.visit_type || 'Office Visit',
+        provider: a.provider_name || '',
+        status: a.status || 'scheduled',
+      }))
+    : [
+        { id: 'demo-1', patientId: 'p-1', patientName: 'Robert Johnson', time: '9:00 AM', type: 'Follow-up', provider: 'Dr. Martinez', status: 'scheduled' },
+        { id: 'demo-2', patientId: 'p-2', patientName: 'Maria Garcia', time: '10:30 AM', type: 'New Patient', provider: 'Dr. Martinez', status: 'scheduled' },
+        { id: 'demo-3', patientId: 'p-3', patientName: 'James Wilson', time: '2:00 PM', type: 'Annual Exam', provider: 'Dr. Martinez', status: 'scheduled' },
+        { id: 'demo-4', patientId: 'p-4', patientName: 'Sara Johnson', time: '3:15 PM', type: 'Procedure', provider: 'Dr. Martinez', status: 'in_room' },
+        { id: 'demo-5', patientId: 'p-5', patientName: 'David Lee', time: '4:30 PM', type: 'Follow-up', provider: 'Dr. Martinez', status: 'scheduled' },
+      ]
+
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
   const [selectedVisit, setSelectedVisit] = useState<DemoVisit | null>(null)
   // Derive patient info from the selected visit (API) or fall back to demoPatients
@@ -118,7 +140,6 @@ function ProviderView() {
     : null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const selectedAppt: Record<string, any> | null = null
-  const todayAppts: any[] = apiVisits.map(v => ({ id: v.id, patientId: v.patientId, patientName: v.patientName, time: v.dos, type: v.encounterType, provider: v.provider, status: v.status }))
 
   // Recording state
   const [transcript, setTranscript] = useState('')
@@ -342,28 +363,31 @@ function ProviderView() {
       <div className="flex items-center gap-3 mb-5">
         <button onClick={() => setUiState('queue')} className="text-content-secondary hover:text-content-primary flex items-center gap-1 text-sm"><ChevronLeft size={16} /> Back</button>
         <h2 className="text-base font-semibold">Select Patient</h2>
+        <span className="text-xs text-content-tertiary ml-auto">{todayAppts.length} patient{todayAppts.length !== 1 ? 's' : ''} scheduled</span>
       </div>
       <div className="space-y-2">
-        {todayAppts.map(a => {
-          const pat = null
-          return (
-            <button key={a.id} onClick={() => { setSelectedPatientId(a.patientId); setUiState('review_patient') }}
-              className="w-full text-left card p-4 hover:border-brand/30 transition-all flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center text-brand font-bold text-sm shrink-0">
-                {a.patientName.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold">{a.patientName}</div>
-                <div className="text-xs text-content-secondary">{(a as any).time} · {(a as any).type} · {(a as any).provider}</div>
-                {pat && <div className="text-[10px] text-content-tertiary">{(pat as any).dob ? formatDOB((pat as any).dob) : ''} · {(pat as any).insurance?.payer || 'No insurance'}</div>}
-              </div>
-              <div className="flex items-center gap-2">
-                <StatusBadge status={a.status} small />
-                <ChevronRight size={14} className="text-content-tertiary" />
-              </div>
-            </button>
-          )
-        })}
+        {todayAppts.map(a => (
+          <button key={a.id} onClick={() => { setSelectedPatientId(a.patientId); setUiState('review_patient') }}
+            className="w-full text-left card p-4 hover:border-brand/30 transition-all flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center text-brand font-bold text-sm shrink-0">
+              {a.patientName.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold">{a.patientName}</div>
+              <div className="text-xs text-content-secondary">{a.time} · {a.type}{a.provider ? ` · ${a.provider}` : ''}</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <StatusBadge status={a.status} small />
+              <ChevronRight size={14} className="text-content-tertiary" />
+            </div>
+          </button>
+        ))}
+        {todayAppts.length === 0 && (
+          <div className="card p-8 text-center text-content-tertiary">
+            <p className="text-sm">No appointments scheduled for today.</p>
+            <p className="text-xs mt-1">You can still start a new note — go back and tap "New Note".</p>
+          </div>
+        )}
       </div>
     </div>
   )
