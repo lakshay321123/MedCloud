@@ -159,6 +159,7 @@ export interface ApiAppointment {
   appointment_time?: string
   status?: AppointmentStatus
   appointment_type?: string
+  visit_type?: string
   notes?: string
   // enriched
   patient_name?: string

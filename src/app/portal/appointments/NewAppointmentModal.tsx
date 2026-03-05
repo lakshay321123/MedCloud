@@ -15,7 +15,7 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
   const [search, setSearch] = useState('')
   const [apptDate, setApptDate] = useState(new Date().toISOString().split('T')[0])
   const [apptTime, setApptTime] = useState('09:00')
-  const [visitType, setVisitType] = useState('Follow-up')
+  const [visitType, setVisitType] = useState('follow_up')
   const [notes, setNotes] = useState('')
   const [newPatient, setNewPatient] = useState({
     firstName: '', lastName: '', phone: '', dob: '',
@@ -56,7 +56,7 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
         } : {}),
         appointment_date: apptDate,
         appointment_time: apptTime,
-        appointment_type: visitType,
+        visit_type: visitType,
         provider_name: currentUser.role === 'provider' ? currentUser.name : undefined,
         status: 'scheduled' as const,
         notes: notes || undefined,
@@ -237,11 +237,12 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
           <div>
             <label className="text-xs text-content-secondary block mb-1">Visit Type</label>
             <select value={visitType} onChange={e => setVisitType(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors">
-              <option>Follow-up</option>
-              <option>Initial Visit</option>
-              <option>Consultation</option>
-              <option>Procedure</option>
-              <option>Telehealth</option>
+              <option value="follow_up">Follow-up</option>
+              <option value="new_patient">Initial Visit</option>
+              <option value="consultation">Consultation</option>
+              <option value="procedure">Procedure</option>
+              <option value="telehealth">Telehealth</option>
+              <option value="walk_in">Walk-in</option>
             </select>
           </div>
 
