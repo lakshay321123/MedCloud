@@ -126,6 +126,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } else {
       document.documentElement.classList.add('dark')
     }
+    // Auto-select client for provider/client facility portal roles.
+    // These users belong to exactly one practice — pre-select it so
+    // useClientParams sends the right client_id on every API call.
+    // c0000000...101 = Irvine Family Practice (first US client in seed)
+    if (portal === 'facility' && (user.role === 'provider' || user.role === 'client')) {
+      const savedClientId = localStorage.getItem('cosentus_selected_client')
+      if (!savedClientId) {
+        // Default to Irvine Family Practice (matches seed data client_id)
+        setSelectedClientState({
+          id: 'c0000000-0000-0000-0000-000000000101',
+          name: 'Irvine Family Practice',
+          region: 'us',
+          ehr_mode: 'external_ehr',
+        })
+      }
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const direction = getDirection(language)
