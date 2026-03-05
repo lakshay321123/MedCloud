@@ -46,6 +46,8 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
     }
 
     const result = await createAppointment.mutate({
+        org_id: currentUser.organization_id,
+        client_id: selectedClient?.id ?? currentUser.organization_id,
         patient_id: mode === 'existing' ? selectedPatient : undefined,
         ...(mode === 'new' ? {
           patient_name: `${newPatient.firstName} ${newPatient.lastName}`,

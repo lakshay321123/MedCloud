@@ -319,6 +319,8 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
                     return
                   }
                   const result = await createPatient.mutate({
+                    org_id: currentUser.organization_id,
+                    client_id: currentUser.organization_id,
                     first_name: form.firstName,
                     last_name: form.lastName,
                     dob: form.dob || undefined,
