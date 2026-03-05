@@ -9,7 +9,7 @@ import { UAE_ORG_IDS, US_ORG_IDS, filterByRegion, filterPayersByCountry } from '
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
-import { useERAFiles, useAutoPostPayments, useParse835, useReconcilePayments, useBankDeposits, useReconcileBankDeposit, usePayments, useUpdatePayment, useCreateBankDeposit } from '@/lib/hooks'
+import { useERAFiles, useAutoPostPayments, useParse835, useReconcilePayments, useBankDeposits, useReconcileBankDeposit, usePayments, useUpdatePayment, useCreateBankDeposit, useCreateERAFile } from '@/lib/hooks'
 
 interface LineItem {
   id: string
@@ -34,8 +34,10 @@ export default function PaymentPostingPage() {
   const { selectedClient, country } = useApp()
   const { t } = useT()
   const { toast } = useToast()
-  const { data: apiERAResult } = useERAFiles({ limit: 50 })
+  const { data: apiERAResult, refetch: refetchERAs } = useERAFiles({ limit: 50 })
   const { mutate: autoPost } = useAutoPostPayments()
+  const { mutate: createERAFile } = useCreateERAFile()
+  const [uploading, setUploading] = useState(false)
   const [posting, setPosting] = useState(false)
   // Map API ERA files to display shape, then filter to current region
   const allEras = apiERAResult?.data?.map(e => ({
@@ -227,14 +229,32 @@ export default function PaymentPostingPage() {
                 </div>
                 <div className="flex gap-2 px-5 pb-5">
                   <button
-                    disabled={!uploadedFile}
-                    onClick={() => {
-                      toast.success(`ERA file "${uploadedFile?.name}" uploaded and queued for processing`)
-                      setUploadedFile(null)
-                      setShowUploadModal(false)
+                    disabled={!uploadedFile || uploading}
+                    onClick={async () => {
+                      if (!uploadedFile) return
+                      setUploading(true)
+                      try {
+                        const text = await uploadedFile.text()
+                        const result = await createERAFile({
+                          file_name: uploadedFile.name,
+                          file_type: uploadedFile.name.endsWith('.835') ? '835' : uploadedFile.name.endsWith('.txt') ? 'txt' : 'edi',
+                          raw_content: text.slice(0, 10000), // first 10k chars for preview
+                          status: 'new',
+                        })
+                        if (result) {
+                          toast.success(`ERA file "${uploadedFile.name}" uploaded — queued for processing`)
+                          refetchERAs()
+                        }
+                      } catch {
+                        toast.error('Upload failed — please try again')
+                      } finally {
+                        setUploading(false)
+                        setUploadedFile(null)
+                        setShowUploadModal(false)
+                      }
                     }}
-                    className={`flex-1 rounded-btn py-2.5 text-[13px] font-medium transition-colors ${uploadedFile ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-surface-elevated text-content-tertiary cursor-not-allowed border border-separator'}`}>
-                    Upload & Process
+                    className={`flex-1 rounded-btn py-2.5 text-[13px] font-medium transition-colors ${uploadedFile && !uploading ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-surface-elevated text-content-tertiary cursor-not-allowed border border-separator'}`}>
+                    {uploading ? 'Uploading…' : 'Upload & Process'}
                   </button>
                   <button onClick={() => { setUploadedFile(null); setShowUploadModal(false) }}
                     className="px-4 py-2.5 bg-surface-elevated border border-separator rounded-btn text-[13px] text-content-secondary">

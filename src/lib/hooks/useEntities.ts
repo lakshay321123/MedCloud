@@ -441,6 +441,21 @@ export function useERAFiles(extra?: ApiListParams) {
   return useApi<ApiListResponse<ApiERAFile>>('/era-files', params)
 }
 
+export function useCreateERAFile() {
+  return useMutation<ApiERAFile, {
+    file_name: string
+    payer_name?: string
+    client_id?: string
+    total_amount?: number
+    claim_count?: number
+    status?: string
+    raw_content?: string
+    file_type?: string
+    s3_key?: string
+    s3_bucket?: string
+  }>('post', '/era-files')
+}
+
 // ── Coding Queue ──────────────────────────────────────────────────────────────
 
 export function useCodingQueue(extra?: ApiListParams) {

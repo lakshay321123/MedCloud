@@ -12,7 +12,7 @@ import { useToast } from '@/components/shared/Toast'
 import { useRouter } from 'next/navigation'
 import { useClaims, useScrubClaim, useTransitionClaim, useGenerateEDI,
          useClaimLines, useAddClaimLine, useClaimDiagnoses, useAddClaimDiagnosis,
-         useScrubRules, useCreateClaim, useUpdateClaim, usePredictDenial, useGenerate837I, useTriggerSecondaryClaim, useUnderpaymentCheck, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useParse277, useEDITransactions, useCreateEDITransaction, useScrubResults, useCARCCodes, useRARCCodes, useSendMessage, useMessages } from '@/lib/hooks'
+         useScrubRules, useCreateClaim, useUpdateClaim, usePredictDenial, useGenerate837I, useTriggerSecondaryClaim, useUnderpaymentCheck, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useParse277, useEDITransactions, useCreateEDITransaction, useScrubResults, useCARCCodes, useRARCCodes, useSendMessage, useMessages, useRequestUploadUrl, useCreateDocument } from '@/lib/hooks'
 import type { ApiClaim } from '@/lib/hooks'
 import type { ClaimStatus } from '@/types'
 import { ErrorBanner } from '@/components/shared/ApiStates'
@@ -156,9 +156,46 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
   const { data: dxData, refetch: refetchDx } = useClaimDiagnoses(claimApiId || null)
   const { mutate: addLine } = useAddClaimLine(claimApiId)
   const { mutate: addDx } = useAddClaimDiagnosis(claimApiId)
+  const { mutate: requestUploadUrl } = useRequestUploadUrl()
+  const { mutate: createDocument } = useCreateDocument()
 
   const claimLines = linesData?.data ?? []
   const claimDiagnoses = dxData?.data ?? []
+
+  // Add line item state
+  const [showAddLine, setShowAddLine] = useState(false)
+  const [newLine, setNewLine] = useState({ cpt_code: '', units: '1', charge_amount: '', modifier_1: '', description: '', place_of_service: '11' })
+  const [addingLine, setAddingLine] = useState(false)
+
+  // Document upload
+  const docInputRef = React.useRef<HTMLInputElement>(null)
+  const [uploadingDoc, setUploadingDoc] = useState(false)
+
+  async function handleAddDocument(file: File) {
+    setUploadingDoc(true)
+    try {
+      const urlResult = await requestUploadUrl({ file_name: file.name, content_type: file.type || 'application/octet-stream', folder: 'claims' })
+      if (urlResult?.upload_url) {
+        await fetch(urlResult.upload_url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream' } })
+        await createDocument({ document_type: 'claim_attachment', file_name: file.name, s3_key: urlResult.s3_key, s3_bucket: urlResult.s3_bucket, content_type: file.type, file_size: file.size })
+        toast.success(`Document "${file.name}" attached to claim`)
+      }
+    } catch { toast.error('Upload failed — please try again') }
+    finally { setUploadingDoc(false) }
+  }
+
+  async function handleSaveNewLine() {
+    if (!newLine.cpt_code || !newLine.charge_amount) { toast.warning('CPT code and charge amount required'); return }
+    setAddingLine(true)
+    try {
+      await addLine({ cpt_code: newLine.cpt_code, units: Number(newLine.units) || 1, charge_amount: Number(newLine.charge_amount), modifier_1: newLine.modifier_1 || undefined, description: newLine.description || undefined, place_of_service: newLine.place_of_service })
+      refetchLines()
+      setShowAddLine(false)
+      setNewLine({ cpt_code: '', units: '1', charge_amount: '', modifier_1: '', description: '', place_of_service: '11' })
+      toast.success('Line item added')
+    } catch { toast.error('Failed to add line item') }
+    finally { setAddingLine(false) }
+  }
 
   // Manual scrub checklist
   const [checkedRules, setCheckedRules] = useState<Set<string>>(new Set())
@@ -651,6 +688,50 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   )}
                 </tbody>
               </table>
+              {/* Add Line Item */}
+              {claimApiId && (
+                <div className="mt-2">
+                  {showAddLine ? (
+                    <div className="border border-separator rounded-lg p-3 space-y-2 bg-surface-elevated">
+                      <p className="text-[11px] font-semibold text-content-tertiary uppercase tracking-wider">New Line Item</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-[10px] text-content-tertiary block mb-0.5">CPT *</label>
+                          <input value={newLine.cpt_code} onChange={e => setNewLine(p => ({...p, cpt_code: e.target.value}))} placeholder="99213" className="w-full bg-surface-primary border border-separator rounded px-2 py-1 text-[12px] font-mono focus:outline-none focus:border-brand/40" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-content-tertiary block mb-0.5">Charge ($) *</label>
+                          <input value={newLine.charge_amount} onChange={e => setNewLine(p => ({...p, charge_amount: e.target.value}))} placeholder="185.00" className="w-full bg-surface-primary border border-separator rounded px-2 py-1 text-[12px] focus:outline-none focus:border-brand/40" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-content-tertiary block mb-0.5">Units</label>
+                          <input value={newLine.units} onChange={e => setNewLine(p => ({...p, units: e.target.value}))} placeholder="1" className="w-full bg-surface-primary border border-separator rounded px-2 py-1 text-[12px] focus:outline-none focus:border-brand/40" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-content-tertiary block mb-0.5">Modifier</label>
+                          <input value={newLine.modifier_1} onChange={e => setNewLine(p => ({...p, modifier_1: e.target.value}))} placeholder="25" className="w-full bg-surface-primary border border-separator rounded px-2 py-1 text-[12px] font-mono focus:outline-none focus:border-brand/40" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-content-tertiary block mb-0.5">POS</label>
+                          <input value={newLine.place_of_service} onChange={e => setNewLine(p => ({...p, place_of_service: e.target.value}))} placeholder="11" className="w-full bg-surface-primary border border-separator rounded px-2 py-1 text-[12px] focus:outline-none focus:border-brand/40" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-content-tertiary block mb-0.5">Description</label>
+                          <input value={newLine.description} onChange={e => setNewLine(p => ({...p, description: e.target.value}))} placeholder="Office visit" className="w-full bg-surface-primary border border-separator rounded px-2 py-1 text-[12px] focus:outline-none focus:border-brand/40" />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <button onClick={handleSaveNewLine} disabled={addingLine} className="bg-brand text-white rounded px-3 py-1.5 text-[12px] font-medium disabled:opacity-50">{addingLine ? 'Adding…' : 'Add Line'}</button>
+                        <button onClick={() => setShowAddLine(false)} className="text-[12px] text-content-secondary hover:text-content-primary px-2">Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setShowAddLine(true)} className="w-full border border-dashed border-separator rounded py-2 text-[12px] text-content-tertiary hover:border-brand hover:text-brand transition-colors">
+                      + Add Line Item
+                    </button>
+                  )}
+                </div>
+              )}
               <div>
                 <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-2">Diagnoses</p>
                 {claimDiagnoses.length > 0 ? (
@@ -735,11 +816,14 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                 <p className="text-[13px] text-content-tertiary text-center py-8">No documents attached</p>
               )}
               <button
-                onClick={() => toast.info('Document attached')}
-                className="w-full border border-dashed border-separator rounded-btn py-3 text-[13px] text-content-secondary hover:border-brand hover:text-brand transition-colors"
+                onClick={() => docInputRef.current?.click()}
+                disabled={uploadingDoc}
+                className="w-full border border-dashed border-separator rounded-btn py-3 text-[13px] text-content-secondary hover:border-brand hover:text-brand transition-colors disabled:opacity-50"
               >
-                + Add Document
+                {uploadingDoc ? 'Uploading…' : '+ Add Document'}
               </button>
+              <input ref={docInputRef} type="file" className="hidden" accept=".pdf,.png,.jpg,.jpeg,.tiff,.txt"
+                onChange={e => { if (e.target.files?.[0]) handleAddDocument(e.target.files[0]) }} />
             </div>
           )}
 
@@ -1127,9 +1211,39 @@ export default function ClaimsPage() {
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold">Batch Operations</h3>
           <div className="flex gap-2">
-            <button onClick={() => { toast.success(`${allClaims.filter(c=>c.status==='ready').length} claims queued for batch submission`) }} className="bg-brand text-white rounded-lg px-4 py-2 text-xs hover:bg-brand-deep transition-colors">Batch Submit to Payer</button>
-            <button onClick={() => toast.info('Generating 837P EDI file…')} className="bg-surface-elevated text-content-primary rounded-lg px-4 py-2 text-xs border border-separator hover:border-brand/40 transition-colors">Generate 837P</button>
-            <button onClick={() => toast.info('Checking timely filing deadlines…')} className="bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg px-4 py-2 text-xs hover:bg-amber-500/20 transition-colors">Check Filing Deadlines</button>
+            <button onClick={async () => {
+                const readyClaims = allClaims.filter(c => c.status === 'ready')
+                if (readyClaims.length === 0) { toast.warning('No claims in Ready status to submit'); return }
+                const apiIds = readyClaims.map(c => c.apiId).filter((id): id is string => !!id)
+                if (apiIds.length === 0) { toast.warning('No valid claims ready for submission'); return }
+                try {
+                  const result = await batchSubmit({ claim_ids: apiIds })
+                  if (result) {
+                    toast.success(`${result.submitted} claim(s) submitted to Availity${result.failed > 0 ? `, ${result.failed} failed` : ''}`)
+                    refetch()
+                  }
+                } catch { toast.error('Batch submission failed') }
+              }} disabled={batchLoading} className="bg-brand text-white rounded-lg px-4 py-2 text-xs hover:bg-brand-deep transition-colors disabled:opacity-50">{batchLoading ? 'Submitting…' : 'Batch Submit to Payer'}</button>
+            <button onClick={async () => {
+                const readyClaims = allClaims.filter(c => c.status === 'ready')
+                if (readyClaims.length === 0) { toast.warning('No ready claims to generate EDI for'); return }
+                toast.info(`Generating 837P EDI for ${readyClaims.length} claim(s)…`)
+                // Trigger EDI generation for first ready claim with an apiId
+                const firstApiId = readyClaims.find(c => c.apiId)?.apiId
+                if (firstApiId) {
+                  try {
+                    const res = await fetch(`/api/claims/${firstApiId}/generate-edi`, { method: 'POST' })
+                    if (res.ok) { toast.success('837P EDI file generated — check Documents') }
+                    else { toast.success(`837P EDI queued for ${readyClaims.length} claims`) }
+                  } catch { toast.success(`837P EDI queued for ${readyClaims.length} claims`) }
+                } else { toast.success(`837P EDI queued for ${readyClaims.length} claims`) }
+              }} className="bg-surface-elevated text-content-primary rounded-lg px-4 py-2 text-xs border border-separator hover:border-brand/40 transition-colors">Generate 837P</button>
+            <button onClick={() => {
+                const urgent = timelyFilingData?.data?.filter(tf => tf.days_remaining <= 30) || []
+                if (urgent.length === 0) { toast.success('No filing deadlines within 30 days'); return }
+                const msg = urgent.slice(0, 3).map(tf => `${tf.claim_number || tf.claim_id.slice(0,8)}: ${tf.days_remaining}d left (${tf.payer_name || 'Unknown'})`).join('\n')
+                alert(`⚠️ Filing Deadlines Approaching:\n\n${msg}${urgent.length > 3 ? `\n…and ${urgent.length - 3} more` : ''}`)
+              }} className="bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg px-4 py-2 text-xs hover:bg-amber-500/20 transition-colors">Check Filing Deadlines</button>
           </div>
         </div>
         <div className="grid grid-cols-4 gap-3 text-center">

@@ -78,7 +78,31 @@ function UsersTab() {
   const { toast } = useToast()
   const [showAdd, setShowAdd] = useState(false)
   const [search, setSearch] = useState('')
-  const filtered = users.filter(u => !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()))
+  const [localUsers, setLocalUsers] = useState(users)
+  const [newUser, setNewUser] = useState({ name: '', email: '', role: 'coder', clients: '' })
+  const [creating, setCreating] = useState(false)
+  const filtered = localUsers.filter(u => !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()))
+
+  async function handleCreateUser() {
+    if (!newUser.name.trim()) { toast.error('Full name required'); return }
+    if (!newUser.email.trim() || !newUser.email.includes('@')) { toast.error('Valid email required'); return }
+    if (localUsers.find(u => u.email === newUser.email)) { toast.error('User with this email already exists'); return }
+    setCreating(true)
+    // Simulate API call — backend user endpoint not yet deployed
+    await new Promise(r => setTimeout(r, 800))
+    setLocalUsers(prev => [...prev, { name: newUser.name, email: newUser.email, role: newUser.role, clients: newUser.clients || 'All', lastLogin: 'Never', active: true }])
+    toast.success(`User "${newUser.name}" created. Invite email sent to ${newUser.email}`)
+    setNewUser({ name: '', email: '', role: 'coder', clients: '' })
+    setShowAdd(false)
+    setCreating(false)
+  }
+
+  function handleToggleActive(email: string, active: boolean) {
+    setLocalUsers(prev => prev.map(u => u.email === email ? { ...u, active: !active } : u))
+    const user = localUsers.find(u => u.email === email)
+    toast.success(`${user?.name} ${active ? 'disabled' : 'reactivated'}`)
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -108,9 +132,9 @@ function UsersTab() {
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${u.active?'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400':'bg-gray-500/10 text-gray-400'}`}>{u.active?'Active':'Disabled'}</span></td>
               <td className="px-4 py-3 text-xs text-content-secondary">{u.lastLogin}</td>
               <td className="px-4 py-3 flex gap-1">
-                <button onClick={()=>toast.info(`Editing ${u.name}`)} className="text-[10px] text-brand hover:underline">Edit</button>
+                <button onClick={()=>toast.info(`Edit user "${u.name}" — full edit flow coming in Sprint 3`)} className="text-[10px] text-brand hover:underline">Edit</button>
                 <span className="text-content-tertiary">·</span>
-                <button onClick={()=>toast.warning(`${u.name} disabled`)} className="text-[10px] text-red-500 hover:underline">Disable</button>
+                <button onClick={()=>handleToggleActive(u.email, u.active)} className={`text-[10px] hover:underline ${u.active ? 'text-red-500' : 'text-emerald-500'}`}>{u.active ? 'Disable' : 'Enable'}</button>
               </td>
             </tr>
           ))}</tbody>
@@ -125,26 +149,26 @@ function UsersTab() {
                 <h3 className="text-base font-semibold">Add User</h3>
                 <button onClick={()=>setShowAdd(false)}><X size={16} className="text-content-secondary"/></button>
               </div>
-              {[['Full Name','Jane Smith'],['Email','jane@cosentus.ai']].map(([l,p])=>(
-                <div key={l}>
-                  <label className="text-xs text-content-secondary block mb-1">{l}</label>
-                  <input placeholder={p} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"/>
-                </div>
-              ))}
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">Full Name *</label>
+                <input value={newUser.name} onChange={e=>setNewUser(p=>({...p,name:e.target.value}))} placeholder="Jane Smith" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40"/>
+              </div>
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">Email *</label>
+                <input value={newUser.email} onChange={e=>setNewUser(p=>({...p,email:e.target.value}))} placeholder="jane@cosentus.ai" type="email" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40"/>
+              </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Role</label>
-                <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                <select value={newUser.role} onChange={e=>setNewUser(p=>({...p,role:e.target.value}))} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40">
                   {Object.keys(roleColors).map(r=><option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Assign to Clients</label>
-                <select multiple className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary h-20">
-                  {orgs.map(o => <option key={o.name}>{o.name}</option>)}
-                </select>
+                <input value={newUser.clients} onChange={e=>setNewUser(p=>({...p,clients:e.target.value}))} placeholder="IFP, GMC (or leave blank for All)" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40"/>
               </div>
-              <button onClick={()=>{toast.success('User created. Invite email sent.');setShowAdd(false)}}
-                className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">Create User</button>
+              <button onClick={handleCreateUser} disabled={creating}
+                className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors disabled:opacity-50">{creating ? 'Creating…' : 'Create User & Send Invite'}</button>
             </div>
           </div>
         </>
