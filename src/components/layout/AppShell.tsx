@@ -20,6 +20,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       await fetch('/api/auth/logout', { method: 'POST' })
       localStorage.removeItem('cosentus_region')
       localStorage.removeItem('cosentus_portal_type')
+      localStorage.removeItem('cosentus_role')
       router.push('/?timeout=1')
     }, INACTIVITY_MS)
   }, [router])

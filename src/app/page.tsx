@@ -29,6 +29,10 @@ export default function LoginPage() {
       if (res.ok) {
         localStorage.setItem('cosentus_region', country)
         localStorage.setItem('cosentus_portal_type', portalType)
+        // Set the correct default role for this portal so context initializes
+        // correctly on first render — prevents stale role from previous session causing a flash
+        const defaultRole = portalType === 'facility' ? 'provider' : 'admin'
+        localStorage.setItem('cosentus_role', defaultRole)
         window.location.href = '/dashboard'
       } else {
         setError('Invalid username or password')

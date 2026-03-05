@@ -96,6 +96,7 @@ export default function Topbar() {
     await fetch('/api/auth/logout', { method: 'POST' })
     localStorage.removeItem('cosentus_region')
     localStorage.removeItem('cosentus_portal_type')
+    localStorage.removeItem('cosentus_role')
     window.location.href = '/'
   }
 
