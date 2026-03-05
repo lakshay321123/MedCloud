@@ -111,12 +111,25 @@ export async function GET(req: NextRequest) {
     }
 
     // ── List batches ──────────────────────────────────────────────────────
+    // Retell SDK has no /v2/list-batch-calls endpoint. Use /v2/list-calls and group by batch_id.
     if (action === 'list-batches') {
-      const data = await retellFetch('/v2/list-batch-calls', {
+      const data = await retellFetch('/v2/list-calls', {
         method: 'POST',
-        body: JSON.stringify({ limit: 100 }),
+        body: JSON.stringify({ limit: 100, sort_order: 'descending' }),
       })
-      const batches = normalizeCallList(data)
+      const allCalls = normalizeCallList(data)
+      const batchMap: Record<string, any[]> = {}
+      for (const c of allCalls) {
+        const key: string = (c.batch_id as string) || `solo-${c.call_id as string}`
+        if (!batchMap[key]) batchMap[key] = []
+        batchMap[key].push(c)
+      }
+      const batches = Object.entries(batchMap).map(([id, calls]) => ({
+        batch_id: id.startsWith('solo-') ? null : id,
+        call_count: calls.length,
+        calls,
+        created_at: calls[0]?.start_timestamp,
+      }))
       return NextResponse.json({ batch_list: batches })
     }
 
@@ -197,7 +210,7 @@ export async function POST(req: NextRequest) {
       const agentId = RETELL_AGENTS[agent_name as 'chris' | 'cindy']
       const fromNumber = RETELL_PHONES[agent_name as 'chris' | 'cindy']
       if (!agentId) throw new Error(`Agent ${agent_name} not configured`)
-      const data = await retellFetch('/v2/batch-call', {
+      const data = await retellFetch('/create-batch-call', {
         method: 'POST',
         body: JSON.stringify({
           from_number: fromNumber,

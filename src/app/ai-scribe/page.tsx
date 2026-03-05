@@ -406,10 +406,10 @@ function ProviderView() {
       <div className="card p-4 space-y-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center text-brand font-bold">
-            {selectedPatient.firstName[0]}{selectedPatient.lastName[0]}
+            {(selectedPatient.firstName?.[0] ?? '') + (selectedPatient.lastName?.[0] ?? '') || '?'}
           </div>
           <div>
-            <div className="font-semibold">{selectedPatient.firstName} {selectedPatient.lastName}</div>
+            <div className="font-semibold">{[selectedPatient.firstName, selectedPatient.lastName].filter(Boolean).join(' ') || 'Patient'}</div>
             <div className="text-xs text-content-secondary">{(selectedAppt as any)?.time} · {(selectedAppt as any)?.type}</div>
           </div>
         </div>
@@ -467,10 +467,10 @@ function ProviderView() {
       <div className="card p-4 text-xs space-y-2">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-8 h-8 rounded-full bg-brand/10 flex items-center justify-center text-brand font-bold text-sm">
-            {selectedPatient ? `${selectedPatient.firstName[0]}${selectedPatient.lastName[0]}` : '?'}
+            {selectedPatient ? ((selectedPatient.firstName?.[0] ?? '') + (selectedPatient.lastName?.[0] ?? '') || '?') : '?'}
           </div>
           <div>
-            <div className="font-semibold text-sm">{selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : 'No patient'}</div>
+            <div className="font-semibold text-sm">{selectedPatient ? [selectedPatient.firstName, selectedPatient.lastName].filter(Boolean).join(' ') || 'Patient' : 'No patient'}</div>
             <div className="text-content-tertiary text-[10px]">{(selectedAppt as any)?.type}</div>
           </div>
         </div>
