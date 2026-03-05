@@ -6138,32 +6138,8 @@ export const handler = async (event) => {
     }
 
     // ── Appointments with patient names ──────────────────────────────────────
-    if (path.includes('/appointments') && method === 'GET' && !pathParams.id) {
-      const limit = Math.min(parseInt(qs.limit) || 100, 1000);
-      const offset = parseInt(qs.offset) || 0;
-      const rows = await pool.query(
-        `SELECT a.*,
-                COALESCE(
-                  NULLIF(TRIM(p.first_name || ' ' || p.last_name), ''),
-                  a.patient_name
-                ) AS patient_name,
-                p.first_name,
-                p.last_name,
-                COALESCE(pr.name, a.provider_name) AS provider_name
-         FROM appointments a
-         LEFT JOIN patients p ON a.patient_id = p.id
-         LEFT JOIN providers pr ON a.provider_id = pr.id
-         WHERE a.org_id = $1
-         ORDER BY a.appointment_date ASC, a.appointment_time ASC, a.created_at DESC
-         LIMIT $2 OFFSET $3`,
-        [effectiveOrgId, limit, offset]
-      );
-      return respond(200, { data: rows.rows, total: rows.rows.length });
-    }
-
-    // ════ Appointments — schema guard + enriched POST ══════════════════════
-    if (path.includes('/appointments') && !path.includes('/appointments/') && method === 'POST') {
-      // Cold-start: ensure patient_name and provider_name columns exist
+    // ════ Appointments — schema guard + backfill (runs on first GET or POST) ══
+    if (path.includes('/appointments') && !path.includes('/appointments/') && (method === 'GET' || method === 'POST')) {
       if (!global._appointmentsSchemaDone) {
         try {
           for (const col of [
@@ -6177,7 +6153,7 @@ export const handler = async (event) => {
           // Backfill existing appointments that have patient_id but no stored patient_name
           await pool.query(`
             UPDATE appointments a
-            SET patient_name = p.first_name || ' ' || p.last_name
+            SET patient_name = TRIM(p.first_name || ' ' || p.last_name)
             FROM patients p
             WHERE a.patient_id = p.id
               AND (a.patient_name IS NULL OR a.patient_name = '')
@@ -6188,29 +6164,55 @@ export const handler = async (event) => {
         }
       }
 
-      // Enrich body: if patient_id provided but no patient_name, look it up
-      let enrichedBody = { ...body };
-      if (enrichedBody.patient_id && !enrichedBody.patient_name) {
-        try {
-          const pr = await pool.query(
-            `SELECT first_name || ' ' || last_name AS name FROM patients WHERE id = $1`,
-            [enrichedBody.patient_id]
-          );
-          if (pr.rows[0]?.name) enrichedBody.patient_name = pr.rows[0].name;
-        } catch (_) {}
+      // ── GET LIST ──
+      if (method === 'GET' && !pathParams.id) {
+        const limit = Math.min(parseInt(qs.limit) || 100, 1000);
+        const offset = parseInt(qs.offset) || 0;
+        const rows = await pool.query(
+          `SELECT a.*,
+                  COALESCE(
+                    NULLIF(TRIM(p.first_name || ' ' || p.last_name), ''),
+                    a.patient_name
+                  ) AS patient_name,
+                  p.first_name,
+                  p.last_name,
+                  COALESCE(pr.name, a.provider_name) AS provider_name
+           FROM appointments a
+           LEFT JOIN patients p ON a.patient_id = p.id
+           LEFT JOIN providers pr ON a.provider_id = pr.id
+           WHERE a.org_id = $1
+           ORDER BY a.appointment_date ASC, a.appointment_time ASC, a.created_at DESC
+           LIMIT $2 OFFSET $3`,
+          [effectiveOrgId, limit, offset]
+        );
+        return respond(200, { data: rows.rows, total: rows.rows.length });
       }
-      // Similarly enrich provider_name if provider_id provided
-      if (enrichedBody.provider_id && !enrichedBody.provider_name) {
-        try {
-          const prv = await pool.query(
-            `SELECT name FROM providers WHERE id = $1`,
-            [enrichedBody.provider_id]
-          );
-          if (prv.rows[0]?.name) enrichedBody.provider_name = prv.rows[0].name;
-        } catch (_) {}
+
+      // ── POST (enriched) ──
+      if (method === 'POST' && !pathParams.id) {
+        let enrichedBody = { ...body };
+        if (enrichedBody.patient_id && !enrichedBody.patient_name) {
+          try {
+            const pr = await pool.query(
+              `SELECT first_name || ' ' || last_name AS name FROM patients WHERE id = $1`,
+              [enrichedBody.patient_id]
+            );
+            if (pr.rows[0]?.name) enrichedBody.patient_name = pr.rows[0].name;
+          } catch (_) {}
+        }
+        if (enrichedBody.provider_id && !enrichedBody.provider_name) {
+          try {
+            const prv = await pool.query(
+              `SELECT name FROM providers WHERE id = $1`,
+              [enrichedBody.provider_id]
+            );
+            if (prv.rows[0]?.name) enrichedBody.provider_name = prv.rows[0].name;
+          } catch (_) {}
+        }
+        return respond(201, await create('appointments', enrichedBody, effectiveOrgId));
       }
-      return respond(201, await create('appointments', enrichedBody, effectiveOrgId));
     }
+
 
     const entityMap = {
       'appointments': 'appointments',
