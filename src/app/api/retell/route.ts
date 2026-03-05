@@ -113,6 +113,8 @@ export async function GET(req: NextRequest) {
     // ── List batches ──────────────────────────────────────────────────────
     // Retell SDK has no /v2/list-batch-calls endpoint. Use /v2/list-calls and group by batch_id.
     if (action === 'list-batches') {
+      // Retell SDK has no dedicated list-batch-calls endpoint.
+      // Fetch recent calls and group by batch_id; calls without one are standalone.
       const data = await retellFetch('/v2/list-calls', {
         method: 'POST',
         body: JSON.stringify({ limit: 100, sort_order: 'descending' }),
