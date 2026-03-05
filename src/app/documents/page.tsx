@@ -43,7 +43,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
   const { toast } = useToast()
   const [patientSearch, setPatientSearch] = useState('')
   return (
-    <div className="fixed inset-y-0 right-0 w-[600px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl animate-fade-in">
+    <div className="fixed inset-y-0 right-0 w-full sm:w-[600px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl animate-fade-in">
       <div className="p-4 border-b border-separator flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -461,7 +461,7 @@ function AIProcessingTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="card p-4 text-center">
           <p className="text-2xl font-bold text-brand">{processed || textractDocs.length}</p>
           <p className="text-[10px] text-content-tertiary mt-1">Documents Processed</p>
