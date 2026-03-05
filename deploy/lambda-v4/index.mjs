@@ -6143,17 +6143,73 @@ export const handler = async (event) => {
       const offset = parseInt(qs.offset) || 0;
       const rows = await pool.query(
         `SELECT a.*,
-                p.first_name || ' ' || p.last_name AS patient_name,
-                pr.name AS provider_name
+                COALESCE(
+                  NULLIF(TRIM(p.first_name || ' ' || p.last_name), ''),
+                  a.patient_name
+                ) AS patient_name,
+                p.first_name,
+                p.last_name,
+                COALESCE(pr.name, a.provider_name) AS provider_name
          FROM appointments a
          LEFT JOIN patients p ON a.patient_id = p.id
          LEFT JOIN providers pr ON a.provider_id = pr.id
          WHERE a.org_id = $1
-         ORDER BY a.appointment_date ASC, a.created_at DESC
+         ORDER BY a.appointment_date ASC, a.appointment_time ASC, a.created_at DESC
          LIMIT $2 OFFSET $3`,
         [effectiveOrgId, limit, offset]
       );
       return respond(200, { data: rows.rows, total: rows.rows.length });
+    }
+
+    // ════ Appointments — schema guard + enriched POST ══════════════════════
+    if (path.includes('/appointments') && !path.includes('/appointments/') && method === 'POST') {
+      // Cold-start: ensure patient_name and provider_name columns exist
+      if (!global._appointmentsSchemaDone) {
+        try {
+          for (const col of [
+            "ADD COLUMN IF NOT EXISTS patient_name VARCHAR(300)",
+            "ADD COLUMN IF NOT EXISTS provider_name VARCHAR(300)",
+            "ADD COLUMN IF NOT EXISTS appointment_type VARCHAR(100)",
+            "ADD COLUMN IF NOT EXISTS notes TEXT"
+          ]) {
+            await pool.query(`ALTER TABLE appointments ${col}`).catch(() => {});
+          }
+          // Backfill existing appointments that have patient_id but no stored patient_name
+          await pool.query(`
+            UPDATE appointments a
+            SET patient_name = p.first_name || ' ' || p.last_name
+            FROM patients p
+            WHERE a.patient_id = p.id
+              AND (a.patient_name IS NULL OR a.patient_name = '')
+          `).catch(() => {});
+          global._appointmentsSchemaDone = true;
+        } catch (err) {
+          console.error('[appointments] Cold-start schema guard failed:', err.message);
+        }
+      }
+
+      // Enrich body: if patient_id provided but no patient_name, look it up
+      let enrichedBody = { ...body };
+      if (enrichedBody.patient_id && !enrichedBody.patient_name) {
+        try {
+          const pr = await pool.query(
+            `SELECT first_name || ' ' || last_name AS name FROM patients WHERE id = $1`,
+            [enrichedBody.patient_id]
+          );
+          if (pr.rows[0]?.name) enrichedBody.patient_name = pr.rows[0].name;
+        } catch (_) {}
+      }
+      // Similarly enrich provider_name if provider_id provided
+      if (enrichedBody.provider_id && !enrichedBody.provider_name) {
+        try {
+          const prv = await pool.query(
+            `SELECT name FROM providers WHERE id = $1`,
+            [enrichedBody.provider_id]
+          );
+          if (prv.rows[0]?.name) enrichedBody.provider_name = prv.rows[0].name;
+        } catch (_) {}
+      }
+      return respond(201, await create('appointments', enrichedBody, effectiveOrgId));
     }
 
     const entityMap = {
