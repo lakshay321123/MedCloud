@@ -22,7 +22,7 @@ export default function ScanSubmitPage() {
     clientId: p.client_id || '',
   }))
   const { data: apiDocRaw } = useDocuments()
-  const apiSubmissions: any[] = (apiDocRaw || []).map((d: any) => ({
+  const apiSubmissions: any[] = (Array.isArray(apiDocRaw) ? apiDocRaw : (apiDocRaw as any)?.data || []).map((d: any) => ({
     id: d.id, patient: d.patient_name || '—', type: d.document_type || 'superbill',
     fileName: d.file_name || 'document', status: d.status || 'uploaded',
     uploadedAt: d.created_at || '', client: d.client_name || '—', clientId: d.client_id || '',
