@@ -89,18 +89,19 @@ function ExecutiveDashboard() {
       </div>
       <div className="grid grid-cols-5 gap-5">
         <div className="col-span-3 card p-6">
-          <h3 className="text-[15px] font-semibold text-content-primary mb-4">
+          <h3 className="text-[15px] font-semibold text-content-primary mb-2">
             {agingBuckets ? t('dashboard','arAgingBuckets') : t('dashboard','revenueTrend')}
           </h3>
-          <div className="flex items-end gap-3 h-40 px-2">
+          {agingBuckets && <p className="text-[11px] text-content-tertiary mb-3">Outstanding claim balances by age bucket</p>}
+          <div className="flex items-end gap-3 h-36 px-2 mt-1">
             {agingBuckets
               ? agingBuckets.map((b, i) => (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                    <span className="text-[11px] font-medium text-content-secondary">{b.value}</span>
-                    <div className="w-full rounded-lg relative overflow-hidden" style={{ height: `${(b.value / maxAgingVal) * 140}px` }}>
+                  <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                    <span className="text-[10px] font-medium text-content-secondary truncate w-full text-center">{b.value > 0 ? b.value.toLocaleString() : '—'}</span>
+                    <div className="w-full rounded-lg relative overflow-hidden" style={{ height: `${Math.max((b.value / maxAgingVal) * 120, b.value > 0 ? 8 : 2)}px` }}>
                       <div className="absolute inset-0 bg-gradient-to-t from-brand-dark to-brand rounded-lg" />
                     </div>
-                    <span className="text-[11px] text-content-tertiary">{b.label}d</span>
+                    <span className="text-[10px] text-content-tertiary whitespace-nowrap">{b.label}d</span>
                   </div>
                 ))
               : [1.8, 2.0, 2.1, 2.2, 2.3, 2.4].map((v, i) => (
@@ -382,6 +383,7 @@ function ProviderDashboard() {
 // ── Client Dashboard ──────────────────────────────────────────────────────────
 function ClientDashboard() {
   const { t } = useT()
+  const router = useRouter()
   const { selectedClient } = useApp()
   const { data: metrics } = useDashboardMetrics()
   const mtdCollections = 84200
@@ -398,10 +400,13 @@ function ClientDashboard() {
           <p className="text-sm text-content-secondary">Revenue cycle summary · March 2026</p>
         </div>
         {actionNeeded > 0 && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 flex items-center gap-2">
+          <button
+            onClick={() => router.push('/tasks')}
+            className="bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 flex items-center gap-2 hover:bg-red-500/20 transition-colors cursor-pointer"
+          >
             <AlertTriangle size={14} className="text-red-500" />
-            <span className="text-[13px] text-red-600 font-semibold">{actionNeeded} items need your attention</span>
-          </div>
+            <span className="text-[13px] text-red-600 font-semibold">{actionNeeded} items need your attention →</span>
+          </button>
         )}
       </div>
       <div className="grid grid-cols-3 gap-4">

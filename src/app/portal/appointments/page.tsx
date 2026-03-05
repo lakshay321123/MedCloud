@@ -247,7 +247,8 @@ export default function AppointmentsPage() {
   const { toast } = useToast()
   const isStaff = staffRoles.includes(currentUser.role)
   const isClinic = currentUser.role === 'client' || currentUser.role === 'provider'
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const todayStr = new Date().toISOString().split('T')[0]
+  const [selectedDate, setSelectedDate] = useState(todayStr)
   const [showAdd, setShowAdd] = useState(false)
   const [drawerAppt, setDrawerAppt] = useState<ReturnType<typeof apiAppointmentToDemo> | null>(null)
   const [statusOverrides, setStatusOverrides] = useState<Record<string, AppointmentStatus>>({})
@@ -259,6 +260,23 @@ export default function AppointmentsPage() {
   const sourceAppointments = apiApptResult?.data
     ? apiApptResult.data.map(apiAppointmentToDemo)
     : []
+
+  // Auto-navigate to nearest date with appointments if today has none
+  React.useEffect(() => {
+    if (!sourceAppointments.length) return
+    const filtered = clientFilter
+      ? sourceAppointments.filter(a => a.clientId === clientFilter)
+      : sourceAppointments
+    const hasToday = filtered.some(a => a.date === todayStr)
+    if (!hasToday) {
+      // Find nearest future date; fall back to nearest past date
+      const sorted = Array.from(new Set(filtered.map(a => a.date))).sort()
+      const future = sorted.find(d => d >= todayStr)
+      const nearest = future || sorted[sorted.length - 1]
+      if (nearest) setSelectedDate(nearest)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiApptResult])
 
   const dayApts = sourceAppointments.filter(a => {
     if (clientFilter && a.clientId !== clientFilter) return false

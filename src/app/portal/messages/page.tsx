@@ -73,10 +73,10 @@ export default function MessagesPage() {
 
   const messages = mergedThreads.filter(m => {
     if (filter && m.entityType !== filter) return false
-    // For facility roles (provider/client): filter by org if we have a known org_id.
-    // If org_id is empty (no Cognito token yet), show all threads so the inbox isn't blank.
-    if (!isStaff && currentUser.organization_id && m.clientId !== currentUser.organization_id) return false
+    // For back-office staff: filter by selected client if one is chosen
     if (isStaff && selectedClient && m.clientId !== selectedClient.id) return false
+    // For clinic roles (Doctor/Front Desk): API already scopes messages to their org via RLS
+    // No additional client_id filter needed — avoids UUID vs org-code mismatch
     return true
   })
 

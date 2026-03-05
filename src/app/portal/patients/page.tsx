@@ -669,7 +669,9 @@ export default function PatientsPage() {
   )
 
   const isClinic = currentUser.role === 'client' || currentUser.role === 'provider'
-  const clientFilter = isClinic ? currentUser.organization_id : selectedClient?.id
+  // For clinic roles (Doctor/Front Desk), the Lambda already applies org-level RLS scoping,
+  // so we show all returned patients. For back-office staff, filter by selected client.
+  const clientFilter = isClinic ? null : selectedClient?.id
 
   const apiPatients = apiResult?.data
     ? apiResult.data.map(apiPatientToDemoPatient)

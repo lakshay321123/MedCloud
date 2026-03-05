@@ -47,7 +47,7 @@ export default function ScanSubmitPage() {
 
   const selectedPatient = myPatients.find(p => p.id === patientId)
   const filteredPatients = myPatients.filter(p =>
-    !patientSearch || `${p.firstName} ${p.lastName}`.toLowerCase().includes(patientSearch.toLowerCase())
+    !patientSearch || (p.name || '').toLowerCase().includes(patientSearch.toLowerCase())
   )
 
   function addSimFiles() {
@@ -135,7 +135,7 @@ export default function ScanSubmitPage() {
                       {filteredPatients.slice(0,5).map(p=>(
                         <button key={p.id} onClick={()=>{setPatientId(p.id);setPatientSearch('')}}
                           className={`w-full text-left px-3 py-2.5 border-b border-separator last:border-0 hover:bg-surface-elevated text-sm transition-colors ${patientId===p.id?'bg-brand/5':''}`}>
-                          <span className="font-medium">{p.firstName} {p.lastName}</span>
+                          <span className="font-medium">{p.name || `${p.firstName || ''} ${p.lastName || ''}`}</span>
                           <span className="text-content-secondary ml-2 text-xs">{p.dob ?? 'DOB unknown'}</span>
                           {p.insurance && <span className="text-content-tertiary ml-2 text-[10px]">{p.insurance.payer}</span>}
                         </button>
@@ -147,7 +147,7 @@ export default function ScanSubmitPage() {
                   {selectedPatient && (
                     <div className="bg-brand/5 border border-brand/20 rounded-lg p-3 flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-semibold">{selectedPatient.firstName} {selectedPatient.lastName}</p>
+                        <p className="text-sm font-semibold">{selectedPatient.name || `${selectedPatient.firstName || ''} ${selectedPatient.lastName || ''}`}</p>
                         <p className="text-[10px] text-content-secondary">{selectedPatient.dob} · {selectedPatient.insurance?.payer ?? 'Insurance unknown'}</p>
                       </div>
                       <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">
@@ -250,7 +250,7 @@ export default function ScanSubmitPage() {
               <div className="bg-surface-elevated rounded-lg p-4 space-y-2.5">
                 <div className="flex justify-between text-sm">
                   <span className="text-content-secondary">Patient</span>
-                  <span className="font-medium">{selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : 'New Walk-in Patient'}</span>
+                  <span className="font-medium">{selectedPatient ? selectedPatient.name || `${selectedPatient.firstName || ''} ${selectedPatient.lastName || ''}` : 'New Walk-in Patient'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-content-secondary">Documents</span>

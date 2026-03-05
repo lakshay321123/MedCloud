@@ -5,7 +5,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useApp } from '@/lib/context'
-import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
+import { UAE_ORG_IDS, US_ORG_IDS, filterByRegion, filterPayersByCountry } from '@/lib/utils/region'
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
@@ -37,8 +37,8 @@ export default function PaymentPostingPage() {
   const { data: apiERAResult } = useERAFiles({ limit: 50 })
   const { mutate: autoPost } = useAutoPostPayments()
   const [posting, setPosting] = useState(false)
-  // Map API ERA files to display shape
-  const eras = apiERAResult?.data?.map(e => ({
+  // Map API ERA files to display shape, then filter to current region
+  const allEras = apiERAResult?.data?.map(e => ({
     id: e.id,
     clientId: e.client_id,
     file: e.file_name || e.id,
@@ -50,6 +50,7 @@ export default function PaymentPostingPage() {
     exceptions: 0,
     receivedAt: e.created_at || '',
   })) || []
+  const eras = filterPayersByCountry(allEras, country)
   const [selectedEra, setSelectedEra] = useState<string | null>(null)
   const [lineItems, setLineItems] = useState<LineItem[]>([])
   const [editingCell, setEditingCell] = useState<{ rowId: string; field: string } | null>(null)

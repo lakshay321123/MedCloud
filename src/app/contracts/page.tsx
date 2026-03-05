@@ -6,7 +6,7 @@ import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import { useFeeSchedules, usePayerConfigs, useUnderpaymentCheck, useExtractContractRates, useCreateFeeSchedule, useUpdateFeeSchedule } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
-import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
+import { UAE_ORG_IDS, US_ORG_IDS, filterPayersByCountry } from '@/lib/utils/region'
 import { Scale, Search, AlertTriangle, Edit2, Plus } from 'lucide-react'
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
@@ -45,6 +45,8 @@ export default function ContractsPage() {
   const [editingRow, setEditingRow] = useState<string | null>(null)
   const [addingCpt, setAddingCpt] = useState(false)
   const [newCpt, setNewCpt] = useState({ cpt: '', description: '', contractedRate: '' })
+  const [savingCpt, setSavingCpt] = useState(false)
+  const { mutate: createFeeSchedule } = useCreateFeeSchedule()
 
   const { data: apiFeeResult } = useFeeSchedules({ limit: 200 })
   const { data: apiPayerCfgResult } = usePayerConfigs()
@@ -79,13 +81,16 @@ export default function ContractsPage() {
     })
   })()
 
-  const allContracts = apiContracts.filter(c => {
-    if (!c.clientId) return true  // payer_config is org-level, not per client — always show
-    if (selectedClient) return c.clientId === selectedClient.id
-    if (country === 'uae') return UAE_ORG_IDS.includes(c.clientId)
-    if (country === 'usa') return US_ORG_IDS.includes(c.clientId)
-    return true
-  })
+  const allContracts = filterPayersByCountry(
+    apiContracts.filter(c => {
+      if (!c.clientId) return true  // payer_config is org-level, not per client — always show
+      if (selectedClient) return c.clientId === selectedClient.id
+      if (country === 'uae') return UAE_ORG_IDS.includes(c.clientId)
+      if (country === 'usa') return US_ORG_IDS.includes(c.clientId)
+      return true
+    }),
+    country
+  )
   const filtered = allContracts.filter(c =>
     !search || c.payer.toLowerCase().includes(search.toLowerCase()) || c.client.toLowerCase().includes(search.toLowerCase())
   )
@@ -216,7 +221,30 @@ export default function ContractsPage() {
                             <td className="py-2 pr-3"><input value={newCpt.contractedRate} onChange={e=>setNewCpt(p=>({...p,contractedRate:e.target.value}))} placeholder="0.00" className="w-20 bg-surface-elevated border border-brand/40 rounded px-1.5 py-0.5 text-[12px] text-content-primary focus:outline-none"/></td>
                             <td colSpan={3} className="py-2 pr-3">
                               <div className="flex gap-2">
-                                <button onClick={()=>{toast.success(`CPT ${newCpt.cpt||'code'} added to fee schedule`);setAddingCpt(false);setNewCpt({cpt:'',description:'',contractedRate:''})}} className="text-[11px] bg-brand text-white px-2.5 py-1 rounded">Save</button>
+                                <button
+                                  disabled={savingCpt || !newCpt.cpt}
+                                  onClick={async () => {
+                                    if (!newCpt.cpt) { toast.warning('CPT code is required'); return }
+                                    setSavingCpt(true)
+                                    try {
+                                      await createFeeSchedule({
+                                        payer_id: selected?.id,
+                                        cpt_code: newCpt.cpt,
+                                        description: newCpt.description || undefined,
+                                        contracted_rate: parseFloat(newCpt.contractedRate) || 0,
+                                        effective_date: new Date().toISOString().split('T')[0],
+                                      } as any)
+                                      toast.success(`CPT ${newCpt.cpt} saved to fee schedule`)
+                                      setAddingCpt(false)
+                                      setNewCpt({ cpt: '', description: '', contractedRate: '' })
+                                    } catch {
+                                      toast.error('Failed to save CPT — please try again')
+                                    } finally {
+                                      setSavingCpt(false)
+                                    }
+                                  }}
+                                  className="text-[11px] bg-brand text-white px-2.5 py-1 rounded disabled:opacity-50"
+                                >{savingCpt ? 'Saving…' : 'Save'}</button>
                                 <button onClick={()=>{setAddingCpt(false);setNewCpt({cpt:'',description:'',contractedRate:''})}} className="text-[11px] border border-separator px-2.5 py-1 rounded text-content-secondary">Cancel</button>
                               </div>
                             </td>
