@@ -114,7 +114,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
   return (
     <>
       <div className="fixed inset-0 bg-black/20 z-30" onClick={onClose} />
-      <div className="fixed right-0 top-0 h-full w-[480px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl">
+      <div className="fixed right-0 top-0 h-full w-full sm:w-[480px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-separator shrink-0">
           <div className="flex items-center gap-3">
@@ -318,7 +318,7 @@ export default function AppointmentsPage() {
       actions={isClinic ? <button onClick={()=>setShowAdd(true)} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep"><Plus size={16}/>Book Appointment</button> : undefined}>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4">
         <div className="card px-3 py-2 text-center"><div className="text-lg font-bold">{stats.total}</div><div className="text-[10px] text-content-secondary">Today Total</div></div>
         <div className="card px-3 py-2 text-center"><div className="text-lg font-bold text-cyan-600 dark:text-cyan-400">{stats.checkedIn}</div><div className="text-[10px] text-content-secondary">Checked In</div></div>
         <div className="card px-3 py-2 text-center"><div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{stats.completed}</div><div className="text-[10px] text-content-secondary">Completed</div></div>

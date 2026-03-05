@@ -7,7 +7,7 @@ import { useMessages, useSendMessage, useMarkMessageRead } from '@/lib/hooks'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
-import { MessageCircle, Send, Paperclip, User, FileText, Calendar, ClipboardList, Building2, Plus, X, ChevronDown } from 'lucide-react'
+import { MessageCircle, Send, Paperclip, User, FileText, Calendar, ClipboardList, Building2, Plus, X, ChevronDown, ArrowLeft } from 'lucide-react'
 import { usePatients, useClaims } from '@/lib/hooks'
 import { useAbuseFilter, handleAbuseViolation } from '@/lib/utils/abuse-filter'
 
@@ -172,7 +172,7 @@ export default function MessagesPage() {
               <button onClick={() => setComposing(false)} className="text-content-secondary hover:text-content-primary"><X size={18}/></button>
             </div>
             <div className="p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[11px] text-content-secondary mb-1 block">Type</label>
                   <select value={newEntityType} onChange={e => { setNewEntityType(e.target.value); setNewEntityId('') }}
@@ -227,9 +227,9 @@ export default function MessagesPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-4 h-[calc(100vh-220px)]">
-        {/* Thread List */}
-        <div className="card overflow-hidden flex flex-col">
+      <div className="flex flex-col sm:grid sm:grid-cols-3 gap-4 h-[calc(100vh-220px)]">
+        {/* Thread List — hidden on mobile when a message is selected */}
+        <div className={`card overflow-hidden flex flex-col ${selected ? 'hidden sm:flex' : 'flex'}`}>
           <div className="p-3 border-b border-separator">
             <select value={filter} onChange={e=>setFilter(e.target.value)}
               className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
@@ -258,12 +258,16 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        {/* Conversation */}
-        <div className="col-span-2 card flex flex-col overflow-hidden">
+        {/* Conversation — full width on mobile, 2/3 on desktop */}
+        <div className={`sm:col-span-2 card flex flex-col overflow-hidden ${selected ? 'flex' : 'hidden sm:flex'}`}>
           {selected ? (
             <>
               <div className="px-4 py-3 border-b border-separator">
                 <div className="flex items-center gap-2">
+                  {/* Back button — mobile only */}
+                  <button onClick={() => setSelected(null)} className="sm:hidden p-1 -ml-1 text-content-secondary hover:text-content-primary">
+                    <ArrowLeft size={18}/>
+                  </button>
                   <span className="text-content-secondary">{entityIcons[selected.entityType]}</span>
                   <div>
                     <h3 className="text-sm font-semibold">{selected.subject}</h3>

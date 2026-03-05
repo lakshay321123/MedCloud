@@ -169,7 +169,7 @@ export default function ScanSubmitPage() {
                 </>
               ) : (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {[['First Name','John'],['Last Name','Smith']].map(([l,p])=>(
                       <div key={l}>
                         <label className="text-xs text-content-secondary block mb-1">{l} *</label>
@@ -177,7 +177,7 @@ export default function ScanSubmitPage() {
                       </div>
                     ))}
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-content-secondary block mb-1">Date of Birth</label>
                       <input type="date" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"/>
