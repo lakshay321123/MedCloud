@@ -456,22 +456,22 @@ function SingleCallForm({ agentKey, launchCall, singleLoading }: { agentKey: 'ci
   const { toast } = useToast()
   const FIELDS = [
     { key: 'phone_number', label: 'Phone Number *', placeholder: '+1 (702) 555-0000', required: true },
-    { key: 'id', label: 'ID / Account#', placeholder: 'ACC-1234' },
-    { key: 'practice_name', label: 'Practice Name', placeholder: 'Irvine Family Practice' },
-    { key: 'npi', label: 'NPI', placeholder: '1234567890' },
-    { key: 'tax_id', label: 'Tax ID', placeholder: 'XX-XXXXXXX' },
-    { key: 'billing_address', label: 'Billing Address', placeholder: '123 Main St, Irvine CA' },
-    { key: 'call_back_number', label: 'Call Back #', placeholder: '+1 (702) 555-0001' },
-    { key: 'acct_number', label: 'Acct #', placeholder: 'CLM-2026-0001' },
-    { key: 'provider', label: 'Provider', placeholder: 'Dr. Sarah Johnson' },
-    { key: 'service_location', label: 'Service Location', placeholder: 'Main Office' },
-    { key: 'patient_name', label: 'Patient Name', placeholder: 'John Smith' },
-    { key: 'patient_birth_date', label: 'Patient Birth Date', placeholder: 'MM/DD/YYYY' },
-    { key: 'primary_carrier_name', label: 'Primary Carrier', placeholder: 'UnitedHealthcare' },
-    { key: 'primary_carrier_policy', label: 'Primary Carrier Policy #', placeholder: 'UHC123456789' },
-    { key: 'service_date', label: 'Service Date', placeholder: 'MM/DD/YYYY' },
-    { key: 'total_charge', label: 'Total Charge', placeholder: '250.00' },
-    { key: 'status', label: 'Status', placeholder: 'Pending / Denied / Open' },
+    { key: 'ID',                    label: 'ID',                    placeholder: 'ACC-1234' },
+    { key: 'Practice_Name',         label: 'Practice Name',         placeholder: 'Irvine Family Practice' },
+    { key: 'NPI',                   label: 'NPI',                   placeholder: '1234567890' },
+    { key: 'Tax_ID',                label: 'Tax ID',                placeholder: 'XX-XXXXXXX' },
+    { key: 'Billing_Address',       label: 'Billing Address',       placeholder: '123 Main St, Irvine CA' },
+    { key: 'Call_Back',             label: 'Call Back #',           placeholder: '+1 (702) 555-0001' },
+    { key: 'Acct',                  label: 'Acct #',                placeholder: 'CLM-2026-0001' },
+    { key: 'Provider',              label: 'Provider',              placeholder: 'Dr. Sarah Johnson' },
+    { key: 'Service_Location',      label: 'Service Location',      placeholder: 'Main Office' },
+    { key: 'Patient_Name',          label: 'Patient Name',          placeholder: 'John Smith' },
+    { key: 'Patient_Birth_Date',    label: 'Patient Birth Date',    placeholder: 'MM/DD/YYYY' },
+    { key: 'Primary_Carrier_Name',  label: 'Primary Carrier',       placeholder: 'UnitedHealthcare' },
+    { key: 'Primary_Carrier_Policy',label: 'Primary Carrier Policy #', placeholder: 'UHC123456789' },
+    { key: 'Service_Date',          label: 'Service Date',          placeholder: 'MM/DD/YYYY' },
+    { key: 'Total_Charge',          label: 'Total Charge',          placeholder: '250.00' },
+    { key: 'Status',                label: 'Status',                placeholder: 'Pending / Denied / Open' },
   ]
   const [form, setForm] = React.useState<Record<string, string>>(() => Object.fromEntries(FIELDS.map(f => [f.key, ''])))
   const [extraLabel, setExtraLabel] = React.useState('Extra Info')
@@ -481,7 +481,7 @@ function SingleCallForm({ agentKey, launchCall, singleLoading }: { agentKey: 'ci
     if (!form.phone_number.trim()) { toast.error('Phone number is required'); return }
     const vars: Record<string, string> = {}
     FIELDS.filter(f => f.key !== 'phone_number').forEach(f => { if (form[f.key]) vars[f.key] = form[f.key] })
-    if (extraLabel && extraValue) vars[extraLabel.toLowerCase().replace(/\s+/g, '_')] = extraValue
+    if (extraLabel && extraValue) vars[extraLabel.replace(/[^a-zA-Z0-9_]/g, '_').replace(/__+/g, '_').replace(/^_|_$/g, '')] = extraValue
     try {
       await launchCall({ agent_name: agentKey, to_number: form.phone_number, variables: vars })
       toast.success(`Call initiated to ${form.phone_number}`)
@@ -543,7 +543,7 @@ function CampaignLauncherTab() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const filteredRows = parsed ? (filterPractice === 'all' ? parsed.rows
-    : parsed.rows.filter(r => (r.variables['practicename'] ?? r.variables['practice_name'] ?? '') === filterPractice)) : []
+    : parsed.rows.filter(r => (r.variables['practicename'] ?? r.variables['Practice_Name'] ?? '') === filterPractice)) : []
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return
@@ -642,7 +642,7 @@ function CampaignLauncherTab() {
                 <select value={filterPractice} onChange={e => setFilterPractice(e.target.value)}
                   className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
                   <option value="all">All Practices ({parsed.rows.length})</option>
-                  {parsed.practiceNames.map(p => { const cnt = parsed.rows.filter(r => (r.variables['practicename'] ?? '') === p).length; return <option key={p} value={p}>{p} ({cnt})</option> })}
+                  {parsed.practiceNames.map(p => { const cnt = parsed.rows.filter(r => (r.variables['practicename'] ?? r.variables['Practice_Name'] ?? '') === p).length; return <option key={p} value={p}>{p} ({cnt})</option> })}
                 </select>
               )}
 
@@ -671,9 +671,9 @@ function CampaignLauncherTab() {
                             <td className="px-3 py-1.5 text-emerald-600 dark:text-emerald-400 font-medium">{row.variables['patientbalance'] ? `$${Number(row.variables['patientbalance']).toLocaleString()}` : '—'}</td>
                             <td className="px-3 py-1.5"><span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${row.variables['aginggroup']?.includes('180') ? 'bg-red-500/10 text-red-500' : 'bg-surface-elevated text-content-secondary'}`}>{row.variables['aginggroup'] || '—'}</span></td></>
                           ) : (
-                            <><td className="px-3 py-1.5">{row.variables['patient_name'] || '—'}</td>
-                            <td className="px-3 py-1.5">{row.variables['primary_carrier_name'] || '—'}</td>
-                            <td className="px-3 py-1.5 font-medium">{row.variables['total_charge'] ? `$${Number(row.variables['total_charge']).toLocaleString()}` : '—'}</td></>
+                            <><td className="px-3 py-1.5">{row.variables['Patient_Name'] || '—'}</td>
+                            <td className="px-3 py-1.5">{row.variables['Primary_Carrier_Name'] || '—'}</td>
+                            <td className="px-3 py-1.5 font-medium">{row.variables['Total_Charge'] ? `$${Number(row.variables['Total_Charge']).toLocaleString()}` : '—'}</td></>
                           )}
                         </tr>
                       ))}

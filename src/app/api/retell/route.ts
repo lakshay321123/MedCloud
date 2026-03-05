@@ -111,15 +111,13 @@ export async function GET(req: NextRequest) {
     }
 
     // ── List batches ──────────────────────────────────────────────────────
+    // Retell SDK has no /v2/list-batch-calls endpoint. Use /v2/list-calls and group by batch_id.
     if (action === 'list-batches') {
-      // Retell SDK has no dedicated list-batch-calls endpoint.
-      // Fetch recent calls and filter to those with a batch_id.
       const data = await retellFetch('/v2/list-calls', {
         method: 'POST',
         body: JSON.stringify({ limit: 100, sort_order: 'descending' }),
       })
       const allCalls = normalizeCallList(data)
-      // Group calls that share a batch_id; calls without one are standalone
       const batchMap: Record<string, any[]> = {}
       for (const c of allCalls) {
         const key: string = (c.batch_id as string) || `solo-${c.call_id as string}`
