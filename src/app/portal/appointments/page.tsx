@@ -14,17 +14,26 @@ import type { AppointmentStatus } from '@/types'
 import { formatDOB } from '@/lib/utils/region'
 
 function apiAppointmentToDemo(a: ApiAppointment) {
+  // appointment_date may come back as full ISO string e.g. "2026-03-06T00:00:00.000Z"
+  // Strip to YYYY-MM-DD so calendar date comparisons work correctly
+  const rawDate = a.appointment_date || ''
+  const date = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate
+
+  // appointment_time may come back as "08:00:00" — trim to "HH:MM"
+  const rawTime = a.appointment_time || '09:00'
+  const time = rawTime.length > 5 ? rawTime.substring(0, 5) : rawTime
+
   return {
     id: a.id,
     patientId: '',
     patientName: a.patient_name || `${a.first_name || ''} ${a.last_name || ''}`.trim() || 'Unknown Patient',
-    time: a.appointment_time || '09:00',
+    time,
     duration: 30,
     provider: a.provider_name || '',
     type: a.appointment_type || 'Office Visit',
     status: (a.status || 'booked') as AppointmentStatus,
     clientId: a.client_id,
-    date: a.appointment_date || '',
+    date,
   }
 }
 
