@@ -112,7 +112,8 @@ function ProviderView() {
   // Pull today's appointments for the Select Patient screen
   const todayStr = new Date().toISOString().slice(0, 10)
   const apiAppts = (apptResult?.data || [])
-  const todayAppts: any[] = apiAppts.length
+  type ScribeAppt = { id: string; patientId: string; patientName: string; time: string; type: string; provider: string; status: string; insurance?: string }
+  const todayAppts: ScribeAppt[] = apiAppts.length
     ? apiAppts.map((a: any) => ({
         id: a.id,
         patientId: a.patient_id || '',
