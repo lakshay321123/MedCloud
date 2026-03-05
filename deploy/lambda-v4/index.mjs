@@ -6137,6 +6137,25 @@ export const handler = async (event) => {
       }
     }
 
+    // ── Appointments with patient names ──────────────────────────────────────
+    if (path.includes('/appointments') && method === 'GET' && !pathParams.id) {
+      const limit = Math.min(parseInt(qs.limit) || 100, 1000);
+      const offset = parseInt(qs.offset) || 0;
+      const rows = await pool.query(
+        `SELECT a.*,
+                p.first_name || ' ' || p.last_name AS patient_name,
+                pr.name AS provider_name
+         FROM appointments a
+         LEFT JOIN patients p ON a.patient_id = p.id
+         LEFT JOIN providers pr ON a.provider_id = pr.id
+         WHERE a.org_id = $1
+         ORDER BY a.appointment_date ASC, a.created_at DESC
+         LIMIT $2 OFFSET $3`,
+        [effectiveOrgId, limit, offset]
+      );
+      return respond(200, { data: rows.rows, total: rows.rows.length });
+    }
+
     const entityMap = {
       'appointments': 'appointments',
       'providers': 'providers',

@@ -132,11 +132,14 @@ function ProviderView() {
 
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
   const [selectedVisit, setSelectedVisit] = useState<DemoVisit | null>(null)
-  // Derive patient info from the selected visit (API) or fall back to demoPatients
+  // Derive patient info from selected visit OR from the appointment list when a patient is picked
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const selectedApptData = selectedPatientId ? todayAppts.find(a => a.patientId === selectedPatientId || a.id === selectedPatientId) : null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const selectedPatient: Record<string, any> | null = selectedVisit
     ? { id: selectedVisit.patientId, name: selectedVisit.patientName, firstName: (selectedVisit.patientName || '').split(' ')[0], lastName: (selectedVisit.patientName || '').split(' ').slice(1).join(' '), dob: '', gender: '', insurance: '', allergies: [], medications: [] }
+    : selectedApptData
+    ? { id: selectedApptData.patientId || selectedApptData.id, name: selectedApptData.patientName, firstName: (selectedApptData.patientName || '').split(' ')[0], lastName: (selectedApptData.patientName || '').split(' ').slice(1).join(' '), dob: '', gender: '', insurance: selectedApptData.insurance || '', allergies: [], medications: [] }
     : null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const selectedAppt: Record<string, any> | null = null
