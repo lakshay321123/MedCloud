@@ -272,21 +272,24 @@ export default function AppointmentsPage() {
     ? apiApptResult.data.map(apiAppointmentToDemo)
     : []
 
-  // Auto-navigate to nearest date with appointments if today has none
+  // Auto-navigate to nearest date with appointments — runs ONCE only when data
+  // first arrives. A ref prevents it from firing again on subsequent reloads,
+  // which would override the user's manual date selection.
+  const hasAutoNavigated = React.useRef(false)
   React.useEffect(() => {
-    if (!sourceAppointments.length) return
+    if (!sourceAppointments.length || hasAutoNavigated.current) return
     const filtered = clientFilter
       ? sourceAppointments.filter(a => a.clientId === clientFilter)
       : sourceAppointments
     const hasToday = filtered.some(a => a.date === todayStr)
     if (!hasToday) {
-      // Find nearest future date; fall back to nearest past date
       const sorted = Array.from(new Set(filtered.map(a => a.date))).sort()
       const future = sorted.find(d => d >= todayStr)
       const nearest = future || sorted[sorted.length - 1]
       if (nearest) setSelectedDate(nearest)
     }
-  }, [sourceAppointments, clientFilter, todayStr])
+    hasAutoNavigated.current = true
+  }, [sourceAppointments]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const dayApts = sourceAppointments.filter(a => {
     if (clientFilter && a.clientId !== clientFilter) return false
