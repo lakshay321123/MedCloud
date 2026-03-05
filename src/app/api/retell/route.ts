@@ -112,7 +112,7 @@ export async function GET(req: NextRequest) {
 
     // ── List batches ──────────────────────────────────────────────────────
     if (action === 'list-batches') {
-      const data = await retellFetch('/v2/list-batches', {
+      const data = await retellFetch('/v2/list-batch-calls', {
         method: 'POST',
         body: JSON.stringify({ limit: 100 }),
       })
@@ -197,14 +197,14 @@ export async function POST(req: NextRequest) {
       const agentId = RETELL_AGENTS[agent_name as 'chris' | 'cindy']
       const fromNumber = RETELL_PHONES[agent_name as 'chris' | 'cindy']
       if (!agentId) throw new Error(`Agent ${agent_name} not configured`)
-      const data = await retellFetch('/v2/create-batch-call', {
+      const data = await retellFetch('/v2/batch-call', {
         method: 'POST',
         body: JSON.stringify({
           from_number: fromNumber,
           name: batch_name,
           tasks: recipients.map((r: { to_number: string; variables?: Record<string, string> }) => ({
-            agent_id: agentId,
             to_number: r.to_number,
+            override_agent_id: agentId,
             retell_llm_dynamic_variables: r.variables ?? {},
           })),
         }),
