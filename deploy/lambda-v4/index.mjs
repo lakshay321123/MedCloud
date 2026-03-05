@@ -4549,7 +4549,7 @@ async function getMessages(orgId, userId, qs) {
       attachments: [], is_internal: false, is_system: false, read_by: [], priority: 'normal',
     });
     for (const s of seeds) {
-      await create('messages', s, orgId).catch(() => {});
+      await create('messages', s, orgId).catch((err) => console.error('[seed-messages] Failed to seed message:', err));
     }
   }
   let q = 'SELECT m.*, u.email as sender_email, u.role as sender_role_name FROM messages m LEFT JOIN users u ON m.sender_id = u.id WHERE m.org_id = $1';
@@ -4587,7 +4587,7 @@ async function sendMessage(body, orgId, userId) {
   // Look up sender name from users table if not provided
   let senderName = body.sender_name || null;
   if (!senderName && userId) {
-    const userRow = await pool.query('SELECT name, email, role FROM users WHERE id = $1', [userId]).catch(() => ({ rows: [] }));
+    const userRow = await pool.query('SELECT name, email, role FROM users WHERE id = $1', [userId]).catch((err) => { console.error('[messages] Sender lookup failed:', err); return { rows: [] }; });
     senderName = userRow.rows[0]?.name || userRow.rows[0]?.email || body.sender_role || 'Staff';
   }
   const msg = await create('messages', {
@@ -6416,28 +6416,35 @@ export const handler = async (event) => {
 
     // Messages (contextual messaging)
     if (resource === 'messages') {
-      // Run messages table migration on every messages request
-      await (async () => {
-        await pool.query(`CREATE TABLE IF NOT EXISTS messages (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(), org_id UUID NOT NULL, client_id UUID,
-          entity_type VARCHAR(50) DEFAULT 'general', entity_id UUID, entity_label VARCHAR(200),
-          parent_id UUID, sender_id UUID, sender_role VARCHAR(50), sender_name VARCHAR(200),
-          recipient_ids UUID[], subject VARCHAR(500), body TEXT NOT NULL,
-          attachments JSONB DEFAULT '[]', is_internal BOOLEAN DEFAULT false, is_system BOOLEAN DEFAULT false,
-          read_by UUID[] DEFAULT '{}', priority VARCHAR(20) DEFAULT 'normal',
-          status VARCHAR(50) DEFAULT 'open', created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
-        )`).catch(() => {});
-        await pool.query(`ALTER TABLE messages ALTER COLUMN sender_id DROP NOT NULL`).catch(() => {});
-        for (const col of ["ADD COLUMN IF NOT EXISTS client_id UUID","ADD COLUMN IF NOT EXISTS parent_id UUID",
-          "ADD COLUMN IF NOT EXISTS sender_name VARCHAR(200)","ADD COLUMN IF NOT EXISTS sender_role VARCHAR(50)",
-          "ADD COLUMN IF NOT EXISTS entity_label VARCHAR(200)","ADD COLUMN IF NOT EXISTS recipient_ids UUID[]",
-          "ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT '[]'","ADD COLUMN IF NOT EXISTS is_internal BOOLEAN DEFAULT false",
-          "ADD COLUMN IF NOT EXISTS is_system BOOLEAN DEFAULT false","ADD COLUMN IF NOT EXISTS read_by UUID[] DEFAULT '{}'",
-          "ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'normal'","ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'open'",
-          "ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()"]) {
-          await pool.query(`ALTER TABLE messages ${col}`).catch(() => {});
+      // Schema guard: runs ONCE per cold start (not per request) via global flag.
+      // Gemini review fix: moved out of per-request path to avoid overhead + race conditions.
+      // TODO Sprint 5: consolidate into v4-seed.sql migration runner for production.
+      if (!global._messagesSchemaDone) {
+        try {
+          await pool.query(`CREATE TABLE IF NOT EXISTS messages (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(), org_id UUID NOT NULL, client_id UUID,
+            entity_type VARCHAR(50) DEFAULT 'general', entity_id UUID, entity_label VARCHAR(200),
+            parent_id UUID, sender_id UUID, sender_role VARCHAR(50), sender_name VARCHAR(200),
+            recipient_ids UUID[], subject VARCHAR(500), body TEXT NOT NULL,
+            attachments JSONB DEFAULT '[]', is_internal BOOLEAN DEFAULT false, is_system BOOLEAN DEFAULT false,
+            read_by UUID[] DEFAULT '{}', priority VARCHAR(20) DEFAULT 'normal',
+            status VARCHAR(50) DEFAULT 'open', created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
+          )`);
+          await pool.query(`ALTER TABLE messages ALTER COLUMN sender_id DROP NOT NULL`).catch(() => {});
+          for (const col of ["ADD COLUMN IF NOT EXISTS client_id UUID","ADD COLUMN IF NOT EXISTS parent_id UUID",
+            "ADD COLUMN IF NOT EXISTS sender_name VARCHAR(200)","ADD COLUMN IF NOT EXISTS sender_role VARCHAR(50)",
+            "ADD COLUMN IF NOT EXISTS entity_label VARCHAR(200)","ADD COLUMN IF NOT EXISTS recipient_ids UUID[]",
+            "ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT '[]'","ADD COLUMN IF NOT EXISTS is_internal BOOLEAN DEFAULT false",
+            "ADD COLUMN IF NOT EXISTS is_system BOOLEAN DEFAULT false","ADD COLUMN IF NOT EXISTS read_by UUID[] DEFAULT '{}'",
+            "ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'normal'","ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'open'",
+            "ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()"]) {
+            await pool.query(`ALTER TABLE messages ${col}`).catch(() => {});
+          }
+          global._messagesSchemaDone = true;
+        } catch (err) {
+          console.error('[messages] Cold-start schema guard failed — table may already be correct:', err.message);
         }
-      })();
+      }
       if (method === 'GET' && !pathParams.id) {
         return respond(200, await getMessages(effectiveOrgId, userId, qs));
       }

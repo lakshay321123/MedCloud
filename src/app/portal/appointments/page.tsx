@@ -275,8 +275,7 @@ export default function AppointmentsPage() {
       const nearest = future || sorted[sorted.length - 1]
       if (nearest) setSelectedDate(nearest)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiApptResult])
+  }, [sourceAppointments, clientFilter, todayStr])
 
   const dayApts = sourceAppointments.filter(a => {
     if (clientFilter && a.clientId !== clientFilter) return false
