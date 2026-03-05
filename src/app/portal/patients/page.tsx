@@ -690,8 +690,7 @@ export default function PatientsPage() {
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, phone, ID..."
           className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-4 py-2 text-sm text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40 transition-colors"/>
       </div>
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="card overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm min-w-[600px]">
           <thead><tr className="border-b border-separator text-xs text-content-secondary">
             <th className="text-left px-4 py-3">Patient {apiResult ? <span className="text-brand font-normal">(live)</span> : null}</th>
             <th className="text-left px-4 py-3">MRN</th>
@@ -725,7 +724,7 @@ export default function PatientsPage() {
             </tr>
           ))
           }</tbody>
-        </table>
+        </table></div>
       </div>
       {showAdd && <AddPatientModal onClose={() => setShowAdd(false)}/>}
       {selected && <PatientDetailDrawer patient={selected} onClose={() => setSelected(null)}/>}
@@ -736,7 +735,7 @@ export default function PatientsPage() {
           <h3 className="text-sm font-semibold">Patient Statements</h3>
           <button onClick={() => alert('Batch statements generated')} className="text-xs bg-brand/10 text-brand px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors">Generate Batch Statements</button>
         </div>
-        <div className="grid grid-cols-4 gap-3 text-center">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
           {[{label:'Outstanding Balances',value:`$${(patients.length * 127).toLocaleString()}`,color:'text-amber-500'},
             {label:'Statements Sent',value:Math.round(patients.length * 0.6),color:'text-brand'},
             {label:'Payment Plans Active',value:Math.round(patients.length * 0.15),color:'text-emerald-500'},

@@ -331,7 +331,7 @@ export default function AppointmentsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-5 gap-5">
+      <div className="flex flex-col md:grid md:grid-cols-5 md:gap-5 gap-4">
         {/* Mini calendar */}
         <div className="col-span-1">
           <MiniCalendar selectedDate={selectedDate} onSelect={setSelectedDate} apptDates={new Set(sourceAppointments.map(a => a.date))}/>
@@ -361,42 +361,42 @@ export default function AppointmentsPage() {
             const isCheckedIn = ['checked_in', 'in_progress', 'completed'].includes(currentStatus)
             const isNoShow = currentStatus === 'no_show'
             return (
-              <div key={a.id} className={`card p-4 flex items-center gap-4 transition-all ${
+              <div key={a.id} className={`card p-4 transition-all ${
                 isCheckedIn ? 'border-cyan-500/30 bg-cyan-500/5' :
                 isNoShow ? 'opacity-50 border-red-500/20' : ''
               }`}>
-                {/* Time */}
-                <div className="shrink-0 w-16 text-center">
-                  <div className="text-base font-bold text-content-primary">{a.time}</div>
-                  <div className="text-[10px] text-content-secondary">{a.duration}m</div>
-                </div>
-
-                <div className="w-px h-10 bg-separator"/>
-
-                {/* Patient info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <div className="w-7 h-7 rounded-full bg-brand/20 flex items-center justify-center text-brand text-[11px] font-bold shrink-0">
-                      {a.patientName.split(' ').map(n=>n[0]).join('').slice(0,2)}
+                {/* Top row: time + patient */}
+                <div className="flex items-start gap-3">
+                  <div className="shrink-0 w-14 text-center pt-0.5">
+                    <div className="text-base font-bold text-content-primary">{a.time}</div>
+                    <div className="text-[10px] text-content-secondary">{a.duration}m</div>
+                  </div>
+                  <div className="w-px self-stretch bg-separator mx-1"/>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                      <div className="w-7 h-7 rounded-full bg-brand/20 flex items-center justify-center text-brand text-[11px] font-bold shrink-0">
+                        {a.patientName.split(' ').map(n=>n[0]).join('').slice(0,2)}
+                      </div>
+                      <span className="text-sm font-semibold text-content-primary">{a.patientName}</span>
+                      <StatusBadge status={currentStatus} small/>
                     </div>
-                    <span className="text-sm font-semibold text-content-primary">{a.patientName}</span>
-                    <StatusBadge status={currentStatus} small/>
-                  </div>
-                  <div className="flex items-center gap-3 ml-9">
-                    <span className="text-[11px] text-content-secondary">{a.provider}</span>
-                    <span className="text-[10px] bg-surface-elevated px-2 py-0.5 rounded border border-separator">{a.type}</span>
-                    {isStaff && <span className="text-[10px] text-content-tertiary">{getClientName(a.clientId)}</span>}
+                    <div className="flex items-center gap-2 ml-9 flex-wrap">
+                      <span className="text-[11px] text-content-secondary">{a.provider}</span>
+                      <span className="text-[10px] bg-surface-elevated px-2 py-0.5 rounded border border-separator">{a.type}</span>
+                      {isStaff && <span className="text-[10px] text-content-tertiary">{getClientName(a.clientId)}</span>}
+                      <span className="hidden sm:flex items-center gap-1 ml-auto shrink-0">
+                        <span className={`w-2 h-2 rounded-full ${ec.color}`}/>
+                        <span className="text-[11px] text-content-secondary">{ec.label}</span>
+                      </span>
+                    </div>
+                    <div className="flex sm:hidden items-center gap-1 ml-9 mt-1">
+                      <span className={`w-2 h-2 rounded-full ${ec.color}`}/>
+                      <span className="text-[11px] text-content-secondary">{ec.label}</span>
+                    </div>
                   </div>
                 </div>
-
-                {/* Eligibility */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className={`w-2 h-2 rounded-full ${ec.color}`}/>
-                  <span className="text-[11px] text-content-secondary">{ec.label}</span>
-                </div>
-
                 {/* Actions */}
-                <div className="flex gap-1.5 shrink-0">
+                <div className="flex gap-1.5 mt-3 ml-[calc(3.5rem+9px)]">
                   <button onClick={() => setDrawerAppt(a)}
                     className="text-[10px] px-2.5 py-1.5 border border-separator text-content-secondary rounded hover:text-content-primary transition-colors">View</button>
                   {['booked','confirmed'].includes(currentStatus) && (
