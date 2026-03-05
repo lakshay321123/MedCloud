@@ -43,17 +43,23 @@ const DEMO_ORG_IDS: Record<string, string> = {
   client:   'a0000000-0000-0000-0000-000000000001',
 }
 
-function getInitialUser(): User {
-  if (typeof window !== 'undefined') {
+// Stable SSR-safe default — MUST match server render to prevent React hydration error #418.
+// localStorage is NOT available on the server; reading it in useState() causes server/client
+// mismatch. We use a fixed default here and hydrate from localStorage in useEffect below.
+const SERVER_DEFAULT_USER: User = {
+  id: 'demo-001',
+  name: 'Dr. Martinez',
+  email: 'provider@clinic.com',
+  role: 'provider',
+  organization_id: 'a0000000-0000-0000-0000-000000000001',
+}
+
+function getUserFromStorage(): User {
+  try {
     const pt = localStorage.getItem('cosentus_portal_type') as PortalType | null
     const savedRole = localStorage.getItem('cosentus_role') as UserRole | null
     if (pt === 'facility') {
-      const role = (savedRole && ['provider', 'client'].includes(savedRole)) ? savedRole : 'provider'
-      // SECURITY: org_id must be authoritative. Production path reads from the
-      // Cognito ID token (custom:org_id claim) decoded server-side and stored
-      // during login. localStorage is only a demo/dev fallback — never used
-      // for actual data access decisions (those are enforced via Aurora RLS + org_id).
-      // TODO Sprint 2: replace with decoded JWT claim from /api/auth/session
+      const role = (savedRole && ['provider', 'client'].includes(savedRole)) ? savedRole as UserRole : 'provider'
       const orgIdFromToken = getCognitoOrgId()
       const orgId = orgIdFromToken || localStorage.getItem('cosentus_org_id') || DEMO_ORG_IDS[role] || 'a0000000-0000-0000-0000-000000000001'
       const name = ROLE_DISPLAY_NAMES[role] || 'Provider'
@@ -61,10 +67,11 @@ function getInitialUser(): User {
     }
     if (savedRole) {
       const name = ROLE_DISPLAY_NAMES[savedRole] || 'Admin User'
-      return { id: 'demo-001', name, email: 'admin@cosentus.ai', role: savedRole, organization_id: 'org-001' }
+      // org-001 is not a valid UUID — use the real demo org UUID
+      return { id: 'demo-001', name, email: 'admin@cosentus.ai', role: savedRole as UserRole, organization_id: 'a0000000-0000-0000-0000-000000000001' }
     }
-  }
-  return { id: 'demo-001', name: 'Admin User', email: 'admin@cosentus.ai', role: 'admin', organization_id: 'org-001' }
+  } catch { /* localStorage unavailable */ }
+  return SERVER_DEFAULT_USER
 }
 
 /**
@@ -92,18 +99,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('dark')
   const [language, setLanguageState] = useState<Language>('en')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [currentUser, setCurrentUser] = useState<User>(getInitialUser)
+  const [currentUser, setCurrentUser] = useState<User>(SERVER_DEFAULT_USER)
   const [selectedClient, setSelectedClientState] = useState<ClientOrg | null>(null)
-  const [country, setCountryState] = useState<'uae' | 'usa' | null>(
-    () => (typeof window !== 'undefined' ? (localStorage.getItem('cosentus_region') as 'uae' | 'usa') : null)
-  )
-  const [portalType, setPortalTypeState] = useState<PortalType | null>(
-    () => (typeof window !== 'undefined' ? (localStorage.getItem('cosentus_portal_type') as PortalType) : null)
-  )
+  const [country, setCountryState] = useState<'uae' | 'usa' | null>(null)
+  const [portalType, setPortalTypeState] = useState<PortalType | null>(null)
   const [isScribeRecording, setIsScribeRecording] = useState(false)
   // TODO: Sprint 2 — derive orgId from Cognito JWT claims after authentication
   // For Sprint 1 dev mode, hardcode to seeded organization UUID
   const orgId = 'a0000000-0000-0000-0000-000000000001'
+
+  // ── Hydration from localStorage (client-only, runs after SSR mount) ──────
+  // This MUST be a useEffect — reading localStorage in useState causes React
+  // hydration error #418 because the server renders with a different value.
+  useEffect(() => {
+    const user = getUserFromStorage()
+    setCurrentUser(user)
+    const region = localStorage.getItem('cosentus_region') as 'uae' | 'usa' | null
+    if (region) setCountryState(region)
+    const portal = localStorage.getItem('cosentus_portal_type') as PortalType | null
+    if (portal) setPortalTypeState(portal)
+    const theme = localStorage.getItem('cosentus_theme') as Theme | null
+    if (theme) {
+      setThemeState(theme)
+      document.documentElement.classList.remove('dark', 'light')
+      document.documentElement.classList.add(theme)
+    } else {
+      document.documentElement.classList.add('dark')
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const direction = getDirection(language)
 
