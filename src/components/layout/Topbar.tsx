@@ -7,7 +7,6 @@ import { Search, Sun, Moon, Bell, LogOut, Check, AlertTriangle, Info, X } from '
 import { useNotifications, useMarkNotificationRead } from '@/lib/hooks'
 import Dropdown, { DropdownOption } from '@/components/shared/Dropdown'
 import { useRouter } from 'next/navigation'
-import { demoPatients, demoClaims, demoDocs } from '@/lib/demo-data'
 
 const roleDisplayLabels: Record<UserRole, string> = {
   admin: 'Admin',
@@ -18,8 +17,8 @@ const roleDisplayLabels: Record<UserRole, string> = {
   biller: 'Biller',
   ar_team: 'AR Team',
   posting_team: 'Posting Team',
-  provider: 'Provider',
-  client: 'Client',
+  provider: 'Doctor',
+  client: 'Front Desk',
 }
 
 const facilityRoles: UserRole[] = ['provider', 'client']
@@ -66,23 +65,23 @@ export default function Topbar() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
+  // Search: navigate to module search pages instead of querying demo data
   const searchResults = useMemo(() => {
     if (searchQuery.length < 2) return []
     const q = searchQuery.toLowerCase()
-    const results: { type: string; label: string; sub: string; path: string }[] = []
-    demoPatients
-      .filter(p => `${p.firstName} ${p.lastName}`.toLowerCase().includes(q) || p.phone?.includes(q))
-      .slice(0, 3)
-      .forEach(p => results.push({ type: 'Patient', label: `${p.firstName} ${p.lastName}`, sub: p.phone || '', path: '/portal/patients' }))
-    demoClaims
-      .filter(c => c.id.toLowerCase().includes(q) || c.patientName.toLowerCase().includes(q) || c.payer.toLowerCase().includes(q))
-      .slice(0, 3)
-      .forEach(c => results.push({ type: 'Claim', label: c.id, sub: `${c.patientName} · ${c.payer}`, path: '/claims' }))
-    demoDocs
-      .filter(d => d.name.toLowerCase().includes(q) || d.patient?.toLowerCase().includes(q))
-      .slice(0, 2)
-      .forEach(d => results.push({ type: 'Doc', label: d.name, sub: d.type, path: '/documents' }))
-    return results.slice(0, 8)
+    const quickLinks: { type: string; label: string; sub: string; path: string }[] = [
+      { type: 'Patients', label: 'Search patients', sub: `"${searchQuery}"`, path: `/portal/patients?search=${encodeURIComponent(searchQuery)}` },
+      { type: 'Claims', label: 'Search claims', sub: `"${searchQuery}"`, path: `/claims?search=${encodeURIComponent(searchQuery)}` },
+      { type: 'Documents', label: 'Search documents', sub: `"${searchQuery}"`, path: `/documents?search=${encodeURIComponent(searchQuery)}` },
+    ]
+    // Surface module shortcuts for common keywords
+    const shortcuts: typeof quickLinks = []
+    if (q.includes('denial') || q.includes('appeal')) shortcuts.push({ type: 'Module', label: 'Denials & Appeals', sub: 'Open module', path: '/denials' })
+    if (q.includes('claim') || q.includes('clm')) shortcuts.push({ type: 'Module', label: 'Claims', sub: 'Open module', path: '/claims' })
+    if (q.includes('post') || q.includes('era') || q.includes('835')) shortcuts.push({ type: 'Module', label: 'Payment Posting', sub: 'Open module', path: '/payment-posting' })
+    if (q.includes('cod') || q.includes('cpt') || q.includes('icd')) shortcuts.push({ type: 'Module', label: 'AI Coding', sub: 'Open module', path: '/coding' })
+    if (q.includes('ar') || q.includes('aging') || q.includes('follow')) shortcuts.push({ type: 'Module', label: 'AR Management', sub: 'Open module', path: '/ar' })
+    return [...shortcuts, ...quickLinks].slice(0, 8)
   }, [searchQuery])
 
   const availableRoles = portalType === 'facility' ? facilityRoles : portalType === 'backoffice' ? backofficeRoles : [...backofficeRoles, ...facilityRoles]
@@ -167,16 +166,6 @@ export default function Topbar() {
             <span>{country === 'usa' ? 'USA' : 'UAE'}</span>
           </div>
         )}
-
-        {/* Language toggle */}
-        <button
-          onClick={() => { const idx = supportedLanguages.findIndex(l => l.lang === language); setLanguage(supportedLanguages[(idx + 1) % supportedLanguages.length].lang) }}
-          className="px-2.5 py-2 rounded-btn hover:bg-surface-elevated text-content-secondary text-[13px] font-semibold transition-colors flex items-center gap-1.5"
-          title={t('topbar', 'language')}
-        >
-          <span>{supportedLanguages.find(l => l.lang === language)?.flag}</span>
-          <span>{supportedLanguages.find(l => l.lang === language)?.nativeName}</span>
-        </button>
 
         {/* Theme toggle */}
         <button

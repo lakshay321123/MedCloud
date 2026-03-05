@@ -68,6 +68,7 @@ Resources:
             AllowedOrigins:
               - 'https://medcloud.vercel.app'
               - 'https://med-cloud.vercel.app'
+              # Wildcard *.vercel.app removed — would allow any Vercel project to access PHI bucket
             ExposedHeaders: [ETag]
             MaxAge: 3000
       NotificationConfiguration:
@@ -175,6 +176,8 @@ Resources:
               - s3:GetObject
               - s3:GetObjectVersion
               - s3:PutObject
+              # s3:DeleteObject removed — Lambda never deletes documents (least privilege)
+              # s3:ListBucket removed — not used by any Lambda handler (least privilege)
             Resource:
               - !GetAtt DocumentsBucket.Arn
               - !Sub '${DocumentsBucket.Arn}/*'

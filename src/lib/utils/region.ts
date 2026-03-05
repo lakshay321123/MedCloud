@@ -95,3 +95,20 @@ export function computeProfileComplete(patient: {
   const filled = checks.filter(Boolean).length
   return Math.round((filled / checks.length) * 100)
 }
+
+/** Known UAE payer names — used to filter out UAE data from US views until client_id region mapping is fully propagated */
+export const UAE_PAYER_NAMES = ['Daman Insurance', 'Dubai Health Insurance Corp', 'Aetna UAE', 'Aetna International', 'Oman Insurance', 'Takaful Emarat'] as const
+
+/** Filter a list of records by country using payer_name when client_id region is unavailable */
+export function filterPayersByCountry<T extends { payer?: string; payer_name?: string; payerName?: string }>(
+  data: T[],
+  country: 'uae' | 'usa' | null
+): T[] {
+  if (!country) return data
+  const isUS = country === 'usa'
+  return data.filter(item => {
+    const name = item.payer || item.payer_name || item.payerName || ''
+    const isUAEPayer = UAE_PAYER_NAMES.some(uname => name.toLowerCase().includes(uname.toLowerCase()))
+    return isUS ? !isUAEPayer : isUAEPayer
+  })
+}

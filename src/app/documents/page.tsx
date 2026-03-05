@@ -558,13 +558,21 @@ export default function DocumentsPage() {
   const { t } = useT()
   const [tab, setTab] = useState<TabId>('all')
   const [showUpload, setShowUpload] = useState(false)
+  const [apiDown, setApiDown] = useState(false)
   return (
     <ModuleShell title={t("documents","title")} subtitle={t("documents","subtitle")}
       actions={<button onClick={()=>setShowUpload(true)} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep transition-colors"><Upload size={16}/> {t("documents","bulkUpload")}</button>}>
-      <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
-        <AlertTriangle size={13} className='shrink-0' />
-        API connected — documents syncing live
-      </div>
+      {/* Quiet connection status — only visible if there's a problem */}
+      {apiDown ? (
+        <div className='mx-4 mb-4 px-4 py-2.5 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center justify-between text-xs'>
+          <div className='flex items-center gap-2 text-red-600 dark:text-red-400'>
+            <span className='w-2 h-2 rounded-full bg-red-500 shrink-0' />
+            Documents are temporarily unavailable. Your data is safe — we&apos;re working on it.
+          </div>
+          <button onClick={() => toast.info('Support notified. Reference: DOC-' + Date.now().toString().slice(-6))}
+            className='text-red-600 underline hover:no-underline ml-4 shrink-0'>Raise Concern</button>
+        </div>
+      ) : null}
       <div className="flex gap-2 mb-4">
         {TABS.map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)}

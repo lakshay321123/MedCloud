@@ -1,7 +1,7 @@
 'use client'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
-import { demoPatients } from '@/lib/demo-data'
+import { usePatients } from '@/lib/hooks'
 import { X, ChevronDown } from 'lucide-react'
 
 type PatientMode = 'existing' | 'new'
@@ -17,15 +17,19 @@ export default function NewAppointmentModal({ onClose }: { onClose: () => void }
     insuranceProvider: '', memberId: '', policyNo: '',
   })
 
-  // In demo mode, show patients from all clients (or use selectedClient from context)
+  const { data: patientResult } = usePatients({ limit: 50 })
+  const apiPatients = patientResult?.data || []
   const patients = selectedClient
-    ? demoPatients.filter(p => p.clientId === selectedClient.id)
-    : demoPatients
+    ? apiPatients.filter(p => p.client_id === selectedClient.id)
+    : apiPatients
 
   void currentUser
 
   const filteredPatients = search.length > 0
-    ? patients.filter(p => `${p.firstName} ${p.lastName}`.toLowerCase().includes(search.toLowerCase()))
+    ? patients.filter(p => {
+        const name = p.patient_name || `${p.first_name || ''} ${p.last_name || ''}`.trim()
+        return name.toLowerCase().includes(search.toLowerCase())
+      })
     : []
 
   function handleSubmit() {
@@ -85,10 +89,10 @@ export default function NewAppointmentModal({ onClose }: { onClose: () => void }
                     filteredPatients.map(p => (
                       <button
                         key={p.id}
-                        onClick={() => { setSelectedPatient(p.id); setSearch(`${p.firstName} ${p.lastName}`) }}
+                        onClick={() => { setSelectedPatient(p.id); setSearch(p.patient_name || `${p.first_name || ''} ${p.last_name || ''}`.trim()) }}
                         className="w-full text-left px-3 py-2 text-sm text-content-primary hover:bg-surface-primary transition-colors"
                       >
-                        {p.firstName} {p.lastName}
+                        {p.patient_name || `${p.first_name || ''} ${p.last_name || ''}`.trim()}
                         <span className="text-xs text-content-secondary ml-2">{p.dob}</span>
                       </button>
                     ))
