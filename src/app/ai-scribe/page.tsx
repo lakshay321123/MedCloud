@@ -413,7 +413,7 @@ function ProviderView() {
             <div className="text-xs text-content-secondary">{(selectedAppt as any)?.time} · {(selectedAppt as any)?.type}</div>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-3 text-xs">
+        <div className="grid grid-cols-3 gap-2 text-xs">
           <div><span className="text-content-tertiary block">DOB</span>{formatDOB(selectedPatient.dob)}</div>
           <div><span className="text-content-tertiary block">Gender</span>{selectedPatient.gender || '—'}</div>
           <div><span className="text-content-tertiary block">Insurance</span>{selectedPatient.insurance?.payer || '—'}</div>
@@ -462,7 +462,7 @@ function ProviderView() {
 
   // ── Recording ─────────────────────────────────────────────────────────────
   if (uiState === 'recording') return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {/* Left: patient context + macros */}
       <div className="card p-4 text-xs space-y-2">
         <div className="flex items-center gap-2 mb-3">
@@ -593,9 +593,9 @@ function ProviderView() {
 
     return (
       <>
-        <div className="grid grid-cols-5 gap-5 h-[calc(100vh-300px)]">
+        <div className="flex flex-col md:grid md:grid-cols-5 md:gap-5 md:h-[calc(100vh-300px)] gap-4">
           {/* Left panel — transcript OR prior visits */}
-          <div className="col-span-2 card flex flex-col overflow-hidden">
+          <div className="col-span-2 card flex flex-col overflow-hidden min-h-[300px] md:min-h-0">
             {/* Tab switcher */}
             <div className="flex border-b border-separator">
               <button onClick={() => setNoteLeftTab('transcript')}
@@ -663,7 +663,7 @@ function ProviderView() {
           </div>
 
           {/* Right panel — SOAP + codes */}
-          <div className="col-span-3 card flex flex-col overflow-hidden">
+          <div className="col-span-3 card flex flex-col overflow-hidden min-h-[400px] md:min-h-0">
             <div className="px-4 py-3 border-b border-separator flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold">{selectedVisit.patientName}</h3>
@@ -877,13 +877,13 @@ function ProviderView() {
   // ── Queue ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-4 gap-4 mb-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
         <KPICard label={t('scribe', 'notesToday')} value={visits.length} icon={<FileText size={20} />} />
         <KPICard label={t('scribe', 'pendingSignOff')} value={pending.length} icon={<Clock size={20} />} />
         <KPICard label={t('scribe', 'avgConfidence')} value="91%" icon={<BrainCircuit size={20} />} />
         <KPICard label={t('scribe', 'codesSuggested')} value={visits.reduce((s, v) => s + (v.suggestedCodes?.length || 0), 0)} icon={<Activity size={20} />} />
       </div>
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
         <div className="col-span-1 space-y-3">
           <button onClick={() => setUiState('select_patient')}
             className="w-full bg-emerald-500 text-white rounded-lg py-3 text-sm font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2 transition-colors">
@@ -953,7 +953,7 @@ function CoderView() {
   const [selectedVisit, setSelectedVisit] = useState<DemoVisit | null>(coderVisits[0] ?? null)
   const router = useRouter()
   return (
-    <div className="grid grid-cols-3 gap-5 h-[calc(100vh-280px)]">
+    <div className="flex flex-col md:grid md:grid-cols-3 md:gap-5 md:h-[calc(100vh-280px)] gap-4">
       <div className="card overflow-auto">
         <div className="px-3 py-2 border-b border-separator text-xs font-semibold text-content-secondary uppercase tracking-wider">Signed Notes — Read Only</div>
         {coderVisits.length === 0 && (
@@ -969,7 +969,7 @@ function CoderView() {
           </button>
         ))}
       </div>
-      <div className="col-span-2 card flex flex-col overflow-hidden">
+      <div className="col-span-2 card flex flex-col overflow-hidden min-h-[300px] md:min-h-0">
         {!selectedVisit ? (
           <div className="flex-1 flex items-center justify-center text-content-secondary text-sm">Select a note to view</div>
         ) : (<>

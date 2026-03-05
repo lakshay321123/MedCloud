@@ -3,16 +3,24 @@ import React, { useEffect, useRef, useCallback, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, LogOut } from 'lucide-react'
+import { useHasMounted } from '@/lib/hooks/useHasMounted'
+import { useApp } from '@/lib/context'
+
+type UserRole = 'provider' | 'client' | 'admin' | 'director' | 'supervisor' | 'manager' | 'coder' | 'biller' | 'ar_team' | 'posting_team'
+const facilityRoles: UserRole[] = ['provider', 'client']
+const roleDisplayLabels: Record<string, string> = { provider: 'Doctor', client: 'Front Desk' }
 
 const INACTIVITY_MS = 15 * 60 * 1000 // 15 minutes
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { currentUser, setRole, portalType } = useApp()
   const isLoginPage = pathname === '/'
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const mounted = useHasMounted()
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current)
@@ -20,6 +28,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       await fetch('/api/auth/logout', { method: 'POST' })
       localStorage.removeItem('cosentus_region')
       localStorage.removeItem('cosentus_portal_type')
+      localStorage.removeItem('cosentus_role')
       router.push('/?timeout=1')
     }, INACTIVITY_MS)
   }, [router])
@@ -44,13 +53,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen bg-surface-primary overflow-hidden">
-      {/* Desktop sidebar — hidden on mobile */}
+      {/* Desktop sidebar — only render after hydration to avoid backoffice flash */}
       <div className="hidden lg:flex">
-        <Sidebar />
+        {mounted && <Sidebar />}
       </div>
 
       {/* Mobile sidebar overlay */}
-      {mobileSidebarOpen && (
+      {mounted && mobileSidebarOpen && (
         <div className="fixed inset-0 z-50 flex lg:hidden">
           {/* Backdrop */}
           <div
@@ -80,8 +89,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <Menu size={20} />
           </button>
           <span className="text-sm font-bold text-content-primary">MedCloud</span>
-          <div className="ml-auto">
-            {/* Minimal topbar actions on mobile — role switcher & logout only */}
+          <div className="ml-auto flex items-center gap-2">
+            {/* Role switcher — facility portal only (Doctor / Front Desk) */}
+            {mounted && portalType === 'facility' && (
+              <select
+                value={currentUser.role}
+                onChange={e => setRole(e.target.value as UserRole)}
+                className="text-xs bg-brand/10 text-brand border-0 rounded-lg px-2 py-1.5 font-semibold focus:outline-none focus:ring-1 focus:ring-brand"
+              >
+                {facilityRoles.map(r => (
+                  <option key={r} value={r}>{roleDisplayLabels[r]}</option>
+                ))}
+              </select>
+            )}
+            <button
+              onClick={async () => {
+                await fetch('/api/auth/logout', { method: 'POST' })
+                localStorage.removeItem('cosentus_region')
+                localStorage.removeItem('cosentus_portal_type')
+                localStorage.removeItem('cosentus_role')
+                window.location.href = '/'
+              }}
+              className="p-2 rounded-lg text-content-secondary hover:text-red-500 hover:bg-red-500/10 transition-colors"
+              title="Logout"
+            >
+              <LogOut size={17} />
+            </button>
           </div>
         </div>
         {/* Desktop topbar */}

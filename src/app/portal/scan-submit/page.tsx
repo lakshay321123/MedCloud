@@ -107,12 +107,12 @@ export default function ScanSubmitPage() {
       </div>
       <div className="max-w-2xl mx-auto">
         {/* Step indicator */}
-        <div className="flex items-center gap-2 mb-6">
+        <div className="flex items-center gap-1 sm:gap-2 mb-6 overflow-x-auto pb-1 no-scrollbar">
           {([1,2,3] as Step[]).map(s=>(
             <React.Fragment key={s}>
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${step===s?'bg-brand text-white':step>s?'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400':'bg-surface-elevated text-content-tertiary'}`}>
                 {step>s?<CheckCircle2 size={12}/>:<span className="w-4 h-4 rounded-full border-2 border-current flex items-center justify-center text-[10px]">{s}</span>}
-                {s===1?'Select Patient':s===2?'Upload Documents':'Review & Submit'}
+                {s===1?<><span className='hidden sm:inline'>Select </span>Patient</>:s===2?<><span className='hidden sm:inline'>Upload </span>Docs</>:<><span className='hidden sm:inline'>Review & </span>Submit</>}
               </div>
               {s<3&&<div className="flex-1 h-px bg-separator"/>}
             </React.Fragment>
@@ -169,7 +169,7 @@ export default function ScanSubmitPage() {
                 </>
               ) : (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {[['First Name','John'],['Last Name','Smith']].map(([l,p])=>(
                       <div key={l}>
                         <label className="text-xs text-content-secondary block mb-1">{l} *</label>
@@ -177,7 +177,7 @@ export default function ScanSubmitPage() {
                       </div>
                     ))}
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-content-secondary block mb-1">Date of Birth</label>
                       <input type="date" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"/>
@@ -308,8 +308,7 @@ function HistorySection({ history }: { history: Submission[] }) {
   return (
     <div>
       <h3 className="text-sm font-semibold text-content-primary mb-3">Submission History</h3>
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="card overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm min-w-[480px]">
           <thead><tr className="border-b border-separator text-xs text-content-secondary">
             <th className="text-left px-4 py-3">Tracking ID</th><th className="text-left px-4 py-3">Date</th>
             <th className="text-left px-4 py-3">Documents</th><th className="text-left px-4 py-3">Patient</th>
@@ -324,7 +323,7 @@ function HistorySection({ history }: { history: Submission[] }) {
               <td className="px-4 py-3"><StatusBadge status={s.status} small/></td>
             </tr>
           ))}</tbody>
-        </table>
+        </table></div>
       </div>
     </div>
   )

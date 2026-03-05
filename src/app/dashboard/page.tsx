@@ -75,19 +75,19 @@ function ExecutiveDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
         <KPICard label={t("dashboard","totalRevenueMTD")} value={loading ? '…' : `$${(totalCollectionsMtd / 1000000).toFixed(1)}M`} sub="+8.2% vs last month" trend="up" icon={<DollarSign size={20} />} />
         <KPICard label={t("dashboard","claimsSubmitted")} value={loading ? '…' : totalClaims.toLocaleString()} sub="+124 today" trend="up" icon={<FileText size={20} />} />
         <KPICard label={t("dashboard","denialRate")} value={loading ? '…' : `${denialRate}%`} sub="-0.3% vs last month" trend="down" icon={<AlertTriangle size={20} />} />
         <KPICard label={t("dashboard","daysInAR")} value="28.5" sub="-2.1 days" trend="down" icon={<Clock size={20} />} />
       </div>
-      <div className="grid grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
         <KPICard label={t("dashboard","collectionRate")} value="96.8%" sub="+0.4%" trend="up" icon={<TrendingUp size={20} />} />
         <KPICard label={t("dashboard","activePatients")} value={loading ? '…' : totalPatients.toLocaleString()} icon={<Users size={20} />} />
         <KPICard label={t("dashboard","aiCallsToday")} value="127" icon={<Phone size={20} />} />
         <KPICard label={t("dashboard","aiCodingAcc")} value="94.2%" icon={<BrainCircuit size={20} />} />
       </div>
-      <div className="grid grid-cols-5 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 sm:gap-5">
         <div className="col-span-3 card p-6">
           <h3 className="text-[15px] font-semibold text-content-primary mb-2">
             {agingBuckets ? t('dashboard','arAgingBuckets') : t('dashboard','revenueTrend')}
@@ -188,7 +188,7 @@ function CoderDashboard() {
         <h1 className="text-xl font-bold text-content-primary">My Coding Queue</h1>
         <p className="text-sm text-content-secondary">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
       </div>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <KPICard label={t('dashboard','chartsWaiting')} value={pendingCharts} icon={<BrainCircuit size={20} />} />
         <KPICard label={t('dashboard','past24hSLA')} value={pastSLA} icon={<Clock size={20} />} />
         <KPICard label={t('dashboard','queriesPending')} value={queryPending} icon={<MessageCircle size={20} />} />
@@ -204,7 +204,7 @@ function CoderDashboard() {
           <Link href="/coding" className="ml-auto text-[12px] text-brand font-medium shrink-0">Go to Queue →</Link>
         </div>
       )}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <QuickLinkCard title="Open Coding Queue" subtitle={`${pendingCharts} charts waiting`} href="/coding" icon={<BrainCircuit size={18} />} />
         <QuickLinkCard title="Doctor Queries" subtitle={`${queryPending ?? 0} awaiting response`} href="/portal/messages" icon={<MessageCircle size={18} />} />
       </div>
@@ -227,7 +227,7 @@ function BillerDashboard() {
         <h1 className="text-xl font-bold text-content-primary">Claims Dashboard</h1>
         <p className="text-sm text-content-secondary">Your daily billing summary</p>
       </div>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <KPICard label={t('dashboard','scrubErrors')} value={scrubFailed} icon={<AlertTriangle size={20} />} />
         <KPICard label={t('dashboard','readyToSubmit')} value={pendingSubmit} icon={<Send size={20} />} />
         <KPICard label={t('dashboard','denied')} value={rejectedYesterday} icon={<XCircle size={20} />} />
@@ -254,7 +254,7 @@ function BillerDashboard() {
           <Link href="/claims" className="text-[12px] text-brand font-medium shrink-0">Review →</Link>
         </div>
       )}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <QuickLinkCard title="Claims Center" subtitle={`${pendingSubmit} ready to submit`} href="/claims" icon={<FileText size={18} />} />
         <QuickLinkCard title="Check Eligibility" subtitle="Verify before submission" href="/eligibility" icon={<ShieldCheck size={18} />} />
       </div>
@@ -276,7 +276,7 @@ function ARDashboard() {
         <h1 className="text-xl font-bold text-content-primary">A/R Dashboard</h1>
         <p className="text-sm text-content-secondary">Your accounts receivable summary</p>
       </div>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <KPICard label={t('dashboard','overdueAccounts')} value={overdueAccounts} icon={<TrendingUp size={20} />} />
         <KPICard label={t('dashboard','unworkedDenials')} value={denialsPending} icon={<ShieldAlert size={20} />} />
         <KPICard label={t('dashboard','appealsDeadline')} value={appealsNearDeadline} icon={<Clock size={20} />} />
@@ -294,7 +294,7 @@ function ARDashboard() {
           <Link href="/denials" className="text-[12px] text-brand font-medium">Review Appeals →</Link>
         </div>
       )}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <QuickLinkCard title="A/R Management" subtitle={`${overdueAccounts} accounts overdue`} href="/ar-management" icon={<TrendingUp size={18} />} />
         <QuickLinkCard title="Denials & Appeals" subtitle={`${denialsPending} need attention`} href="/denials" icon={<ShieldAlert size={18} />} />
       </div>
@@ -315,7 +315,7 @@ function PostingDashboard() {
         <h1 className="text-xl font-bold text-content-primary">Payment Posting</h1>
         <p className="text-sm text-content-secondary">{t('dashboard','todayPostingSummary')}</p>
       </div>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <KPICard label={t('dashboard','erasToPost')} value={unpostedERAs} icon={<Receipt size={20} />} />
         <KPICard label={t('dashboard','manualReviewLines')} value={manualReviewLines} icon={<AlertTriangle size={20} />} />
         <KPICard label={t('dashboard','past48hSLA')} value={pastSLAERAs} icon={<Clock size={20} />} />
@@ -346,7 +346,7 @@ function ProviderDashboard() {
         <h1 className="text-xl font-bold text-content-primary">Good morning, Dr.</h1>
         <p className="text-sm text-content-secondary">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <KPICard label={t('dashboard','todayAppointments')} value={todayAppointments.length} icon={<CalendarDays size={20} />} />
         <KPICard label={t('dashboard','pendingSignOffs')} value={pendingSignOffs} icon={<FileText size={20} />} />
         <KPICard label={t('dashboard','unsignedNotes')} value={unsignedNotes} icon={<Clock size={20} />} />
@@ -409,7 +409,7 @@ function ClientDashboard() {
           </button>
         )}
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="bg-surface-elevated rounded-xl p-5 border border-separator">
           <p className="text-[12px] text-content-secondary mb-1">MTD Collections</p>
           <p className="text-3xl font-bold text-content-primary">${mtdCollections.toLocaleString()}</p>
@@ -418,7 +418,7 @@ function ClientDashboard() {
         <KPICard label={t("dashboard","denialRate")} value={`${denialRate}%`} icon={<ShieldAlert size={20} />} />
         <KPICard label={t("dashboard","daysInAR")} value={28} icon={<TrendingUp size={20} />} />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <QuickLinkCard title="My Claims" subtitle="View all claim statuses" href="/portal/watch-track" icon={<Eye size={18} />} />
         <QuickLinkCard title="Submit Documents" subtitle="Upload records & superbills" href="/portal/scan-submit" icon={<ScanLine size={18} />} />
       </div>
@@ -470,7 +470,7 @@ function SupervisorDashboard() {
       )}
       <div>
         <h2 className="text-[13px] font-semibold text-content-primary mb-3">Team Productivity Today</h2>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           {[
             { role: 'Coders', metric: '18 / 22 charts', pct: 82 },
             { role: 'Billers', metric: '31 / 35 claims', pct: 89 },

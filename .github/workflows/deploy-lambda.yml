@@ -1,0 +1,59 @@
+name: Deploy Lambda
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/lambda-v4/index.mjs'
+
+jobs:
+  deploy:
+    name: Deploy to AWS Lambda
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Install Lambda dependencies
+        run: |
+          cd deploy/lambda-v4
+          npm install --omit=dev --quiet
+
+      - name: Package Lambda
+        run: |
+          cd deploy/lambda-v4
+          zip -q -r /tmp/medcloud-api.zip index.mjs node_modules/
+          echo "Package size: $(du -sh /tmp/medcloud-api.zip | cut -f1)"
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp /tmp/medcloud-api.zip s3://medcloud-documents-us/lambda/medcloud-api.zip
+
+      - name: Deploy to Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name medcloud-api \
+            --s3-bucket medcloud-documents-us \
+            --s3-key lambda/medcloud-api.zip \
+            --region us-east-1
+
+      - name: Wait for update
+        run: |
+          aws lambda wait function-updated \
+            --function-name medcloud-api \
+            --region us-east-1
+
+      - name: Verify deployment
+        run: |
+          aws lambda get-function-configuration \
+            --function-name medcloud-api \
+            --region us-east-1 \
+            --query '{LastModified: LastModified, CodeSize: CodeSize}'

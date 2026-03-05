@@ -43,7 +43,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
   const { toast } = useToast()
   const [patientSearch, setPatientSearch] = useState('')
   return (
-    <div className="fixed inset-y-0 right-0 w-[600px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl animate-fade-in">
+    <div className="fixed inset-y-0 right-0 w-full sm:w-[600px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl animate-fade-in">
       <div className="p-4 border-b border-separator flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -192,8 +192,7 @@ function AllDocsTab() {
           </select>
         </div>
       </div>
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="card overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm min-w-[700px]">
           <thead><tr className="border-b border-separator text-xs text-content-secondary">
             <th className="text-left px-4 py-3">Document</th><th className="text-left px-4 py-3">Type</th>
             <th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">Patient</th>
@@ -229,7 +228,7 @@ function AllDocsTab() {
               </td>
             </tr>
           ))}</tbody>
-        </table>
+        </table></div>
       </div>
       {selectedDoc&&<>
         <div className="fixed inset-0 bg-black/20 z-30" onClick={()=>setSelectedDoc(null)}/>
@@ -318,8 +317,7 @@ function FaxCenterTab() {
           <Send size={14}/> Send Fax
         </button>
       </div>
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="card overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm min-w-[600px]">
           <thead><tr className="border-b border-separator text-xs text-content-secondary">
             <th className="text-left px-4 py-3">Fax ID</th><th className="text-left px-4 py-3">From / To</th>
             <th className="text-left px-4 py-3">Date</th><th className="text-left px-4 py-3">Pages</th>
@@ -340,7 +338,7 @@ function FaxCenterTab() {
               </td>
             </tr>
           ))}</tbody>
-        </table>
+        </table></div>
       </div>
 
       {/* Fax detail modal */}
@@ -461,7 +459,7 @@ function AIProcessingTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="card p-4 text-center">
           <p className="text-2xl font-bold text-brand">{processed || textractDocs.length}</p>
           <p className="text-[10px] text-content-tertiary mt-1">Documents Processed</p>
@@ -573,7 +571,7 @@ export default function DocumentsPage() {
             className='text-red-600 underline hover:no-underline ml-4 shrink-0'>Raise Concern</button>
         </div>
       ) : null}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-1 no-scrollbar">
         {TABS.map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)}
             className={`px-4 py-1.5 rounded-lg text-xs font-medium ${tab===t.id?'bg-brand/10 text-brand':'bg-surface-elevated text-content-secondary border border-separator'}`}>

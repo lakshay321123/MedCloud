@@ -44,7 +44,7 @@ export default function WatchTrackPage() {
   return (
     <ModuleShell title="Watch & Track" subtitle="Track your claims and revenue">
       {!apiClaims.length && <div className='mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2.5 text-xs text-amber-400'>API connecting…</div>}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <KPICard label={t('watch','totalClaims')} value={myClaims.length} icon={<FileText size={20}/>}/>
         <KPICard label={t('watch','totalCharges')} value={`$${totalCharges.toLocaleString()}`} icon={<DollarSign size={20}/>}/>
         <KPICard label={t('watch','collected')} value={`$${totalPaid.toLocaleString()}`} sub={`${((totalPaid/totalCharges)*100).toFixed(1)}% rate`} trend="up"/>
@@ -81,7 +81,7 @@ export default function WatchTrackPage() {
               {expanded===c.id&&(
                 <tr className="border-b border-separator bg-surface-elevated">
                   <td colSpan={9} className="px-8 py-4">
-                    <div className="grid grid-cols-3 gap-6 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 text-xs">
                       <div>
                         <p className="text-content-tertiary uppercase tracking-wider mb-2 font-semibold">Claim Detail</p>
                         <div className="space-y-1">
