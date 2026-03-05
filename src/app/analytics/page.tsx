@@ -110,9 +110,10 @@ function HeatCell({ value }: { value: number }) {
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
-  const { selectedClient, country } = useApp()
+  const { selectedClient, country, currentUser } = useApp()
   const { t } = useT()
-  const [tab, setTab] = useState<'financial' | 'operational' | 'ai' | 'payer' | 'provider'>('financial')
+  const isProvider = currentUser?.role === 'provider'
+  const [tab, setTab] = useState<'financial' | 'operational' | 'ai' | 'payer' | 'provider'>(isProvider ? 'provider' : 'financial')
   const [dateRange, setDateRange] = useState('last30')
 
   // Live API

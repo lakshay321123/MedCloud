@@ -15,7 +15,7 @@ const roleRouteMap: Record<string, string[]> = {
   biller:       ['/dashboard', '/claims', '/eligibility', '/denials', '/tasks', '/documents', '/portal/appointments', '/portal/messages', '/portal/patients'],
   ar_team:      ['/dashboard', '/denials', '/ar-management', '/voice-ai', '/tasks', '/documents', '/portal/messages'],
   posting_team: ['/dashboard', '/payment-posting', '/tasks', '/documents', '/portal/messages'],
-  provider:     ['/dashboard', '/ai-scribe', '/documents', '/portal/appointments', '/portal/messages', '/portal/patients'],
+  provider:     ['/dashboard', '/ai-scribe', '/documents', '/analytics', '/portal/appointments', '/portal/messages', '/portal/patients'],
   client:       ['/dashboard', '/portal'],
 }
 
