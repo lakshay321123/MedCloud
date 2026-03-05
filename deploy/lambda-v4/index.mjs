@@ -6148,7 +6148,8 @@ export const handler = async (event) => {
             "ADD COLUMN IF NOT EXISTS appointment_type VARCHAR(100)",
             "ADD COLUMN IF NOT EXISTS notes TEXT"
           ]) {
-            await pool.query(`ALTER TABLE appointments ${col}`).catch(() => {});
+            await pool.query(`ALTER TABLE appointments ${col}`)
+              .catch(err => console.error('[appointments] Schema migration failed:', err.message));
           }
           // Backfill existing appointments that have patient_id but no stored patient_name
           await pool.query(`
@@ -6156,8 +6157,9 @@ export const handler = async (event) => {
             SET patient_name = TRIM(p.first_name || ' ' || p.last_name)
             FROM patients p
             WHERE a.patient_id = p.id
+              AND a.org_id = p.org_id
               AND (a.patient_name IS NULL OR a.patient_name = '')
-          `).catch(() => {});
+          `).catch(err => console.error('[appointments] Backfill failed:', err.message));
           global._appointmentsSchemaDone = true;
         } catch (err) {
           console.error('[appointments] Cold-start schema guard failed:', err.message);
@@ -6168,46 +6170,62 @@ export const handler = async (event) => {
       if (method === 'GET' && !pathParams.id) {
         const limit = Math.min(parseInt(qs.limit) || 100, 1000);
         const offset = parseInt(qs.offset) || 0;
-        const rows = await pool.query(
-          `SELECT a.*,
-                  COALESCE(
-                    NULLIF(TRIM(p.first_name || ' ' || p.last_name), ''),
-                    a.patient_name
-                  ) AS patient_name,
-                  p.first_name,
-                  p.last_name,
-                  COALESCE(pr.name, a.provider_name) AS provider_name
-           FROM appointments a
-           LEFT JOIN patients p ON a.patient_id = p.id
-           LEFT JOIN providers pr ON a.provider_id = pr.id
-           WHERE a.org_id = $1
-           ORDER BY a.appointment_date ASC, a.appointment_time ASC, a.created_at DESC
-           LIMIT $2 OFFSET $3`,
-          [effectiveOrgId, limit, offset]
-        );
-        return respond(200, { data: rows.rows, total: rows.rows.length });
+        // FIX: scope to client_id when provided (clinic users must only see their own practice)
+        const apptClientId = qs.client_id || null;
+        const clientClause = apptClientId ? ' AND a.client_id = $4' : '';
+        const countParams = apptClientId ? [effectiveOrgId, apptClientId] : [effectiveOrgId];
+        const countClause = apptClientId ? ' AND client_id = $2' : '';
+        const dataParams = apptClientId
+          ? [effectiveOrgId, limit, offset, apptClientId]
+          : [effectiveOrgId, limit, offset];
+        const [countResult, rows] = await Promise.all([
+          pool.query(
+            `SELECT COUNT(*)::int AS total FROM appointments WHERE org_id = $1${countClause}`,
+            countParams
+          ),
+          pool.query(
+            `SELECT a.*,
+                    COALESCE(
+                      NULLIF(TRIM(p.first_name || ' ' || p.last_name), ''),
+                      a.patient_name
+                    ) AS patient_name,
+                    p.first_name,
+                    p.last_name,
+                    COALESCE(pr.name, a.provider_name) AS provider_name
+             FROM appointments a
+             LEFT JOIN patients p ON a.patient_id = p.id AND p.org_id = a.org_id
+             LEFT JOIN providers pr ON a.provider_id = pr.id AND pr.org_id = a.org_id
+             WHERE a.org_id = $1${clientClause}
+             ORDER BY a.appointment_date ASC, a.appointment_time ASC, a.created_at DESC
+             LIMIT $2 OFFSET $3`,
+            dataParams
+          ),
+        ]);
+        const total = countResult.rows[0]?.total ?? 0;
+        return respond(200, { data: rows.rows, meta: { total, page: Math.floor(offset/limit)+1, limit }, total });
       }
 
       // ── POST (enriched) ──
       if (method === 'POST' && !pathParams.id) {
         let enrichedBody = { ...body };
+        // FIX: scope enrichment lookups to org_id to prevent cross-org info disclosure
         if (enrichedBody.patient_id && !enrichedBody.patient_name) {
           try {
             const pr = await pool.query(
-              `SELECT first_name || ' ' || last_name AS name FROM patients WHERE id = $1`,
-              [enrichedBody.patient_id]
+              `SELECT first_name || ' ' || last_name AS name FROM patients WHERE id = $1 AND org_id = $2`,
+              [enrichedBody.patient_id, effectiveOrgId]
             );
             if (pr.rows[0]?.name) enrichedBody.patient_name = pr.rows[0].name;
-          } catch (_) {}
+          } catch (err) { console.error('[appointments] Patient name lookup failed:', err.message); }
         }
         if (enrichedBody.provider_id && !enrichedBody.provider_name) {
           try {
             const prv = await pool.query(
-              `SELECT name FROM providers WHERE id = $1`,
-              [enrichedBody.provider_id]
+              `SELECT name FROM providers WHERE id = $1 AND org_id = $2`,
+              [enrichedBody.provider_id, effectiveOrgId]
             );
             if (prv.rows[0]?.name) enrichedBody.provider_name = prv.rows[0].name;
-          } catch (_) {}
+          } catch (err) { console.error('[appointments] Provider name lookup failed:', err.message); }
         }
         return respond(201, await create('appointments', enrichedBody, effectiveOrgId));
       }

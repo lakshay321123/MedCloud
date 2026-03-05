@@ -52,7 +52,7 @@ function SectionHeader({ title, badge, open, onToggle }: { title: string; badge?
 }
 
 function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: () => void }) {
-  const { country, currentUser } = useApp()
+  const { country, currentUser, selectedClient } = useApp()
   const { toast } = useToast()
   const createPatient = useCreatePatient()
   const isUAE = country === 'uae'
@@ -320,7 +320,7 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
                   }
                   const result = await createPatient.mutate({
                     org_id: currentUser.organization_id,
-                    client_id: currentUser.organization_id,
+                    client_id: selectedClient?.id ?? currentUser.organization_id,
                     first_name: form.firstName,
                     last_name: form.lastName,
                     dob: form.dob || undefined,
