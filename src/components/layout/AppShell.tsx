@@ -122,7 +122,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <Topbar />
         </div>
         <main className="flex-1 overflow-y-auto p-4 lg:p-8">
-          {children}
+          {/* Gate content on mounted: SSR always renders with role='admin' (no localStorage).
+              Showing content before hydration causes a flash of wrong dashboard/sidebar.
+              The spinner is only visible for ~50-80ms (one useEffect tick). */}
+          {mounted ? children : (
+            <div className="flex items-center justify-center h-full">
+              <div className="w-5 h-5 border-2 border-brand/20 border-t-brand rounded-full animate-spin" />
+            </div>
+          )}
         </main>
       </div>
     </div>
