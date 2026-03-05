@@ -37,9 +37,10 @@ const ROLE_DISPLAY_NAMES: Record<string, string> = {
   provider: 'Dr. Martinez', client: 'Front Desk',
 }
 
-// Demo org_id fallback per role so messages/patients filter works without Cognito
+// Demo org_id fallback per role — must be real UUIDs, Lambda rejects shorthand like 'org-102'
 const DEMO_ORG_IDS: Record<string, string> = {
-  provider: 'org-102', client: 'org-102',
+  provider: 'a0000000-0000-0000-0000-000000000001',
+  client:   'a0000000-0000-0000-0000-000000000001',
 }
 
 function getInitialUser(): User {
@@ -54,7 +55,7 @@ function getInitialUser(): User {
       // for actual data access decisions (those are enforced via Aurora RLS + org_id).
       // TODO Sprint 2: replace with decoded JWT claim from /api/auth/session
       const orgIdFromToken = getCognitoOrgId()
-      const orgId = orgIdFromToken || localStorage.getItem('cosentus_org_id') || DEMO_ORG_IDS[role] || 'org-102'
+      const orgId = orgIdFromToken || localStorage.getItem('cosentus_org_id') || DEMO_ORG_IDS[role] || 'a0000000-0000-0000-0000-000000000001'
       const name = ROLE_DISPLAY_NAMES[role] || 'Provider'
       return { id: 'demo-001', name, email: 'provider@clinic.com', role, organization_id: orgId }
     }
