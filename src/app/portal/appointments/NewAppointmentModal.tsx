@@ -1,7 +1,7 @@
 'use client'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
-import { usePatients, useCreateAppointment } from '@/lib/hooks'
+import { usePatients, useCreateAppointment, useCreatePatient } from '@/lib/hooks'
 import { X, ChevronDown } from 'lucide-react'
 
 type PatientMode = 'existing' | 'new'
@@ -9,6 +9,7 @@ type PatientMode = 'existing' | 'new'
 export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () => void; onSaved?: () => void }) {
   const { currentUser, selectedClient } = useApp()
   const createAppointment = useCreateAppointment()
+  const createPatient = useCreatePatient()
   const [mode, setMode] = useState<PatientMode>('existing')
   const [showInsurance, setShowInsurance] = useState(false)
   const [selectedPatient, setSelectedPatient] = useState('')
@@ -38,35 +39,50 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
     : []
 
   async function handleSubmit() {
-    if (mode === 'existing' && !selectedPatient) {
-      return
-    }
-    if (mode === 'new' && (!newPatient.firstName || !newPatient.lastName || !newPatient.phone)) {
-      return
+    if (mode === 'existing' && !selectedPatient) return
+    if (mode === 'new' && (!newPatient.firstName || !newPatient.lastName || !newPatient.phone)) return
+
+    const orgId = currentUser.organization_id
+    const clientId = selectedClient?.id ?? orgId
+
+    // Step 1: For new patients — create the patient record first
+    let patientId: string | undefined = mode === 'existing' ? selectedPatient : undefined
+
+    if (mode === 'new') {
+      const created = await createPatient.mutate({
+        org_id: orgId,
+        client_id: clientId,
+        first_name: newPatient.firstName,
+        last_name: newPatient.lastName,
+        dob: newPatient.dob || undefined,
+        phone: newPatient.phone,
+        insurance_payer: newPatient.insuranceProvider || undefined,
+        insurance_member_id: newPatient.memberId || undefined,
+        insurance_policy_number: newPatient.policyNo || undefined,
+      })
+      if (!created) return  // createPatient.error will be set
+      patientId = created.id
     }
 
+    // Step 2: Create the appointment with the real patient_id
     const result = await createAppointment.mutate({
-        org_id: currentUser.organization_id,
-        client_id: selectedClient?.id ?? currentUser.organization_id,
-        patient_id: mode === 'existing' ? selectedPatient : undefined,
-        ...(mode === 'new' ? {
-          patient_name: `${newPatient.firstName} ${newPatient.lastName}`,
-          first_name: newPatient.firstName,
-          last_name: newPatient.lastName,
-        } : {}),
-        appointment_date: apptDate,
-        appointment_time: apptTime,
-        visit_type: visitType,
-        provider_name: currentUser.role === 'provider' ? currentUser.name : undefined,
-        status: 'scheduled' as const,
-        notes: notes || undefined,
-      })
-      if (result) {
-        onSaved?.()
-        onClose()
-      } else {
-        // createAppointment.error is populated by the hook — surface it
-      }
+      org_id: orgId,
+      client_id: clientId,
+      patient_id: patientId,
+      patient_name: mode === 'new'
+        ? `${newPatient.firstName} ${newPatient.lastName}`
+        : undefined,
+      appointment_date: apptDate,
+      appointment_time: apptTime,
+      visit_type: visitType,
+      provider_name: currentUser.role === 'provider' ? currentUser.name : undefined,
+      status: 'scheduled' as const,
+      notes: notes || undefined,
+    })
+    if (result) {
+      onSaved?.()
+      onClose()
+    }
   }
 
   return (
@@ -251,7 +267,7 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
             <input value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" placeholder="Optional..." />
           </div>
 
-          {createAppointment.error && (
+          {(createAppointment.error || createPatient.error) && (
             <p className="text-xs text-red-400 text-center -mt-1">
               Failed to book appointment — please try again
             </p>
@@ -260,8 +276,8 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
             <button onClick={onClose} className="flex-1 bg-surface-elevated border border-separator rounded-lg py-2 text-sm text-content-secondary">
               Cancel
             </button>
-            <button onClick={handleSubmit} disabled={createAppointment.loading} className="flex-1 bg-brand text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-mid transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
-              {createAppointment.loading ? 'Booking…' : 'Book Appointment'}
+            <button onClick={handleSubmit} disabled={createAppointment.loading || createPatient.loading} className="flex-1 bg-brand text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-mid transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+              {(createAppointment.loading || createPatient.loading) ? 'Booking…' : 'Book Appointment'}
             </button>
           </div>
         </div>

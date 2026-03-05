@@ -38,6 +38,7 @@ export interface ApiPatient {
   zip?: string
   insurance_payer?: string
   insurance_member_id?: string
+  insurance_policy_number?: string
   status?: string
   profile_complete?: number
   // enriched
