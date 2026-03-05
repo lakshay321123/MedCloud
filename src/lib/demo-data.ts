@@ -10,10 +10,10 @@ export interface DemoDocument {
 }
 
 export const demoClients: ClientOrg[] = [
-  { id: 'org-101', name: 'Gulf Medical Center', region: 'uae', ehr_mode: 'medcloud_ehr' },
-  { id: 'org-102', name: 'Irvine Family Practice', region: 'us', ehr_mode: 'external_ehr' },
-  { id: 'org-103', name: 'Patel Cardiology', region: 'us', ehr_mode: 'medcloud_ehr' },
-  { id: 'org-104', name: 'Dubai Wellness Clinic', region: 'uae', ehr_mode: 'external_ehr' },
+  { id: 'b0000000-0000-0000-0000-000000000101', name: 'Gulf Medical Center', region: 'uae', ehr_mode: 'medcloud_ehr' },
+  { id: 'c0000000-0000-0000-0000-000000000101', name: 'Irvine Family Practice', region: 'us', ehr_mode: 'external_ehr' },
+  { id: 'c0000000-0000-0000-0000-000000000102', name: 'Patel Cardiology', region: 'us', ehr_mode: 'medcloud_ehr' },
+  { id: 'b0000000-0000-0000-0000-000000000102', name: 'Dubai Wellness Clinic', region: 'uae', ehr_mode: 'external_ehr' },
 ]
 
 export interface DemoPatient {
@@ -72,7 +72,7 @@ export const demoPatients: DemoPatient[] = [
     employment: { status: 'Employed', employer: 'TechCorp Inc', occupation: 'Software Engineer', workPhone: '(949) 555-9000' },
     allergies: ['Penicillin'], medications: ['Metformin 500mg', 'Lisinopril 10mg'],
     referringPhysician: 'Dr. James Wilson', primaryCarePhysician: 'Dr. Martinez',
-    clientId: 'org-102', status: 'active', profileComplete: 100,
+    clientId: 'c0000000-0000-0000-0000-000000000101', status: 'active', profileComplete: 100,
     documents: [
       { id: 'DOC-P001-1', name: 'Superbill_2026-02-15.pdf', type: 'superbill', content: {
         'Patient': 'John Smith', 'DOS': '02/15/2026', 'Provider': 'Dr. Sarah Martinez',
@@ -93,7 +93,7 @@ export const demoPatients: DemoPatient[] = [
     preferredLanguage: 'English', preferredContact: 'SMS',
     insurance: { payer: 'Aetna', policyNo: 'AET-334201', memberId: 'AET334201', relationship: 'Self' },
     address: { line1: '789 Campus Dr', city: 'Irvine', state: 'CA', zip: '92617', country: 'United States' },
-    clientId: 'org-102', status: 'active', profileComplete: 75,
+    clientId: 'c0000000-0000-0000-0000-000000000101', status: 'active', profileComplete: 75,
     documents: [
       { id: 'DOC-P002-1', name: 'Superbill_2026-02-18.pdf', type: 'superbill', content: {
         'Patient': 'Sarah Johnson', 'DOS': '02/18/2026', 'Provider': 'Dr. Sarah Martinez',
@@ -113,7 +113,7 @@ export const demoPatients: DemoPatient[] = [
     employment: { status: 'Employed', employer: 'ADNOC', occupation: 'Engineer', workPhone: '+971 2 123 4567' },
     allergies: [], medications: ['Aspirin 81mg'],
     primaryCarePhysician: 'Dr. Al Zaabi',
-    clientId: 'org-101', status: 'active', profileComplete: 100,
+    clientId: 'b0000000-0000-0000-0000-000000000101', status: 'active', profileComplete: 100,
     documents: [
       { id: 'DOC-P003-1', name: 'Superbill_2026-02-24.pdf', type: 'superbill', content: {
         'Patient': 'Ahmed Al Mansouri', 'DOS': '02/24/2026', 'Provider': 'Dr. Al Zaabi',
@@ -129,7 +129,7 @@ export const demoPatients: DemoPatient[] = [
   },
   {
     id: 'P-004', firstName: 'Fatima', lastName: 'Hassan',
-    phone: '+971 55 987 6543', clientId: 'org-101', status: 'active', profileComplete: 20,
+    phone: '+971 55 987 6543', clientId: 'b0000000-0000-0000-0000-000000000101', status: 'active', profileComplete: 20,
   },
   {
     id: 'P-005', firstName: 'Robert', middleName: 'James', lastName: 'Chen',
@@ -145,13 +145,13 @@ export const demoPatients: DemoPatient[] = [
     allergies: ['Sulfa drugs', 'Aspirin'],
     medications: ['Carvedilol 25mg', 'Furosemide 40mg', 'Warfarin 5mg'],
     primaryCarePhysician: 'Dr. Patel',
-    clientId: 'org-103', status: 'active', profileComplete: 100, noShowCount: 3,
+    clientId: 'c0000000-0000-0000-0000-000000000102', status: 'active', profileComplete: 100, noShowCount: 3,
   },
   {
     id: 'P-006', firstName: 'Maria', lastName: 'Garcia',
     dob: '1990-05-12', gender: 'Female',
     phone: '(949) 555-0303', preferredLanguage: 'Spanish', preferredContact: 'SMS',
-    clientId: 'org-102', status: 'active', profileComplete: 50,
+    clientId: 'c0000000-0000-0000-0000-000000000101', status: 'active', profileComplete: 50,
   },
   {
     id: 'P-007', firstName: 'Khalid', lastName: 'Ibrahim',
@@ -160,14 +160,14 @@ export const demoPatients: DemoPatient[] = [
     emiratesId: '784-1988-7654321-2',
     insurance: { payer: 'NAS', policyNo: 'NAS-992341', memberId: 'NAS992341', relationship: 'Self' },
     address: { line1: 'Apt 1204, Marina Residences', city: 'Dubai', state: 'Dubai', zip: '', country: 'United Arab Emirates' },
-    clientId: 'org-104', status: 'active', profileComplete: 85,
+    clientId: 'b0000000-0000-0000-0000-000000000102', status: 'active', profileComplete: 85,
   },
   {
     id: 'P-008', firstName: 'Emily', lastName: 'Williams',
     dob: '1975-12-20', gender: 'Female',
     phone: '(714) 555-0404', email: 'emily.w@email.com',
     ssn: '***-**-3344',
-    clientId: 'org-103', status: 'inactive', profileComplete: 60,
+    clientId: 'c0000000-0000-0000-0000-000000000102', status: 'inactive', profileComplete: 60,
   },
 ]
 
@@ -178,18 +178,18 @@ export interface DemoAppointment {
 }
 
 export const demoAppointments: DemoAppointment[] = [
-  { id: 'APT-001', patientId: 'P-001', patientName: 'John Smith', provider: 'Dr. Martinez', date: '2026-03-02', time: '09:00', type: 'Follow-up', status: 'completed', duration: 30, clientId: 'org-102' },
-  { id: 'APT-002', patientId: 'P-002', patientName: 'Sarah Johnson', provider: 'Dr. Martinez', date: '2026-03-02', time: '09:30', type: 'Consultation', status: 'checked_in', duration: 45, clientId: 'org-102' },
-  { id: 'APT-003', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', provider: 'Dr. Al Zaabi', date: '2026-03-02', time: '10:00', type: 'Follow-up', status: 'confirmed', duration: 30, clientId: 'org-101' },
-  { id: 'APT-004', patientId: 'P-006', patientName: 'Maria Garcia', provider: 'Dr. Martinez', date: '2026-03-02', time: '10:30', type: 'Initial Visit', status: 'booked', duration: 60, clientId: 'org-102' },
-  { id: 'APT-005', patientId: 'P-005', patientName: 'Robert Chen', provider: 'Dr. Patel', date: '2026-03-02', time: '09:00', type: 'Cardiology Consult', status: 'in_progress', duration: 45, clientId: 'org-103' },
-  { id: 'APT-006', patientId: 'P-007', patientName: 'Khalid Ibrahim', provider: 'Dr. Noor', date: '2026-03-02', time: '11:00', type: 'Check-up', status: 'confirmed', duration: 30, clientId: 'org-104' },
-  { id: 'APT-007', patientId: 'P-001', patientName: 'John Smith', provider: 'Dr. Martinez', date: '2026-02-25', time: '09:00', type: 'Follow-up', status: 'completed', duration: 30, clientId: 'org-102' },
-  { id: 'APT-008', patientId: 'P-008', patientName: 'Emily Williams', provider: 'Dr. Patel', date: '2026-03-02', time: '10:00', type: 'Follow-up', status: 'no_show', duration: 30, clientId: 'org-103' },
-  { id: 'APT-009', patientId: 'P-004', patientName: 'Fatima Hassan', provider: 'Dr. Al Zaabi', date: '2026-03-02', time: '11:30', type: 'Walk-in', status: 'walk_in', duration: 30, clientId: 'org-101' },
-  { id: 'APT-010', patientId: 'P-006', patientName: 'Maria Garcia', provider: 'Dr. Martinez', date: '2026-02-28', time: '14:00', type: 'Follow-up', status: 'cancelled', duration: 30, clientId: 'org-102', notes: 'Patient called to cancel' },
-  { id: 'APT-011', patientId: 'P-005', patientName: 'Robert Chen', provider: 'Dr. Patel', date: '2026-03-02', time: '14:00', type: 'ECG Review', status: 'booked', duration: 30, clientId: 'org-103' },
-  { id: 'APT-012', patientId: 'P-002', patientName: 'Sarah Johnson', provider: 'Dr. Martinez', date: '2026-03-02', time: '15:00', type: 'Lab Review', status: 'booked', duration: 20, clientId: 'org-102' },
+  { id: 'APT-001', patientId: 'P-001', patientName: 'John Smith', provider: 'Dr. Martinez', date: '2026-03-02', time: '09:00', type: 'Follow-up', status: 'completed', duration: 30, clientId: 'c0000000-0000-0000-0000-000000000101' },
+  { id: 'APT-002', patientId: 'P-002', patientName: 'Sarah Johnson', provider: 'Dr. Martinez', date: '2026-03-02', time: '09:30', type: 'Consultation', status: 'checked_in', duration: 45, clientId: 'c0000000-0000-0000-0000-000000000101' },
+  { id: 'APT-003', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', provider: 'Dr. Al Zaabi', date: '2026-03-02', time: '10:00', type: 'Follow-up', status: 'confirmed', duration: 30, clientId: 'b0000000-0000-0000-0000-000000000101' },
+  { id: 'APT-004', patientId: 'P-006', patientName: 'Maria Garcia', provider: 'Dr. Martinez', date: '2026-03-02', time: '10:30', type: 'Initial Visit', status: 'booked', duration: 60, clientId: 'c0000000-0000-0000-0000-000000000101' },
+  { id: 'APT-005', patientId: 'P-005', patientName: 'Robert Chen', provider: 'Dr. Patel', date: '2026-03-02', time: '09:00', type: 'Cardiology Consult', status: 'in_progress', duration: 45, clientId: 'c0000000-0000-0000-0000-000000000102' },
+  { id: 'APT-006', patientId: 'P-007', patientName: 'Khalid Ibrahim', provider: 'Dr. Noor', date: '2026-03-02', time: '11:00', type: 'Check-up', status: 'confirmed', duration: 30, clientId: 'b0000000-0000-0000-0000-000000000102' },
+  { id: 'APT-007', patientId: 'P-001', patientName: 'John Smith', provider: 'Dr. Martinez', date: '2026-02-25', time: '09:00', type: 'Follow-up', status: 'completed', duration: 30, clientId: 'c0000000-0000-0000-0000-000000000101' },
+  { id: 'APT-008', patientId: 'P-008', patientName: 'Emily Williams', provider: 'Dr. Patel', date: '2026-03-02', time: '10:00', type: 'Follow-up', status: 'no_show', duration: 30, clientId: 'c0000000-0000-0000-0000-000000000102' },
+  { id: 'APT-009', patientId: 'P-004', patientName: 'Fatima Hassan', provider: 'Dr. Al Zaabi', date: '2026-03-02', time: '11:30', type: 'Walk-in', status: 'walk_in', duration: 30, clientId: 'b0000000-0000-0000-0000-000000000101' },
+  { id: 'APT-010', patientId: 'P-006', patientName: 'Maria Garcia', provider: 'Dr. Martinez', date: '2026-02-28', time: '14:00', type: 'Follow-up', status: 'cancelled', duration: 30, clientId: 'c0000000-0000-0000-0000-000000000101', notes: 'Patient called to cancel' },
+  { id: 'APT-011', patientId: 'P-005', patientName: 'Robert Chen', provider: 'Dr. Patel', date: '2026-03-02', time: '14:00', type: 'ECG Review', status: 'booked', duration: 30, clientId: 'c0000000-0000-0000-0000-000000000102' },
+  { id: 'APT-012', patientId: 'P-002', patientName: 'Sarah Johnson', provider: 'Dr. Martinez', date: '2026-03-02', time: '15:00', type: 'Lab Review', status: 'booked', duration: 20, clientId: 'c0000000-0000-0000-0000-000000000101' },
 ]
 
 export interface ClaimScrubError {
@@ -234,7 +234,7 @@ const claimDocs: DemoDocument[] = [
 
 export const demoClaims: DemoClaim[] = [
   {
-    id: 'CLM-4501', patientId: 'P-001', patientName: 'John Smith', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    id: 'CLM-4501', patientId: 'P-001', patientName: 'John Smith', clientId: 'c0000000-0000-0000-0000-000000000101', clientName: 'Irvine Family Practice',
     payer: 'UnitedHealthcare', payerId: 'UHC', dos: '2026-02-25', cptCodes: ['99214', '93000'], icdCodes: ['E11.9', 'I10'],
     billed: 485, allowed: 320, paid: 320, status: 'paid', age: 5,
     submittedDate: '2026-02-26', paymentDate: '2026-03-01', daysTilDeadline: 85, scrubErrors: [],
@@ -249,7 +249,7 @@ export const demoClaims: DemoClaim[] = [
     documents: claimDocs,
   },
   {
-    id: 'CLM-4502', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', clientId: 'org-101', clientName: 'Gulf Medical Center',
+    id: 'CLM-4502', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', clientId: 'b0000000-0000-0000-0000-000000000101', clientName: 'Gulf Medical Center',
     payer: 'Daman', payerId: 'DAMAN', dos: '2026-02-24', cptCodes: ['99213', '93000'], icdCodes: ['I25.10'],
     billed: 420, allowed: 380, paid: 0, status: 'submitted', age: 6,
     submittedDate: '2026-02-25', daysTilDeadline: 84, scrubErrors: [],
@@ -262,7 +262,7 @@ export const demoClaims: DemoClaim[] = [
     documents: claimDocs,
   },
   {
-    id: 'CLM-4503', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'org-103', clientName: 'Patel Cardiology',
+    id: 'CLM-4503', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'c0000000-0000-0000-0000-000000000102', clientName: 'Patel Cardiology',
     payer: 'Medicare', payerId: 'MEDICARE', dos: '2026-02-20', cptCodes: ['93306', '93320'], icdCodes: ['I50.9'],
     billed: 890, allowed: 712, paid: 712, status: 'partial_pay', age: 10,
     submittedDate: '2026-02-21', paymentDate: '2026-03-01', daysTilDeadline: 80, scrubErrors: [],
@@ -277,7 +277,7 @@ export const demoClaims: DemoClaim[] = [
     documents: claimDocs,
   },
   {
-    id: 'CLM-4504', patientId: 'P-002', patientName: 'Sarah Johnson', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    id: 'CLM-4504', patientId: 'P-002', patientName: 'Sarah Johnson', clientId: 'c0000000-0000-0000-0000-000000000101', clientName: 'Irvine Family Practice',
     payer: 'Aetna', payerId: 'AETNA', dos: '2026-02-18', cptCodes: ['99215'], icdCodes: ['M54.5'],
     billed: 350, allowed: 0, paid: 0, status: 'denied', age: 12,
     denialReason: 'Prior authorization required', submittedDate: '2026-02-19', daysTilDeadline: 78, scrubErrors: [],
@@ -292,7 +292,7 @@ export const demoClaims: DemoClaim[] = [
     documents: claimDocs,
   },
   {
-    id: 'CLM-4505', patientId: 'P-007', patientName: 'Khalid Ibrahim', clientId: 'org-104', clientName: 'Dubai Wellness Clinic',
+    id: 'CLM-4505', patientId: 'P-007', patientName: 'Khalid Ibrahim', clientId: 'b0000000-0000-0000-0000-000000000102', clientName: 'Dubai Wellness Clinic',
     payer: 'NAS', payerId: 'NAS', dos: '2026-02-22', cptCodes: ['99213'], icdCodes: ['J06.9'],
     billed: 180, allowed: 160, paid: 0, status: 'in_process', age: 8,
     submittedDate: '2026-02-23', daysTilDeadline: 82, scrubErrors: [],
@@ -306,7 +306,7 @@ export const demoClaims: DemoClaim[] = [
     documents: claimDocs,
   },
   {
-    id: 'CLM-4506', patientId: 'P-001', patientName: 'John Smith', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    id: 'CLM-4506', patientId: 'P-001', patientName: 'John Smith', clientId: 'c0000000-0000-0000-0000-000000000101', clientName: 'Irvine Family Practice',
     payer: 'UnitedHealthcare', payerId: 'UHC', dos: '2026-03-02', cptCodes: ['99214'], icdCodes: ['E11.9'],
     billed: 250, allowed: 0, paid: 0, status: 'draft', age: 0, daysTilDeadline: 90, scrubErrors: [],
     timeline: [
@@ -315,7 +315,7 @@ export const demoClaims: DemoClaim[] = [
     documents: claimDocs,
   },
   {
-    id: 'CLM-4507', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'org-103', clientName: 'Patel Cardiology',
+    id: 'CLM-4507', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'c0000000-0000-0000-0000-000000000102', clientName: 'Patel Cardiology',
     payer: 'Medicare', payerId: 'MEDICARE', dos: '2026-02-10', cptCodes: ['93350'], icdCodes: ['I50.9', 'I25.10'],
     billed: 1200, allowed: 0, paid: 0, status: 'appealed', age: 20,
     denialReason: 'Not medically necessary', submittedDate: '2026-02-11', daysTilDeadline: 40, scrubErrors: [],
@@ -329,7 +329,7 @@ export const demoClaims: DemoClaim[] = [
     documents: claimDocs,
   },
   {
-    id: 'CLM-4508', patientId: 'P-006', patientName: 'Maria Garcia', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    id: 'CLM-4508', patientId: 'P-006', patientName: 'Maria Garcia', clientId: 'c0000000-0000-0000-0000-000000000101', clientName: 'Irvine Family Practice',
     payer: 'Self-Pay', payerId: 'SELF', dos: '2026-02-15', cptCodes: ['99213'], icdCodes: ['J02.9'],
     billed: 180, allowed: 180, paid: 0, status: 'ready', age: 15, daysTilDeadline: 75, scrubErrors: [],
     timeline: [
@@ -340,7 +340,7 @@ export const demoClaims: DemoClaim[] = [
     documents: claimDocs,
   },
   {
-    id: 'CLM-4509', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', clientId: 'org-101', clientName: 'Gulf Medical Center',
+    id: 'CLM-4509', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', clientId: 'b0000000-0000-0000-0000-000000000101', clientName: 'Gulf Medical Center',
     payer: 'Daman', payerId: 'DAMAN', dos: '2026-01-30', cptCodes: ['99214', '93000'], icdCodes: ['I25.10', 'I10'],
     billed: 480, allowed: 480, paid: 480, status: 'paid', age: 31,
     submittedDate: '2026-01-31', paymentDate: '2026-02-15', daysTilDeadline: 59, scrubErrors: [],
@@ -353,7 +353,7 @@ export const demoClaims: DemoClaim[] = [
     documents: claimDocs,
   },
   {
-    id: 'CLM-4510', patientId: 'P-002', patientName: 'Sarah Johnson', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    id: 'CLM-4510', patientId: 'P-002', patientName: 'Sarah Johnson', clientId: 'c0000000-0000-0000-0000-000000000101', clientName: 'Irvine Family Practice',
     payer: 'Aetna', payerId: 'AETNA', dos: '2026-02-05', cptCodes: ['99214'], icdCodes: ['M54.5'],
     billed: 280, allowed: 230, paid: 224, status: 'paid', age: 25,
     submittedDate: '2026-02-06', paymentDate: '2026-02-20', daysTilDeadline: 65, scrubErrors: [],
@@ -366,7 +366,7 @@ export const demoClaims: DemoClaim[] = [
     documents: claimDocs,
   },
   {
-    id: 'CLM-4511', patientId: 'P-007', patientName: 'Khalid Ibrahim', clientId: 'org-104', clientName: 'Dubai Wellness Clinic',
+    id: 'CLM-4511', patientId: 'P-007', patientName: 'Khalid Ibrahim', clientId: 'b0000000-0000-0000-0000-000000000102', clientName: 'Dubai Wellness Clinic',
     payer: 'NAS', payerId: 'NAS', dos: '2026-01-15', cptCodes: ['99215'], icdCodes: ['E11.65'],
     billed: 320, allowed: 0, paid: 0, status: 'denied', age: 46,
     denialReason: 'Timely filing exceeded', submittedDate: '2026-02-20', daysTilDeadline: 10, scrubErrors: [],
@@ -378,7 +378,7 @@ export const demoClaims: DemoClaim[] = [
     documents: claimDocs,
   },
   {
-    id: 'CLM-4512', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'org-103', clientName: 'Patel Cardiology',
+    id: 'CLM-4512', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'c0000000-0000-0000-0000-000000000102', clientName: 'Patel Cardiology',
     payer: 'BCBS', payerId: 'BCBS', dos: '2026-02-28', cptCodes: ['93005'], icdCodes: ['R00.0'],
     billed: 150, allowed: 0, paid: 0, status: 'scrubbing', age: 2, daysTilDeadline: 88, scrubErrors: [],
     timeline: [
@@ -388,7 +388,7 @@ export const demoClaims: DemoClaim[] = [
     documents: claimDocs,
   },
   {
-    id: 'CLM-4513', patientId: 'P-001', patientName: 'John Smith', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    id: 'CLM-4513', patientId: 'P-001', patientName: 'John Smith', clientId: 'c0000000-0000-0000-0000-000000000101', clientName: 'Irvine Family Practice',
     payer: 'UnitedHealthcare', payerId: 'UHC', dos: '2026-02-10', cptCodes: ['99214', '99214-25'], icdCodes: ['E11.9', 'I10'],
     billed: 485, allowed: 0, paid: 0, status: 'scrub_failed', age: 20, daysTilDeadline: 70,
     scrubErrors: [
@@ -402,7 +402,7 @@ export const demoClaims: DemoClaim[] = [
     documents: claimDocs,
   },
   {
-    id: 'CLM-4514', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', clientId: 'org-101', clientName: 'Gulf Medical Center',
+    id: 'CLM-4514', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', clientId: 'b0000000-0000-0000-0000-000000000101', clientName: 'Gulf Medical Center',
     payer: 'Daman', payerId: 'DAMAN', dos: '2026-02-20', cptCodes: ['99213'], icdCodes: ['I25.10'],
     billed: 280, allowed: 280, paid: 280, status: 'paid', age: 10,
     submittedDate: '2026-02-21', paymentDate: '2026-03-02', daysTilDeadline: 80, scrubErrors: [],
@@ -415,7 +415,7 @@ export const demoClaims: DemoClaim[] = [
     documents: claimDocs,
   },
   {
-    id: 'CLM-4515', patientId: 'P-008', patientName: 'Emily Williams', clientId: 'org-103', clientName: 'Patel Cardiology',
+    id: 'CLM-4515', patientId: 'P-008', patientName: 'Emily Williams', clientId: 'c0000000-0000-0000-0000-000000000102', clientName: 'Patel Cardiology',
     payer: 'Medicare', payerId: 'MEDICARE', dos: '2026-02-18', cptCodes: ['99214'], icdCodes: ['I50.9'],
     billed: 250, allowed: 0, paid: 0, status: 'denied', age: 12,
     denialReason: 'Expenses not covered — inactive coverage', submittedDate: '2026-02-19', daysTilDeadline: 28, scrubErrors: [],
@@ -474,7 +474,7 @@ export interface DemoCodingItem {
 
 export const demoCodingQueue: DemoCodingItem[] = [
   {
-    id: 'COD-001', patientName: 'John Smith', patientId: 'P-001', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    id: 'COD-001', patientName: 'John Smith', patientId: 'P-001', clientId: 'c0000000-0000-0000-0000-000000000101', clientName: 'Irvine Family Practice',
     source: 'upload', dos: '2026-03-02', provider: 'Dr. Martinez', providerSpecialty: 'Family Medicine',
     providerNpi: '1234567890',
     hasSuperbill: true, superbillCpt: ['99214', '93000'], priority: 'medium',
@@ -505,7 +505,7 @@ export const demoCodingQueue: DemoCodingItem[] = [
     }
   },
   {
-    id: 'COD-002', patientName: 'Ahmed Al Mansouri', patientId: 'P-003', clientId: 'org-101', clientName: 'Gulf Medical Center',
+    id: 'COD-002', patientName: 'Ahmed Al Mansouri', patientId: 'P-003', clientId: 'b0000000-0000-0000-0000-000000000101', clientName: 'Gulf Medical Center',
     source: 'ai_scribe', dos: '2026-03-01', provider: 'Dr. Al Zaabi', providerSpecialty: 'Internal Medicine',
     providerNpi: '9876543210',
     hasSuperbill: false, priority: 'medium',
@@ -527,7 +527,7 @@ export const demoCodingQueue: DemoCodingItem[] = [
     }
   },
   {
-    id: 'COD-003', patientName: 'Robert Chen', patientId: 'P-005', clientId: 'org-103', clientName: 'Patel Cardiology',
+    id: 'COD-003', patientName: 'Robert Chen', patientId: 'P-005', clientId: 'c0000000-0000-0000-0000-000000000102', clientName: 'Patel Cardiology',
     source: 'ai_scribe', dos: '2026-03-02', provider: 'Dr. Patel', providerSpecialty: 'Cardiology',
     providerNpi: '1122334455',
     hasSuperbill: false, priority: 'high',
@@ -556,7 +556,7 @@ export const demoCodingQueue: DemoCodingItem[] = [
     }
   },
   {
-    id: 'COD-004', patientName: 'Sarah Johnson', patientId: 'P-002', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    id: 'COD-004', patientName: 'Sarah Johnson', patientId: 'P-002', clientId: 'c0000000-0000-0000-0000-000000000101', clientName: 'Irvine Family Practice',
     source: 'upload', dos: '2026-03-01', provider: 'Dr. Martinez', providerSpecialty: 'Family Medicine',
     providerNpi: '1234567890',
     hasSuperbill: true, superbillCpt: ['99214'], priority: 'medium',
@@ -581,7 +581,7 @@ export const demoCodingQueue: DemoCodingItem[] = [
     }
   },
   {
-    id: 'COD-005', patientName: 'Fatima Hassan', patientId: 'P-004', clientId: 'org-101', clientName: 'Gulf Medical Center',
+    id: 'COD-005', patientName: 'Fatima Hassan', patientId: 'P-004', clientId: 'b0000000-0000-0000-0000-000000000101', clientName: 'Gulf Medical Center',
     source: 'upload', dos: '2026-03-02', provider: 'Dr. Al Zaabi', providerSpecialty: 'Internal Medicine',
     providerNpi: '9876543210',
     hasSuperbill: false, priority: 'low',
@@ -602,7 +602,7 @@ export const demoCodingQueue: DemoCodingItem[] = [
     }
   },
   {
-    id: 'COD-006', patientName: 'Maria Garcia', patientId: 'P-006', clientId: 'org-102', clientName: 'Irvine Family Practice',
+    id: 'COD-006', patientName: 'Maria Garcia', patientId: 'P-006', clientId: 'c0000000-0000-0000-0000-000000000101', clientName: 'Irvine Family Practice',
     source: 'upload', dos: '2026-02-28', provider: 'Dr. Martinez', providerSpecialty: 'Family Medicine',
     providerNpi: '1234567890',
     hasSuperbill: true, superbillCpt: ['99213'], priority: 'low',
@@ -659,11 +659,11 @@ export interface DemoERAFile {
 }
 
 export const demoERAFiles: DemoERAFile[] = [
-  { id: 'ERA-001', file: 'UHC_ERA_20260301.835', payer: 'UnitedHealthcare', client: 'Irvine Family Practice', clientId: 'org-102', claims: 5, total: 1842, status: 'processing', exceptions: 2, receivedAt: '2026-03-01T06:00:00' },
-  { id: 'ERA-002', file: 'AETNA_ERA_20260301.835', payer: 'Aetna', client: 'Irvine Family Practice', clientId: 'org-102', claims: 3, total: 680, status: 'new', exceptions: 1, receivedAt: '2026-03-01T06:15:00' },
-  { id: 'ERA-003', file: 'MEDICARE_ERA_20260228.835', payer: 'Medicare', client: 'Patel Cardiology', clientId: 'org-103', claims: 4, total: 2340, status: 'processing', exceptions: 1, receivedAt: '2026-02-28T18:00:00' },
-  { id: 'ERA-004', file: 'DAMAN_REM_20260301.csv', payer: 'Daman', client: 'Gulf Medical Center', clientId: 'org-101', claims: 3, total: 1260, status: 'new', exceptions: 0, receivedAt: '2026-03-01T07:00:00' },
-  { id: 'ERA-005', file: 'NAS_REM_20260228.csv', payer: 'NAS', client: 'Dubai Wellness Clinic', clientId: 'org-104', claims: 2, total: 640, status: 'posted', exceptions: 0, receivedAt: '2026-02-28T12:00:00' },
+  { id: 'ERA-001', file: 'UHC_ERA_20260301.835', payer: 'UnitedHealthcare', client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', claims: 5, total: 1842, status: 'processing', exceptions: 2, receivedAt: '2026-03-01T06:00:00' },
+  { id: 'ERA-002', file: 'AETNA_ERA_20260301.835', payer: 'Aetna', client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', claims: 3, total: 680, status: 'new', exceptions: 1, receivedAt: '2026-03-01T06:15:00' },
+  { id: 'ERA-003', file: 'MEDICARE_ERA_20260228.835', payer: 'Medicare', client: 'Patel Cardiology', clientId: 'c0000000-0000-0000-0000-000000000102', claims: 4, total: 2340, status: 'processing', exceptions: 1, receivedAt: '2026-02-28T18:00:00' },
+  { id: 'ERA-004', file: 'DAMAN_REM_20260301.csv', payer: 'Daman', client: 'Gulf Medical Center', clientId: 'b0000000-0000-0000-0000-000000000101', claims: 3, total: 1260, status: 'new', exceptions: 0, receivedAt: '2026-03-01T07:00:00' },
+  { id: 'ERA-005', file: 'NAS_REM_20260228.csv', payer: 'NAS', client: 'Dubai Wellness Clinic', clientId: 'b0000000-0000-0000-0000-000000000102', claims: 2, total: 640, status: 'posted', exceptions: 0, receivedAt: '2026-02-28T12:00:00' },
 ]
 
 
@@ -699,24 +699,24 @@ export interface DemoMessage {
 }
 
 export const demoMessages: DemoMessage[] = [
-  { id: 'MSG-001', entityType: 'patient', entityId: 'P-004', entityLabel: 'Fatima Hassan', clientId: 'org-101', clientName: 'Gulf Medical Center', subject: 'Missing insurance information', lastMessage: 'Patient is coming in tomorrow, will bring card then.', lastSender: 'Dr. Al Zaabi Office', lastSenderRole: 'client', timestamp: '2026-03-02T08:15:00', unread: true, status: 'open', messages: [
+  { id: 'MSG-001', entityType: 'patient', entityId: 'P-004', entityLabel: 'Fatima Hassan', clientId: 'b0000000-0000-0000-0000-000000000101', clientName: 'Gulf Medical Center', subject: 'Missing insurance information', lastMessage: 'Patient is coming in tomorrow, will bring card then.', lastSender: 'Dr. Al Zaabi Office', lastSenderRole: 'client', timestamp: '2026-03-02T08:15:00', unread: true, status: 'open', messages: [
     { sender: 'Billing Team', role: 'staff', text: 'Hi, we need insurance details for Fatima Hassan to proceed with billing. Can you please upload the insurance card?', time: '2026-03-01T14:00:00' },
     { sender: 'Dr. Al Zaabi Office', role: 'client', text: 'Patient is coming in tomorrow, will bring card then.', time: '2026-03-02T08:15:00' },
   ]},
-  { id: 'MSG-002', entityType: 'claim', entityId: 'CLM-4504', entityLabel: 'Claim #CLM-4504 — Sarah Johnson', clientId: 'org-102', clientName: 'Irvine Family Practice', subject: 'Denied — prior auth required', lastMessage: 'We have attached the appeal letter. Working on it.', lastSender: 'AR Team', lastSenderRole: 'staff', timestamp: '2026-03-01T16:30:00', unread: false, status: 'open', messages: [
+  { id: 'MSG-002', entityType: 'claim', entityId: 'CLM-4504', entityLabel: 'Claim #CLM-4504 — Sarah Johnson', clientId: 'c0000000-0000-0000-0000-000000000101', clientName: 'Irvine Family Practice', subject: 'Denied — prior auth required', lastMessage: 'We have attached the appeal letter. Working on it.', lastSender: 'AR Team', lastSenderRole: 'staff', timestamp: '2026-03-01T16:30:00', unread: false, status: 'open', messages: [
     { sender: 'AR Team', role: 'staff', text: 'Claim denied by Aetna for missing prior authorization. Do you have an auth number for this visit?', time: '2026-02-28T10:00:00' },
     { sender: 'Front Desk', role: 'client', text: 'We didn\'t get prior auth for this one. Can you submit a retro auth?', time: '2026-02-28T14:30:00' },
     { sender: 'AR Team', role: 'staff', text: 'We have attached the appeal letter. Working on it.', time: '2026-03-01T16:30:00' },
   ]},
-  { id: 'MSG-003', entityType: 'submission', entityId: 'SUB-003', entityLabel: 'Upload — Maria Garcia superbill', clientId: 'org-102', clientName: 'Irvine Family Practice', subject: 'Illegible page 2', lastMessage: 'Sorry about that! Here is a clearer copy.', lastSender: 'Front Desk', lastSenderRole: 'client', timestamp: '2026-03-01T11:00:00', unread: false, status: 'resolved', messages: [
+  { id: 'MSG-003', entityType: 'submission', entityId: 'SUB-003', entityLabel: 'Upload — Maria Garcia superbill', clientId: 'c0000000-0000-0000-0000-000000000101', clientName: 'Irvine Family Practice', subject: 'Illegible page 2', lastMessage: 'Sorry about that! Here is a clearer copy.', lastSender: 'Front Desk', lastSenderRole: 'client', timestamp: '2026-03-01T11:00:00', unread: false, status: 'resolved', messages: [
     { sender: 'Coding Team', role: 'staff', text: 'The second page of Maria Garcia\'s superbill from Feb 28 is too blurry to read. Can you resend?', time: '2026-02-28T16:00:00' },
     { sender: 'Front Desk', role: 'client', text: 'Sorry about that! Here is a clearer copy.', time: '2026-03-01T11:00:00' },
   ]},
-  { id: 'MSG-004', entityType: 'appointment', entityId: 'APT-008', entityLabel: 'Emily Williams — No Show', clientId: 'org-103', clientName: 'Patel Cardiology', subject: 'Patient no-show, 3rd time', lastMessage: 'Noted. We will contact the patient.', lastSender: 'Office Manager', lastSenderRole: 'client', timestamp: '2026-03-02T11:00:00', unread: true, status: 'open', messages: [
+  { id: 'MSG-004', entityType: 'appointment', entityId: 'APT-008', entityLabel: 'Emily Williams — No Show', clientId: 'c0000000-0000-0000-0000-000000000102', clientName: 'Patel Cardiology', subject: 'Patient no-show, 3rd time', lastMessage: 'Noted. We will contact the patient.', lastSender: 'Office Manager', lastSenderRole: 'client', timestamp: '2026-03-02T11:00:00', unread: true, status: 'open', messages: [
     { sender: 'Billing Team', role: 'staff', text: 'Emily Williams no-showed again today (3rd time). This is impacting scheduling and billing. Should we flag this patient?', time: '2026-03-02T10:30:00' },
     { sender: 'Office Manager', role: 'client', text: 'Noted. We will contact the patient.', time: '2026-03-02T11:00:00' },
   ]},
-  { id: 'MSG-005', entityType: 'general', entityId: 'GEN-001', entityLabel: 'Account', clientId: 'org-101', clientName: 'Gulf Medical Center', subject: 'New provider starting April 1', lastMessage: 'Great, we will start the credentialing process.', lastSender: 'Credentialing Team', lastSenderRole: 'staff', timestamp: '2026-02-27T09:00:00', unread: false, status: 'open', messages: [
+  { id: 'MSG-005', entityType: 'general', entityId: 'GEN-001', entityLabel: 'Account', clientId: 'b0000000-0000-0000-0000-000000000101', clientName: 'Gulf Medical Center', subject: 'New provider starting April 1', lastMessage: 'Great, we will start the credentialing process.', lastSender: 'Credentialing Team', lastSenderRole: 'staff', timestamp: '2026-02-27T09:00:00', unread: false, status: 'open', messages: [
     { sender: 'Admin', role: 'client', text: 'We have a new cardiologist, Dr. Amira Khalil, starting April 1. Please begin payer enrollment.', time: '2026-02-26T10:00:00' },
     { sender: 'Credentialing Team', role: 'staff', text: 'Great, we will start the credentialing process. Can you share her NPI, medical license, and DEA certificate?', time: '2026-02-26T14:00:00' },
     { sender: 'Admin', role: 'client', text: 'Attached all documents.', time: '2026-02-27T08:00:00' },
@@ -725,11 +725,11 @@ export const demoMessages: DemoMessage[] = [
 ]
 
 export const demoSubmissions = [
-  { id: 'SUB-001', patientId: 'P-001', patientName: 'John Smith', clientId: 'org-102', files: ['superbill_smith_20260302.pdf'], docType: 'Superbill', status: 'in_coding' as const, submittedAt: '2026-03-02T08:30:00', trackingId: '#SUB-2026-0847' },
-  { id: 'SUB-002', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', clientId: 'org-101', files: ['clinical_note_mansouri_20260301.pdf'], docType: 'Clinical Note', status: 'claim_submitted' as const, submittedAt: '2026-03-01T10:00:00', trackingId: '#SUB-2026-0843' },
-  { id: 'SUB-003', patientId: 'P-006', patientName: 'Maria Garcia', clientId: 'org-102', files: ['superbill_garcia_20260228.pdf'], docType: 'Superbill', status: 'received' as const, submittedAt: '2026-02-28T15:30:00', trackingId: '#SUB-2026-0840' },
-  { id: 'SUB-004', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'org-103', files: ['echo_report_chen.pdf', 'referral_chen.pdf'], docType: 'Clinical Note', status: 'paid' as const, submittedAt: '2026-02-10T09:00:00', trackingId: '#SUB-2026-0798' },
-  { id: 'SUB-005', patientId: 'P-007', patientName: 'Khalid Ibrahim', clientId: 'org-104', files: ['superbill_ibrahim_20260222.pdf'], docType: 'Superbill', status: 'claim_submitted' as const, submittedAt: '2026-02-22T11:00:00', trackingId: '#SUB-2026-0821' },
+  { id: 'SUB-001', patientId: 'P-001', patientName: 'John Smith', clientId: 'c0000000-0000-0000-0000-000000000101', files: ['superbill_smith_20260302.pdf'], docType: 'Superbill', status: 'in_coding' as const, submittedAt: '2026-03-02T08:30:00', trackingId: '#SUB-2026-0847' },
+  { id: 'SUB-002', patientId: 'P-003', patientName: 'Ahmed Al Mansouri', clientId: 'b0000000-0000-0000-0000-000000000101', files: ['clinical_note_mansouri_20260301.pdf'], docType: 'Clinical Note', status: 'claim_submitted' as const, submittedAt: '2026-03-01T10:00:00', trackingId: '#SUB-2026-0843' },
+  { id: 'SUB-003', patientId: 'P-006', patientName: 'Maria Garcia', clientId: 'c0000000-0000-0000-0000-000000000101', files: ['superbill_garcia_20260228.pdf'], docType: 'Superbill', status: 'received' as const, submittedAt: '2026-02-28T15:30:00', trackingId: '#SUB-2026-0840' },
+  { id: 'SUB-004', patientId: 'P-005', patientName: 'Robert Chen', clientId: 'c0000000-0000-0000-0000-000000000102', files: ['echo_report_chen.pdf', 'referral_chen.pdf'], docType: 'Clinical Note', status: 'paid' as const, submittedAt: '2026-02-10T09:00:00', trackingId: '#SUB-2026-0798' },
+  { id: 'SUB-005', patientId: 'P-007', patientName: 'Khalid Ibrahim', clientId: 'b0000000-0000-0000-0000-000000000102', files: ['superbill_ibrahim_20260222.pdf'], docType: 'Superbill', status: 'claim_submitted' as const, submittedAt: '2026-02-22T11:00:00', trackingId: '#SUB-2026-0821' },
 ]
 
 export function getClientName(clientId: string): string {
@@ -752,13 +752,13 @@ export const demoARAccounts = [
 
 // Denials for dashboard and denials page
 export const demoDenialsData = [
-  { id: 'DEN-001', claimId: 'CLM-4504', patientName: 'Sarah Johnson', payer: 'Aetna', denialReason: 'Prior authorization required', status: 'denied' as const, appealLevel: 'L1' as const, clientId: 'org-102', clientName: 'Irvine Family Practice', dos: '2026-02-15' },
-  { id: 'DEN-002', claimId: 'CLM-4507', patientName: 'Robert Chen', payer: 'Medicare', denialReason: 'Not medically necessary', status: 'appealed' as const, appealLevel: null, clientId: 'org-103', clientName: 'Patel Cardiology', dos: '2026-02-10' },
-  { id: 'DEN-003', claimId: 'CLM-4511', patientName: 'Khalid Ibrahim', payer: 'NAS', denialReason: 'Timely filing exceeded', status: 'denied' as const, appealLevel: null, clientId: 'org-104', clientName: 'Dubai Wellness Clinic', dos: '2026-01-15' },
-  { id: 'DEN-004', claimId: 'CLM-4515', patientName: 'Emily Williams', payer: 'Medicare', denialReason: 'Expenses not covered — inactive coverage', status: 'denied' as const, appealLevel: null, clientId: 'org-102', clientName: 'Irvine Family Practice', dos: '2026-02-20' },
-  { id: 'DEN-005', claimId: 'CLM-4520', patientName: 'Ahmed Al Mansouri', payer: 'Daman', denialReason: 'Duplicate claim — already processed', status: 'denied' as const, appealLevel: null, clientId: 'org-101', clientName: 'Gulf Medical Center', dos: '2026-02-01' },
-  { id: 'DEN-006', claimId: 'CLM-4522', patientName: 'Fatima Al Hashimi', payer: 'Thiqa', denialReason: 'Coding error — modifier missing', status: 'denied' as const, appealLevel: 'L1' as const, clientId: 'org-101', clientName: 'Gulf Medical Center', dos: '2026-01-28' },
-  { id: 'DEN-007', claimId: 'CLM-4525', patientName: 'Omar Saeed', payer: 'NAS', denialReason: 'Timely filing limit exceeded', status: 'denied' as const, appealLevel: null, clientId: 'org-104', clientName: 'Dubai Wellness Clinic', dos: '2025-11-10' },
+  { id: 'DEN-001', claimId: 'CLM-4504', patientName: 'Sarah Johnson', payer: 'Aetna', denialReason: 'Prior authorization required', status: 'denied' as const, appealLevel: 'L1' as const, clientId: 'c0000000-0000-0000-0000-000000000101', clientName: 'Irvine Family Practice', dos: '2026-02-15' },
+  { id: 'DEN-002', claimId: 'CLM-4507', patientName: 'Robert Chen', payer: 'Medicare', denialReason: 'Not medically necessary', status: 'appealed' as const, appealLevel: null, clientId: 'c0000000-0000-0000-0000-000000000102', clientName: 'Patel Cardiology', dos: '2026-02-10' },
+  { id: 'DEN-003', claimId: 'CLM-4511', patientName: 'Khalid Ibrahim', payer: 'NAS', denialReason: 'Timely filing exceeded', status: 'denied' as const, appealLevel: null, clientId: 'b0000000-0000-0000-0000-000000000102', clientName: 'Dubai Wellness Clinic', dos: '2026-01-15' },
+  { id: 'DEN-004', claimId: 'CLM-4515', patientName: 'Emily Williams', payer: 'Medicare', denialReason: 'Expenses not covered — inactive coverage', status: 'denied' as const, appealLevel: null, clientId: 'c0000000-0000-0000-0000-000000000101', clientName: 'Irvine Family Practice', dos: '2026-02-20' },
+  { id: 'DEN-005', claimId: 'CLM-4520', patientName: 'Ahmed Al Mansouri', payer: 'Daman', denialReason: 'Duplicate claim — already processed', status: 'denied' as const, appealLevel: null, clientId: 'b0000000-0000-0000-0000-000000000101', clientName: 'Gulf Medical Center', dos: '2026-02-01' },
+  { id: 'DEN-006', claimId: 'CLM-4522', patientName: 'Fatima Al Hashimi', payer: 'Thiqa', denialReason: 'Coding error — modifier missing', status: 'denied' as const, appealLevel: 'L1' as const, clientId: 'b0000000-0000-0000-0000-000000000101', clientName: 'Gulf Medical Center', dos: '2026-01-28' },
+  { id: 'DEN-007', claimId: 'CLM-4525', patientName: 'Omar Saeed', payer: 'NAS', denialReason: 'Timely filing limit exceeded', status: 'denied' as const, appealLevel: null, clientId: 'b0000000-0000-0000-0000-000000000102', clientName: 'Dubai Wellness Clinic', dos: '2025-11-10' },
 ]
 
 export const demoPriorVisitHistory: Record<string, Array<{
@@ -822,7 +822,7 @@ export interface DemoContract {
 export const demoContracts: DemoContract[] = [
   {
     id: 'CTR-001', payer: 'UnitedHealthcare', payerId: 'UHC',
-    client: 'Irvine Family Practice', clientId: 'org-102',
+    client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101',
     effective: '2025-01-01', expiry: '2026-12-31', status: 'active',
     paymentTerms: 'Net 30', timelyFiling: 90, appealDeadline: 180, feeScheduleFrequency: 'Annual',
     feeSchedule: [
@@ -840,7 +840,7 @@ export const demoContracts: DemoContract[] = [
   },
   {
     id: 'CTR-002', payer: 'Aetna', payerId: 'AETNA',
-    client: 'Irvine Family Practice', clientId: 'org-102',
+    client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101',
     effective: '2025-06-01', expiry: '2026-04-30', status: 'expiring_soon',
     paymentTerms: 'Net 30', timelyFiling: 120, appealDeadline: 180, feeScheduleFrequency: 'Annual',
     feeSchedule: [
@@ -854,7 +854,7 @@ export const demoContracts: DemoContract[] = [
   },
   {
     id: 'CTR-003', payer: 'Medicare', payerId: 'MEDICARE',
-    client: 'Patel Cardiology', clientId: 'org-103',
+    client: 'Patel Cardiology', clientId: 'c0000000-0000-0000-0000-000000000102',
     effective: '2025-01-01', expiry: null, status: 'active',
     paymentTerms: 'Net 14', timelyFiling: 365, appealDeadline: 120, feeScheduleFrequency: 'Annual (CMS update)',
     feeSchedule: [
@@ -871,7 +871,7 @@ export const demoContracts: DemoContract[] = [
   },
   {
     id: 'CTR-004', payer: 'Daman', payerId: 'DAMAN',
-    client: 'Gulf Medical Center', clientId: 'org-101',
+    client: 'Gulf Medical Center', clientId: 'b0000000-0000-0000-0000-000000000101',
     effective: '2025-03-01', expiry: '2027-02-28', status: 'active',
     paymentTerms: 'Net 45', timelyFiling: 90, appealDeadline: 90, feeScheduleFrequency: 'Biennial',
     feeSchedule: [
@@ -885,7 +885,7 @@ export const demoContracts: DemoContract[] = [
   },
   {
     id: 'CTR-005', payer: 'NAS', payerId: 'NAS',
-    client: 'Dubai Wellness Clinic', clientId: 'org-104',
+    client: 'Dubai Wellness Clinic', clientId: 'b0000000-0000-0000-0000-000000000102',
     effective: '2025-07-01', expiry: '2026-06-30', status: 'negotiating',
     paymentTerms: 'Net 45', timelyFiling: 60, appealDeadline: 60, feeScheduleFrequency: 'Annual',
     feeSchedule: [
@@ -901,7 +901,7 @@ export const demoContracts: DemoContract[] = [
   },
   {
     id: 'CTR-006', payer: 'BCBS', payerId: 'BCBS',
-    client: 'Irvine Family Practice', clientId: 'org-102',
+    client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101',
     effective: '2024-01-01', expiry: '2026-01-31', status: 'expired',
     paymentTerms: 'Net 30', timelyFiling: 90, appealDeadline: 180, feeScheduleFrequency: 'Annual',
     feeSchedule: [
@@ -934,7 +934,7 @@ export interface DemoCall {
 export const demoActiveCalls: DemoCall[] = [
   {
     id: 'CALL-A01', type: 'Payer Status Check', target: 'UHC — Claim #CLM-4502', targetId: 'CLM-4502',
-    client: 'Gulf Medical Center', clientId: 'org-101', duration: '2:14', status: 'connected',
+    client: 'Gulf Medical Center', clientId: 'b0000000-0000-0000-0000-000000000101', duration: '2:14', status: 'connected',
     stage: 'With Rep', claimRef: 'CLM-4502',
     transcript: [
       { role: 'AI', text: 'Thank you for calling. I am calling on behalf of Gulf Medical Center regarding claim CLM-4502.' },
@@ -957,7 +957,7 @@ export const demoActiveCalls: DemoCall[] = [
   },
   {
     id: 'CALL-A02', type: 'Payer Appeal Follow-up', target: 'Aetna — Claim #CLM-4504', targetId: 'CLM-4504',
-    client: 'Irvine Family Practice', clientId: 'org-102', duration: '4:23', status: 'on_hold',
+    client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', duration: '4:23', status: 'on_hold',
     holdTime: '4:23', stage: 'On Hold', claimRef: 'CLM-4504',
     transcript: [
       { role: 'AI', text: 'Calling Aetna regarding appeal for claim CLM-4504.' },
@@ -974,7 +974,7 @@ export const demoActiveCalls: DemoCall[] = [
   },
   {
     id: 'CALL-A03', type: 'Payer Status Check', target: 'NAS — Claim #CLM-4505', targetId: 'CLM-4505',
-    client: 'Dubai Wellness Clinic', clientId: 'org-104', duration: '1:07', status: 'ivr',
+    client: 'Dubai Wellness Clinic', clientId: 'b0000000-0000-0000-0000-000000000102', duration: '1:07', status: 'ivr',
     stage: 'IVR Navigation', claimRef: 'CLM-4505',
     transcript: [
       { role: 'AI', text: 'Dialing NAS Insurance claims line.' },
@@ -993,14 +993,14 @@ export const demoActiveCalls: DemoCall[] = [
   },
   {
     id: 'CALL-A04', type: 'Patient Balance Reminder', target: 'John Smith — $85.00', targetId: 'P-001',
-    client: 'Irvine Family Practice', clientId: 'org-102', duration: '-', status: 'queued',
+    client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', duration: '-', status: 'queued',
     stage: 'Queued', claimRef: '',
     transcript: [],
     ivrSteps: [],
   },
   {
     id: 'CALL-A05', type: 'Appointment Reminder', target: 'Maria Garcia — Appt Mar 5', targetId: 'P-006',
-    client: 'Irvine Family Practice', clientId: 'org-102', duration: '-', status: 'queued',
+    client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', duration: '-', status: 'queued',
     stage: 'Queued', claimRef: '',
     transcript: [],
     ivrSteps: [],
@@ -1008,18 +1008,18 @@ export const demoActiveCalls: DemoCall[] = [
 ]
 
 export const demoCallLog: DemoCall[] = [
-  { id: 'CALL-L01', type: 'Payer Status Check', target: 'UHC — Claim #CLM-4501', targetId: 'CLM-4501', client: 'Irvine Family Practice', clientId: 'org-102', duration: '4:32', status: 'completed', outcome: 'Got Status', claimRef: 'CLM-4501' },
-  { id: 'CALL-L02', type: 'Patient Balance Reminder', target: 'Robert Chen — $488', targetId: 'P-005', client: 'Patel Cardiology', clientId: 'org-103', duration: '2:15', status: 'completed', outcome: 'Got Status', claimRef: '' },
-  { id: 'CALL-L03', type: 'Payer Appeal Follow-up', target: 'Aetna — Claim #CLM-4504', targetId: 'CLM-4504', client: 'Irvine Family Practice', clientId: 'org-102', duration: '0:12', status: 'failed', outcome: 'Failed', claimRef: 'CLM-4504' },
-  { id: 'CALL-L04', type: 'Appointment Reminder', target: 'Maria Garcia — Appt Mar 3', targetId: 'P-006', client: 'Irvine Family Practice', clientId: 'org-102', duration: '0:45', status: 'completed', outcome: 'Voicemail', claimRef: '' },
-  { id: 'CALL-L05', type: 'Payer Status Check', target: 'NAS — Claim #CLM-4505', targetId: 'CLM-4505', client: 'Dubai Wellness Clinic', clientId: 'org-104', duration: '5:18', status: 'completed', outcome: 'Got Status', claimRef: 'CLM-4505' },
-  { id: 'CALL-L06', type: 'Patient Balance Reminder', target: 'Khalid Ibrahim — AED 1,175', targetId: 'P-007', client: 'Dubai Wellness Clinic', clientId: 'org-104', duration: '3:08', status: 'completed', outcome: 'Transferred', claimRef: '' },
-  { id: 'CALL-L07', type: 'Payer Status Check', target: 'Medicare — Claim #CLM-4503', targetId: 'CLM-4503', client: 'Patel Cardiology', clientId: 'org-103', duration: '6:22', status: 'completed', outcome: 'Got Status', claimRef: 'CLM-4503' },
-  { id: 'CALL-L08', type: 'Appointment Reminder', target: 'Robert Chen — Appt Mar 2', targetId: 'P-005', client: 'Patel Cardiology', clientId: 'org-103', duration: '0:38', status: 'completed', outcome: 'Got Status', claimRef: '' },
-  { id: 'CALL-L09', type: 'Payer Status Check', target: 'Daman — Claim #CLM-4502', targetId: 'CLM-4502', client: 'Gulf Medical Center', clientId: 'org-101', duration: '7:44', status: 'completed', outcome: 'Got Status', claimRef: 'CLM-4502' },
-  { id: 'CALL-L10', type: 'Payer Appeal Follow-up', target: 'UHC — Claim #CLM-4501', targetId: 'CLM-4501', client: 'Irvine Family Practice', clientId: 'org-102', duration: '4:01', status: 'completed', outcome: 'Transferred', claimRef: 'CLM-4501' },
-  { id: 'CALL-L11', type: 'Patient Balance Reminder', target: 'Sarah Johnson — $120', targetId: 'P-002', client: 'Irvine Family Practice', clientId: 'org-102', duration: '1:55', status: 'completed', outcome: 'Voicemail', claimRef: '' },
-  { id: 'CALL-L12', type: 'Appointment Reminder', target: 'Ahmed Al Mansouri — Appt Feb 28', targetId: 'P-003', client: 'Gulf Medical Center', clientId: 'org-101', duration: '0:52', status: 'completed', outcome: 'Got Status', claimRef: '' },
+  { id: 'CALL-L01', type: 'Payer Status Check', target: 'UHC — Claim #CLM-4501', targetId: 'CLM-4501', client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', duration: '4:32', status: 'completed', outcome: 'Got Status', claimRef: 'CLM-4501' },
+  { id: 'CALL-L02', type: 'Patient Balance Reminder', target: 'Robert Chen — $488', targetId: 'P-005', client: 'Patel Cardiology', clientId: 'c0000000-0000-0000-0000-000000000102', duration: '2:15', status: 'completed', outcome: 'Got Status', claimRef: '' },
+  { id: 'CALL-L03', type: 'Payer Appeal Follow-up', target: 'Aetna — Claim #CLM-4504', targetId: 'CLM-4504', client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', duration: '0:12', status: 'failed', outcome: 'Failed', claimRef: 'CLM-4504' },
+  { id: 'CALL-L04', type: 'Appointment Reminder', target: 'Maria Garcia — Appt Mar 3', targetId: 'P-006', client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', duration: '0:45', status: 'completed', outcome: 'Voicemail', claimRef: '' },
+  { id: 'CALL-L05', type: 'Payer Status Check', target: 'NAS — Claim #CLM-4505', targetId: 'CLM-4505', client: 'Dubai Wellness Clinic', clientId: 'b0000000-0000-0000-0000-000000000102', duration: '5:18', status: 'completed', outcome: 'Got Status', claimRef: 'CLM-4505' },
+  { id: 'CALL-L06', type: 'Patient Balance Reminder', target: 'Khalid Ibrahim — AED 1,175', targetId: 'P-007', client: 'Dubai Wellness Clinic', clientId: 'b0000000-0000-0000-0000-000000000102', duration: '3:08', status: 'completed', outcome: 'Transferred', claimRef: '' },
+  { id: 'CALL-L07', type: 'Payer Status Check', target: 'Medicare — Claim #CLM-4503', targetId: 'CLM-4503', client: 'Patel Cardiology', clientId: 'c0000000-0000-0000-0000-000000000102', duration: '6:22', status: 'completed', outcome: 'Got Status', claimRef: 'CLM-4503' },
+  { id: 'CALL-L08', type: 'Appointment Reminder', target: 'Robert Chen — Appt Mar 2', targetId: 'P-005', client: 'Patel Cardiology', clientId: 'c0000000-0000-0000-0000-000000000102', duration: '0:38', status: 'completed', outcome: 'Got Status', claimRef: '' },
+  { id: 'CALL-L09', type: 'Payer Status Check', target: 'Daman — Claim #CLM-4502', targetId: 'CLM-4502', client: 'Gulf Medical Center', clientId: 'b0000000-0000-0000-0000-000000000101', duration: '7:44', status: 'completed', outcome: 'Got Status', claimRef: 'CLM-4502' },
+  { id: 'CALL-L10', type: 'Payer Appeal Follow-up', target: 'UHC — Claim #CLM-4501', targetId: 'CLM-4501', client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', duration: '4:01', status: 'completed', outcome: 'Transferred', claimRef: 'CLM-4501' },
+  { id: 'CALL-L11', type: 'Patient Balance Reminder', target: 'Sarah Johnson — $120', targetId: 'P-002', client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', duration: '1:55', status: 'completed', outcome: 'Voicemail', claimRef: '' },
+  { id: 'CALL-L12', type: 'Appointment Reminder', target: 'Ahmed Al Mansouri — Appt Feb 28', targetId: 'P-003', client: 'Gulf Medical Center', clientId: 'b0000000-0000-0000-0000-000000000101', duration: '0:52', status: 'completed', outcome: 'Got Status', claimRef: '' },
 ]
 
 export interface DemoCampaign {
@@ -1171,26 +1171,26 @@ export interface DemoDocRecord {
 }
 
 export const demoDocs: DemoDocRecord[] = [
-  { id: 'D-001', name: 'superbill_smith_20260302.pdf', type: 'Superbill', client: 'Irvine Family Practice', clientId: 'org-102', patient: 'John Smith', patientId: 'P-001', uploadDate: '2026-03-02', source: 'Portal Upload', status: 'Linked' },
-  { id: 'D-002', name: 'clinical_note_mansouri.pdf', type: 'Clinical Note', client: 'Gulf Medical Center', clientId: 'org-101', patient: 'Ahmed Al Mansouri', patientId: 'P-003', uploadDate: '2026-03-01', source: 'Manual Upload', status: 'Linked' },
-  { id: 'D-003', name: 'eob_uhc_20260301.pdf', type: 'EOB', client: 'Irvine Family Practice', clientId: 'org-102', patient: '—', uploadDate: '2026-03-01', source: 'Email Ingest', status: 'Linked' },
-  { id: 'D-004', name: 'denial_aetna_clm4504.pdf', type: 'Denial Letter', client: 'Irvine Family Practice', clientId: 'org-102', patient: 'Sarah Johnson', patientId: 'P-002', uploadDate: '2026-02-28', source: 'Email Ingest', status: 'Linked' },
-  { id: 'D-005', name: 'insurance_card_garcia.jpg', type: 'Insurance Card', client: 'Irvine Family Practice', clientId: 'org-102', patient: 'Maria Garcia', patientId: 'P-006', uploadDate: '2026-02-28', source: 'Portal Upload', status: 'Linked' },
+  { id: 'D-001', name: 'superbill_smith_20260302.pdf', type: 'Superbill', client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', patient: 'John Smith', patientId: 'P-001', uploadDate: '2026-03-02', source: 'Portal Upload', status: 'Linked' },
+  { id: 'D-002', name: 'clinical_note_mansouri.pdf', type: 'Clinical Note', client: 'Gulf Medical Center', clientId: 'b0000000-0000-0000-0000-000000000101', patient: 'Ahmed Al Mansouri', patientId: 'P-003', uploadDate: '2026-03-01', source: 'Manual Upload', status: 'Linked' },
+  { id: 'D-003', name: 'eob_uhc_20260301.pdf', type: 'EOB', client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', patient: '—', uploadDate: '2026-03-01', source: 'Email Ingest', status: 'Linked' },
+  { id: 'D-004', name: 'denial_aetna_clm4504.pdf', type: 'Denial Letter', client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', patient: 'Sarah Johnson', patientId: 'P-002', uploadDate: '2026-02-28', source: 'Email Ingest', status: 'Linked' },
+  { id: 'D-005', name: 'insurance_card_garcia.jpg', type: 'Insurance Card', client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', patient: 'Maria Garcia', patientId: 'P-006', uploadDate: '2026-02-28', source: 'Portal Upload', status: 'Linked' },
   { id: 'D-006', name: 'fax_inbound_20260301_1.pdf', type: 'Clinical Note', client: '—', clientId: '', patient: '—', uploadDate: '2026-03-01', source: 'Fax', status: 'Unlinked', aiConfidence: 72 },
   { id: 'D-007', name: 'superbill_scan_03012026.jpg', type: 'Superbill', client: '—', clientId: '', patient: '—', uploadDate: '2026-03-01', source: 'Email Ingest', status: 'Unlinked', aiConfidence: 94 },
   { id: 'D-008', name: 'email_superbill_20260228.pdf', type: 'Superbill', client: '—', clientId: '', patient: '—', uploadDate: '2026-02-28', source: 'Email Ingest', status: 'Unlinked', aiConfidence: 87 },
-  { id: 'D-009', name: 'echo_report_chen.pdf', type: 'Clinical Note', client: 'Patel Cardiology', clientId: 'org-103', patient: 'Robert Chen', patientId: 'P-005', uploadDate: '2026-02-10', source: 'Portal Upload', status: 'Linked' },
-  { id: 'D-010', name: 'credential_martinez.pdf', type: 'Credential', client: 'Irvine Family Practice', clientId: 'org-102', patient: '—', uploadDate: '2026-01-15', source: 'Manual Upload', status: 'Linked' },
-  { id: 'D-011', name: 'contract_uhc_2025.pdf', type: 'Contract', client: 'Irvine Family Practice', clientId: 'org-102', patient: '—', uploadDate: '2025-12-01', source: 'Manual Upload', status: 'Linked' },
-  { id: 'D-012', name: 'insurance_card_chen.jpg', type: 'Insurance Card', client: 'Patel Cardiology', clientId: 'org-103', patient: 'Robert Chen', patientId: 'P-005', uploadDate: '2026-02-01', source: 'Portal Upload', status: 'Linked' },
-  { id: 'D-013', name: 'eob_aetna_feb2026.pdf', type: 'EOB', client: 'Irvine Family Practice', clientId: 'org-102', patient: '—', uploadDate: '2026-02-25', source: 'Email Ingest', status: 'Linked' },
-  { id: 'D-014', name: 'fax_prior_auth_request.pdf', type: 'Fax', client: 'Irvine Family Practice', clientId: 'org-102', patient: 'Maria Garcia', patientId: 'P-006', uploadDate: '2026-02-20', source: 'Fax', status: 'Linked' },
-  { id: 'D-015', name: 'superbill_johnson_0218.pdf', type: 'Superbill', client: 'Irvine Family Practice', clientId: 'org-102', patient: 'Sarah Johnson', patientId: 'P-002', uploadDate: '2026-02-18', source: 'Portal Upload', status: 'Linked' },
-  { id: 'D-016', name: 'denial_medicare_chen.pdf', type: 'Denial Letter', client: 'Patel Cardiology', clientId: 'org-103', patient: 'Robert Chen', patientId: 'P-005', uploadDate: '2026-02-12', source: 'Email Ingest', status: 'Linked' },
+  { id: 'D-009', name: 'echo_report_chen.pdf', type: 'Clinical Note', client: 'Patel Cardiology', clientId: 'c0000000-0000-0000-0000-000000000102', patient: 'Robert Chen', patientId: 'P-005', uploadDate: '2026-02-10', source: 'Portal Upload', status: 'Linked' },
+  { id: 'D-010', name: 'credential_martinez.pdf', type: 'Credential', client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', patient: '—', uploadDate: '2026-01-15', source: 'Manual Upload', status: 'Linked' },
+  { id: 'D-011', name: 'contract_uhc_2025.pdf', type: 'Contract', client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', patient: '—', uploadDate: '2025-12-01', source: 'Manual Upload', status: 'Linked' },
+  { id: 'D-012', name: 'insurance_card_chen.jpg', type: 'Insurance Card', client: 'Patel Cardiology', clientId: 'c0000000-0000-0000-0000-000000000102', patient: 'Robert Chen', patientId: 'P-005', uploadDate: '2026-02-01', source: 'Portal Upload', status: 'Linked' },
+  { id: 'D-013', name: 'eob_aetna_feb2026.pdf', type: 'EOB', client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', patient: '—', uploadDate: '2026-02-25', source: 'Email Ingest', status: 'Linked' },
+  { id: 'D-014', name: 'fax_prior_auth_request.pdf', type: 'Fax', client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', patient: 'Maria Garcia', patientId: 'P-006', uploadDate: '2026-02-20', source: 'Fax', status: 'Linked' },
+  { id: 'D-015', name: 'superbill_johnson_0218.pdf', type: 'Superbill', client: 'Irvine Family Practice', clientId: 'c0000000-0000-0000-0000-000000000101', patient: 'Sarah Johnson', patientId: 'P-002', uploadDate: '2026-02-18', source: 'Portal Upload', status: 'Linked' },
+  { id: 'D-016', name: 'denial_medicare_chen.pdf', type: 'Denial Letter', client: 'Patel Cardiology', clientId: 'c0000000-0000-0000-0000-000000000102', patient: 'Robert Chen', patientId: 'P-005', uploadDate: '2026-02-12', source: 'Email Ingest', status: 'Linked' },
   { id: 'D-017', name: 'textract_scan_superbill.jpg', type: 'Superbill', client: '—', clientId: '', patient: '—', uploadDate: '2026-03-02', source: 'Textract Scan', status: 'Processing' },
-  { id: 'D-018', name: 'clinical_note_ibrahim.pdf', type: 'Clinical Note', client: 'Dubai Wellness Clinic', clientId: 'org-104', patient: 'Khalid Ibrahim', patientId: 'P-007', uploadDate: '2026-02-22', source: 'Manual Upload', status: 'Linked' },
-  { id: 'D-019', name: 'eob_nas_feb2026.pdf', type: 'EOB', client: 'Dubai Wellness Clinic', clientId: 'org-104', patient: '—', uploadDate: '2026-02-15', source: 'Email Ingest', status: 'Linked' },
-  { id: 'D-020', name: 'insurance_card_hassan.jpg', type: 'Insurance Card', client: 'Gulf Medical Center', clientId: 'org-101', patient: 'Fatima Hassan', patientId: 'P-004', uploadDate: '2026-02-05', source: 'Portal Upload', status: 'Linked' },
+  { id: 'D-018', name: 'clinical_note_ibrahim.pdf', type: 'Clinical Note', client: 'Dubai Wellness Clinic', clientId: 'b0000000-0000-0000-0000-000000000102', patient: 'Khalid Ibrahim', patientId: 'P-007', uploadDate: '2026-02-22', source: 'Manual Upload', status: 'Linked' },
+  { id: 'D-019', name: 'eob_nas_feb2026.pdf', type: 'EOB', client: 'Dubai Wellness Clinic', clientId: 'b0000000-0000-0000-0000-000000000102', patient: '—', uploadDate: '2026-02-15', source: 'Email Ingest', status: 'Linked' },
+  { id: 'D-020', name: 'insurance_card_hassan.jpg', type: 'Insurance Card', client: 'Gulf Medical Center', clientId: 'b0000000-0000-0000-0000-000000000101', patient: 'Fatima Hassan', patientId: 'P-004', uploadDate: '2026-02-05', source: 'Portal Upload', status: 'Linked' },
 ]
 
 export interface DemoFax {

@@ -14,17 +14,26 @@ import type { AppointmentStatus } from '@/types'
 import { formatDOB } from '@/lib/utils/region'
 
 function apiAppointmentToDemo(a: ApiAppointment) {
+  // appointment_date may come back as full ISO string e.g. "2026-03-06T00:00:00.000Z"
+  // Strip to YYYY-MM-DD so calendar date comparisons work correctly
+  const rawDate = a.appointment_date || ''
+  const date = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate
+
+  // appointment_time may come back as "08:00:00" — trim to "HH:MM"
+  const rawTime = a.appointment_time || '09:00'
+  const time = rawTime.length > 5 ? rawTime.substring(0, 5) : rawTime
+
   return {
     id: a.id,
     patientId: '',
     patientName: a.patient_name || `${a.first_name || ''} ${a.last_name || ''}`.trim() || 'Unknown Patient',
-    time: a.appointment_time || '09:00',
+    time,
     duration: 30,
     provider: a.provider_name || '',
     type: a.appointment_type || 'Office Visit',
     status: (a.status || 'booked') as AppointmentStatus,
     clientId: a.client_id,
-    date: a.appointment_date || '',
+    date,
   }
 }
 
@@ -253,29 +262,34 @@ export default function AppointmentsPage() {
   const [drawerAppt, setDrawerAppt] = useState<ReturnType<typeof apiAppointmentToDemo> | null>(null)
   const [statusOverrides, setStatusOverrides] = useState<Record<string, AppointmentStatus>>({})
 
-  const { data: apiApptResult } = useAppointments({ limit: 50, sort: 'appointment_date', order: 'asc' })
+  const { data: apiApptResult, refetch: refetchAppts } = useAppointments({ limit: 50, sort: 'appointment_date', order: 'asc' })
 
-  const clientFilter = isClinic ? currentUser.organization_id : selectedClient?.id
+  // For clinic users (provider / front-desk) the API already scopes by org via RLS.
+  // Don't re-filter on the frontend or nothing shows (org-102 ≠ real UUID from DB).
+  const clientFilter = isClinic ? null : selectedClient?.id
 
   const sourceAppointments = apiApptResult?.data
     ? apiApptResult.data.map(apiAppointmentToDemo)
     : []
 
-  // Auto-navigate to nearest date with appointments if today has none
+  // Auto-navigate to nearest date with appointments — runs ONCE only when data
+  // first arrives. A ref prevents it from firing again on subsequent reloads,
+  // which would override the user's manual date selection.
+  const hasAutoNavigated = React.useRef(false)
   React.useEffect(() => {
-    if (!sourceAppointments.length) return
+    if (!sourceAppointments.length || hasAutoNavigated.current) return
     const filtered = clientFilter
       ? sourceAppointments.filter(a => a.clientId === clientFilter)
       : sourceAppointments
     const hasToday = filtered.some(a => a.date === todayStr)
     if (!hasToday) {
-      // Find nearest future date; fall back to nearest past date
       const sorted = Array.from(new Set(filtered.map(a => a.date))).sort()
       const future = sorted.find(d => d >= todayStr)
       const nearest = future || sorted[sorted.length - 1]
       if (nearest) setSelectedDate(nearest)
     }
-  }, [sourceAppointments, clientFilter, todayStr])
+    hasAutoNavigated.current = true
+  }, [sourceAppointments]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const dayApts = sourceAppointments.filter(a => {
     if (clientFilter && a.clientId !== clientFilter) return false
@@ -414,7 +428,7 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
-      {showAdd && <NewAppointmentModal onClose={()=>setShowAdd(false)}/>}
+      {showAdd && <NewAppointmentModal onClose={()=>setShowAdd(false)} onSaved={refetchAppts}/>}
       {drawerAppt && (
         <AppointmentDrawer
           appt={{ ...drawerAppt, status: (statusOverrides[drawerAppt.id] ?? drawerAppt.status) as AppointmentStatus }}

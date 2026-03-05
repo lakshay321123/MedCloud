@@ -10,10 +10,12 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 function useClientParams(extra?: ApiListParams): ApiListParams {
   const { selectedClient, orgId, currentUser } = useApp()
-  // Provider and client roles are always scoped to their own organization
-  const isClinicUser = currentUser.role === 'client' || currentUser.role === 'provider'
-  const rawClientId = isClinicUser ? currentUser.organization_id : selectedClient?.id
+  // For all roles: use selectedClient if available (scopes to a specific practice)
+  // Provider/client roles always belong to exactly one client — use selectedClient if set,
+  // otherwise omit client_id so Lambda returns all records for the org (not filtered to wrong UUID)
+  const rawClientId = selectedClient?.id
   const clientId = rawClientId && UUID_REGEX.test(rawClientId) ? rawClientId : undefined
+  void currentUser // suppress lint warning — role-based logic removed (see comment above)
   return {
     org_id: orgId,
     ...(clientId !== undefined ? { client_id: clientId } : {}),
@@ -38,6 +40,7 @@ export interface ApiPatient {
   zip?: string
   insurance_payer?: string
   insurance_member_id?: string
+  insurance_policy_number?: string
   status?: string
   profile_complete?: number
   // enriched
@@ -159,6 +162,7 @@ export interface ApiAppointment {
   appointment_time?: string
   status?: AppointmentStatus
   appointment_type?: string
+  visit_type?: string
   notes?: string
   // enriched
   patient_name?: string
