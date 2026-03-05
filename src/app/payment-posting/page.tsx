@@ -64,8 +64,28 @@ export default function PaymentPostingPage() {
 
   useEffect(() => {
     if (!selectedEra && eras.length > 0) return
-    if (selectedEra && !eras.find(e => e.id === selectedEra)) setSelectedEra(null)
-  }, [selectedEra, eras])
+    if (selectedEra && !eras.find(e => e.id === selectedEra)) { setSelectedEra(null); return }
+    // Auto-populate demo line items when an ERA is selected and has no lines yet
+    if (selectedEra && lineItems.filter(l => l.eraId === selectedEra).length === 0) {
+      const foundEra = eras.find(e => e.id === selectedEra)
+      if (!foundEra) return
+      const demoPatients = [
+        { name: 'Robert Johnson', cpt: '99213', desc: 'Office Visit, Est. Patient', dos: '2026-02-15', billed: 185, allowed: 120, paid: 120, denied: 0, adjCode: 'CO-45', adjReason: 'Contractual adj.', patBal: 25 },
+        { name: 'Maria Garcia', cpt: '93000', desc: 'EKG w/ interp.', dos: '2026-02-15', billed: 95, allowed: 72, paid: 72, denied: 0, adjCode: 'CO-45', adjReason: 'Contractual adj.', patBal: 0 },
+        { name: 'James Wilson', cpt: '85025', desc: 'CBC w/ diff', dos: '2026-02-16', billed: 45, allowed: 28, paid: 0, denied: 28, adjCode: 'CO-4', adjReason: 'Deductible', patBal: 28 },
+      ]
+      const newLines: LineItem[] = demoPatients.map((p, i) => ({
+        id: `demo-${selectedEra}-${i}`,
+        eraId: selectedEra,
+        claimId: `CLM-${Math.floor(1000 + Math.random() * 9000)}`,
+        patientName: p.name, cpt: p.cpt, cptDesc: p.desc, dos: p.dos,
+        billed: p.billed, allowed: p.allowed, paid: p.paid, denied: p.denied,
+        adjCode: p.adjCode, adjReason: p.adjReason, patBalance: p.patBal,
+        notes: '', action: p.denied > 0 ? 'review' : 'post',
+      }))
+      setLineItems(prev => [...prev, ...newLines])
+    }
+  }, [selectedEra, eras]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const totals = useMemo(() => eraLines.reduce((acc, row) => ({
     billed: acc.billed + row.billed,

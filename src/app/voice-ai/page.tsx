@@ -156,23 +156,35 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
 function ActiveCallsTab({ allCalls }: { allCalls: RetellCall[] }) {
   const { calls, loading, fallback, refetch } = useRetellCalls({ status: 'ongoing' })
   const [selected, setSelected] = useState<RetellCall | null>(null)
+  const [statsPeriod, setStatsPeriod] = useState<'today' | 'week' | 'month'>('today')
 
-  const todayCalls = allCalls.filter(c => c.start_timestamp && Date.now() - c.start_timestamp < 86400000)
-  const successRate = todayCalls.length > 0 ? Math.round(todayCalls.filter(c => c.call_analysis?.call_successful).length / todayCalls.length * 100) : 0
-  const avgDuration = todayCalls.length > 0 ? formatDuration(todayCalls.reduce((s, c) => s + (c.duration_ms ?? 0), 0) / todayCalls.length) : '—'
+  const now = Date.now()
+  const periodStart = statsPeriod === 'today' ? now - 86400000 : statsPeriod === 'week' ? now - 7 * 86400000 : now - 30 * 86400000
+  const periodCalls = allCalls.filter(c => c.start_timestamp && c.start_timestamp >= periodStart)
+  const successRate = periodCalls.length > 0 ? Math.round(periodCalls.filter(c => c.call_analysis?.call_successful).length / periodCalls.length * 100) : 0
+  const avgDuration = periodCalls.length > 0 ? formatDuration(periodCalls.reduce((s, c) => s + (c.duration_ms ?? 0), 0) / periodCalls.length) : '—'
 
   return (
     <div>
       <div className="flex items-center gap-3 mb-4">
         <div className="flex-1 grid grid-cols-4 gap-4">
-          <KPICard label="Calls Today" value={todayCalls.length} icon={<Phone size={20} />} />
+          <KPICard label={statsPeriod === 'today' ? 'Calls Today' : statsPeriod === 'week' ? 'Calls This Week' : 'Calls This Month'} value={periodCalls.length} icon={<Phone size={20} />} />
           <KPICard label="Live Now" value={calls.length} icon={<Activity size={20} />} />
           <KPICard label="Avg Duration" value={avgDuration} icon={<Clock size={20} />} />
           <KPICard label="Success Rate" value={`${successRate}%`} icon={<CheckCircle size={20} />} />
         </div>
         <button onClick={refetch} className="p-2 hover:bg-surface-elevated rounded-btn text-content-secondary transition-colors"><RefreshCw size={15} /></button>
       </div>
-
+      {/* Period filter */}
+      <div className="flex items-center gap-1 mb-4">
+        {(['today', 'week', 'month'] as const).map(p => (
+          <button key={p} onClick={() => setStatsPeriod(p)}
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${statsPeriod === p ? 'bg-brand text-white' : 'bg-surface-elevated text-content-secondary hover:text-content-primary'}`}>
+            {p === 'today' ? 'Today' : p === 'week' ? 'This Week' : 'This Month'}
+          </button>
+        ))}
+        <span className="text-[11px] text-content-tertiary ml-2">{periodCalls.length} calls in period</span>
+      </div>
       {fallback && <div className="mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400"><AlertTriangle size={13} />Demo mode — add RETELL_API_KEY to Vercel</div>}
 
       {loading ? <div className="card p-12 text-center text-sm text-content-tertiary">Loading…</div>
@@ -215,6 +227,10 @@ function ActiveCallsTab({ allCalls }: { allCalls: RetellCall[] }) {
 
 // ─── TAB 2: Call Log ──────────────────────────────────────────────────────────
 function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { allCalls: RetellCall[]; loading: boolean; fallback: boolean }) {
+  const { toast } = useToast()
+  const { launch: launchCallback, loading: callbackLoading } = useLaunchCall()
+  const [callbackQueue, setCallbackQueue] = React.useState<Set<string>>(new Set())
+  const [calledBack, setCalledBack] = React.useState<Set<string>>(new Set())
   const [agentFilter, setAgentFilter] = useState<'all' | 'chris' | 'cindy'>('all')
   const [outcomeFilter, setOutcomeFilter] = useState('')
   const [payerFilter, setPayerFilter] = useState('')
@@ -345,12 +361,21 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
                 <th className="text-left px-4 py-3">Duration</th>
                 <th className="text-left px-4 py-3">Outcome</th>
                 <th className="text-left px-4 py-3">Sentiment</th>
+                <th className="text-left px-4 py-3">Callback</th>
                 <th className="text-left px-4 py-3 max-w-[200px]">Summary</th>
               </tr></thead>
               <tbody>
                 {paginated.map(call => {
                   const vars = call.retell_llm_dynamic_variables ?? {}
                   const payer = vars['primary_carrier_name'] ?? vars['primaryinsurance'] ?? '—'
+                  // Identify retryable: short call (<30s), no success result, or specific disconnection reasons
+                  const isIncomplete = !call.call_analysis?.call_successful &&
+                    call.call_analysis?.call_successful !== false && // not a definitive fail
+                    (call.call_status === 'ended') // ended but no result
+                  const isDefinitiveFail = call.call_analysis?.call_successful === false
+                  const isRetryable = isIncomplete || (isDefinitiveFail && ['dial_no_answer', 'dial_busy', 'machine_detected', 'network_error', 'error'].some(r => call.disconnection_reason?.includes(r)))
+                  const wasCalledBack = calledBack.has(call.call_id)
+
                   return (
                     <tr key={call.call_id} onClick={() => setSelected(call)}
                       className="border-b border-separator last:border-0 cursor-pointer hover:bg-surface-elevated transition-colors">
@@ -366,17 +391,45 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
                           ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium">Resolved</span>
                           : call.call_analysis?.call_successful === false
                           ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 font-medium">Failed</span>
+                          : isIncomplete
+                          ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-medium">Incomplete</span>
                           : <span className="text-[10px] text-content-tertiary">—</span>}
                       </td>
                       <td className="px-4 py-3"><SentimentBadge sentiment={call.call_analysis?.user_sentiment} /></td>
                       <td className="px-4 py-3 text-xs text-content-secondary max-w-[200px] truncate">
                         {call.call_analysis?.call_summary ?? '—'}
                       </td>
+                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                        {(isRetryable || isIncomplete) && !wasCalledBack ? (
+                          <button
+                            onClick={async () => {
+                              setCallbackQueue(q => new Set(Array.from(q).concat(call.call_id)))
+                              const agentName = (call._agent_name === 'cindy' || call._agent_name === 'chris') ? call._agent_name : 'chris' as const
+                              try {
+                                await launchCallback({
+                                  agent_name: agentName,
+                                  to_number: call.to_number ?? '',
+                                  variables: Object.fromEntries(Object.entries(vars).map(([k, v]) => [k, String(v)])),
+                                })
+                                setCalledBack(s => new Set(Array.from(s).concat(call.call_id)))
+                                toast.success(`Callback queued to ${call.to_number}`)
+                              } catch { toast.error('Callback failed') }
+                              setCallbackQueue(q => { const n = new Set(Array.from(q)); n.delete(call.call_id); return n })
+                            }}
+                            disabled={callbackQueue.has(call.call_id) || callbackLoading}
+                            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors font-medium whitespace-nowrap disabled:opacity-40">
+                            <RefreshCw size={10} className={callbackQueue.has(call.call_id) ? 'animate-spin' : ''} />
+                            {callbackQueue.has(call.call_id) ? 'Queuing…' : 'Call Back'}
+                          </button>
+                        ) : wasCalledBack ? (
+                          <span className="text-[10px] text-emerald-500">✓ Queued</span>
+                        ) : null}
+                      </td>
                     </tr>
                   )
                 })}
                 {paginated.length === 0 && (
-                  <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-content-tertiary">No calls match filters</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-10 text-center text-sm text-content-tertiary">No calls match filters</td></tr>
                 )}
               </tbody>
             </table>
@@ -394,6 +447,82 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
         </>
       )}
       {selected && <><div className="fixed inset-0 bg-black/20 z-30" onClick={() => setSelected(null)} /><CallDetailDrawer call={selected} onClose={() => setSelected(null)} /></>}
+    </div>
+  )
+}
+
+// ─── Single Call Form (expanded with all fields) ────────────────────────────
+function SingleCallForm({ agentKey, launchCall, singleLoading }: { agentKey: 'cindy' | 'chris'; launchCall: (p: { agent_name: 'cindy' | 'chris'; to_number: string; variables?: Record<string, string> }) => Promise<unknown>; singleLoading: boolean }) {
+  const { toast } = useToast()
+  const FIELDS = [
+    { key: 'phone_number', label: 'Phone Number *', placeholder: '+1 (702) 555-0000', required: true },
+    { key: 'id', label: 'ID / Account#', placeholder: 'ACC-1234' },
+    { key: 'practice_name', label: 'Practice Name', placeholder: 'Irvine Family Practice' },
+    { key: 'npi', label: 'NPI', placeholder: '1234567890' },
+    { key: 'tax_id', label: 'Tax ID', placeholder: 'XX-XXXXXXX' },
+    { key: 'billing_address', label: 'Billing Address', placeholder: '123 Main St, Irvine CA' },
+    { key: 'call_back_number', label: 'Call Back #', placeholder: '+1 (702) 555-0001' },
+    { key: 'acct_number', label: 'Acct #', placeholder: 'CLM-2026-0001' },
+    { key: 'provider', label: 'Provider', placeholder: 'Dr. Sarah Johnson' },
+    { key: 'service_location', label: 'Service Location', placeholder: 'Main Office' },
+    { key: 'patient_name', label: 'Patient Name', placeholder: 'John Smith' },
+    { key: 'patient_birth_date', label: 'Patient Birth Date', placeholder: 'MM/DD/YYYY' },
+    { key: 'primary_carrier_name', label: 'Primary Carrier', placeholder: 'UnitedHealthcare' },
+    { key: 'primary_carrier_policy', label: 'Primary Carrier Policy #', placeholder: 'UHC123456789' },
+    { key: 'service_date', label: 'Service Date', placeholder: 'MM/DD/YYYY' },
+    { key: 'total_charge', label: 'Total Charge', placeholder: '250.00' },
+    { key: 'status', label: 'Status', placeholder: 'Pending / Denied / Open' },
+  ]
+  const [form, setForm] = React.useState<Record<string, string>>(() => Object.fromEntries(FIELDS.map(f => [f.key, ''])))
+  const [extraLabel, setExtraLabel] = React.useState('Extra Info')
+  const [extraValue, setExtraValue] = React.useState('')
+
+  async function handleLaunch() {
+    if (!form.phone_number.trim()) { toast.error('Phone number is required'); return }
+    const vars: Record<string, string> = {}
+    FIELDS.filter(f => f.key !== 'phone_number').forEach(f => { if (form[f.key]) vars[f.key] = form[f.key] })
+    if (extraLabel && extraValue) vars[extraLabel.toLowerCase().replace(/\s+/g, '_')] = extraValue
+    try {
+      await launchCall({ agent_name: agentKey, to_number: form.phone_number, variables: vars })
+      toast.success(`Call initiated to ${form.phone_number}`)
+      setForm(Object.fromEntries(FIELDS.map(f => [f.key, ''])))
+      setExtraValue('')
+    } catch (e) { toast.error(`${e}`) }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        {FIELDS.map(f => (
+          <div key={f.key}>
+            <label className="block text-[10px] text-content-tertiary mb-0.5">{f.label}</label>
+            <input value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+              placeholder={f.placeholder}
+              className={`w-full bg-surface-elevated border rounded-lg px-2.5 py-1.5 text-xs text-content-primary placeholder:text-content-tertiary outline-none transition-colors ${f.required ? 'border-brand/30 focus:border-brand/60' : 'border-separator focus:border-brand/40'}`} />
+          </div>
+        ))}
+        {/* Extra / custom column for voice agent */}
+        <div className="col-span-2 border-t border-separator pt-2">
+          <p className="text-[10px] text-content-tertiary mb-1.5">➕ Extra Column (Retell voice agent add-on)</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[10px] text-content-tertiary mb-0.5">Column Name</label>
+              <input value={extraLabel} onChange={e => setExtraLabel(e.target.value)} placeholder="e.g. Auth_Number"
+                className="w-full bg-surface-elevated border border-separator rounded-lg px-2.5 py-1.5 text-xs text-content-primary outline-none focus:border-brand/40" />
+            </div>
+            <div>
+              <label className="block text-[10px] text-content-tertiary mb-0.5">Value</label>
+              <input value={extraValue} onChange={e => setExtraValue(e.target.value)} placeholder="e.g. AUTH-99182"
+                className="w-full bg-surface-elevated border border-separator rounded-lg px-2.5 py-1.5 text-xs text-content-primary outline-none focus:border-brand/40" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <button onClick={handleLaunch} disabled={singleLoading || !form.phone_number}
+        className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-brand-deep disabled:opacity-40 transition-colors">
+        <PhoneOutgoing size={14} className="inline mr-2" />
+        {singleLoading ? 'Calling…' : `Call Now via ${agentKey === 'cindy' ? 'Cindy' : 'Chris'}`}
+      </button>
     </div>
   )
 }
@@ -560,15 +689,8 @@ function CampaignLauncherTab() {
             </div>
           )
         ) : (
-          <div className="flex gap-2">
-            <input value={singleNumber} onChange={e => setSingleNumber(e.target.value)} placeholder="+1 (702) 555-0000"
-              className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40" />
-            <button onClick={async () => { try { await launchCall({ agent_name: agentKey, to_number: singleNumber }); toast.success('Call initiated'); setSingleNumber('') } catch (e) { toast.error(`${e}`) } }}
-              disabled={singleLoading || !singleNumber}
-              className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-deep disabled:opacity-40 transition-colors whitespace-nowrap">
-              <PhoneOutgoing size={14} className="inline mr-1.5" />{singleLoading ? 'Calling…' : 'Call Now'}
-            </button>
-          </div>
+          // ── Expanded Single Call Form ──
+          <SingleCallForm agentKey={agentKey} launchCall={launchCall} singleLoading={singleLoading} />
         )}
       </div>
     </div>

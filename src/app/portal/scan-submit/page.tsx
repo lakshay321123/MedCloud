@@ -32,7 +32,8 @@ export default function ScanSubmitPage() {
   const clientId = isClinic
     ? currentUser.organization_id
     : selectedClient?.id ?? ''
-  const myPatients = apiPatients.filter(p => p.clientId === clientId)
+  // For clinic roles API RLS already scopes to their org — skip UUID mismatch filter
+  const myPatients = isClinic ? apiPatients : (clientId ? apiPatients.filter(p => p.clientId === clientId) : apiPatients)
 
   const [step, setStep] = useState<Step>(1)
   const [patientId, setPatientId] = useState('')

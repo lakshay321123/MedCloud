@@ -6,7 +6,7 @@ import { useApp } from '@/lib/context'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
-import { ShieldAlert, FileText, AlertTriangle, Send } from 'lucide-react'
+import { ShieldAlert, FileText, AlertTriangle, Send, X, Plus, Edit2, Trash2, ChevronDown } from 'lucide-react'
 import { useToast } from '@/components/shared/Toast'
 import { useDenials, useGenerateAppeal, useDenialCategories, useAppealsList, useBatchGenerateAppeals, useUpdateDenial, useCreateDenial, useSubmitAppeal, useAppealDetail, useUpdateAppealStatus, useAppealTemplates, useCreateAppealTemplate, useCheckAppealDeadlines } from '@/lib/hooks'
 import { filterByRegion } from '@/lib/utils/region'
@@ -49,6 +49,8 @@ Sincerely,
 Revenue Cycle Management Department
 ${denial.clientName}`
 }
+
+type AppealTemplate = { id: string; name: string; payer: string; cat: string; winRate: number; used: number; level?: string; body?: string }
 
 type DenialRow = {
   id: string; apiId?: string; patientName: string; payer: string; denialReason?: string; clientId: string; clientName: string;
@@ -96,6 +98,72 @@ export default function DenialsPage() {
   const { mutate: submitAppeal, loading: submittingAppeal } = useSubmitAppeal(selectedDenialApiId)
   const { mutate: checkDeadlines } = useCheckAppealDeadlines()
   const [appealDeadlines, setAppealDeadlines] = useState<Array<{ denial_id: string; claim_number: string; days_remaining: number; urgency: string }>>([])
+
+  // Template modal state
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState<AppealTemplate | null>(null)
+  const [templateForm, setTemplateForm] = useState({ name: '', payer: 'All Payers', category: 'Auth', body: '', level: 'L1' })
+  const [templateFilter, setTemplateFilter] = useState('All Payers')
+  const [localTemplates, setLocalTemplates] = useState<AppealTemplate[]>([
+    { id: '1', name: 'Medical Necessity', payer: 'All Payers', cat: 'Auth', winRate: 72, used: 145, level: 'L1', body: 'Dear [PAYER] Appeals Department,\n\nRE: Medical Necessity Appeal — Claim [CLAIM_NUMBER]\nPatient: [PATIENT_NAME]\n\nWe are appealing the denial of [SERVICE] on the grounds that the service was medically necessary per the patient\'s clinical documentation. [CLINICAL_JUSTIFICATION]\n\nSupporting documentation attached.\n\nSincerely,\n[PROVIDER_NAME]' },
+    { id: '2', name: 'Timely Filing Override', payer: 'All Payers', cat: 'Timely', winRate: 34, used: 89, level: 'L1', body: 'Dear [PAYER] Appeals Department,\n\nThis claim was submitted timely. Enclosed is proof of original submission dated [ORIGINAL_SUBMIT_DATE]. The delay was due to [REASON]. Please reconsider per your timely filing exception policy.' },
+    { id: '3', name: 'Coding Error Correction', payer: 'All Payers', cat: 'Coding', winRate: 81, used: 67, level: 'L1', body: 'Dear [PAYER] Appeals Department,\n\nWe are submitting a corrected claim. The original claim contained a coding error: CPT [OLD_CPT] should be [NEW_CPT] based on [DOCUMENTATION]. Please reprocess with the correct code.' },
+    { id: '4', name: 'Duplicate Claim Resubmit', payer: 'All Payers', cat: 'Duplicate', winRate: 65, used: 42, level: 'L1', body: 'Dear [PAYER],\n\nThis claim was denied as a duplicate, however our records show this is NOT a duplicate. The original claim [ORIGINAL_CLAIM_ID] was [STATUS]. Please process this as a new claim.' },
+    { id: '5', name: 'Coordination of Benefits', payer: 'All Payers', cat: 'COB', winRate: 58, used: 38, level: 'L2', body: 'Dear [PAYER] Appeals Department,\n\nThis appeal concerns coordination of benefits for patient [PATIENT_NAME]. Primary payer: [PRIMARY_PAYER]. Per the Birthday Rule, [PAYER] is the [PRIMARY/SECONDARY] payer. EOB from primary payer attached.' },
+    { id: '6', name: 'Eligibility Retroactive', payer: 'All Payers', cat: 'Eligibility', winRate: 46, used: 51, level: 'L1', body: 'Dear [PAYER],\n\nThe denial based on eligibility is incorrect. Patient [PATIENT_NAME] had active coverage on [DOS]. Attached is verification of coverage effective [EFFECTIVE_DATE]. Please reprocess.' },
+  ])
+
+  const US_PAYERS = ['All Payers', 'UnitedHealthcare', 'Aetna', 'Cigna', 'Blue Cross', 'Humana', 'Medicare', 'Medicaid', 'Anthem', 'BCBS']
+  const TEMPLATE_CATS = ['Auth', 'Timely', 'Coding', 'Duplicate', 'COB', 'Eligibility', 'Medical Necessity', 'Other']
+  const filteredTemplates = templateFilter === 'All Payers' ? localTemplates : localTemplates.filter(t => t.payer === templateFilter || t.payer === 'All Payers')
+
+  function openNewTemplate() {
+    setEditingTemplate(null)
+    setTemplateForm({ name: '', payer: 'All Payers', category: 'Auth', body: '', level: 'L1' })
+    setShowTemplateModal(true)
+  }
+
+  function openEditTemplate(t: AppealTemplate) {
+    setEditingTemplate(t)
+    setTemplateForm({ name: t.name, payer: t.payer, category: t.cat, body: t.body || '', level: t.level || 'L1' })
+    setShowTemplateModal(true)
+  }
+
+  function saveTemplate() {
+    if (!templateForm.name.trim()) { toast.error('Template name required'); return }
+    if (!templateForm.body.trim()) { toast.error('Template body required'); return }
+    if (editingTemplate) {
+      setLocalTemplates(prev => prev.map(t => t.id === editingTemplate.id ? { ...t, ...templateForm, cat: templateForm.category } : t))
+      toast.success('Template updated')
+    } else {
+      const newT: AppealTemplate = { id: String(Date.now()), name: templateForm.name, payer: templateForm.payer, cat: templateForm.category, winRate: 0, used: 0, level: templateForm.level, body: templateForm.body }
+      setLocalTemplates(prev => [...prev, newT])
+      toast.success('Template created')
+    }
+    setShowTemplateModal(false)
+  }
+
+  function deleteTemplate(id: string) {
+    setLocalTemplates(prev => prev.filter(t => t.id !== id))
+    toast.success('Template deleted')
+  }
+
+  function applyTemplate(t: AppealTemplate) {
+    if (t.body) {
+      const denial = denials.find(d => d.id === selected)
+      if (denial) {
+        const filled = t.body
+          .replace(/\[PAYER\]/g, denial.payer)
+          .replace(/\[CLAIM_NUMBER\]/g, denial.id)
+          .replace(/\[PATIENT_NAME\]/g, denial.patientName)
+          .replace(/\[DOS\]/g, denial.dos || '')
+        const key = `${denial.id}-${appealLevel}`
+        setAppealTexts(prev => ({ ...prev, [key]: filled }))
+        toast.success(`Template "${t.name}" applied to appeal`)
+      }
+    }
+    setLocalTemplates(prev => prev.map(x => x.id === t.id ? { ...x, used: x.used + 1 } : x))
+  }
 
   // Check appeal deadlines on mount
   useEffect(() => {
@@ -348,30 +416,112 @@ export default function DenialsPage() {
 
       {/* ── Appeal Templates Library ── */}
       <div className="card p-4 mt-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h3 className="text-sm font-semibold">Appeal Templates</h3>
-          <button onClick={() => toast.info('New template editor opened')} className="text-xs bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-colors">+ New Template</button>
+          <div className="flex items-center gap-2">
+            {/* Payer filter */}
+            <select value={templateFilter} onChange={e => setTemplateFilter(e.target.value)}
+              className="bg-surface-elevated border border-separator rounded-lg px-2 py-1 text-xs text-content-primary outline-none focus:border-brand/40">
+              {US_PAYERS.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+            <button onClick={openNewTemplate}
+              className="flex items-center gap-1 text-xs bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-colors font-medium">
+              <Plus size={12} /> New Template
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-3 gap-3">
-          {[{name:'Medical Necessity',cat:'Auth',winRate:72,used:145},{name:'Timely Filing Override',cat:'Timely',winRate:34,used:89},{name:'Coding Error Correction',cat:'Coding',winRate:81,used:67},
-            {name:'Duplicate Claim Resubmit',cat:'Duplicate',winRate:65,used:42},{name:'Coordination of Benefits',cat:'COB',winRate:58,used:38},{name:'Eligibility Retroactive',cat:'Eligibility',winRate:46,used:51}
-          ].map(t=>(
-            <div key={t.name} className="bg-surface-elevated rounded-lg p-3 hover:border-brand/30 border border-transparent transition-colors cursor-pointer" onClick={() => toast.info(`Template: ${t.name}`)}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-medium">{t.name}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface text-content-tertiary">{t.cat}</span>
+          {filteredTemplates.map(t => (
+            <div key={t.id} className="bg-surface-elevated rounded-lg p-3 hover:border-brand/30 border border-transparent transition-colors group">
+              <div className="flex items-start justify-between mb-1">
+                <span className="text-xs font-medium leading-tight flex-1 cursor-pointer" onClick={() => applyTemplate(t)}>{t.name}</span>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1 shrink-0">
+                  <button onClick={() => openEditTemplate(t)} className="p-0.5 rounded hover:bg-surface text-content-tertiary hover:text-brand transition-colors"><Edit2 size={11} /></button>
+                  <button onClick={() => deleteTemplate(t.id)} className="p-0.5 rounded hover:bg-surface text-content-tertiary hover:text-red-500 transition-colors"><Trash2 size={11} /></button>
+                </div>
               </div>
-              <div className="flex items-center gap-3 mt-2">
+              <div className="flex items-center gap-1 mb-2">
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface text-content-tertiary">{t.cat}</span>
+                {t.payer !== 'All Payers' && <span className="text-[9px] px-1.5 py-0.5 rounded bg-brand/10 text-brand">{t.payer}</span>}
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface text-content-tertiary">{t.level || 'L1'}</span>
+              </div>
+              <div className="flex items-center gap-3 mt-1">
                 <div className="flex-1">
-                  <div className="w-full bg-surface rounded-full h-1.5"><div className="bg-emerald-500 h-1.5 rounded-full" style={{width:`${t.winRate}%`}}/></div>
+                  <div className="w-full bg-surface rounded-full h-1.5"><div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${t.winRate}%` }} /></div>
                 </div>
                 <span className="text-[10px] text-emerald-500 font-medium">{t.winRate}% win</span>
                 <span className="text-[10px] text-content-tertiary">{t.used}×</span>
               </div>
+              <button onClick={() => applyTemplate(t)}
+                className="mt-2 w-full text-[10px] py-1 rounded bg-brand/10 text-brand hover:bg-brand/20 transition-colors font-medium">
+                Apply to Current Appeal
+              </button>
             </div>
           ))}
+          {filteredTemplates.length === 0 && (
+            <div className="col-span-3 text-center py-6 text-xs text-content-tertiary">
+              No templates for {templateFilter}. <button onClick={openNewTemplate} className="text-brand hover:underline">Create one?</button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* ── Template Editor Modal ── */}
+      {showTemplateModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowTemplateModal(false)}>
+          <div className="card w-[580px] max-h-[90vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-content-primary">{editingTemplate ? 'Edit Template' : 'New Appeal Template'}</h2>
+              <button onClick={() => setShowTemplateModal(false)} className="p-1 rounded-lg hover:bg-surface-elevated text-content-secondary"><X size={16} /></button>
+            </div>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-content-secondary mb-1">Template Name *</label>
+                  <input value={templateForm.name} onChange={e => setTemplateForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="e.g. Medical Necessity — UHC"
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40" />
+                </div>
+                <div>
+                  <label className="block text-xs text-content-secondary mb-1">Payer</label>
+                  <select value={templateForm.payer} onChange={e => setTemplateForm(f => ({ ...f, payer: e.target.value }))}
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40">
+                    {US_PAYERS.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-content-secondary mb-1">Category</label>
+                  <select value={templateForm.category} onChange={e => setTemplateForm(f => ({ ...f, category: e.target.value }))}
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40">
+                    {TEMPLATE_CATS.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-content-secondary mb-1">Default Appeal Level</label>
+                  <select value={templateForm.level} onChange={e => setTemplateForm(f => ({ ...f, level: e.target.value }))}
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40">
+                    <option>L1</option><option>L2</option><option>L3</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-content-secondary mb-1">Template Body *</label>
+                <p className="text-[10px] text-content-tertiary mb-1">Variables: [PAYER] [CLAIM_NUMBER] [PATIENT_NAME] [DOS] [PROVIDER_NAME] [SERVICE]</p>
+                <textarea value={templateForm.body} onChange={e => setTemplateForm(f => ({ ...f, body: e.target.value }))}
+                  placeholder="Dear [PAYER] Appeals Department,&#10;&#10;RE: Appeal — Claim [CLAIM_NUMBER]&#10;Patient: [PATIENT_NAME]&#10;..."
+                  rows={10}
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 font-mono resize-y" />
+              </div>
+              <div className="flex gap-2 justify-end pt-1">
+                <button onClick={() => setShowTemplateModal(false)} className="px-4 py-2 text-sm text-content-secondary hover:text-content-primary transition-colors">Cancel</button>
+                <button onClick={saveTemplate} className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-deep transition-colors">
+                  {editingTemplate ? 'Save Changes' : 'Create Template'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Appeal Deadline Tracker ── */}
       <div className="card p-4 mt-4">
