@@ -67,10 +67,28 @@ Resources:
             AllowedMethods: [GET, PUT, POST]
             AllowedOrigins:
               - 'https://medcloud.vercel.app'
+              - 'https://med-cloud.vercel.app'
               # Wildcard *.vercel.app removed — would allow any Vercel project to access PHI bucket
             ExposedHeaders: [ETag]
             MaxAge: 3000
-
+      NotificationConfiguration:
+        LambdaConfigurations:
+          # Auto-trigger OCR on any new document upload
+          - Event: 's3:ObjectCreated:*'
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: 'documents/'
+            Function: !Ref LambdaFunctionArn
+          # Also trigger on uploads/ subfolder
+          - Event: 's3:ObjectCreated:*'
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: 'uploads/'
+            Function: !Ref LambdaFunctionArn
       Tags:
         - Key: Project
           Value: MedCloud
