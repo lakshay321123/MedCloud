@@ -38,22 +38,15 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
     : []
 
   async function handleSubmit() {
-    const orgId = currentUser.organization_id
-    const clientId = selectedClient?.id ?? orgId
-
     if (mode === 'existing' && !selectedPatient) {
-      return // no patient selected, UI should show validation
+      return
     }
     if (mode === 'new' && (!newPatient.firstName || !newPatient.lastName || !newPatient.phone)) {
       return
     }
 
-    try {
-      await createAppointment.mutate({
-        org_id: orgId,
-        client_id: clientId,
+    const result = await createAppointment.mutate({
         patient_id: mode === 'existing' ? selectedPatient : undefined,
-        // For new patients the backend creates the patient inline if patient_id is absent
         ...(mode === 'new' ? {
           patient_name: `${newPatient.firstName} ${newPatient.lastName}`,
           first_name: newPatient.firstName,
@@ -63,14 +56,15 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
         appointment_time: apptTime,
         appointment_type: visitType,
         provider_name: currentUser.role === 'provider' ? currentUser.name : undefined,
-        status: 'booked',
+        status: 'booked' as const,
         notes: notes || undefined,
-      } as any)
-      onSaved?.()
-      onClose()
-    } catch {
-      // error is shown via api error state
-    }
+      })
+      if (result) {
+        onSaved?.()
+        onClose()
+      } else {
+        // createAppointment.error is populated by the hook — surface it
+      }
   }
 
   return (
@@ -254,6 +248,11 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
             <input value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" placeholder="Optional..." />
           </div>
 
+          {createAppointment.error && (
+            <p className="text-xs text-red-400 text-center -mt-1">
+              Failed to book appointment — please try again
+            </p>
+          )}
           <div className="flex gap-2 pt-1">
             <button onClick={onClose} className="flex-1 bg-surface-elevated border border-separator rounded-lg py-2 text-sm text-content-secondary">
               Cancel

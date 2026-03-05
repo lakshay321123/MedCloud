@@ -318,27 +318,25 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
                     toast.error('Phone number is required')
                     return
                   }
-                  try {
-                    await createPatient.mutate({
-                      org_id: currentUser.organization_id,
-                      client_id: currentUser.organization_id,
-                      first_name: form.firstName,
-                      last_name: form.lastName,
-                      dob: form.dob || undefined,
-                      phone: form.phone,
-                      email: form.email || undefined,
-                      address: form.addressLine1 || undefined,
-                      city: form.city || undefined,
-                      state: form.stateEmirate || undefined,
-                      zip: form.zip || undefined,
-                      insurance_payer: form.insurancePayer || undefined,
-                      insurance_member_id: form.memberId || undefined,
-                      status: 'active',
-                    } as any)
+                  const result = await createPatient.mutate({
+                    first_name: form.firstName,
+                    last_name: form.lastName,
+                    dob: form.dob || undefined,
+                    phone: form.phone,
+                    email: form.email || undefined,
+                    address: form.addressLine1 || undefined,
+                    city: form.city || undefined,
+                    state: form.stateEmirate || undefined,
+                    zip: form.zip || undefined,
+                    insurance_payer: form.insurancePayer || undefined,
+                    insurance_member_id: form.memberId || undefined,
+                    status: 'active' as const,
+                  })
+                  if (result) {
                     toast.success(`Patient ${form.firstName} ${form.lastName} added successfully`)
                     onSaved?.()
                     onClose()
-                  } catch {
+                  } else {
                     toast.error('Failed to save patient — please try again')
                   }
                 }}
