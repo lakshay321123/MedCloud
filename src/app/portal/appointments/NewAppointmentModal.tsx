@@ -1,17 +1,22 @@
 'use client'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
-import { usePatients } from '@/lib/hooks'
+import { usePatients, useCreateAppointment } from '@/lib/hooks'
 import { X, ChevronDown } from 'lucide-react'
 
 type PatientMode = 'existing' | 'new'
 
-export default function NewAppointmentModal({ onClose }: { onClose: () => void }) {
+export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () => void; onSaved?: () => void }) {
   const { currentUser, selectedClient } = useApp()
+  const createAppointment = useCreateAppointment()
   const [mode, setMode] = useState<PatientMode>('existing')
   const [showInsurance, setShowInsurance] = useState(false)
   const [selectedPatient, setSelectedPatient] = useState('')
   const [search, setSearch] = useState('')
+  const [apptDate, setApptDate] = useState(new Date().toISOString().split('T')[0])
+  const [apptTime, setApptTime] = useState('09:00')
+  const [visitType, setVisitType] = useState('Follow-up')
+  const [notes, setNotes] = useState('')
   const [newPatient, setNewPatient] = useState({
     firstName: '', lastName: '', phone: '', dob: '',
     insuranceProvider: '', memberId: '', policyNo: '',
@@ -32,10 +37,40 @@ export default function NewAppointmentModal({ onClose }: { onClose: () => void }
       })
     : []
 
-  function handleSubmit() {
-    // In production: POST to appointments API
-    // For demo: close modal (data would be persisted via API)
-    onClose()
+  async function handleSubmit() {
+    const orgId = currentUser.organization_id
+    const clientId = selectedClient?.id ?? orgId
+
+    if (mode === 'existing' && !selectedPatient) {
+      return // no patient selected, UI should show validation
+    }
+    if (mode === 'new' && (!newPatient.firstName || !newPatient.lastName || !newPatient.phone)) {
+      return
+    }
+
+    try {
+      await createAppointment.mutate({
+        org_id: orgId,
+        client_id: clientId,
+        patient_id: mode === 'existing' ? selectedPatient : undefined,
+        // For new patients the backend creates the patient inline if patient_id is absent
+        ...(mode === 'new' ? {
+          patient_name: `${newPatient.firstName} ${newPatient.lastName}`,
+          first_name: newPatient.firstName,
+          last_name: newPatient.lastName,
+        } : {}),
+        appointment_date: apptDate,
+        appointment_time: apptTime,
+        appointment_type: visitType,
+        provider_name: currentUser.role === 'provider' ? currentUser.name : undefined,
+        status: 'booked',
+        notes: notes || undefined,
+      } as any)
+      onSaved?.()
+      onClose()
+    } catch {
+      // error is shown via api error state
+    }
   }
 
   return (
@@ -194,18 +229,18 @@ export default function NewAppointmentModal({ onClose }: { onClose: () => void }
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-content-secondary block mb-1">Date <span className="text-red-400">*</span></label>
-              <input type="date" defaultValue="2026-03-03" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" />
+              <input type="date" value={apptDate} onChange={e => setApptDate(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" />
             </div>
             <div>
               <label className="text-xs text-content-secondary block mb-1">Time <span className="text-red-400">*</span></label>
-              <input type="time" defaultValue="09:00" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" />
+              <input type="time" value={apptTime} onChange={e => setApptTime(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" />
             </div>
           </div>
 
           {/* Visit Type */}
           <div>
             <label className="text-xs text-content-secondary block mb-1">Visit Type</label>
-            <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors">
+            <select value={visitType} onChange={e => setVisitType(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors">
               <option>Follow-up</option>
               <option>Initial Visit</option>
               <option>Consultation</option>
@@ -216,15 +251,15 @@ export default function NewAppointmentModal({ onClose }: { onClose: () => void }
 
           <div>
             <label className="text-xs text-content-secondary block mb-1">Notes</label>
-            <input className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" placeholder="Optional..." />
+            <input value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" placeholder="Optional..." />
           </div>
 
           <div className="flex gap-2 pt-1">
             <button onClick={onClose} className="flex-1 bg-surface-elevated border border-separator rounded-lg py-2 text-sm text-content-secondary">
               Cancel
             </button>
-            <button onClick={handleSubmit} className="flex-1 bg-brand text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-mid transition-colors">
-              Book Appointment
+            <button onClick={handleSubmit} disabled={createAppointment.loading} className="flex-1 bg-brand text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-mid transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+              {createAppointment.loading ? 'Booking…' : 'Book Appointment'}
             </button>
           </div>
         </div>

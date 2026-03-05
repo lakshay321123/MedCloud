@@ -51,9 +51,10 @@ function SectionHeader({ title, badge, open, onToggle }: { title: string; badge?
   )
 }
 
-function AddPatientModal({ onClose }: { onClose: () => void }) {
-  const { country } = useApp()
+function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: () => void }) {
+  const { country, currentUser } = useApp()
   const { toast } = useToast()
+  const createPatient = useCreatePatient()
   const isUAE = country === 'uae'
   const [sections, setSections] = useState({ address: false, id: false, insurance: false, secondary: false, emergency: false, employment: false, medical: false })
   const toggle = (k: keyof typeof sections) => setSections(p => ({ ...p, [k]: !p[k] }))
@@ -307,15 +308,43 @@ function AddPatientModal({ onClose }: { onClose: () => void }) {
               <button type="button" onClick={onClose} className="flex-1 bg-surface-elevated border border-separator rounded-lg py-2.5 text-sm text-content-secondary hover:text-content-primary transition-colors">Cancel</button>
               <button
                 type="button"
-                onClick={() => {
+                disabled={createPatient.loading}
+                onClick={async () => {
                   if (!form.firstName || !form.lastName) {
                     toast.error('First name and last name are required')
                     return
                   }
-                  toast.success(`Patient ${form.firstName} ${form.lastName} saved successfully`)
-                  onClose()
+                  if (!form.phone) {
+                    toast.error('Phone number is required')
+                    return
+                  }
+                  try {
+                    await createPatient.mutate({
+                      org_id: currentUser.organization_id,
+                      client_id: currentUser.organization_id,
+                      first_name: form.firstName,
+                      last_name: form.lastName,
+                      dob: form.dob || undefined,
+                      phone: form.phone,
+                      email: form.email || undefined,
+                      address: form.addressLine1 || undefined,
+                      city: form.city || undefined,
+                      state: form.stateEmirate || undefined,
+                      zip: form.zip || undefined,
+                      insurance_payer: form.insurancePayer || undefined,
+                      insurance_member_id: form.memberId || undefined,
+                      status: 'active',
+                    } as any)
+                    toast.success(`Patient ${form.firstName} ${form.lastName} added successfully`)
+                    onSaved?.()
+                    onClose()
+                  } catch {
+                    toast.error('Failed to save patient — please try again')
+                  }
                 }}
-                className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">Save Patient</button>
+                className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                {createPatient.loading ? 'Saving…' : 'Save Patient'}
+              </button>
             </div>
           </div>
         </div>
@@ -726,7 +755,7 @@ export default function PatientsPage() {
           }</tbody>
         </table></div>
       </div>
-      {showAdd && <AddPatientModal onClose={() => setShowAdd(false)}/>}
+      {showAdd && <AddPatientModal onClose={() => setShowAdd(false)} onSaved={refetch}/>}
       {selected && <PatientDetailDrawer patient={selected} onClose={() => setSelected(null)}/>}
 
       {/* ── Patient Statements ── */}

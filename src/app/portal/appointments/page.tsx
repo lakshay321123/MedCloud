@@ -253,9 +253,11 @@ export default function AppointmentsPage() {
   const [drawerAppt, setDrawerAppt] = useState<ReturnType<typeof apiAppointmentToDemo> | null>(null)
   const [statusOverrides, setStatusOverrides] = useState<Record<string, AppointmentStatus>>({})
 
-  const { data: apiApptResult } = useAppointments({ limit: 50, sort: 'appointment_date', order: 'asc' })
+  const { data: apiApptResult, refetch: refetchAppts } = useAppointments({ limit: 50, sort: 'appointment_date', order: 'asc' })
 
-  const clientFilter = isClinic ? currentUser.organization_id : selectedClient?.id
+  // For clinic users (provider / front-desk) the API already scopes by org via RLS.
+  // Don't re-filter on the frontend or nothing shows (org-102 ≠ real UUID from DB).
+  const clientFilter = isClinic ? null : selectedClient?.id
 
   const sourceAppointments = apiApptResult?.data
     ? apiApptResult.data.map(apiAppointmentToDemo)
@@ -414,7 +416,7 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
-      {showAdd && <NewAppointmentModal onClose={()=>setShowAdd(false)}/>}
+      {showAdd && <NewAppointmentModal onClose={()=>setShowAdd(false)} onSaved={refetchAppts}/>}
       {drawerAppt && (
         <AppointmentDrawer
           appt={{ ...drawerAppt, status: (statusOverrides[drawerAppt.id] ?? drawerAppt.status) as AppointmentStatus }}
