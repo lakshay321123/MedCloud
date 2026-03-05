@@ -197,7 +197,7 @@ export async function POST(req: NextRequest) {
       const agentId = RETELL_AGENTS[agent_name as 'chris' | 'cindy']
       const fromNumber = RETELL_PHONES[agent_name as 'chris' | 'cindy']
       if (!agentId) throw new Error(`Agent ${agent_name} not configured`)
-      const data = await retellFetch('/v2/batch-call', {
+      const data = await retellFetch('/v2/create-batch-call', {
         method: 'POST',
         body: JSON.stringify({
           from_number: fromNumber,
