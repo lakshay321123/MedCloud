@@ -1925,3 +1925,14 @@ export function useFlagHCCCodes(patientId: string) {
   return useMutation<ApiHCCResult, Record<string, never>>('post', `/patients/${patientId}/hcc`)
 }
 
+// ── Users ─────────────────────────────────────────────────────────────────────
+export interface ApiUser {
+  id: string; org_id: string; email: string
+  first_name: string; last_name: string; role: string
+  is_active: boolean; created_at: string
+}
+
+export function useUsers(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiUser>>('/users', params)
+}

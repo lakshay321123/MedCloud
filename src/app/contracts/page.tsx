@@ -4,14 +4,12 @@ import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
-import { demoContracts } from '@/lib/demo-data'
-import type { DemoContract } from '@/lib/demo-data'
 import { useFeeSchedules, usePayerConfigs, useUnderpaymentCheck, useExtractContractRates, useCreateFeeSchedule, useUpdateFeeSchedule } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import { Scale, Search, AlertTriangle, Edit2, Plus } from 'lucide-react'
 
-const statusStyles: Record<DemoContract['status'], { label: string; className: string }> = {
+const STATUS_BADGES: Record<string, { label: string; className: string }> = {
   active: { label: 'Active', className: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' },
   expiring_soon: { label: 'Expiring Soon', className: 'bg-amber-500/10 text-amber-400 border border-amber-500/20' },
   expired: { label: 'Expired', className: 'bg-red-500/10 text-red-400 border border-red-500/20' },
@@ -27,8 +25,9 @@ const payerColors: Record<string, string> = {
   BCBS: 'bg-blue-700',
 }
 
-function ContractStatusBadge({ status }: { status: DemoContract['status'] }) {
-  const s = statusStyles[status]
+function StatusBadgeContract({ status }: { status: string }) {
+  const statusStyles = STATUS_BADGES
+  const s = statusStyles[status] || { label: status, className: 'bg-surface-elevated text-content-secondary' }
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${s.className}`}>
       {s.label}
@@ -42,7 +41,6 @@ export default function ContractsPage() {
   const { toast } = useToast()
   const { t } = useT()
   const [search, setSearch] = useState('')
-  const [selected, setSelected] = useState<DemoContract | null>(null)
   const [tab, setTab] = useState<'fee' | 'underpayments' | 'terms' | 'extract'>('fee')
   const [editingRow, setEditingRow] = useState<string | null>(null)
   const [addingCpt, setAddingCpt] = useState(false)
@@ -51,9 +49,8 @@ export default function ContractsPage() {
   const { data: apiFeeResult } = useFeeSchedules({ limit: 200 })
   const { data: apiPayerCfgResult } = usePayerConfigs()
 
-  // Map API data to DemoContract format
   // Source of truth: payer_config (seeded with 20 US payers), joined with fee-schedules
-  const apiContracts: DemoContract[] = (() => {
+  const apiContracts = (() => {
     const configs = apiPayerCfgResult?.data || []
     const fees = apiFeeResult?.data || []
     if (!configs.length) return []
@@ -82,7 +79,7 @@ export default function ContractsPage() {
     })
   })()
 
-  const allContracts = (apiContracts.length ? apiContracts : demoContracts).filter(c => {
+  const allContracts = apiContracts.filter(c => {
     if (!c.clientId) return true  // payer_config is org-level, not per client — always show
     if (selectedClient) return c.clientId === selectedClient.id
     if (country === 'uae') return UAE_ORG_IDS.includes(c.clientId)
@@ -94,7 +91,7 @@ export default function ContractsPage() {
   )
 
   const activeCount = allContracts.filter(c => c.status === 'active').length
-  const expiringSoon = allContracts.filter(c => c.status === 'expiring_soon').length
+  const expiringSoon = allContracts.filter(c => (c.status as string) === 'expiring_soon').length
   const totalUnderpayments = allContracts.reduce((s, c) => s + c.underpayments.length, 0)
 
   const TABS = [
@@ -103,6 +100,10 @@ export default function ContractsPage() {
     { id: 'terms', label: 'Contract Terms' },
     { id: 'extract', label: 'AI Rate Extract' },
   ] as const
+
+  const [selected, setSelected] = useState<typeof allContracts[0] | null>(null)
+
+  const ContractStatusBadge = ({ status }: { status: string }) => <StatusBadgeContract status={status} />
 
   return (
     <ModuleShell title="Contract Manager" subtitle="Payer contracts, fee schedules, and underpayment detection">
@@ -235,7 +236,7 @@ export default function ContractsPage() {
                     {selected.underpayments.length > 0 && (
                       <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 mb-4 text-[12px] text-amber-400">
                         {selected.underpayments.length} underpayment{selected.underpayments.length !== 1 ? 's' : ''} this month
-                        &nbsp;—&nbsp;${selected.underpayments.reduce((s, u) => s + Math.abs(u.variance), 0)} total at risk
+                        &nbsp;—&nbsp;${(selected.underpayments as any[]).reduce((s, u) => s + Math.abs(u.variance ?? 0), 0)} total at risk
                       </div>
                     )}
                     {selected.underpayments.length === 0 ? (
@@ -248,7 +249,7 @@ export default function ContractsPage() {
                           ))}
                         </tr></thead>
                         <tbody>
-                          {selected.underpayments.map(u => (
+                          {(selected.underpayments as any[]).map(u => (
                             <tr key={u.claimId} className="border-b border-separator last:border-0 hover:bg-surface-elevated">
                               <td className="py-2.5 pr-3 font-mono text-content-primary">{u.claimId}</td>
                               <td className="py-2.5 pr-3 text-content-secondary">{u.patientName}</td>
@@ -256,7 +257,7 @@ export default function ContractsPage() {
                               <td className="py-2.5 pr-3 font-mono">{u.cpt}</td>
                               <td className="py-2.5 pr-3 text-content-primary">${u.contracted}</td>
                               <td className="py-2.5 pr-3 text-content-primary">${u.paid}</td>
-                              <td className="py-2.5 pr-3 text-red-400 font-medium">−${Math.abs(u.variance)}</td>
+                              <td className="py-2.5 pr-3 text-red-400 font-medium">−${Math.abs(u.variance ?? 0)}</td>
                               <td className="py-2.5">
                                 <button onClick={() => toast.success(`Task created — dispute with ${selected.payer}`)}
                                   className="text-[11px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded hover:bg-amber-500/20 transition-colors">
@@ -280,7 +281,6 @@ export default function ContractsPage() {
                       { label: 'Fee Schedule Update Frequency', value: selected.feeScheduleFrequency },
                       { label: 'Effective Date', value: selected.effective },
                       { label: 'Expiry Date', value: selected.expiry || 'No expiry' },
-                      { label: 'Status', value: statusStyles[selected.status as DemoContract['status']]?.label ?? selected.status },
                     ].map(row => (
                       <div key={row.label} className="flex justify-between py-2.5 border-b border-separator last:border-0">
                         <span className="text-[13px] text-content-secondary">{row.label}</span>

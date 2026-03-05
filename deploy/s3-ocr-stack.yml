@@ -67,7 +67,7 @@ Resources:
             AllowedMethods: [GET, PUT, POST]
             AllowedOrigins:
               - 'https://medcloud.vercel.app'
-              - 'https://*.vercel.app'
+              - 'https://med-cloud.vercel.app'
             ExposedHeaders: [ETag]
             MaxAge: 3000
       NotificationConfiguration:
@@ -80,7 +80,7 @@ Resources:
                   - Name: prefix
                     Value: 'documents/'
             Function: !Ref LambdaFunctionArn
-          # Also trigger on documents/ subfolder patterns
+          # Also trigger on uploads/ subfolder
           - Event: 's3:ObjectCreated:*'
             Filter:
               S3Key:
@@ -175,8 +175,6 @@ Resources:
               - s3:GetObject
               - s3:GetObjectVersion
               - s3:PutObject
-              - s3:DeleteObject
-              - s3:ListBucket
             Resource:
               - !GetAtt DocumentsBucket.Arn
               - !Sub '${DocumentsBucket.Arn}/*'

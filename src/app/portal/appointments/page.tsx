@@ -32,7 +32,7 @@ const staffRoles = ['admin','director','supervisor','manager','coder','biller','
 
 // ─── Mini Calendar ────────────────────────────────────────────────────────
 function MiniCalendar({ selectedDate, onSelect, apptDates }: { selectedDate: string; onSelect: (d: string) => void; apptDates: Set<string> }) {
-  const [viewDate, setViewDate] = useState(new Date('2026-03-02'))
+  const [viewDate, setViewDate] = useState(new Date())
   const year = viewDate.getFullYear()
   const month = viewDate.getMonth()
   const monthName = viewDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })
@@ -61,7 +61,7 @@ function MiniCalendar({ selectedDate, onSelect, apptDates }: { selectedDate: str
           const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
           const isSelected = dateStr === selectedDate
           const hasAppts = apptDates.has(dateStr)
-          const isToday = dateStr === '2026-03-02'
+          const isToday = dateStr === new Date().toISOString().split('T')[0]
           return (
             <button key={day} onClick={() => onSelect(dateStr)}
               className={`relative text-center text-[11px] py-1.5 rounded transition-all ${
@@ -247,7 +247,7 @@ export default function AppointmentsPage() {
   const { toast } = useToast()
   const isStaff = staffRoles.includes(currentUser.role)
   const isClinic = currentUser.role === 'client' || currentUser.role === 'provider'
-  const [selectedDate, setSelectedDate] = useState('2026-03-02')
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [showAdd, setShowAdd] = useState(false)
   const [drawerAppt, setDrawerAppt] = useState<ReturnType<typeof apiAppointmentToDemo> | null>(null)
   const [statusOverrides, setStatusOverrides] = useState<Record<string, AppointmentStatus>>({})

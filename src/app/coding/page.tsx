@@ -6,7 +6,7 @@ import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 import { getSLAStatus } from '@/lib/utils/time'
-import { useCodingQueue, useAIAutoCode, useChartCheck, useApproveCoding, useAssignCoding, useChargeCapture, useCodingItem, useSubmitCoding, useSendCodingQuery, useAICodingSuggestion, useCodingQAAudits, useCreateCodingQAAudit, useCodingQAStats, useCodingQASample } from '@/lib/hooks'
+import { useCodingQueue, useAIAutoCode, useChartCheck, useApproveCoding, useAssignCoding, useChargeCapture, useCodingItem, useSubmitCoding, useSendCodingQuery, useAICodingSuggestion, useCodingQAAudits, useCreateCodingQAAudit, useCodingQAStats, useCodingQASample, useUsers } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { sanitizeForPrompt } from '@/lib/ai-utils'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
@@ -222,7 +222,7 @@ export default function CodingPage() {
     receivedAt: c.received_at || c.created_at || new Date().toISOString(),
     priority: (c.priority ?? 'medium') as 'low' | 'medium' | 'high' | 'urgent',
     visitNote: {
-      subjective: 'Visit note not yet available \u2014 Bedrock integration Sprint 2',
+      subjective: '',
       objective: '',
       assessment: '',
       plan: '',
@@ -240,11 +240,11 @@ export default function CodingPage() {
     placeOfService: undefined as string | undefined,
   })) || []
 
-  const coders = [
-    { id: 'demo-002', name: 'Sarah Kim' },
-    { id: 'demo-003', name: 'Amy Chen' },
-    { id: 'demo-004', name: 'James Wilson' },
-  ]
+  const { data: usersResult } = useUsers({ limit: 100 })
+  // Coders pulled from seeded users (role = coder)
+  const coders = (usersResult?.data || [])
+    .filter((u: any) => u.role === 'coder' || u.role === 'coding_specialist')
+    .map((u: any) => ({ id: u.id, name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email }))
 
   // UAE org IDs
   const uaeClientIds = UAE_ORG_IDS
@@ -697,7 +697,7 @@ export default function CodingPage() {
                       </div>
                     ) : (
                       <p className="text-[11px] text-content-tertiary mt-2 italic">
-                        Patient demographics — available after Sprint 2 backend enrichment
+                        Patient demographics not yet available — attach a visit note to begin
                       </p>
                     )
                   })()}
@@ -706,7 +706,7 @@ export default function CodingPage() {
                 <div className="p-4 overflow-y-auto flex-1">
                   {tab === 'history' && (
                     <div className='text-center py-8 text-xs text-content-secondary'>
-                      Prior visit history — available Sprint 2
+                      No prior visit history on file
                     </div>
                   )}
                   {tab === 'qa' && (
@@ -789,7 +789,7 @@ export default function CodingPage() {
                             <div key={section} className="pb-3 border-b border-separator last:border-0">
                               <p className="text-[10px] uppercase tracking-widest text-content-tertiary font-bold mb-1.5">{section}</p>
                               <p className="text-[13px] text-content-secondary leading-relaxed whitespace-pre-line">
-                                {item.visitNote[section] || <span className="italic text-content-tertiary">Not yet available — Bedrock Sprint 2</span>}
+                                {item.visitNote[section] || <span className="italic text-content-tertiary text-[12px]">No documentation yet — attach a visit note or type above to begin coding</span>}
                               </p>
                             </div>
                           ))}
@@ -856,7 +856,7 @@ export default function CodingPage() {
                     <span className="text-lg">🇦🇪</span>
                     <div>
                       <p className="text-[12px] font-semibold text-amber-600">UAE Client — ICD-10-AM Required</p>
-                      <p className="text-[11px] text-content-secondary">This client uses ICD-10-AM and DHA activity codes. Full UAE code set is Sprint 4. Flag for manual review.</p>
+                      <p className="text-[11px] text-content-secondary">This client uses ICD-10-AM and DHA activity codes. Flag for manual review.</p>
                     </div>
                   </div>
                 )}

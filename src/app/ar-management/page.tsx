@@ -10,7 +10,7 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import { TrendingUp, X, Phone, Bot, User, PhoneCall, Plus, AlertTriangle, FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { tfDaysRemaining } from '@/lib/utils/time'
 import { useRouter } from 'next/navigation'
-import { useLogARCall, usePayerConfigs, useTimelyFilingDeadlines, useCreditBalances, useWriteOffs, useRequestWriteOff, useARFollowUps, useARCallLog, useCheckSLAEscalations, useIdentifyCreditBalances, useResolveCreditBalance, useApproveWriteOff, useUpsertPayerConfig, useClaims } from '@/lib/hooks'
+import { useLogARCall, usePayerConfigs, useTimelyFilingDeadlines, useCreditBalances, useWriteOffs, useRequestWriteOff, useARFollowUps, useARCallLog, useCheckSLAEscalations, useIdentifyCreditBalances, useResolveCreditBalance, useApproveWriteOff, useUpsertPayerConfig, useClaims, useCreateTask, useSubmitAppeal } from '@/lib/hooks'
 
 
 
@@ -45,6 +45,9 @@ type ARAccount = {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   source: 'denied_claim' | 'underpayment' | 'patient_balance' | 'timely_filing_risk';
   dos: string;
+  claimNumber?: string;
+  clientId?: string;
+  denialId?: string;
   paymentPromisedDate?: string;
 }
 
@@ -240,6 +243,8 @@ function ARDrawer({
   const [showCallModal, setShowCallModal] = useState(false)
   const [showWriteoffModal, setShowWriteoffModal] = useState(false)
   const [writeoffReason, setWriteoffReason] = useState('')
+  const { mutate: createTask } = useCreateTask()
+  const { mutate: submitAppeal } = useSubmitAppeal(account.denialId || '')
 
   const tfDays = TF_DEADLINES[account.payer] || 180
   const dosDate = new Date(account.dos)
@@ -347,18 +352,42 @@ function ARDrawer({
                   className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-xs font-medium hover:text-content-primary transition-colors flex items-center justify-center gap-2">
                   <PhoneCall size={13} /> Log Manual Call
                 </button>
-                <button onClick={() => {
+                <button onClick={async () => {
                   if (!followUpDate) { toast.error('Please select a follow-up date'); return }
-                  onUpdateAccount({ nextFollowup: followUpDate })
-                  toast.success(`Follow-up saved for ${followUpDate}`)
-                  onClose()
+                  try {
+                    await createTask({
+                      title: `AR Follow-up: ${account.payer} — ${account.patient}`,
+                      description: followUpNote || `Follow-up on claim ${account.claimNumber || account.id}`,
+                      task_type: 'ar_follow_up',
+                      priority: 'medium',
+                      status: 'open' as const,
+                      due_date: followUpDate,
+                      client_id: account.clientId,
+                    })
+                    onUpdateAccount({ nextFollowup: followUpDate })
+                    toast.success(`Follow-up saved for ${followUpDate}`)
+                    onClose()
+                  } catch { toast.error('Failed to save follow-up') }
                 }} className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-xs font-medium hover:text-content-primary transition-colors">
                   Save Follow-up
                 </button>
-                <button onClick={() => {
-                  onUpdateAccount({ priority: 'urgent', lastAction: 'Routed to appeals' })
-                  toast.success('Routed to appeals — priority set to urgent')
-                  onClose()
+                <button onClick={async () => {
+                  try {
+                    if (account.denialId) {
+                      await submitAppeal({ appeal_reason: `Routed from AR — ${account.payer}`, appeal_level: 'L1' as const })
+                    }
+                    await createTask({
+                      title: `Appeal Required: ${account.payer} — ${account.patient}`,
+                      description: `Claim ${account.claimNumber || account.id} routed to appeals from AR management`,
+                      task_type: 'appeal',
+                      priority: 'urgent',
+                      status: 'open' as const,
+                      client_id: account.clientId,
+                    })
+                    onUpdateAccount({ priority: 'urgent', lastAction: 'Routed to appeals' })
+                    toast.success('Routed to appeals — priority set to urgent')
+                    onClose()
+                  } catch { toast.error('Failed to route to appeals') }
                 }}
                   className="bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg py-2.5 text-xs font-medium hover:bg-amber-500/20 transition-colors">
                   Route to Appeals
