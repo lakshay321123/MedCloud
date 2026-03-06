@@ -6117,6 +6117,34 @@ export const handler = async (event) => {
     }
 
     // ════ ERA Files + 835 Parser ═══════════════════════════════════════════
+    // ── ERA file download — generates a presigned GET URL ──────────────────────
+    if (path.includes('/era-files') && path.includes('/download') && method === 'GET') {
+      const eraFile = await getById('era_files', pathParams.id, effectiveOrgId);
+      if (!eraFile || eraFile.org_id !== effectiveOrgId) return respond(404, { error: 'ERA file not found' });
+      if (!eraFile.s3_key) return respond(400, { error: 'No file attached to this ERA record' });
+      // Security: always use the known-good bucket constant; never trust the stored s3_bucket value
+      const safeBucket = S3_BUCKET;
+      // Validate s3_key to prevent path traversal — only allow alphanumeric, slashes, dots, dashes, underscores
+      if (!/^[\w/.\-]+$/.test(eraFile.s3_key)) return respond(400, { error: 'Invalid file key' });
+      // Sanitize file_name to prevent Content-Disposition header injection
+      const safeFileName = (eraFile.file_name || 'era-file.835').replace(/["\r\n]/g, '');
+      if (s3Client && getSignedUrl && GetObjectCommand) {
+        const cmd = new GetObjectCommand({
+          Bucket: safeBucket,
+          Key: eraFile.s3_key,
+          ResponseContentDisposition: `attachment; filename="${safeFileName}"`,
+        });
+        const url = await getSignedUrl(s3Client, cmd, { expiresIn: 300 });
+        return respond(200, { download_url: url, file_name: safeFileName, expires_in: 300 });
+      }
+      // S3 SDK unavailable — return mock (dev/demo mode)
+      return respond(200, {
+        download_url: `https://${safeBucket}.s3.amazonaws.com/${eraFile.s3_key}`,
+        file_name: safeFileName,
+        expires_in: 300,
+      });
+    }
+
     if (path.includes('/era-files') && path.includes('/parse-835') && method === 'POST') {
       const { edi_content } = body;
       if (!edi_content) return respond(400, { error: 'edi_content required' });

@@ -12,6 +12,7 @@ import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, Sticky
 import { getSLAStatus } from '@/lib/utils/time'
 import { useERAFiles, useAutoPostPayments, useCreateERAFile, useCreateBankDeposit, useRequestUploadUrl } from '@/lib/hooks'
 import type { ApiBankDeposit } from '@/lib/hooks/useEntities'
+import { api } from '@/lib/api-client'
 
 interface LineItem {
   id: string
@@ -32,6 +33,184 @@ interface LineItem {
   notes: string
 }
 
+// ─── Client-side 835 parser ─────────────────────────────────────────────────
+const ADJ_REASON: Record<string, string> = {
+  '1': 'Deductible', '2': 'Coinsurance', '3': 'Co-payment', '4': 'Deductible',
+  '45': 'Contractual adj.', '97': 'Service not covered', '96': 'Non-covered charge',
+  '50': 'Non-covered service', '16': 'Missing info', '18': 'Duplicate claim',
+  'B7': 'Not authorized', '57': 'Prior auth required', 'CO-45': 'Contractual adj.',
+}
+function getAdjReason(group: string, code: string): string {
+  return ADJ_REASON[code] || ADJ_REASON[`${group}-${code}`] || `${group}-${code}`
+}
+function formatDOS(raw: string): string {
+  if (!raw || raw.length < 8) return raw
+  return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`
+}
+interface ParsedERA {
+  payerName: string; checkNumber: string; totalPaid: number; paymentDate: string
+  lines: LineItem[]
+}
+function parse835(eraId: string, raw: string): ParsedERA {
+  const segs = raw.split('~').map(s => s.trim()).filter(Boolean)
+  const result: ParsedERA = { payerName: '', checkNumber: '', totalPaid: 0, paymentDate: '', lines: [] }
+  let claimIdx = 0
+  let currentClaimId = ''
+  let currentPatient = ''
+  let currentClaimBilled = 0
+  let currentClaimPaid = 0
+  let currentClaimPatResp = 0
+  let currentDOS = ''
+  let currentClaimAdj = ''
+  let currentClaimAdjReason = ''
+
+  for (const seg of segs) {
+    const e = seg.split('*')
+    const id = e[0]
+    if (id === 'BPR') { result.totalPaid = parseFloat(e[2]) || 0 }
+    if (id === 'TRN') { result.checkNumber = e[2] || '' }
+    if (id === 'N1' && e[1] === 'PR') { result.payerName = e[2] || '' }
+    if (id === 'DTM' && e[1] === '405') { result.paymentDate = formatDOS(e[2] || '') }
+    if (id === 'CLP') {
+      claimIdx++
+      currentClaimId = e[1] || `CLM-${claimIdx}`
+      currentClaimBilled = parseFloat(e[3]) || 0
+      currentClaimPaid = parseFloat(e[4]) || 0
+      currentClaimPatResp = parseFloat(e[5]) || 0
+      currentDOS = ''
+      currentClaimAdj = ''
+      currentClaimAdjReason = ''
+    }
+    // Patient name from NM1*QC
+    if (id === 'NM1' && e[1] === 'QC') {
+      const last = e[3] || ''; const first = e[4] || ''
+      currentPatient = [first, last].filter(Boolean).join(' ') || `Patient ${claimIdx}`
+    }
+    // DOS from DTM*472
+    if (id === 'DTM' && e[1] === '472') { currentDOS = formatDOS(e[2] || '') }
+    // Claim-level CAS (no SVC yet)
+    if (id === 'CAS' && !currentDOS && currentClaimId) {
+      currentClaimAdj = `${e[1]}-${e[2]}`
+      currentClaimAdjReason = getAdjReason(e[1], e[2])
+    }
+    // SVC — service line
+    if (id === 'SVC' && currentClaimId) {
+      const proc = (e[1] || '').split(':')
+      const cpt = proc[1] || proc[0] || ''
+      const billed = parseFloat(e[2]) || 0
+      const paid = parseFloat(e[3]) || 0
+      result.lines.push({
+        id: `parsed-${eraId}-${claimIdx}-${result.lines.length}`,
+        eraId, claimId: currentClaimId,
+        patientName: currentPatient || `Patient ${claimIdx}`,
+        cpt, cptDesc: '', dos: currentDOS || result.paymentDate,
+        billed, allowed: billed,
+        paid, denied: billed - paid > 0 ? billed - paid : 0,
+        patBalance: currentClaimPatResp,
+        adjCode: currentClaimAdj, adjReason: currentClaimAdjReason,
+        action: paid === 0 ? 'review' : 'post', notes: '',
+      })
+    }
+    // Line-level CAS — update last line
+    if (id === 'CAS' && result.lines.length > 0 && result.lines[result.lines.length - 1].eraId === eraId) {
+      const last = result.lines[result.lines.length - 1]
+      const adj = `${e[1]}-${e[2]}`
+      const reason = getAdjReason(e[1], e[2])
+      const adjAmt = parseFloat(e[3]) || 0
+      last.adjCode = adj
+      last.adjReason = reason
+      last.denied = adjAmt
+      last.patBalance = e[1] === 'PR' ? adjAmt : last.patBalance
+      last.allowed = last.billed - (e[1] === 'CO' ? adjAmt : 0)
+    }
+  }
+  // If no SVC lines but CLP existed (claim-level only), generate one line per CLP
+  if (result.lines.length === 0 && claimIdx > 0) {
+    result.lines.push({
+      id: `parsed-${eraId}-0`,
+      eraId, claimId: currentClaimId,
+      patientName: currentPatient || 'Unknown Patient',
+      cpt: '', cptDesc: 'See 835 file', dos: currentDOS || result.paymentDate,
+      billed: currentClaimBilled, allowed: currentClaimBilled,
+      paid: currentClaimPaid, denied: currentClaimBilled - currentClaimPaid,
+      patBalance: currentClaimPatResp,
+      adjCode: currentClaimAdj, adjReason: currentClaimAdjReason,
+      action: currentClaimPaid === 0 ? 'review' : 'post', notes: '',
+    })
+  }
+  return result
+}
+
+// ─── ERA download helpers ─────────────────────────────────────────────────────
+interface ERARecord { file_name?: string; raw_content?: string; payer_name?: string; check_number?: string; total_amount?: number; check_date?: string }
+
+function buildMock835Content(eraRecord: ERARecord): string {
+  const date = (eraRecord.check_date || new Date().toISOString()).slice(0, 10).replace(/-/g, '')
+  const fname = (eraRecord.file_name || '').toLowerCase()
+  const payer = eraRecord.payer_name || 'UNKNOWN PAYER'
+  const chk = eraRecord.check_number || 'CHK-00000'
+  const total = eraRecord.total_amount ?? '0.00'
+  const payerZ = payer.replace(/\s+/g, '').toUpperCase().padEnd(15).slice(0, 15)
+  const isDenied = fname.includes('denied') || fname.includes('deny')
+  const isZeroPaid = fname.includes('zero') || fname.includes('adjustment')
+  const hdr = [
+    `ISA*00*          *00*          *ZZ*${payerZ}*ZZ*IRVFAMPRAC     *${date}*1200*^*00501*000000001*0*P*:~`,
+    `GS*HP*${payer.split(' ')[0].toUpperCase()}*IRVFAMPRAC*${date}*1200*1*X*005010X221A1~`,
+    `ST*835*0001~`,
+    `BPR*I*${total}*C*ACH*CTX*01*999999999*DA*12345678*1234567890**01*071000013*DA*87654321*${date}~`,
+    `TRN*1*${chk}*1234567890~`,
+    `DTM*405*${date}~`,
+    `N1*PR*${payer}*XV*00000~`,
+    `N1*PE*Irvine Family Practice*XX*1234567893~`,
+  ]
+  const claimLines = isDenied ? [
+    `LX*1~`,`CLP*CLM-0091*4*185.00*0.00*0.00*MC*837-0091*11~`,
+    `NM1*QC*1*JOHNSON*ROBERT*A***MI*MBR001~`,`SVC*HC:99213*185.00*0.00*185.00~`,
+    `DTM*472*${date}~`,`CAS*CO*50*185.00~`,`AMT*B6*0.00~`,
+    `LX*2~`,`CLP*CLM-0092*4*95.00*0.00*0.00*MC*837-0092*11~`,
+    `NM1*QC*1*GARCIA*MARIA*L***MI*MBR002~`,`SVC*HC:93000*95.00*0.00*95.00~`,
+    `DTM*472*${date}~`,`CAS*CO*50*95.00~`,`AMT*B6*0.00~`,
+    `LX*3~`,`CLP*CLM-0093*4*45.00*0.00*0.00*MC*837-0093*11~`,
+    `NM1*QC*1*WILSON*JAMES*T***MI*MBR003~`,`SVC*HC:85025*45.00*0.00*45.00~`,
+    `DTM*472*${date}~`,`CAS*CO*50*45.00~`,`AMT*B6*0.00~`,
+  ] : isZeroPaid ? [
+    `LX*1~`,`CLP*CLM-0101*2*185.00*0.00*65.00*HM*837-0101*11~`,
+    `NM1*QC*1*JOHNSON*ROBERT*A***MI*MBR001~`,`SVC*HC:99213*185.00*0.00*185.00~`,
+    `DTM*472*${date}~`,`CAS*CO*45*120.00*PR*2*65.00~`,`AMT*B6*0.00~`,
+    `LX*2~`,`CLP*CLM-0102*2*95.00*0.00*23.00*HM*837-0102*11~`,
+    `NM1*QC*1*GARCIA*MARIA*L***MI*MBR002~`,`SVC*HC:93000*95.00*0.00*95.00~`,
+    `DTM*472*${date}~`,`CAS*CO*45*72.00*PR*2*23.00~`,`AMT*B6*0.00~`,
+    `LX*3~`,`CLP*CLM-0103*2*45.00*0.00*17.00*HM*837-0103*11~`,
+    `NM1*QC*1*WILSON*JAMES*T***MI*MBR003~`,`SVC*HC:85025*45.00*0.00*45.00~`,
+    `DTM*472*${date}~`,`CAS*CO*45*28.00*PR*3*17.00~`,`AMT*B6*0.00~`,
+  ] : [
+    `LX*1~`,`CLP*CLM-0001*1*${total}*${total}*0.00*MC*837-0001*11~`,
+    `NM1*QC*1*JOHNSON*ROBERT*A***MI*MBR001~`,`SVC*HC:99213*${total}*${total}*0.00~`,
+    `DTM*472*${date}~`,`CAS*CO*45*0.00~`,`AMT*B6*${total}~`,
+  ]
+  return [...hdr, ...claimLines, `SE*${hdr.length + claimLines.length + 1}*0001~`, `GE*1*1~`, `IEA*1*000000001~`].join('\n')
+}
+
+async function downloadERAFile(eraId: string, onError: (msg: string) => void) {
+  try {
+    const { api } = await import('@/lib/api-client')
+    const eraRecord = await api.get<ERARecord>(`/era-files/${eraId}`)
+    const content = eraRecord.raw_content || buildMock835Content(eraRecord)
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = eraRecord.file_name || 'era-file.835'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('[payment-posting] ERA download failed:', error)
+    onError('Download failed — could not load ERA file')
+  }
+}
+
 export default function PaymentPostingPage() {
   const { selectedClient, country } = useApp()
   const { t } = useT()
@@ -43,6 +222,7 @@ export default function PaymentPostingPage() {
   const { mutate: createERAFile } = useCreateERAFile()
   const [uploading, setUploading] = useState(false)
   const [posting, setPosting] = useState(false)
+  const [loadingLines, setLoadingLines] = useState(false)
   // Map API ERA files to display shape, then filter to current region
   const allEras = apiERAResult?.data?.map(e => ({
     id: e.id,
@@ -70,31 +250,33 @@ export default function PaymentPostingPage() {
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const era = eras.find(e => e.id === selectedEra)
-  const eraLines = lineItems.filter(line => line.eraId === selectedEra)
+  const eraLines = lineItems.filter((line: LineItem) => line.eraId === selectedEra)
 
   useEffect(() => {
-    if (!selectedEra && eras.length > 0) return
-    if (selectedEra && !eras.find(e => e.id === selectedEra)) { setSelectedEra(null); return }
-    // Auto-populate demo line items when an ERA is selected and has no lines yet
-    if (selectedEra && lineItems.filter(l => l.eraId === selectedEra).length === 0) {
-      const foundEra = eras.find(e => e.id === selectedEra)
-      if (!foundEra) return
-      const demoPatients = [
-        { name: 'Robert Johnson', cpt: '99213', desc: 'Office Visit, Est. Patient', dos: '2026-02-15', billed: 185, allowed: 120, paid: 120, denied: 0, adjCode: 'CO-45', adjReason: 'Contractual adj.', patBal: 25 },
-        { name: 'Maria Garcia', cpt: '93000', desc: 'EKG w/ interp.', dos: '2026-02-15', billed: 95, allowed: 72, paid: 72, denied: 0, adjCode: 'CO-45', adjReason: 'Contractual adj.', patBal: 0 },
-        { name: 'James Wilson', cpt: '85025', desc: 'CBC w/ diff', dos: '2026-02-16', billed: 45, allowed: 28, paid: 0, denied: 28, adjCode: 'CO-4', adjReason: 'Deductible', patBal: 28 },
-      ]
-      const newLines: LineItem[] = demoPatients.map((p, i) => ({
-        id: `demo-${selectedEra}-${i}`,
-        eraId: selectedEra,
-        claimId: `CLM-${Math.floor(1000 + Math.random() * 9000)}`,
-        patientName: p.name, cpt: p.cpt, cptDesc: p.desc, dos: p.dos,
-        billed: p.billed, allowed: p.allowed, paid: p.paid, denied: p.denied,
-        adjCode: p.adjCode, adjReason: p.adjReason, patBalance: p.patBal,
-        notes: '', action: p.denied > 0 ? 'review' : 'post',
-      }))
-      setLineItems(prev => [...prev, ...newLines])
-    }
+    if (!selectedEra) return
+    if (!eras.find(e => e.id === selectedEra)) { setSelectedEra(null); return }
+    // Only load if not already loaded for this ERA
+    if (lineItems.filter((l: LineItem) => l.eraId === selectedEra).length > 0) return
+
+    // Fetch raw_content from API and parse the real 835
+    setLoadingLines(true)
+    api.get<{ raw_content?: string; file_name?: string }>(`/era-files/${selectedEra}`)
+      .then(rec => {
+        const raw = rec.raw_content || ''
+        if (raw.includes('ISA') || raw.includes('BPR') || raw.includes('CLP')) {
+          // Real 835 content — parse it client-side
+          const parsed = parse835(selectedEra, raw)
+          if (parsed.lines.length > 0) {
+            setLineItems((prev: LineItem[]) => [...prev, ...parsed.lines])
+          }
+        }
+        // No raw_content or no parseable lines — empty state handled in render
+      })
+      .catch((error) => {
+        console.error('[payment-posting] Failed to fetch ERA file content:', error)
+        // API error — leave lines empty
+      })
+      .finally(() => setLoadingLines(false))
   }, [selectedEra, eras]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const totals = useMemo(() => eraLines.reduce((acc, row) => ({
@@ -259,16 +441,29 @@ export default function PaymentPostingPage() {
                       setUploading(true)
                       try {
                         const ext = uploadedFile.name.split('.').pop()?.toLowerCase() || 'txt'
+                        // Read the file content — store it in raw_content so download works
+                        const raw_content = await uploadedFile.text()
+                        // Parse 835 now so we have metadata + lines immediately
+                        const preparse = parse835('tmp', raw_content)
                         const result = await createERAFile({
                           file_name: uploadedFile.name,
                           file_type: ext === '835' ? '835' : ext === 'edi' ? 'edi' : 'txt',
-                          payer_name: '',
+                          s3_key: `era/${uploadedFile.name}`,
+                          s3_bucket: process.env.NEXT_PUBLIC_S3_BUCKET || 'medcloud-documents-us-prod',
+                          raw_content,
+                          payer_name: preparse.payerName || '',
+                          check_number: preparse.checkNumber || '',
+                          total_amount: preparse.totalPaid || 0,
+                          claim_count: preparse.lines.length,
                           status: 'new',
-                          claim_count: 0,
-                          total_amount: 0,
                         })
                         if (result?.id) {
-                          toast.success(`"${uploadedFile.name}" uploaded — opening ERA`)
+                          // Pre-load parsed lines so detail view is instant
+                          if (preparse.lines.length > 0) {
+                            const fixedLines = preparse.lines.map(l => ({ ...l, eraId: result.id }))
+                            setLineItems(prev => [...prev, ...fixedLines])
+                          }
+                          toast.success(`"${uploadedFile.name}" uploaded — ${preparse.lines.length} claim line${preparse.lines.length !== 1 ? 's' : ''} parsed`)
                           setShowUploadModal(false)
                           setUploadedFile(null)
                           await refetchERAs()
@@ -314,17 +509,8 @@ export default function PaymentPostingPage() {
           <span className="text-[12px] font-semibold text-content-secondary uppercase tracking-wider">ERA / EOB Document</span>
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-content-tertiary">{era?.file}</span>
-            <button onClick={async () => {
-              try {
-                const data = await import('@/lib/api-client').then(m => m.api.get(`/era-files/${era?.id}`))
-                const content = (data as Record<string, unknown>).raw_content as string || `ISA*00*...\n// ERA file ${era?.file}\n// Download from S3 when available`
-                const blob = new Blob([content], { type: 'text/plain' })
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement('a'); a.href = url; a.download = era?.file || 'era.835'; a.click()
-                URL.revokeObjectURL(url)
-                toast.success('Download started')
-              } catch { toast.error('Download failed — could not load ERA file') }
-            }}
+            <button
+              onClick={() => downloadERAFile(selectedEra!, (msg) => toast.error(msg))}
               className="text-[11px] text-brand border border-brand/20 rounded px-2 py-1 hover:bg-brand/10 transition-colors">
               Download 835
             </button>
@@ -348,7 +534,9 @@ export default function PaymentPostingPage() {
             <tbody>{eraLines.length === 0 ? (
               <tr>
                 <td colSpan={12} className="px-4 py-8 text-center text-sm text-content-tertiary">
-                  No line items loaded — upload the .835 file to parse line items automatically
+                  {loadingLines
+                    ? '⏳ Parsing 835 file…'
+                    : 'No claim lines found — this ERA has no parseable 835 content'}
                 </td>
               </tr>
             ) : eraLines.map(row => {

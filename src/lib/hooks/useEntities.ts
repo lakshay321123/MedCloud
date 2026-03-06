@@ -133,6 +133,9 @@ export interface ApiERAFile {
   status?: string
   claim_count?: number
   created_at?: string
+  s3_key?: string
+  s3_bucket?: string
+  file_type?: string
 }
 
 export interface ApiCodingItem {
@@ -449,6 +452,8 @@ export function useCreateERAFile() {
   return useMutation<ApiERAFile, {
     file_name: string
     payer_name?: string
+    check_number?: string
+    check_date?: string
     client_id?: string
     total_amount?: number
     claim_count?: number
