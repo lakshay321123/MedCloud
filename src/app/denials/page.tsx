@@ -8,7 +8,7 @@ import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { ShieldAlert, FileText, AlertTriangle, Send, X, Plus, Edit2, Trash2, ChevronDown } from 'lucide-react'
 import { useToast } from '@/components/shared/Toast'
-import { useDenials, useGenerateAppeal, useDenialCategories, useAppealsList, useBatchGenerateAppeals, useUpdateDenial, useCreateDenial, useSubmitAppeal, useAppealDetail, useUpdateAppealStatus, useAppealTemplates, useCreateAppealTemplate, useCheckAppealDeadlines } from '@/lib/hooks'
+import { useDenials, useSubmitAppeal, useCheckAppealDeadlines } from '@/lib/hooks'
 import { filterByRegion } from '@/lib/utils/region'
 import { ErrorBanner } from '@/components/shared/ApiStates'
 import { useRouter } from 'next/navigation'
@@ -245,14 +245,14 @@ export default function DenialsPage() {
     <ModuleShell title={t("denials","title")} subtitle={t("denials","subtitle")}>
       {apiError && <ErrorBanner error={apiError} onRetry={refetch} />}
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label={t('denials','openDenials')} value={denials.filter(d => ['denied','open','pending','new'].includes(d.status)).length} icon={<ShieldAlert size={20} />} />
-        <KPICard label={t('denials','inAppeal')} value={denials.filter(d => ['appealed','appeal_pending','in_appeal'].includes(d.status)).length} />
+        <KPICard label={t('denials','openDenials')} value={denials.filter(d => ['open', 'denied', 'new', 'pending'].includes(d.status)).length} icon={<ShieldAlert size={20} />} />
+        <KPICard label={t('denials','inAppeal')} value={denials.filter(d => ['in_appeal', 'appealed', 'appeal_pending'].includes(d.status)).length} />
         <KPICard label={t('denials','appealSuccessRate')} value={(() => {
-          const paid = denials.filter(d => d.status === 'paid').length
-          const appealed = denials.filter(d => ['appealed','appeal_pending','in_appeal'].includes(d.status)).length
-          return paid > 0 ? `${Math.round((paid / Math.max(1, appealed)) * 100)}%` : '—'
+          const won = denials.filter(d => d.status === 'appeal_won').length
+          const total = denials.filter(d => ['appeal_won', 'in_appeal', 'appealed', 'appeal_pending'].includes(d.status)).length
+          return total > 0 ? `${Math.round((won / total) * 100)}%` : '—'
         })()} trend="up" sub="+4%" />
-        <KPICard label={t('denials','avgResolution')} value="18 days" />
+        <KPICard label={t('denials','avgResolution')} value="—" />
       </div>
       {appealDeadlines.length > 0 && (
         <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-start gap-3">
@@ -526,25 +526,27 @@ export default function DenialsPage() {
       {/* ── Appeal Deadline Tracker ── */}
       <div className="card p-4 mt-4">
         <h3 className="text-sm font-semibold mb-3">⏰ Upcoming Appeal Deadlines</h3>
-        <div className="space-y-2">
-          {[{claim:'CLM-4511',payer:'Aetna',deadline:'2026-03-07',days:3,level:'L1'},
-            {claim:'CLM-4498',payer:'Blue Cross',deadline:'2026-03-10',days:6,level:'L2'},
-            {claim:'CLM-4523',payer:'United',deadline:'2026-03-15',days:11,level:'L1'},
-            {claim:'CLM-4489',payer:'Cigna',deadline:'2026-03-05',days:1,level:'L3'}
-          ].sort((a,b)=>a.days-b.days).map(d=>(
-            <div key={d.claim} className={`flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2 ${d.days<=3?'border border-red-500/30':''}`}>
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-mono">{d.claim}</span>
-                <span className="text-xs text-content-secondary">{d.payer}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand/10 text-brand">{d.level}</span>
+        {appealDeadlines.length > 0 ? (
+          <div className="space-y-2">
+            {appealDeadlines.slice(0, 8).sort((a, b) => a.days_remaining - b.days_remaining).map(d => (
+              <div key={d.denial_id} className={`flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2 ${d.days_remaining <= 3 ? 'border border-red-500/30' : ''}`}>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-mono">{d.claim_number || d.denial_id.slice(0, 8)}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded bg-brand/10 text-brand`}>{d.urgency}</span>
+                </div>
+                <span className={`text-xs font-medium ${d.days_remaining <= 3 ? 'text-red-500' : d.days_remaining <= 7 ? 'text-amber-500' : 'text-content-secondary'}`}>{d.days_remaining}d left</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-xs font-medium ${d.days<=3?'text-red-500':d.days<=7?'text-amber-500':'text-content-secondary'}`}>{d.days}d left</span>
-                <span className="text-[10px] text-content-tertiary">{d.deadline}</span>
-              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center mb-3">
+              <AlertTriangle size={16} className="text-content-tertiary opacity-40" />
             </div>
-          ))}
-        </div>
+            <p className="text-[13px] font-medium text-content-primary mb-1">No urgent deadlines</p>
+            <p className="text-xs text-content-secondary">Deadlines will appear here when appeal windows are approaching. Set appeal deadlines on individual denials to track them.</p>
+          </div>
+        )}
       </div>
     </ModuleShell>
   )

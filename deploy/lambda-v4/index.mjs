@@ -667,7 +667,8 @@ async function enrichedClaims(orgId, clientId) {
 }
 
 async function enrichedDenials(orgId, clientId) {
-  let q = `SELECT d.*, p.first_name || ' ' || p.last_name AS patient_name,
+  let q = `SELECT d.*, c.client_id,
+           p.first_name || ' ' || p.last_name AS patient_name,
            py.name AS payer_name, cl.name AS client_name,
            c.claim_number, c.dos_from,
            carc.description AS carc_description
@@ -5891,9 +5892,21 @@ export const handler = async (event) => {
     // Appeal on denial
     if (path.includes('/appeal') && method === 'POST') {
       const denialId = pathParams.id || path.split('/denials/')[1]?.split('/')[0];
-      body.denial_id = denialId;
-      body.status = body.status || 'submitted';
-      const appeal = await create('appeals', body, effectiveOrgId);
+      // Auto-resolve claim_id from the denial record (required NOT NULL on appeals table)
+      const denial = await getById('denials', denialId);
+      const claimId = denial?.claim_id || body.claim_id || null;
+      // Normalise letter field — hook sends appeal_letter, DB column is letter_text
+      const letterText = body.letter_text || body.appeal_letter || null;
+      const appealBody = {
+        ...body,
+        denial_id: denialId,
+        claim_id: claimId,
+        letter_text: letterText,
+        status: body.status || 'submitted',
+      };
+      delete appealBody.appeal_letter;
+      delete appealBody.appeal_reason;
+      const appeal = await create('appeals', appealBody, effectiveOrgId);
       await update('denials', denialId, { status: 'in_appeal' }, effectiveOrgId);
       await auditLog(effectiveOrgId, userId, 'appeal', 'denials', denialId, { appeal_id: appeal.id });
       return respond(201, appeal);
