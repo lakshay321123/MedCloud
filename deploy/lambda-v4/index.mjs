@@ -187,6 +187,15 @@ async function runSchemaMigration() {
       ALTER TABLE ar_call_log ADD COLUMN IF NOT EXISTS call_result VARCHAR(100);
       ALTER TABLE ar_call_log ADD COLUMN IF NOT EXISTS reference_number VARCHAR(100);
       ALTER TABLE ar_call_log ADD COLUMN IF NOT EXISTS follow_up_action TEXT;
+
+      -- ── claims: fix status CHECK constraint to include all valid statuses ─────
+      -- Drop old constraint (if it exists) and recreate with full list
+      ALTER TABLE claims DROP CONSTRAINT IF EXISTS claims_status_check;
+      ALTER TABLE claims ADD CONSTRAINT claims_status_check CHECK (status IN (
+        'draft','scrubbing','scrubbed','scrub_failed','ready',
+        'submitted','accepted','in_process','paid','partial_pay',
+        'denied','appealed','corrected','write_off','cancelled','void'
+      ));
     `);
     safeLog('info', 'Schema migration completed successfully');
   } catch (e) {
