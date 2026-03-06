@@ -853,7 +853,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                 })}
                 {/* New messages sent this session */}
                 {newMessages.flatMap(m => m.messages).map((msg: any, i: number) => (
-                  <div key={`new-${i}`} className={`flex gap-2 ${msg.role === 'staff' ? 'flex-row-reverse' : ''}`}>
+                  <div key={msg.time || `new-${i}`} className={`flex gap-2 ${msg.role === 'staff' ? 'flex-row-reverse' : ''}`}>
                     <div className={`max-w-[80%] px-3 py-2 rounded-lg text-[13px] ${msg.role === 'staff' ? 'bg-brand/10 text-content-primary' : 'bg-surface-elevated text-content-primary'}`}>
                       <p className="text-[11px] text-content-tertiary mb-1">{msg.sender}</p>
                       {msg.text}
@@ -1096,11 +1096,18 @@ export default function ClaimsPage() {
                 Submit Selected
               </button>
               <button onClick={() => {
+                  // csvSafe: escape existing double quotes, then prefix formula chars to prevent injection
+                  const csvSafe = (v: unknown): string => {
+                    const s = String(v ?? '')
+                    const escaped = s.replace(/"/g, '""')   // escape embedded double quotes
+                    // Prefix =, +, -, @ with a tab to neutralise formula injection in Excel / Sheets
+                    return /^[=+\-@]/.test(escaped) ? `\t${escaped}` : escaped
+                  }
                   const headers = ['Claim ID','Patient','Client','Payer','Billed','Status','DOS','Days']
                   const rows = allClaims
                     .filter(c => selectedRows.includes(c.id))
                     .map(c => [c.id, c.patientName, c.clientName, c.payer, c.billed, c.status, c.dos, c.age])
-                  const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n')
+                  const csv = [headers, ...rows].map(r => r.map(v => `"${csvSafe(v)}"`).join(',')).join('\n')
                   const blob = new Blob([csv], { type: 'text/csv' })
                   const url = URL.createObjectURL(blob)
                   const a = document.createElement('a'); a.href = url; a.download = 'claims-export.csv'; a.click()
@@ -1203,11 +1210,12 @@ export default function ClaimsPage() {
                         <>
                           <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(null)} />
                           <div className="absolute right-0 top-full mt-1 bg-surface-secondary border border-separator rounded-lg shadow-elevated z-50 w-40 overflow-hidden">
-                            {[
-                              { label: 'View Detail', action: () => { setDrawerClaim(c); setMenuOpen(null) } },
-                              { label: 'Correct Claim', action: () => { setDrawerClaim(c); setMenuOpen(null) } },
-                              { label: 'Route to Denials', action: () => { router.push(`/denials?claimId=${c.id}`); setMenuOpen(null) } },
+                            {([
+                              { label: 'View Detail',      variant: 'default',             action: () => { setDrawerClaim(c); setMenuOpen(null) } },
+                              { label: 'Correct Claim',    variant: 'default',             action: () => { setDrawerClaim(c); setMenuOpen(null) } },
+                              { label: 'Route to Denials', variant: 'default',             action: () => { router.push(`/denials?claimId=${c.id}`); setMenuOpen(null) } },
                               { label: voidConfirmId === c.id ? '⚠ Confirm Void' : 'Void Claim',
+                                variant: voidConfirmId === c.id ? 'destructive-confirm' : 'destructive',
                                 action: () => {
                                   if (voidConfirmId === c.id) {
                                     toast.warning(`Claim ${c.id} voided`)
@@ -1218,13 +1226,13 @@ export default function ClaimsPage() {
                                   }
                                 }
                               },
-                              ...(voidConfirmId === c.id ? [{ label: 'Cancel', action: () => { setVoidConfirmId(null) } }] : []),
-                            ].map(item => (
+                              ...(voidConfirmId === c.id ? [{ label: 'Cancel', variant: 'cancel' as const, action: () => { setVoidConfirmId(null) } }] : []),
+                            ] as Array<{ label: string; variant: 'default' | 'destructive' | 'destructive-confirm' | 'cancel'; action: () => void }>).map(item => (
                               <button key={item.label} onClick={item.action}
                                 className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-elevated ${
-                                  item.label.includes('Confirm') ? 'text-red-500 font-semibold' :
-                                  item.label === 'Cancel' ? 'text-content-tertiary' :
-                                  item.label === 'Void Claim' ? 'text-red-400' :
+                                  item.variant === 'destructive-confirm' ? 'text-red-500 font-semibold' :
+                                  item.variant === 'cancel'              ? 'text-content-tertiary' :
+                                  item.variant === 'destructive'         ? 'text-red-400' :
                                   'text-content-primary'
                                 }`}>
                                 {item.label}
