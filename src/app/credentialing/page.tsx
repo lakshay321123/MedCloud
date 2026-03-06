@@ -51,8 +51,8 @@ export default function CredentialingPage() {
   const filteredProviders = baseProviders.filter(p => {
     if (selectedClient) return p.client === selectedClient.name
     if (country === 'uae') return UAE_CLIENT_NAMES.includes(p.client as typeof UAE_CLIENT_NAMES[number])
-    if (country === 'usa') return US_CLIENT_NAMES.includes(p.client as typeof US_CLIENT_NAMES[number])
-    return true
+    // Default to US (country null or 'usa') — never mix UAE + US data
+    return US_CLIENT_NAMES.includes(p.client as typeof US_CLIENT_NAMES[number])
   })
 
   const activeCount = filteredProviders.filter(p => p.status === 'active').length
