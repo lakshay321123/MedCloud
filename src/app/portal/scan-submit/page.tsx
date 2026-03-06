@@ -404,6 +404,19 @@ function FileReviewRow({ entry, onTypeChange }: { entry: FileEntry; onTypeChange
   const [open, setOpen] = useState(false)
   const currentType = entry.approvedType || entry.aiType || 'Other'
   const meta = DOC_TYPE_META[currentType] || DOC_TYPE_META['Other']
+  const btnRef = useRef<HTMLButtonElement>(null)
+
+  // Close on outside click
+  React.useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (btnRef.current && !btnRef.current.closest('.doc-type-dropdown')?.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
 
   return (
     <div className={`rounded-lg border transition-all ${entry.status === 'error' ? 'border-red-500/30 bg-red-500/5' : 'border-separator bg-surface-elevated'}`}>
@@ -425,17 +438,31 @@ function FileReviewRow({ entry, onTypeChange }: { entry: FileEntry; onTypeChange
         </div>
 
         {entry.status === 'done' && (
-          <div className="relative">
-            <button onClick={() => setOpen(o => !o)}
-              className="flex items-center gap-1.5 bg-brand/10 text-brand border border-brand/20 rounded-full px-2.5 py-1 text-xs font-medium hover:bg-brand/20 transition-colors">
-              <span>{meta.icon}</span><span>{currentType}</span><ChevronDown size={10} />
+          <div className="doc-type-dropdown relative shrink-0">
+            <button
+              ref={btnRef}
+              onClick={() => setOpen(o => !o)}
+              className="flex items-center gap-1.5 bg-brand text-white rounded-full px-3 py-1.5 text-xs font-semibold hover:bg-brand-deep transition-colors shadow-sm"
+            >
+              <span>{meta.icon}</span>
+              <span className="max-w-[80px] truncate">{currentType}</span>
+              <ChevronDown size={10} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
             {open && (
-              <div className="absolute right-0 top-8 z-20 bg-surface border border-separator rounded-lg shadow-xl py-1 min-w-[160px]">
+              <div className="absolute right-0 top-full mt-1 z-50 bg-[#1C1C1E] dark:bg-[#1C1C1E] border border-white/10 rounded-xl shadow-2xl py-1.5 min-w-[170px] overflow-hidden">
                 {Object.entries(DOC_TYPE_META).map(([type, m]) => (
-                  <button key={type} onClick={() => { onTypeChange(type); setOpen(false) }}
-                    className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-surface-elevated transition-colors ${currentType === type ? 'text-brand font-semibold' : 'text-content-primary'}`}>
-                    <span>{m.icon}</span>{type}{currentType === type && <span className="ml-auto">✓</span>}
+                  <button
+                    key={type}
+                    onClick={() => { onTypeChange(type); setOpen(false) }}
+                    className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2.5 transition-colors
+                      ${currentType === type
+                        ? 'bg-brand/20 text-brand font-semibold'
+                        : 'text-white hover:bg-white/10'
+                      }`}
+                  >
+                    <span className="text-sm">{m.icon}</span>
+                    <span className="flex-1">{type}</span>
+                    {currentType === type && <span className="text-brand text-xs">✓</span>}
                   </button>
                 ))}
               </div>
