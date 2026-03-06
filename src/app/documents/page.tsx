@@ -10,7 +10,6 @@ import { useDocuments, useTriggerTextract, useClassifyDocument, useRequestUpload
 import type { ApiDocument } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
-import { computeCRC32Base64 } from '@/lib/utils'
 import {
   Search, Upload, X, Download, AlertTriangle, FileText, CreditCard,
   DollarSign, XCircle, Stethoscope, File, Eye, Send
@@ -680,14 +679,11 @@ function UploadModal({ onClose }: { onClose: () => void }) {
           throw new Error('Could not get upload URL — check your connection')
         }
         // Step 2: Upload to S3
-        const crc32 = await computeCRC32Base64(file)
         const s3Res = await fetch(urlResult.upload_url, {
           method: 'PUT',
           body: file,
           headers: {
             'Content-Type': file.type || 'application/octet-stream',
-            'x-amz-checksum-crc32': crc32,
-            'x-amz-sdk-checksum-algorithm': 'CRC32',
           },
         })
         if (!s3Res.ok) throw new Error(`S3 upload failed (${s3Res.status})`)
