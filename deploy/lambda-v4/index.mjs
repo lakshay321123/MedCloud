@@ -6228,6 +6228,37 @@ export const handler = async (event) => {
       }
       if (method === 'POST') return respond(201, await create('payments', body, effectiveOrgId));
       if (method === 'PUT' && pathParams.id) return respond(200, await update('payments', pathParams.id, body), effectiveOrgId);
+      // ── Apply unmatched payment to a claim ─────────────────────────────────
+      if (method === 'POST' && pathParams.id && path.includes('/apply')) {
+        const payment = await getById('payments', pathParams.id);
+        if (!payment || payment.org_id !== effectiveOrgId) return respond(404, { error: 'Payment not found' });
+        const updated = await update('payments', pathParams.id, {
+          status: 'posted',
+          claim_id: body.claim_id || payment.claim_id,
+          applied_by: userId,
+          applied_at: new Date().toISOString(),
+          posting_notes: body.notes || 'Manually applied from unmatched queue',
+        });
+        await auditLog(effectiveOrgId, userId, 'apply_payment', 'payments', pathParams.id, {
+          claim_id: body.claim_id, amount: payment.amount,
+        });
+        return respond(200, { success: true, payment: updated });
+      }
+      // ── Write off unmatched payment ────────────────────────────────────────
+      if (method === 'POST' && pathParams.id && path.includes('/write-off')) {
+        const payment = await getById('payments', pathParams.id);
+        if (!payment || payment.org_id !== effectiveOrgId) return respond(404, { error: 'Payment not found' });
+        const updated = await update('payments', pathParams.id, {
+          status: 'written_off',
+          write_off_reason: body.reason || 'Unmatched payment write-off',
+          write_off_by: userId,
+          write_off_at: new Date().toISOString(),
+        });
+        await auditLog(effectiveOrgId, userId, 'write_off', 'payments', pathParams.id, {
+          reason: body.reason, amount: payment.amount,
+        });
+        return respond(200, { success: true, payment: updated });
+      }
     }
 
     // ════ AR Management ════════════════════════════════════════════════════
