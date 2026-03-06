@@ -13,8 +13,9 @@ import {
 } from 'recharts'
 import {
   DollarSign, TrendingUp, Clock, AlertTriangle, ShieldAlert,
-  CheckCircle2, Activity, BrainCircuit, Mic, Phone, FileText, Info
+  CheckCircle2, Activity, BrainCircuit, Mic, Phone, FileText, Info, Download
 } from 'lucide-react'
+import { useToast } from '@/components/shared/Toast'
 
 // ─── KPI Tooltip ────────────────────────────────────────────────────────────
 function KPITooltip({ formula }: { formula: string }) {
@@ -112,7 +113,29 @@ function HeatCell({ value }: { value: number }) {
 export default function AnalyticsPage() {
   const { selectedClient, country, currentUser } = useApp()
   const { t } = useT()
+  const { toast } = useToast()
   const isProvider = currentUser?.role === 'provider'
+
+  const handleExportCSV = () => {
+    const csvSafe = (v: unknown) => { const s = String(v ?? ''); return `"${s.replace(/"/g, '""')}"` }
+    let headers: string[] = []; let rows: (string | number)[][] = []
+    if (tab === 'financial') {
+      headers = ['Claim ID','Client','Payer','Status','Billed','DOS']
+      rows = claims.map(c => [c.id, c.clientName, c.payer, c.status, c.billed || 0, c.dos || ''])
+    } else if (tab === 'operational') {
+      headers = ['Metric','Value']
+      rows = [['Total Claims', claims.length], ['Paid', claims.filter(c=>c.status==='paid').length], ['Denied', claims.filter(c=>c.status==='denied').length]]
+    } else {
+      headers = ['Export Type','Note']
+      rows = [[tab, `Analytics export for ${tab} tab — ${new Date().toLocaleDateString()}`]]
+    }
+    const csv = [headers, ...rows].map(r => r.map(v => csvSafe(v)).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = `analytics-${tab}-${Date.now()}.csv`; a.click()
+    URL.revokeObjectURL(url)
+    toast.success(`${tab} analytics exported as CSV`)
+  }
   const [tab, setTab] = useState<'financial' | 'operational' | 'ai' | 'payer' | 'provider'>(isProvider ? 'provider' : 'financial')
   const [dateRange, setDateRange] = useState('last30')
 
@@ -290,7 +313,8 @@ export default function AnalyticsPage() {
   ] as const
 
   return (
-    <ModuleShell title={t("analytics","title")} subtitle={t("analytics","subtitle")}>
+    <ModuleShell title={t("analytics","title")} subtitle={t("analytics","subtitle")}
+      actions={<button onClick={handleExportCSV} className="flex items-center gap-2 bg-surface-elevated text-content-primary border border-separator rounded-lg px-4 py-2 text-sm hover:bg-surface-secondary transition-colors"><Download size={14}/> Export CSV</button>}>
       <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
         <AlertTriangle size={13} className='shrink-0' />
         Analytics connected — live financial reporting
