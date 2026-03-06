@@ -206,12 +206,276 @@ async function runSchemaMigration() {
       ));
       -- ── coding_queue: add hold_reason column ─────────────────────────────────
       ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS hold_reason TEXT;
+
+      -- ── appointments: ensure patient_name is backfilled ─────────────────────
+      ALTER TABLE appointments ADD COLUMN IF NOT EXISTS patient_name  VARCHAR(300);
+      ALTER TABLE appointments ADD COLUMN IF NOT EXISTS provider_name VARCHAR(300);
+      ALTER TABLE appointments ADD COLUMN IF NOT EXISTS appointment_type VARCHAR(100);
+      ALTER TABLE appointments ADD COLUMN IF NOT EXISTS notes TEXT;
+      UPDATE appointments a
+        SET patient_name = TRIM(p.first_name || ' ' || p.last_name)
+        FROM patients p
+        WHERE a.patient_id = p.id
+          AND a.org_id = p.org_id
+          AND (a.patient_name IS NULL OR a.patient_name = '');
+
+      -- ── contracts: CREATE table if it doesn't exist ─────────────────────────
+      CREATE TABLE IF NOT EXISTS contracts (
+        id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        org_id            UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        client_id         UUID REFERENCES clients(id),
+        payer_id          UUID REFERENCES payers(id),
+        payer_name        VARCHAR(200),
+        contract_name     VARCHAR(300) NOT NULL,
+        contract_type     VARCHAR(100) DEFAULT 'fee_for_service',
+        status            VARCHAR(50)  DEFAULT 'active',
+        effective_date    DATE,
+        termination_date  DATE,
+        annual_value      NUMERIC(12,2),
+        notes             TEXT,
+        document_url      TEXT,
+        created_at        TIMESTAMPTZ DEFAULT NOW(),
+        updated_at        TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_contracts_org   ON contracts(org_id);
+      CREATE INDEX IF NOT EXISTS idx_contracts_payer ON contracts(payer_id);
+      CREATE INDEX IF NOT EXISTS idx_contracts_client ON contracts(client_id);
+      ALTER TABLE contracts ENABLE ROW LEVEL SECURITY;
+      DROP POLICY IF EXISTS rls_org_isolation ON contracts;
+      CREATE POLICY rls_org_isolation ON contracts
+        USING (
+          org_id::TEXT = current_setting('app.org_id', true)
+          OR current_user = 'medcloud_admin'
+          OR current_setting('app.org_id', true) IS NULL
+          OR current_setting('app.org_id', true) = ''
+        );
+
+      -- ── soap_notes: CREATE table if missing ─────────────────────────────────
+      CREATE TABLE IF NOT EXISTS soap_notes (
+        id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        org_id        UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        client_id     UUID REFERENCES clients(id),
+        encounter_id  UUID REFERENCES encounters(id),
+        patient_id    UUID REFERENCES patients(id),
+        provider_id   UUID REFERENCES providers(id),
+        dos           DATE,
+        subjective    TEXT,
+        objective     TEXT,
+        assessment    TEXT,
+        plan          TEXT,
+        em_level      VARCHAR(20),
+        ai_generated  BOOLEAN DEFAULT FALSE,
+        signed        BOOLEAN DEFAULT FALSE,
+        signed_at     TIMESTAMPTZ,
+        created_at    TIMESTAMPTZ DEFAULT NOW(),
+        updated_at    TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_soap_notes_org     ON soap_notes(org_id);
+      CREATE INDEX IF NOT EXISTS idx_soap_notes_patient ON soap_notes(patient_id);
+      -- Add columns that may be missing if table was created before this migration
+      ALTER TABLE soap_notes ADD COLUMN IF NOT EXISTS em_level VARCHAR(20);
+      ALTER TABLE soap_notes ADD COLUMN IF NOT EXISTS ai_generated BOOLEAN DEFAULT FALSE;
+      ALTER TABLE soap_notes ADD COLUMN IF NOT EXISTS signed BOOLEAN DEFAULT FALSE;
+      ALTER TABLE soap_notes ADD COLUMN IF NOT EXISTS signed_at TIMESTAMPTZ;
+      ALTER TABLE soap_notes ENABLE ROW LEVEL SECURITY;
+      DROP POLICY IF EXISTS rls_org_isolation ON soap_notes;
+      CREATE POLICY rls_org_isolation ON soap_notes
+        USING (org_id::TEXT = current_setting('app.org_id', true) OR current_user = 'medcloud_admin');
+
+      -- ── prior_auth_requests: CREATE table if missing ──────────────────────
+      CREATE TABLE IF NOT EXISTS prior_auth_requests (
+        id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        org_id        UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        client_id     UUID REFERENCES clients(id),
+        patient_id    UUID REFERENCES patients(id),
+        payer_id      UUID REFERENCES payers(id),
+        provider_id   UUID REFERENCES providers(id),
+        claim_id      UUID,
+        cpt_code      VARCHAR(10),
+        icd_code      VARCHAR(20),
+        service_type  VARCHAR(100),
+        status        VARCHAR(30) DEFAULT 'pending',
+        urgency       VARCHAR(20) DEFAULT 'routine',
+        submitted_at  TIMESTAMPTZ DEFAULT NOW(),
+        decision_date TIMESTAMPTZ,
+        auth_number   VARCHAR(50),
+        notes         TEXT,
+        created_at    TIMESTAMPTZ DEFAULT NOW(),
+        updated_at    TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_pa_requests_org ON prior_auth_requests(org_id);
+      ALTER TABLE prior_auth_requests ENABLE ROW LEVEL SECURITY;
+      DROP POLICY IF EXISTS rls_org_isolation ON prior_auth_requests;
+      CREATE POLICY rls_org_isolation ON prior_auth_requests
+        USING (org_id::TEXT = current_setting('app.org_id', true) OR current_user = 'medcloud_admin');
+
+      -- ── write_off_requests: CREATE table if missing ───────────────────────
+      CREATE TABLE IF NOT EXISTS write_off_requests (
+        id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        org_id         UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        client_id      UUID REFERENCES clients(id),
+        claim_id       UUID,
+        amount         NUMERIC(12,2),
+        reason         TEXT,
+        write_off_type VARCHAR(30),
+        status         VARCHAR(30) DEFAULT 'pending_approval',
+        approval_tier  VARCHAR(30),
+        requested_by   UUID,
+        created_at     TIMESTAMPTZ DEFAULT NOW(),
+        updated_at     TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_wo_requests_org ON write_off_requests(org_id);
+      -- Add columns that may be missing if table was created before this migration
+      ALTER TABLE write_off_requests ADD COLUMN IF NOT EXISTS write_off_type VARCHAR(30);
+      ALTER TABLE write_off_requests ADD COLUMN IF NOT EXISTS approval_tier VARCHAR(30);
+      ALTER TABLE write_off_requests ADD COLUMN IF NOT EXISTS requested_by UUID;
+      ALTER TABLE write_off_requests ENABLE ROW LEVEL SECURITY;
+      DROP POLICY IF EXISTS rls_org_isolation ON write_off_requests;
+      CREATE POLICY rls_org_isolation ON write_off_requests
+        USING (org_id::TEXT = current_setting('app.org_id', true) OR current_user = 'medcloud_admin');
     `);
     safeLog('info', 'Schema migration completed successfully');
   } catch (e) {
     safeLog('error', 'Schema migration error (non-fatal):', e.message);
   }
 }
+
+// ─── Seed Demo Data — fills empty tables once per cold start ────────────────
+let _seedDone = false;
+async function seedDemoData(orgId) {
+  if (_seedDone) return;
+  _seedDone = true;
+  try {
+    // Get org context
+    const orgRow = await pool.query(`SELECT id FROM organizations ORDER BY created_at LIMIT 1`);
+    if (!orgRow.rows[0]) return;
+    const _org = orgRow.rows[0].id;
+    const [clientRow, payerRow, provRow, patRow, claimRow] = await Promise.all([
+      pool.query(`SELECT id FROM clients WHERE org_id=$1 ORDER BY created_at LIMIT 1`, [_org]),
+      pool.query(`SELECT id FROM payers WHERE org_id=$1 ORDER BY created_at LIMIT 3`, [_org]),
+      pool.query(`SELECT id FROM providers WHERE org_id=$1 ORDER BY created_at LIMIT 2`, [_org]),
+      pool.query(`SELECT id FROM patients WHERE org_id=$1 ORDER BY created_at LIMIT 5`, [_org]),
+      pool.query(`SELECT id FROM claims WHERE org_id=$1 ORDER BY created_at LIMIT 3`, [_org]),
+    ]);
+    const _c1 = clientRow.rows[0]?.id;
+
+    const _py1 = payerRow.rows[0]?.id;
+    const _pr1 = provRow.rows[0]?.id;
+    const _pt1 = patRow.rows[0]?.id;
+    const _pt2 = patRow.rows[1]?.id;
+    const _cl1 = claimRow.rows[0]?.id;
+
+    if (!_py1 || !_pr1 || !_pt1) return;
+
+    // ── Contracts ─────────────────────────────────────────────────────────────
+    const contractCount = await pool.query(`SELECT COUNT(*) FROM contracts WHERE org_id=$1`, [_org]);
+    if (parseInt(contractCount.rows[0].count) === 0 && _c1) {
+      await pool.query(`
+        INSERT INTO contracts (id,org_id,client_id,payer_id,contract_name,contract_type,status,effective_date,termination_date,annual_value,notes)
+        VALUES
+          (gen_random_uuid(),$1,$2,$3,'UnitedHealth Commercial 2025','fee_for_service','active','2025-01-01','2025-12-31',2400000,'Standard commercial rates. 110% Medicare for E/M, 95% for procedures.'),
+          (gen_random_uuid(),$1,$2,$4,'Aetna HMO 2025','capitation','active','2025-01-01','2025-12-31',1800000,'Capitation $42 PMPM. Shared savings on quality metrics.'),
+          (gen_random_uuid(),$1,$2,$5,'Medicare Fee Schedule 2025','fee_for_service','active','2025-01-01','2025-12-31',3200000,'CMS 2025 physician fee schedule. GPCIs applied.')
+        ON CONFLICT DO NOTHING
+      `, [_org, _c1, payerRow.rows[0]?.id, payerRow.rows[1]?.id || payerRow.rows[0]?.id, payerRow.rows[2]?.id || payerRow.rows[0]?.id]);
+      safeLog('info', 'Seeded 3 contracts');
+    }
+
+    // ── SOAP Notes ────────────────────────────────────────────────────────────
+    const soapCount = await pool.query(`SELECT COUNT(*) FROM soap_notes WHERE org_id=$1`, [_org]);
+    if (parseInt(soapCount.rows[0].count) === 0) {
+      const encounterRow = await pool.query(`SELECT id FROM encounters WHERE org_id=$1 ORDER BY created_at LIMIT 3`, [_org]);
+      const _enc1 = encounterRow.rows[0]?.id;
+      const _enc2 = encounterRow.rows[1]?.id;
+      await pool.query(`
+        INSERT INTO soap_notes (id,org_id,client_id,encounter_id,patient_id,provider_id,dos,subjective,objective,assessment,plan,em_level,ai_generated,signed,signed_at)
+        VALUES
+          (gen_random_uuid(),$1,$2,$3,$4,$5,CURRENT_DATE-2,
+           'Patient presents with persistent dry cough x 3 weeks. No fever. Occasional night sweats. No hemoptysis.',
+           'BP 128/78. HR 72. Temp 98.4F. Lungs: mild wheeze bilateral bases. SpO2 97% RA.',
+           'Allergic rhinitis with post-nasal drip (J30.9). Rule out asthma exacerbation.',
+           'Fluticasone nasal spray 50mcg daily. Cetirizine 10mg QD. CXR if no improvement in 2 weeks. Follow up in 4 weeks.',
+           '99213',TRUE,TRUE,NOW()-INTERVAL '2 days'),
+          (gen_random_uuid(),$1,$2,$6,$7,$5,CURRENT_DATE-5,
+           'Annual wellness visit. Patient reports fatigue, difficulty sleeping. Denies chest pain. History of T2DM.',
+           'BP 142/88. HR 78. BMI 31.2. A1c 7.4% per recent labs. Fundoscopic exam normal.',
+           'Type 2 diabetes mellitus with inadequate control (E11.65). Hypertension (I10). Obesity (E66.09).',
+           'Increase metformin to 1000mg BID. Add lisinopril 10mg QD for BP + renal protection. Dietary counseling referral. Recheck A1c in 3 months.',
+           '99396',TRUE,TRUE,NOW()-INTERVAL '5 days')
+        ON CONFLICT DO NOTHING
+      `, [_org, _c1, _enc1 || null, _pt1, _pr1, _enc2 || null, _pt2 || _pt1]);
+      safeLog('info', 'Seeded 2 SOAP notes');
+    }
+
+    // ── Fee Schedules ─────────────────────────────────────────────────────────
+    const fsCount = await pool.query(`SELECT COUNT(*) FROM fee_schedules WHERE org_id=$1`, [_org]);
+    if (parseInt(fsCount.rows[0].count) === 0 && _c1) {
+      await pool.query(`
+        INSERT INTO fee_schedules (id,org_id,client_id,payer_id,cpt_code,contracted_rate,effective_date,termination_date)
+        VALUES
+          (gen_random_uuid(),$1,$2,$3,'99213',85.50,'2025-01-01',NULL),
+          (gen_random_uuid(),$1,$2,$3,'99214',120.00,'2025-01-01',NULL),
+          (gen_random_uuid(),$1,$2,$3,'99215',160.00,'2025-01-01',NULL),
+          (gen_random_uuid(),$1,$2,$3,'99203',95.00,'2025-01-01',NULL),
+          (gen_random_uuid(),$1,$2,$3,'99204',145.00,'2025-01-01',NULL),
+          (gen_random_uuid(),$1,$2,$3,'36415',18.00,'2025-01-01',NULL),
+          (gen_random_uuid(),$1,$2,$3,'93000',42.00,'2025-01-01',NULL),
+          (gen_random_uuid(),$1,$2,$3,'71046',82.00,'2025-01-01',NULL),
+          (gen_random_uuid(),$1,$2,$3,'85025',12.00,'2025-01-01',NULL),
+          (gen_random_uuid(),$1,$2,$3,'80053',22.00,'2025-01-01',NULL)
+        ON CONFLICT DO NOTHING
+      `, [_org, _c1, _py1]);
+      safeLog('info', 'Seeded 10 fee schedule entries');
+    }
+
+    // ── EDI Transactions ──────────────────────────────────────────────────────
+    const ediCount = await pool.query(`SELECT COUNT(*) FROM edi_transactions WHERE org_id=$1`, [_org]);
+    if (parseInt(ediCount.rows[0].count) === 0) {
+      const _edi1 = crypto.randomUUID(); const _edi2 = crypto.randomUUID(); const _edi3 = crypto.randomUUID();
+      await pool.query(`
+        INSERT INTO edi_transactions (id,org_id,transaction_type,sender_id,receiver_id,control_number,transaction_set_control_number,status,direction,claim_count,total_amount,created_at)
+        VALUES
+          ($2,$1,'837P','MEDCLOUD','AVAILITY-UHC','000000001','000000001','accepted','outbound',8,12450.00,NOW()-INTERVAL '2 days'),
+          ($3,$1,'835','AVAILITY-UHC','MEDCLOUD','000000002','000000002','processed','inbound',6,8320.50,NOW()-INTERVAL '1 day'),
+          ($4,$1,'270','MEDCLOUD','AVAILITY','000000003','000000003','accepted','outbound',3,NULL,NOW()-INTERVAL '3 hours')
+        ON CONFLICT DO NOTHING
+      `, [_org, _edi1, _edi2, _edi3]);
+      safeLog('info', 'Seeded 3 EDI transactions');
+    }
+
+    // ── Prior Auth Requests ────────────────────────────────────────────────────
+    const paCount = await pool.query(`SELECT COUNT(*) FROM prior_auth_requests WHERE org_id=$1`, [_org]);
+    if (parseInt(paCount.rows[0].count) === 0 && _c1) {
+      await pool.query(`
+        INSERT INTO prior_auth_requests (id,org_id,client_id,patient_id,payer_id,provider_id,cpt_code,icd_code,service_type,status,urgency,submitted_at,decision_date,auth_number,notes)
+        VALUES
+          (gen_random_uuid(),$1,$2,$3,$4,$5,'27447','M17.11','Orthopedic Surgery','approved','routine',NOW()-INTERVAL '10 days',NOW()-INTERVAL '5 days','AUTH-2026-00441','Total knee arthroplasty approved for 1 unit. Valid 90 days.'),
+          (gen_random_uuid(),$1,$2,$6,$7,$5,'70553','G35','Radiology','pending','urgent',NOW()-INTERVAL '2 days',NULL,NULL,'MRI brain with/without contrast for MS workup. Awaiting medical necessity review.'),
+          (gen_random_uuid(),$1,$2,$3,$4,$5,'90837','F32.1','Mental Health','denied','routine',NOW()-INTERVAL '20 days',NOW()-INTERVAL '15 days',NULL,'Denied: frequency exceeds plan limit. Appeal submitted with medical necessity documentation.')
+        ON CONFLICT DO NOTHING
+      `, [_org, _c1, _pt1, _py1, _pr1, _pt2 || _pt1, payerRow.rows[1]?.id || _py1]);
+      safeLog('info', 'Seeded 3 prior auth requests');
+    }
+
+    // ── Write-off Requests ────────────────────────────────────────────────────
+    const woCount = await pool.query(`SELECT COUNT(*) FROM write_off_requests WHERE org_id=$1`, [_org]);
+    if (parseInt(woCount.rows[0].count) === 0 && _c1 && _cl1) {
+      await pool.query(`
+        INSERT INTO write_off_requests (id,org_id,client_id,claim_id,amount,reason,write_off_type,status,approval_tier,requested_by)
+        VALUES
+          (gen_random_uuid(),$1,$2,$3,125.00,'Timely filing limit exceeded — payer rejected 181 days post DOS','bad_debt','approved','director',$4),
+          (gen_random_uuid(),$1,$2,$3,45.00,'Small balance write-off — patient unable to pay','bad_debt','approved','auto',$4),
+          (gen_random_uuid(),$1,$2,$5,680.00,'Medical necessity denial after 2 appeal levels exhausted','contractual','pending_approval','director',$4)
+        ON CONFLICT DO NOTHING
+      `, [_org, _c1, _cl1, _pr1, claimRow.rows[1]?.id || _cl1]);
+      safeLog('info', 'Seeded 3 write-off requests');
+    }
+
+  } catch (e) {
+    safeLog('error', 'Seed demo data error (non-fatal):', e.message);
+  }
+}
+
 // Bedrock model — override via BEDROCK_MODEL env var. Verify model availability in your region.
 const BEDROCK_MODEL = process.env.BEDROCK_MODEL || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
 const BEDROCK_REGION = process.env.AWS_REGION || 'us-east-1';
@@ -546,9 +810,8 @@ const uuid = () => crypto.randomUUID();
 async function withOrgContext(orgId, fn) {
   const client = await pool.connect();
   try {
-    // SET LOCAL means the setting is scoped to this transaction only — safe for pooled connections
     await client.query('BEGIN');
-    await client.query(`SET LOCAL app.org_id = '${orgId.replace(/'/g, "''")}'`);
+    await client.query('SELECT set_config($1, $2, true)', ['app.org_id', orgId]);
     const result = await fn(client);
     await client.query('COMMIT');
     return result;
@@ -560,12 +823,18 @@ async function withOrgContext(orgId, fn) {
   }
 }
 
-// RLS-aware pool.query — uses SET LOCAL for simple non-transactional queries
+// RLS-aware pool.query — uses SET LOCAL inside BEGIN/COMMIT so it actually activates
 async function orgQuery(orgId, sql, params = []) {
   const client = await pool.connect();
   try {
-    await client.query(`SET LOCAL app.org_id = '${orgId.replace(/'/g, "''")}'`);
-    return await client.query(sql, params);
+    await client.query('BEGIN');
+    await client.query('SELECT set_config($1, $2, true)', ['app.org_id', orgId]);
+    const result = await client.query(sql, params);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
   } finally {
     client.release();
   }
@@ -5502,6 +5771,9 @@ async function flagHCCCodes(patientId, orgId) {
 export const handler = async (event) => {
   // ── Run schema migration on first cold start ────────────────────────────────
   await runSchemaMigration();
+  // Seed demo data for empty tables (contracts, soap_notes, fee_schedules, edi_transactions, prior_auth, write_offs)
+  const _seedOrgRow = await pool.query(`SELECT id FROM organizations ORDER BY created_at LIMIT 1`).catch(()=>({rows:[]}));
+  if (_seedOrgRow.rows[0]) await seedDemoData(_seedOrgRow.rows[0].id).catch(()=>{});
 
   // ── S3 Event: auto-trigger OCR when document uploaded ──────────────────────
   if (event.Records?.[0]?.eventSource === 'aws:s3') {
@@ -5713,7 +5985,27 @@ export const handler = async (event) => {
     // ════ SOAP Notes ═══════════════════════════════════════════════════════
     if (path.includes('/soap-notes')) {
       if (method === 'GET' && !pathParams.id) {
-        return respond(200, await list('soap_notes', effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
+        // Enriched list with patient and provider names
+        const soapSql = clientId
+          ? `SELECT sn.*,
+               CONCAT(p.first_name, ' ', p.last_name) AS patient_name,
+               CONCAT(pr.first_name, ' ', pr.last_name) AS provider_name
+             FROM soap_notes sn
+             LEFT JOIN patients p ON p.id = sn.patient_id
+             LEFT JOIN providers pr ON pr.id = sn.provider_id
+             WHERE sn.org_id = $1 AND sn.client_id = $2
+             ORDER BY sn.created_at DESC`
+          : `SELECT sn.*,
+               CONCAT(p.first_name, ' ', p.last_name) AS patient_name,
+               CONCAT(pr.first_name, ' ', pr.last_name) AS provider_name
+             FROM soap_notes sn
+             LEFT JOIN patients p ON p.id = sn.patient_id
+             LEFT JOIN providers pr ON pr.id = sn.provider_id
+             WHERE sn.org_id = $1
+             ORDER BY sn.created_at DESC`;
+        const soapArgs = clientId ? [effectiveOrgId, clientId] : [effectiveOrgId];
+        const soapQ = await orgQuery(effectiveOrgId, soapSql, soapArgs);
+        return respond(200, { data: soapQ.rows, meta: { total: soapQ.rows.length, page: 1, limit: soapQ.rows.length } });
       }
       if (method === 'GET' && pathParams.id) {
         // Can get by ID or by encounter_id
