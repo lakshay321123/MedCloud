@@ -328,7 +328,7 @@ export interface ApiRARCCode {
 export interface ApiDashboardMetrics {
   total_patients: number
   total_claims: number
-  claims_by_status: Array<{ status: string; count: string }>
+  claims_by_status: Array<{ status: string; count: number; total?: string }>
   open_denials: number
   total_ar: number
   total_collections_mtd: number

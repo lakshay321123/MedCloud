@@ -6293,6 +6293,7 @@ export const handler = async (event) => {
         total_claims: totalClaims,
         total_patients: Number(patientCount.rows[0]?.total || 0),
         open_denials: openDenials,
+        total_ar: totalBilled,
         total_collections_mtd: totalCollected,
         claims_by_status: claimsRows,
         ar_aging: {

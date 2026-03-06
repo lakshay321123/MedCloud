@@ -12,7 +12,28 @@ import {
   CheckCircle2, ShieldAlert, Receipt, ScanLine, Send, ShieldCheck, XCircle
 } from 'lucide-react'
 // removed all demo imports from dashboard
-import { useDashboardMetrics, useClientHealthScores } from '@/lib/hooks'
+import { useDashboardMetrics } from '@/lib/hooks'
+
+// ── Date / time formatters (US healthcare — en-US locale is intentional) ─────
+const APP_LOCALE = 'en-US'
+
+/** Formats a `HH:MM:SS` time string as "9:30 AM" */
+function formatApptTime(t?: string): string {
+  if (!t) return ''
+  try { return new Date(`1970-01-01T${t}`).toLocaleTimeString(APP_LOCALE, { hour: 'numeric', minute: '2-digit' }) }
+  catch { return t }
+}
+
+/**
+ * Formats a `YYYY-MM-DD` date string as "Mar 6, 2026".
+ * Appends T00:00:00 so the date is parsed in local time — avoids UTC-midnight
+ * off-by-one-day issues for users in negative-offset timezones (US West Coast, etc.).
+ */
+function formatApptDate(d?: string): string {
+  if (!d) return ''
+  try { return new Date(`${d}T00:00:00`).toLocaleDateString(APP_LOCALE, { month: 'short', day: 'numeric', year: 'numeric' }) }
+  catch { return d }
+}
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 function QuickLinkCard({ title, subtitle, href, icon }: { title: string; subtitle: string; href: string; icon: React.ReactNode }) {
@@ -364,7 +385,7 @@ function ProviderDashboard() {
             <div key={apt.id} className="flex items-center justify-between p-3 bg-surface-elevated rounded-lg border border-separator">
               <div>
                 <p className="text-[13px] font-medium text-content-primary">{apt.first_name} {apt.last_name}</p>
-                <p className="text-[12px] text-content-secondary">{apt.appointment_time} · {apt.appointment_date}</p>
+                <p className="text-[12px] text-content-secondary">{formatApptTime(apt.appointment_time)} · {formatApptDate(apt.appointment_date)}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Link href="/ai-scribe" className="text-[12px] text-brand font-medium">Start Visit →</Link>
@@ -386,8 +407,11 @@ function ClientDashboard() {
   const router = useRouter()
   const { selectedClient } = useApp()
   const { data: metrics } = useDashboardMetrics()
-  const mtdCollections = 84200
-  const denialRate = 8.3
+  const mtdCollections = Number(metrics?.total_collections_mtd) || 0
+  const totalClaims = Number(metrics?.total_claims) || 0
+  const openDenials = Number(metrics?.open_denials) || 0
+  const denialRate = totalClaims > 0 ? ((openDenials / totalClaims) * 100).toFixed(1) : '0.0'
+  const daysInAR = 28 // calculated server-side in Sprint 3
   const actionNeeded = metrics?.claims_by_status
     ? (metrics.claims_by_status.filter(s => s.status === 'denied' || s.status === 'scrub_failed').reduce((sum, s) => sum + Number(s.count), 0))
     : 0
@@ -413,10 +437,10 @@ function ClientDashboard() {
         <div className="bg-surface-elevated rounded-xl p-5 border border-separator">
           <p className="text-[12px] text-content-secondary mb-1">MTD Collections</p>
           <p className="text-3xl font-bold text-content-primary">${mtdCollections.toLocaleString()}</p>
-          <p className="text-[12px] text-emerald-500 mt-1">↑ 12% vs last month</p>
+          <p className="text-[12px] text-emerald-500 mt-1">↑ vs last month</p>
         </div>
         <KPICard label={t("dashboard","denialRate")} value={`${denialRate}%`} icon={<ShieldAlert size={20} />} />
-        <KPICard label={t("dashboard","daysInAR")} value={28} icon={<TrendingUp size={20} />} />
+        <KPICard label={t("dashboard","daysInAR")} value={daysInAR} icon={<TrendingUp size={20} />} />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <QuickLinkCard title="My Claims" subtitle="View all claim statuses" href="/portal/watch-track" icon={<Eye size={18} />} />
