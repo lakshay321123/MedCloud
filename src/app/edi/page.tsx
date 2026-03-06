@@ -1,6 +1,7 @@
 'use client'
 import { useT } from '@/lib/i18n'
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -259,13 +260,23 @@ function EDIContent() {
 
 function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () => void }) {
   const { toast } = useToast()
+  // Mount portal target — must be client-side only
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
   function handleCopyId() {
     navigator.clipboard.writeText(tx.id).then(() => toast.success('Transaction ID copied'))
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+  // Close on Escape key
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const content = (
+    <div className="fixed inset-0 z-[200] flex justify-end">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full max-w-lg bg-surface border-l border-separator shadow-xl overflow-y-auto">
         {/* Header */}
@@ -339,6 +350,10 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
       </div>
     </div>
   )
+
+  // Render into document.body via portal to escape overflow:hidden / stacking context ancestors
+  if (!mounted) return null
+  return createPortal(content, document.body)
 }
 
 function DetailField({ label, value, icon, action }: { label: string; value: string; icon?: React.ReactNode; action?: React.ReactNode }) {
