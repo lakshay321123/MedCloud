@@ -790,7 +790,7 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
               {pa.status === 'denied' && (
                 <button onClick={async () => {
                   try {
-                    await createTask({ title: `P2P Review: ${pa.procedure_code || pa.service_type || 'Auth'} — ${pa.patient_name || 'Patient'}`, description: `Peer-to-peer review requested for denied prior auth. Payer: ${pa.payer_name || 'Unknown'}. Auth #: ${pa.auth_number || pa.id}`, task_type: 'prior_auth', priority: 'high', status: 'open', client_id: pa.client_id })
+                    await createTask({ title: `P2P Review: ${pa.cpt_codes?.[0] || 'Auth'} — ${pa.patient_name || 'Patient'}`, description: `Peer-to-peer review requested for denied prior auth. Payer: ${pa.payer_name || 'Unknown'}. Auth #: ${pa.auth_number || pa.id}`, task_type: 'prior_auth', priority: 'high', status: 'open', client_id: pa.client_id })
                     toast.success('Peer-to-peer review task created — clinical team notified')
                     onUpdate()
                   } catch { toast.info('Peer-to-peer review requested') }

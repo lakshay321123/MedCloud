@@ -89,7 +89,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
               <button onClick={async () => {
                 setSendingToCoding(true)
                 try {
-                  await createCoding({ status: 'pending', notes: `Document: ${doc.title || doc.patient || 'Unknown'}` })
+                  await createCoding({ status: 'pending', notes: `Document: ${doc.name || doc.patient || 'Unknown'}` })
                   toast.success('Sent to coding queue')
                   onClose()
                 } catch { toast.success('Sent to coding queue') } finally { setSendingToCoding(false) }

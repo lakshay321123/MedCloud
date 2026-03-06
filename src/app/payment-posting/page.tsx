@@ -11,6 +11,7 @@ import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
 import { useERAFiles, useAutoPostPayments, useCreateERAFile, useCreateBankDeposit, useRequestUploadUrl } from '@/lib/hooks'
+import type { ApiBankDeposit } from '@/lib/hooks/useEntities'
 
 interface LineItem {
   id: string
@@ -433,7 +434,7 @@ export default function PaymentPostingPage() {
             const depositDate = prompt('Deposit date (YYYY-MM-DD):', new Date().toISOString().split('T')[0])
             if (!depositDate) return
             try {
-              await createBankDeposit({ deposit_amount: parseFloat(amount), deposit_date: depositDate, source: 'manual', status: 'pending' } as Record<string, unknown>)
+              await createBankDeposit({ amount: parseFloat(amount), deposit_date: depositDate, deposit_method: 'manual', reconciled: false, notes: 'Uploaded via Payment Posting' } as Partial<ApiBankDeposit>)
               toast.success(`Bank deposit of $${parseFloat(amount).toLocaleString()} recorded — ready for reconciliation`)
             } catch { toast.info('Bank deposit logged') }
           }} className="text-xs bg-emerald-500/10 text-emerald-500 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-colors">Upload Statement</button>
