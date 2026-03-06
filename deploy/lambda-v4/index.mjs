@@ -106,6 +106,61 @@ try {
 } catch { console.log('Bedrock SDK not available — AI coding will return mock suggestions'); }
 
 const S3_BUCKET = process.env.S3_BUCKET || 'medcloud-documents-us-prod';
+
+// ─── Schema Migration — adds missing columns that were omitted from v4-seed.sql ──
+// Idempotent: uses ADD COLUMN IF NOT EXISTS. Runs once per cold start.
+let _migrationDone = false;
+async function runSchemaMigration() {
+  if (_migrationDone) return;
+  _migrationDone = true;
+  try {
+    await pool.query(`
+      -- ── claims: missing columns ─────────────────────────────────────────────
+      ALTER TABLE claims ADD COLUMN IF NOT EXISTS adjustment_amount    NUMERIC(10,2) DEFAULT 0;
+      ALTER TABLE claims ADD COLUMN IF NOT EXISTS billed_amount        NUMERIC(10,2) DEFAULT 0;
+      ALTER TABLE claims ADD COLUMN IF NOT EXISTS allowed_amount       NUMERIC(10,2) DEFAULT 0;
+      ALTER TABLE claims ADD COLUMN IF NOT EXISTS patient_responsibility NUMERIC(10,2) DEFAULT 0;
+      ALTER TABLE claims ADD COLUMN IF NOT EXISTS timely_filing_deadline DATE;
+      ALTER TABLE claims ADD COLUMN IF NOT EXISTS timely_filing_days_remaining INTEGER;
+      ALTER TABLE claims ADD COLUMN IF NOT EXISTS timely_filing_risk   BOOLEAN DEFAULT FALSE;
+      ALTER TABLE claims ADD COLUMN IF NOT EXISTS submitted_at         TIMESTAMPTZ;
+      ALTER TABLE claims ADD COLUMN IF NOT EXISTS next_action_date     DATE;
+      ALTER TABLE claims ADD COLUMN IF NOT EXISTS paid_at              TIMESTAMPTZ;
+
+      -- ── Initialize claims new columns from existing data ────────────────────
+      UPDATE claims SET billed_amount = COALESCE(total_charges, 0) WHERE billed_amount = 0 OR billed_amount IS NULL;
+      UPDATE claims SET allowed_amount = COALESCE(total_paid, 0)   WHERE allowed_amount = 0 OR allowed_amount IS NULL;
+
+      -- ── payments: rename aliases as new columns ──────────────────────────────
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS amount_paid      NUMERIC(10,2) DEFAULT 0;
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS billed_amount    NUMERIC(10,2) DEFAULT 0;
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS allowed_amount   NUMERIC(10,2) DEFAULT 0;
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS adjustment_amount NUMERIC(10,2) DEFAULT 0;
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS payment_date     DATE;
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS check_number     VARCHAR(100);
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS status           VARCHAR(50) DEFAULT 'posted';
+
+      -- ── Initialize payments new columns from existing data ──────────────────
+      UPDATE payments SET amount_paid   = COALESCE(paid, 0)    WHERE amount_paid = 0 OR amount_paid IS NULL;
+      UPDATE payments SET billed_amount = COALESCE(billed, 0)  WHERE billed_amount = 0 OR billed_amount IS NULL;
+      UPDATE payments SET allowed_amount= COALESCE(allowed, 0) WHERE allowed_amount = 0 OR allowed_amount IS NULL;
+      UPDATE payments SET payment_date  = COALESCE(dos, CURRENT_DATE) WHERE payment_date IS NULL;
+      UPDATE payments SET status        = CASE action WHEN 'posted' THEN 'posted' WHEN 'pending' THEN 'pending' ELSE 'posted' END WHERE status IS NULL OR status = 'posted';
+
+      -- ── era_files: rename aliases ────────────────────────────────────────────
+      ALTER TABLE era_files ADD COLUMN IF NOT EXISTS total_paid    NUMERIC(10,2) DEFAULT 0;
+      ALTER TABLE era_files ADD COLUMN IF NOT EXISTS payment_date  DATE;
+      UPDATE era_files SET total_paid   = COALESCE(total_amount, 0) WHERE total_paid = 0 OR total_paid IS NULL;
+      UPDATE era_files SET payment_date = COALESCE(check_date, CURRENT_DATE) WHERE payment_date IS NULL;
+
+      -- ── scrub_rules: add ordering column ────────────────────────────────────
+      ALTER TABLE scrub_rules ADD COLUMN IF NOT EXISTS rule_order INTEGER DEFAULT 0;
+    `);
+    safeLog('info', 'Schema migration completed successfully');
+  } catch (e) {
+    safeLog('error', 'Schema migration error (non-fatal):', e.message);
+  }
+}
 // Bedrock model — override via BEDROCK_MODEL env var. Verify model availability in your region.
 const BEDROCK_MODEL = process.env.BEDROCK_MODEL || 'anthropic.claude-sonnet-4-5-20250929-v1:0';
 const BEDROCK_REGION = process.env.AWS_REGION || 'us-east-1';
@@ -5330,6 +5385,9 @@ async function flagHCCCodes(patientId, orgId) {
 // MAIN HANDLER
 // ════════════════════════════════════════════════════════════════════════════════
 export const handler = async (event) => {
+  // ── Run schema migration on first cold start ────────────────────────────────
+  await runSchemaMigration();
+
   // ── S3 Event: auto-trigger OCR when document uploaded ──────────────────────
   if (event.Records?.[0]?.eventSource === 'aws:s3') {
     const results = [];
@@ -5669,7 +5727,7 @@ export const handler = async (event) => {
     // ════ Scrub Rules ══════════════════════════════════════════════════════
     if (path.includes('/scrub-rules')) {
       if (method === 'GET') {
-        return respond(200, await list('scrub_rules', effectiveOrgId, null, 'ORDER BY severity DESC, rule_order'));
+        return respond(200, await list('scrub_rules', effectiveOrgId, null, 'ORDER BY severity DESC, rule_code'));
       }
     }
 
