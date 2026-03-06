@@ -260,37 +260,70 @@ function EDIContent() {
 
 function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () => void }) {
   const { toast } = useToast()
-  // Mount portal target — must be client-side only
   const [mounted, setMounted] = useState(false)
+  const drawerRef = React.useRef<HTMLDivElement>(null)
+  const closeButtonRef = React.useRef<HTMLButtonElement>(null)
   useEffect(() => { setMounted(true) }, [])
+
+  // Move focus into drawer on open; restore to trigger on close
+  useEffect(() => {
+    if (!mounted) return
+    const prev = document.activeElement as HTMLElement | null
+    closeButtonRef.current?.focus()
+    return () => { prev?.focus() }
+  }, [mounted])
+
+  // Trap focus within drawer — Tab cycles through focusable children only
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') { onClose(); return }
+      if (e.key !== 'Tab' || !drawerRef.current) return
+      const focusable = Array.from(
+        drawerRef.current.querySelectorAll<HTMLElement>(
+          'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+        )
+      )
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus() }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus() }
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   function handleCopyId() {
     navigator.clipboard.writeText(tx.id).then(() => toast.success('Transaction ID copied'))
   }
 
-  // Close on Escape key
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  const titleId = `edi-drawer-title-${tx.id.slice(0, 8)}`
 
   const content = (
-    <div className="fixed inset-0 z-[200] flex justify-end">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-surface border-l border-separator shadow-xl overflow-y-auto">
+    <div className="fixed inset-0 z-[200] flex justify-end" aria-hidden="false">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+      <div
+        ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative w-full max-w-lg bg-surface border-l border-separator shadow-xl overflow-y-auto"
+      >
         {/* Header */}
         <div className="sticky top-0 bg-surface border-b border-separator px-6 py-4 flex items-center justify-between z-10">
           <div>
             <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold ${TYPE_COLORS[tx.transaction_type] || 'bg-gray-500/10 text-gray-500'}`}>
+              <span id={titleId} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold ${TYPE_COLORS[tx.transaction_type] || 'bg-gray-500/10 text-gray-500'}`}>
                 {tx.transaction_type}
               </span>
               <StatusBadge status={tx.status} />
             </div>
             <p className="text-[11px] text-content-tertiary mt-1">{TYPE_LABELS[tx.transaction_type] || tx.transaction_type}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-btn hover:bg-surface-elevated text-content-secondary"><X size={18} /></button>
+          <button ref={closeButtonRef} onClick={onClose} aria-label="Close drawer" className="p-1.5 rounded-btn hover:bg-surface-elevated text-content-secondary"><X size={18} /></button>
         </div>
 
         {/* Details */}
