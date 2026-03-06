@@ -255,6 +255,8 @@ export default function PaymentPostingPage() {
                         const result = await createERAFile({
                           file_name: uploadedFile.name,
                           file_type: ext === '835' ? '835' : ext === 'edi' ? 'edi' : 'txt',
+                          s3_key: `era/${uploadedFile.name}`,
+                          s3_bucket: 'medcloud-documents',
                           payer_name: '',
                           status: 'new',
                           claim_count: 0,
