@@ -10,9 +10,19 @@ import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 
 const MAX_FILES = 10
 
-interface FileItem { name: string; size: string }
+interface FileItem { name: string; size: string; docType: string }
 
 type Step = 1 | 2 | 3
+
+type DocType = 'superbill' | 'clinical_note' | 'referral' | 'license' | 'insurance'
+
+const DOC_TYPES: { key: DocType; label: string; icon: string; filePrefix: string; ext: string; size: string }[] = [
+  { key: 'superbill',    label: 'Superbill',       icon: '🧾', filePrefix: 'superbill',       ext: 'pdf', size: '1.2 MB' },
+  { key: 'clinical_note',label: 'Visit Note',      icon: '📋', filePrefix: 'visit_note',       ext: 'pdf', size: '0.8 MB' },
+  { key: 'referral',     label: 'Referral',        icon: '📨', filePrefix: 'referral_letter',  ext: 'pdf', size: '0.5 MB' },
+  { key: 'license',      label: 'License',         icon: '🪪', filePrefix: 'provider_license', ext: 'pdf', size: '1.0 MB' },
+  { key: 'insurance',    label: 'Insurance Card',  icon: '🏥', filePrefix: 'insurance_card',   ext: 'jpg', size: '0.3 MB' },
+]
 
 export default function ScanSubmitPage() {
   const { selectedClient, currentUser, country } = useApp()
@@ -41,6 +51,7 @@ export default function ScanSubmitPage() {
   const [showNewPatient, setShowNewPatient] = useState(false)
   const [newPatient, setNewPatient] = useState({ firstName:'', lastName:'', dob:'', phone:'' })
   const [files, setFiles] = useState<FileItem[]>([])
+  const [selectedDocType, setSelectedDocType] = useState<DocType | null>(null)
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -51,12 +62,21 @@ export default function ScanSubmitPage() {
     !patientSearch || (p.name || '').toLowerCase().includes(patientSearch.toLowerCase())
   )
 
+  function addDocTypeFile(type: DocType) {
+    const def = DOC_TYPES.find(d => d.key === type)!
+    const dateStr = new Date().toISOString().split('T')[0]
+    const newFile: FileItem = {
+      name: `${def.filePrefix}_${dateStr}.${def.ext}`,
+      size: def.size,
+      docType: def.label,
+    }
+    setFiles(prev => [...prev, newFile].slice(0, MAX_FILES))
+    setSelectedDocType(type)
+  }
+
   function addSimFiles() {
-    const simFiles: FileItem[] = [
-      { name:'superbill_2026-03-02.pdf', size:'1.2 MB' },
-      { name:'clinical_note.pdf', size:'0.8 MB' },
-    ]
-    setFiles(prev => [...prev, ...simFiles].slice(0, MAX_FILES))
+    addDocTypeFile('superbill')
+    addDocTypeFile('clinical_note')
   }
 
   function handleSubmit() {
@@ -66,7 +86,7 @@ export default function ScanSubmitPage() {
 
   function handleReset() {
     setStep(1); setPatientId(''); setFiles([]); setNote(''); setSubmitted(false)
-    setPatientSearch(''); setShowNewPatient(false)
+    setPatientSearch(''); setShowNewPatient(false); setSelectedDocType(null)
   }
 
   // Submission history
@@ -207,13 +227,41 @@ export default function ScanSubmitPage() {
           {step === 2 && (
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-content-primary">Upload Documents</h3>
+
+              {/* Document type quick-add chips */}
+              <div>
+                <p className="text-xs text-content-secondary mb-2">Click a document type to add a file:</p>
+                <div className="flex flex-wrap gap-2">
+                  {DOC_TYPES.map(dt => (
+                    <button
+                      key={dt.key}
+                      onClick={() => addDocTypeFile(dt.key)}
+                      disabled={files.length >= MAX_FILES}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all disabled:opacity-30 disabled:cursor-not-allowed
+                        ${selectedDocType === dt.key
+                          ? 'bg-brand text-white border-brand'
+                          : 'bg-surface-elevated text-content-primary border-separator hover:border-brand/40 hover:bg-brand/5'
+                        }`}
+                    >
+                      <span>{dt.icon}</span> {dt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-px bg-separator"/>
+                <span className="text-xs text-content-tertiary">or drag & drop</span>
+                <div className="flex-1 h-px bg-separator"/>
+              </div>
+
               <div
                 onDragOver={e=>e.preventDefault()}
                 onDrop={e=>{e.preventDefault();addSimFiles()}}
                 onClick={addSimFiles}
-                className={`border-2 border-dashed rounded-xl py-12 text-center cursor-pointer transition-all ${files.length?'border-brand/40 bg-brand/5':'border-separator hover:border-brand/30 hover:bg-surface-elevated'}`}>
-                <Upload size={32} className={`mx-auto mb-3 ${files.length?'text-brand':'text-content-tertiary'}`}/>
-                <p className="text-sm font-medium text-content-primary">Drop superbills, clinical notes, or referrals</p>
+                className={`border-2 border-dashed rounded-xl py-10 text-center cursor-pointer transition-all ${files.length?'border-brand/40 bg-brand/5':'border-separator hover:border-brand/30 hover:bg-surface-elevated'}`}>
+                <Upload size={28} className={`mx-auto mb-3 ${files.length?'text-brand':'text-content-tertiary'}`}/>
+                <p className="text-sm font-medium text-content-primary">Drop superbills, visit notes, referrals, or insurance cards</p>
                 <p className="text-[11px] text-content-secondary mt-1">PDF, JPG, PNG, HEIC · Up to {MAX_FILES} files · Max 25MB each</p>
                 {files.length < MAX_FILES && <p className="text-[10px] text-brand mt-2">Click to browse</p>}
               </div>
@@ -223,10 +271,13 @@ export default function ScanSubmitPage() {
                   {files.map((f,i)=>(
                     <div key={i} className="flex items-center gap-3 bg-surface-elevated rounded-lg px-3 py-2.5">
                       <FileText size={16} className="text-brand shrink-0"/>
-                      <span className="text-sm flex-1 truncate">{f.name}</span>
-                      <span className="text-xs text-content-secondary">{f.size}</span>
-                      <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">✓ Received</span>
-                      <button onClick={()=>setFiles(p=>p.filter((_,j)=>j!==i))} className="text-content-tertiary hover:text-red-500 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm truncate">{f.name}</p>
+                        {f.docType && <p className="text-[10px] text-content-tertiary">{f.docType}</p>}
+                      </div>
+                      <span className="text-xs text-content-secondary shrink-0">{f.size}</span>
+                      <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full shrink-0">✓ Received</span>
+                      <button onClick={()=>setFiles(p=>p.filter((_,j)=>j!==i))} className="text-content-tertiary hover:text-red-500 transition-colors shrink-0">
                         <X size={14}/>
                       </button>
                     </div>
@@ -255,7 +306,7 @@ export default function ScanSubmitPage() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-content-secondary">Documents</span>
-                  <span className="font-medium">{files.length} file{files.length!==1?'s':''}</span>
+                  <span className="font-medium">{files.length} file{files.length!==1?'s':''}{files.length>0 ? ` · ${Array.from(new Set(files.map(f=>f.docType))).join(', ')}` : ''}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-content-secondary">Date</span>
