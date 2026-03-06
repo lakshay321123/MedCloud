@@ -14,6 +14,27 @@ import {
 // removed all demo imports from dashboard
 import { useDashboardMetrics } from '@/lib/hooks'
 
+// ── Date / time formatters (US healthcare — en-US locale is intentional) ─────
+const APP_LOCALE = 'en-US'
+
+/** Formats a `HH:MM:SS` time string as "9:30 AM" */
+function formatApptTime(t?: string): string {
+  if (!t) return ''
+  try { return new Date(`1970-01-01T${t}`).toLocaleTimeString(APP_LOCALE, { hour: 'numeric', minute: '2-digit' }) }
+  catch { return t }
+}
+
+/**
+ * Formats a `YYYY-MM-DD` date string as "Mar 6, 2026".
+ * Appends T00:00:00 so the date is parsed in local time — avoids UTC-midnight
+ * off-by-one-day issues for users in negative-offset timezones (US West Coast, etc.).
+ */
+function formatApptDate(d?: string): string {
+  if (!d) return ''
+  try { return new Date(`${d}T00:00:00`).toLocaleDateString(APP_LOCALE, { month: 'short', day: 'numeric', year: 'numeric' }) }
+  catch { return d }
+}
+
 // ── Shared helpers ────────────────────────────────────────────────────────────
 function QuickLinkCard({ title, subtitle, href, icon }: { title: string; subtitle: string; href: string; icon: React.ReactNode }) {
   return (
@@ -364,7 +385,7 @@ function ProviderDashboard() {
             <div key={apt.id} className="flex items-center justify-between p-3 bg-surface-elevated rounded-lg border border-separator">
               <div>
                 <p className="text-[13px] font-medium text-content-primary">{apt.first_name} {apt.last_name}</p>
-                <p className="text-[12px] text-content-secondary">{apt.appointment_time ? new Date(`1970-01-01T${apt.appointment_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''} · {apt.appointment_date ? new Date(apt.appointment_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</p>
+                <p className="text-[12px] text-content-secondary">{formatApptTime(apt.appointment_time)} · {formatApptDate(apt.appointment_date)}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Link href="/ai-scribe" className="text-[12px] text-brand font-medium">Start Visit →</Link>
