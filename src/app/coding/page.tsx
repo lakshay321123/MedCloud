@@ -258,8 +258,7 @@ export default function CodingPage() {
       const isUAEClient = uaeClientIds.includes(item.clientId)
       return country === 'uae' ? isUAEClient : !isUAEClient
     })
-    if (currentUser.role === 'coder') return regionFiltered.filter((_q, i) => i % 2 === 0)
-    if (currentUser.role === 'supervisor') return regionFiltered
+    // All roles see all items for their org/client — no role-based sub-sampling
     return regionFiltered.filter(item => !selectedClient || item.clientId === selectedClient.id)
   })()
 
