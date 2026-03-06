@@ -12,7 +12,7 @@ const roleRouteMap: Record<string, string[]> = {
   supervisor:   ['/dashboard', '/claims', '/coding', '/eligibility', '/denials', '/ar-management', '/payment-posting', '/contracts', '/voice-ai', '/ai-scribe', '/tasks', '/documents', '/credentialing', '/analytics', '/portal'],
   manager:      ['/dashboard', '/claims', '/coding', '/eligibility', '/denials', '/ar-management', '/payment-posting', '/contracts', '/voice-ai', '/ai-scribe', '/tasks', '/documents', '/credentialing', '/analytics', '/portal'],
   coder:        ['/dashboard', '/coding', '/ai-scribe', '/tasks', '/documents', '/portal/messages'],
-  biller:       ['/dashboard', '/claims', '/eligibility', '/denials', '/tasks', '/documents', '/portal/appointments', '/portal/messages', '/portal/patients'],
+  biller:       ['/dashboard', '/claims', '/eligibility', '/denials', '/tasks', '/documents', '/patients', '/portal/appointments', '/portal/messages', '/portal/patients'],
   ar_team:      ['/dashboard', '/denials', '/ar-management', '/voice-ai', '/tasks', '/documents', '/portal/messages'],
   posting_team: ['/dashboard', '/payment-posting', '/tasks', '/documents', '/portal/messages'],
   provider:     ['/dashboard', '/ai-scribe', '/documents', '/analytics', '/portal/appointments', '/portal/messages', '/portal/patients'],

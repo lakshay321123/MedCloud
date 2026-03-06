@@ -10,7 +10,7 @@ import { UAE_ORG_IDS, US_ORG_IDS, filterByRegion, filterPayersByCountry } from '
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
-import { useERAFiles, useAutoPostPayments, useCreateERAFile, useCreateBankDeposit, useRequestUploadUrl } from '@/lib/hooks'
+import { useERAFiles, useAutoPostPayments, useCreateERAFile, useCreateBankDeposit, useRequestUploadUrl, usePayments } from '@/lib/hooks'
 import type { ApiBankDeposit } from '@/lib/hooks/useEntities'
 import { api } from '@/lib/api-client'
 
@@ -216,10 +216,13 @@ export default function PaymentPostingPage() {
   const { t } = useT()
   const { toast } = useToast()
   const { data: apiERAResult, refetch: refetchERAs } = useERAFiles({ limit: 50 })
+  const { data: paymentsResult, refetch: refetchPayments } = usePayments({ limit: 100 })
   const { mutate: createBankDeposit } = useCreateBankDeposit()
   const { mutate: requestUploadUrl } = useRequestUploadUrl()
   const { mutate: autoPost } = useAutoPostPayments()
   const { mutate: createERAFile } = useCreateERAFile()
+  const [applyingPayment, setApplyingPayment] = useState<string | null>(null)
+  const [writingOff, setWritingOff] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [posting, setPosting] = useState(false)
   const [loadingLines, setLoadingLines] = useState(false)
@@ -237,6 +240,13 @@ export default function PaymentPostingPage() {
     receivedAt: e.created_at || '',
   })) || []
   const eras = filterPayersByCountry(allEras, country)
+
+  // Unmatched payments from real API
+  const allPayments = (Array.isArray((paymentsResult as any)?.data) ? (paymentsResult as any).data : []) as Array<{
+    id: string; status: string; amount: number; payer_name?: string; patient_name?: string;
+    claim_number?: string; era_file_name?: string; created_at?: string
+  }>
+  const unmatchedPayments = allPayments.filter(p => p.status === 'unmatched')
   const [selectedEra, setSelectedEra] = useState<string | null>(null)
   const [lineItems, setLineItems] = useState<LineItem[]>([])
   const [editingCell, setEditingCell] = useState<{ rowId: string; field: string } | null>(null)
@@ -321,7 +331,7 @@ export default function PaymentPostingPage() {
           <KPICard label={t('posting','erasPending')} value={eraStats.pendingCount} icon={<Receipt size={20} />} />
           <KPICard label={t('posting','postedToday')} value={eraStats.postedToday} icon={<CheckCircle2 size={20} />} />
           <KPICard label={t('posting','autoPostRate')} value={eras.length > 0 ? `${Math.round((eraStats.postedCount / eras.length) * 100)}%` : '—'} icon={<Send size={20} />} />
-          <KPICard label={t('posting','unmatched')} value={0} icon={<AlertTriangle size={20} />} />
+          <KPICard label={t('posting','unmatched')} value={unmatchedPayments.length} icon={<AlertTriangle size={20} />} />
         </div>
 
         {/* Silent denial detection banner */}
@@ -396,7 +406,50 @@ export default function PaymentPostingPage() {
         <div className="card p-4">
           <h3 className="text-[12px] font-semibold text-content-tertiary uppercase tracking-wider mb-2">Unmatched Payments</h3>
           <div className="space-y-2 text-[13px]">
-            <div className="text-content-tertiary text-[12px] text-center py-4">No unmatched payments</div>
+            {unmatchedPayments.length === 0 ? (
+              <div className="text-content-tertiary text-[12px] text-center py-4">No unmatched payments</div>
+            ) : unmatchedPayments.map(p => (
+              <div key={p.id} className="flex items-center justify-between gap-3 border border-separator rounded-lg px-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12px] font-medium text-content-primary truncate">
+                    {p.payer_name || 'Unknown Payer'} — ${Number(p.amount || 0).toFixed(2)}
+                  </p>
+                  <p className="text-[11px] text-content-tertiary truncate">
+                    {p.patient_name || '—'} · ERA: {p.era_file_name || '—'} · {p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}
+                  </p>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <button
+                    onClick={async () => {
+                      setApplyingPayment(p.id)
+                      try {
+                        await api.post(`/payments/${p.id}/apply`, { notes: 'Applied from unmatched queue' })
+                        toast.success(`$${Number(p.amount).toFixed(2)} applied successfully`)
+                        refetchPayments()
+                      } catch { toast.error('Failed to apply payment') }
+                      finally { setApplyingPayment(null) }
+                    }}
+                    disabled={applyingPayment === p.id}
+                    className="text-[10px] bg-brand text-white px-2.5 py-1 rounded transition-colors hover:bg-brand-deep disabled:opacity-50">
+                    {applyingPayment === p.id ? '…' : 'Apply'}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setWritingOff(p.id)
+                      try {
+                        await api.post(`/payments/${p.id}/write-off`, { reason: 'Unmatched — written off by poster' })
+                        toast.success(`$${Number(p.amount).toFixed(2)} written off`)
+                        refetchPayments()
+                      } catch { toast.error('Failed to write off payment') }
+                      finally { setWritingOff(null) }
+                    }}
+                    disabled={writingOff === p.id}
+                    className="text-[10px] border border-separator text-content-secondary hover:text-red-500 px-2.5 py-1 rounded transition-colors disabled:opacity-50">
+                    {writingOff === p.id ? '…' : 'Write Off'}
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

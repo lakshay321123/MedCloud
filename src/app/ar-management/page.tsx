@@ -10,7 +10,7 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import { TrendingUp, X, Phone, Bot, User, PhoneCall, Plus, AlertTriangle, FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { tfDaysRemaining } from '@/lib/utils/time'
 import { useRouter } from 'next/navigation'
-import { useLogARCall, usePayerConfigs, useTimelyFilingDeadlines, useCreditBalances, useWriteOffs, useRequestWriteOff, useARFollowUps, useARCallLog, useCheckSLAEscalations, useIdentifyCreditBalances, useResolveCreditBalance, useApproveWriteOff, useUpsertPayerConfig, useClaims, useCreateTask, useSubmitAppeal } from '@/lib/hooks'
+import { useLogARCall, usePayerConfigs, useTimelyFilingDeadlines, useCreditBalances, useWriteOffs, useRequestWriteOff, useARFollowUps, useARCallLog, useCheckSLAEscalations, useIdentifyCreditBalances, useResolveCreditBalance, useApproveWriteOff, useUpsertPayerConfig, useClaims, useCreateTask, useSubmitAppeal, useARRequestInfo, useARescalate, useARSendStatement } from '@/lib/hooks'
 
 
 
@@ -245,6 +245,9 @@ function ARDrawer({
   const [writeoffReason, setWriteoffReason] = useState('')
   const { mutate: createTask } = useCreateTask()
   const { mutate: submitAppeal } = useSubmitAppeal(account.denialId || '')
+  const { mutate: requestInfo, loading: requestingInfo } = useARRequestInfo()
+  const { mutate: escalateClaim, loading: escalating } = useARescalate()
+  const { mutate: sendStatement, loading: sendingStatement } = useARSendStatement()
 
   const tfDays = TF_DEADLINES[account.payer] || 180
   const dosDate = new Date(account.dos)
@@ -395,6 +398,45 @@ function ARDrawer({
                 <button onClick={() => setShowWriteoffModal(true)}
                   className="col-span-2 bg-red-500/10 text-red-500 rounded-lg py-2.5 text-xs font-medium hover:bg-red-500/20 transition-colors">
                   Request Write-off
+                </button>
+                <button
+                  disabled={requestingInfo}
+                  onClick={async () => {
+                    try {
+                      await requestInfo({ claim_id: account.id, payer_name: account.payer, requested_info: 'Additional documentation required', client_id: account.clientId })
+                      onUpdateAccount({ lastAction: 'Info requested from payer' })
+                      toast.success(`Info request sent to ${account.payer}`)
+                      onClose()
+                    } catch { toast.error('Failed to send info request') }
+                  }}
+                  className="bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg py-2.5 text-xs font-medium hover:bg-blue-500/20 transition-colors disabled:opacity-50">
+                  {requestingInfo ? 'Requesting…' : 'Request Info'}
+                </button>
+                <button
+                  disabled={escalating}
+                  onClick={async () => {
+                    try {
+                      await escalateClaim({ claim_id: account.id, escalation_reason: `${account.age}d aged — ${account.payer}`, priority: 'high', client_id: account.clientId })
+                      onUpdateAccount({ priority: 'urgent', lastAction: 'Escalated to supervisor' })
+                      toast.success(`Claim escalated — ${account.payer}`)
+                      onClose()
+                    } catch { toast.error('Failed to escalate claim') }
+                  }}
+                  className="bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-lg py-2.5 text-xs font-medium hover:bg-orange-500/20 transition-colors disabled:opacity-50">
+                  {escalating ? 'Escalating…' : 'Escalate'}
+                </button>
+                <button
+                  disabled={sendingStatement}
+                  onClick={async () => {
+                    try {
+                      await sendStatement({ claim_id: account.id, statement_type: 'patient', delivery_method: 'mail', notes: `Balance: $${account.balance}`, client_id: account.clientId })
+                      onUpdateAccount({ lastAction: 'Statement sent to patient' })
+                      toast.success(`Statement sent — ${account.patient}`)
+                      onClose()
+                    } catch { toast.error('Failed to send statement') }
+                  }}
+                  className="col-span-2 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg py-2.5 text-xs font-medium hover:bg-purple-500/20 transition-colors disabled:opacity-50">
+                  {sendingStatement ? 'Sending…' : 'Send Statement'}
                 </button>
               </div>
             </>

@@ -12,6 +12,7 @@ import {
 import { api } from '@/lib/api-client'
 import type { ApiEligibilityCheck, ApiPriorAuth, ApiPatient } from '@/lib/hooks'
 import { ErrorBanner } from '@/components/shared/ApiStates'
+import { filterByRegion } from '@/lib/utils/region'
 import {
   ShieldCheck, AlertTriangle, CheckCircle2, Clock, Search, X, Plus,
   RefreshCw, ChevronDown, ChevronUp, FileText, Phone, Calendar,
@@ -60,8 +61,14 @@ function EligibilityContent() {
   const { data: eligResult, loading: eligLoading, error: eligError, refetch: refetchElig } = useEligibilityChecks({ limit: 200 })
   const { data: paResult, loading: paLoading, error: paError, refetch: refetchPA } = usePriorAuths({ limit: 200 })
 
-  const eligChecks = eligResult?.data || []
-  const priorAuths = paResult?.data || []
+  const { selectedClient, country, currentUser } = useApp()
+
+  const eligChecksRaw = eligResult?.data || []
+  const priorAuthsRaw = paResult?.data || []
+
+  // Apply region filter — prevents US+UAE data mixing when "All Clients" is selected
+  const eligChecks = filterByRegion(eligChecksRaw, currentUser?.organization_id || '', currentUser?.role || '', selectedClient?.id, country)
+  const priorAuths = filterByRegion(priorAuthsRaw, currentUser?.organization_id || '', currentUser?.role || '', selectedClient?.id, country)
 
   /* KPIs */
   const kpis = useMemo(() => {
@@ -347,6 +354,47 @@ function BatchCheckTab() {
               <span className="text-emerald-500">{results.filter(r => r.status === 'active').length} active</span>
               <span className="text-red-500">{results.filter(r => r.status !== 'active').length} issues</span>
               <span className="text-amber-500">{results.filter(r => r.prior_auth_required).length} need auth</span>
+              <button
+                onClick={() => {
+                  const win = window.open('', '_blank')
+                  if (!win) { toast.error('Pop-up blocked — allow pop-ups to export PDF'); return }
+                  const rows = results.map(r => `
+                    <tr>
+                      <td>${r.patient_name || 'Unknown'}</td>
+                      <td>${r.status || '—'}</td>
+                      <td>${r.network_status || '—'}</td>
+                      <td>${r.copay != null ? '$' + r.copay : '—'}</td>
+                      <td>${r.deductible != null ? '$' + r.deductible : '—'}</td>
+                      <td>${r.prior_auth_required ? 'Required' : 'No'}</td>
+                    </tr>`).join('')
+                  win.document.write(`<!DOCTYPE html><html><head>
+                    <title>Batch Eligibility Report — ${batchDate}</title>
+                    <style>
+                      body { font-family: Arial, sans-serif; font-size: 11px; padding: 20px; color: #1a1a1a; }
+                      h1 { font-size: 16px; margin-bottom: 4px; }
+                      p { color: #666; margin-bottom: 16px; }
+                      table { width: 100%; border-collapse: collapse; }
+                      th { background: #f5f5f7; text-align: left; padding: 8px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid #ddd; }
+                      td { padding: 7px 8px; border-bottom: 1px solid #eee; }
+                      .active { color: #16a34a; font-weight: 600; }
+                      .inactive { color: #dc2626; font-weight: 600; }
+                      .auth { color: #d97706; font-weight: 600; }
+                    </style>
+                  </head><body>
+                    <h1>Batch Eligibility Report</h1>
+                    <p>Date: ${batchDate} &nbsp;|&nbsp; Generated: ${new Date().toLocaleString()} &nbsp;|&nbsp; Total: ${results.length}</p>
+                    <table>
+                      <thead><tr><th>Patient</th><th>Status</th><th>Network</th><th>Copay</th><th>Deductible</th><th>Prior Auth</th></tr></thead>
+                      <tbody>${rows}</tbody>
+                    </table>
+                  </body></html>`)
+                  win.document.close()
+                  win.focus()
+                  setTimeout(() => { win.print(); win.close() }, 400)
+                }}
+                className="flex items-center gap-1 border border-separator text-content-secondary hover:text-content-primary rounded px-2.5 py-1 transition-colors">
+                <FileText size={11} /> Export PDF
+              </button>
             </div>
           </div>
           <table className="w-full text-xs">
