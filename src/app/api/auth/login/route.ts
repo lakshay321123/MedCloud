@@ -7,9 +7,12 @@ import {
   GetUserCommand,
 } from '@aws-sdk/client-cognito-identity-provider'
 
-const cognito = new CognitoIdentityProviderClient({ region: 'us-east-1' })
-const CLIENT_ID     = '54tftm7llmiqcdb80bfr1tibaj'
-const CLIENT_SECRET = '1bon4i0smj9m8n77al2dil6cbgqu6mtifmuetvu9b3bpkkmlchlv'
+// FIX 1: Move sensitive values to env vars (Gemini: critical + high)
+const REGION        = process.env.AWS_COGNITO_REGION      || 'us-east-1'
+const CLIENT_ID     = process.env.COGNITO_CLIENT_ID       || ''
+const CLIENT_SECRET = process.env.COGNITO_CLIENT_SECRET   || ''
+
+const cognito = new CognitoIdentityProviderClient({ region: REGION })
 
 // Cognito requires SECRET_HASH when the app client has a secret
 function secretHash(username: string): string {
@@ -19,6 +22,12 @@ function secretHash(username: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  // FIX 1 cont: Fail fast if env vars not set
+  if (!CLIENT_ID || !CLIENT_SECRET) {
+    console.error('[auth/login] COGNITO_CLIENT_ID or COGNITO_CLIENT_SECRET not set')
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+  }
+
   const { email, password } = await req.json()
 
   if (!email || !password) {
@@ -53,19 +62,26 @@ export async function POST(req: NextRequest) {
       if (a.Name && a.Value) attrs[a.Name] = a.Value
     })
 
-    // Read role, org, region from Cognito custom attributes
-    const role     = attrs['custom:custom:role']    || 'admin'
-    const orgId    = attrs['custom:custom:org_id']  || 'a0000000-0000-0000-0000-000000000001'
-    const region   = attrs['custom:custom:region']  || 'us'
-    const name     = attrs['name']                  || username
-    const sub      = attrs['sub']                   || ''
+    // FIX 2: Fail if required Cognito attributes missing — never default to 'admin' (Gemini: security-high)
+    const role   = attrs['custom:custom:role']
+    const orgId  = attrs['custom:custom:org_id']
+    const region = attrs['custom:custom:region']
+
+    if (!role || !orgId || !region) {
+      console.error(`[auth/login] User ${username} missing required Cognito attributes: role=${role} org=${orgId} region=${region}`)
+      return NextResponse.json({ error: 'Account configuration error. Please contact support.' }, { status: 500 })
+    }
+
+    const name = attrs['name'] || username
+    const sub  = attrs['sub']  || ''
 
     // Derive portalType from role — facility roles get the clinic portal
     const facilityRoles = ['provider', 'client']
     const portalType = facilityRoles.includes(role) ? 'facility' : 'backoffice'
     const country    = region === 'uae' ? 'uae' : 'usa'
 
-    // Set httpOnly session cookie (8 hour lifetime)
+    // FIX 3: Store only non-sensitive session data in cookie; drop tokens from cookie (Gemini: security-high)
+    // accessToken / refreshToken are NOT stored in the cookie to prevent exposure
     const cookieStore = await cookies()
     cookieStore.set('auth_session', JSON.stringify({
       sub,
@@ -75,8 +91,6 @@ export async function POST(req: NextRequest) {
       org_id: orgId,
       country,
       portalType,
-      accessToken:  authRes.AuthenticationResult.AccessToken,
-      refreshToken: authRes.AuthenticationResult.RefreshToken,
       ts: Date.now(),
     }), {
       httpOnly: true,
@@ -92,10 +106,12 @@ export async function POST(req: NextRequest) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('[auth/login] Cognito error:', msg)
     if (msg.includes('NotAuthorizedException') || msg.includes('Incorrect')) {
+      // FIX 4 (partial): NotAuthorized covers both wrong password AND wrong user — generic message (Gemini: medium)
       return NextResponse.json({ error: 'Incorrect email or password' }, { status: 401 })
     }
     if (msg.includes('UserNotFoundException')) {
-      return NextResponse.json({ error: 'No account found with that email' }, { status: 401 })
+      // FIX 4: Return same message as wrong password to prevent email enumeration (Gemini: medium)
+      return NextResponse.json({ error: 'Incorrect email or password' }, { status: 401 })
     }
     if (msg.includes('UserNotConfirmedException')) {
       return NextResponse.json({ error: 'Account not confirmed — contact admin' }, { status: 401 })
