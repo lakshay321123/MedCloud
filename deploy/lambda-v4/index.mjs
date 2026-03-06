@@ -2856,8 +2856,10 @@ async function generate837I(claimId, orgId) {
   edi += `CLM*${claim.claim_number}*${claim.total_charges || 0}***${typeOfBill}:B:1*Y*A*Y*Y~\n`;
 
   // Admission date (DTP*435) and discharge date (DTP*096)
-  edi += `DTP*435*D8*${(claim.dos_from || dateStr).replace(/-/g, '')}~\n`;
-  if (claim.dos_to) edi += `DTP*096*D8*${claim.dos_to.replace(/-/g, '')}~\n`;
+  const dosFrom = claim.dos_from ? new Date(claim.dos_from).toISOString().slice(0,10).replace(/-/g,'') : dateStr;
+  const dosTo = claim.dos_to ? new Date(claim.dos_to).toISOString().slice(0,10).replace(/-/g,'') : null;
+  edi += `DTP*435*D8*${dosFrom}~\n`;
+  if (dosTo) edi += `DTP*096*D8*${dosTo}~\n`;
 
   // Admission type/source/patient status
   edi += `CL1*${admitType}*${admitSource}*${patientStatus}~\n`;
@@ -2891,7 +2893,7 @@ async function generate837I(claimId, orgId) {
     const hcpcs = line.cpt_code || '';
     edi += `LX*${segCount}~\n`;
     edi += `SV2*${rc}*HC:${hcpcs}*${line.charge || 0}*UN*${line.units || 1}~\n`;
-    if (line.dos_from) edi += `DTP*472*D8*${line.dos_from.replace(/-/g, '')}~\n`;
+    if (line.dos_from) edi += `DTP*472*D8*${new Date(line.dos_from).toISOString().slice(0,10).replace(/-/g,'')}~\n`;
   }
 
   // Trailers
