@@ -9,7 +9,7 @@ import { UAE_ORG_IDS, US_ORG_IDS, filterByRegion, filterPayersByCountry } from '
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
-import { useERAFiles, useAutoPostPayments, useParse835, useReconcilePayments, useBankDeposits, useReconcileBankDeposit, usePayments, useUpdatePayment, useCreateBankDeposit, useCreateERAFile } from '@/lib/hooks'
+import { useERAFiles, useAutoPostPayments, useCreateERAFile } from '@/lib/hooks'
 
 interface LineItem {
   id: string
@@ -113,8 +113,8 @@ export default function PaymentPostingPage() {
         </div>
         <div className="grid grid-cols-4 gap-4 mb-4">
           <KPICard label={t('posting','erasPending')} value={eras.filter(e => e.status !== 'posted').length} icon={<Receipt size={20} />} />
-          <KPICard label={t('posting','postedToday')} value="89" icon={<CheckCircle2 size={20} />} />
-          <KPICard label={t('posting','autoPostRate')} value={apiERAResult?.data ? `${Math.round((apiERAResult.data.filter(e => e.status === 'posted').length / Math.max(apiERAResult.data.length, 1)) * 100)}%` : '76%'} icon={<Send size={20} />} />
+          <KPICard label={t('posting','postedToday')} value={eras.filter(e => e.status === 'posted').length} icon={<CheckCircle2 size={20} />} />
+          <KPICard label={t('posting','autoPostRate')} value={apiERAResult?.data ? `${Math.round((apiERAResult.data.filter(e => e.status === 'posted').length / Math.max(apiERAResult.data.length, 1)) * 100)}%` : '—'} icon={<Send size={20} />} />
           <KPICard label={t('posting','unmatched')} value={0} icon={<AlertTriangle size={20} />} />
         </div>
 
@@ -392,32 +392,28 @@ export default function PaymentPostingPage() {
       <div className="card p-4 mt-6">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold">Bank Deposit Reconciliation</h3>
-          <button onClick={() => toast.info('Upload bank statement to reconcile')} className="text-xs bg-emerald-500/10 text-emerald-500 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-colors">Upload Statement</button>
+          <button onClick={() => toast.info('Bank statement upload coming in Sprint 3')} className="text-xs bg-emerald-500/10 text-emerald-500 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-colors">Upload Statement</button>
         </div>
         <div className="grid grid-cols-4 gap-3 mb-4">
-          {[{l:'Total Deposits',v:'$124,560',c:'text-emerald-500'},{l:'Matched',v:'$118,230',c:'text-brand'},{l:'Unmatched',v:'$6,330',c:'text-amber-500'},{l:'Variance',v:'$0.00',c:'text-content-secondary'}].map(k=>
+          {[
+            { l: 'ERAs Processed', v: String(eras.length), c: 'text-content-primary' },
+            { l: 'Total ERA Value', v: `$${eras.reduce((s, e) => s + e.total, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, c: 'text-emerald-500' },
+            { l: 'Posted', v: String(eras.filter(e => e.status === 'posted').length), c: 'text-brand' },
+            { l: 'Pending', v: String(eras.filter(e => e.status !== 'posted').length), c: 'text-amber-500' },
+          ].map(k =>
             <div key={k.l} className="bg-surface-elevated rounded-lg p-3 text-center">
               <p className={`text-lg font-bold ${k.c}`}>{k.v}</p>
               <p className="text-[10px] text-content-tertiary">{k.l}</p>
             </div>
           )}
         </div>
-        <table className="w-full text-xs">
-          <thead><tr className="border-b border-separator text-content-secondary"><th className="text-left px-3 py-2">Deposit Date</th><th className="text-left px-3 py-2">Bank Amount</th><th className="text-left px-3 py-2">Posted Amount</th><th className="text-left px-3 py-2">Variance</th><th className="text-left px-3 py-2">Status</th></tr></thead>
-          <tbody>
-            {[{date:'2026-03-03',bank:'$45,200',posted:'$45,200',variance:'$0',status:'matched'},
-              {date:'2026-03-02',bank:'$38,100',posted:'$38,100',variance:'$0',status:'matched'},
-              {date:'2026-03-01',bank:'$41,260',posted:'$34,930',variance:'$6,330',status:'unmatched'}
-            ].map(d=>(
-              <tr key={d.date} className="border-b border-separator last:border-0">
-                <td className="px-3 py-2">{d.date}</td><td className="px-3 py-2">{d.bank}</td>
-                <td className="px-3 py-2">{d.posted}</td>
-                <td className={`px-3 py-2 ${d.variance!=='$0'?'text-amber-500 font-medium':''}`}>{d.variance}</td>
-                <td className="px-3 py-2"><span className={`text-[10px] px-2 py-0.5 rounded-full ${({matched:'bg-emerald-500/10 text-emerald-500',unmatched:'bg-amber-500/10 text-amber-500'} as Record<string,string>)[d.status] || 'bg-amber-500/10 text-amber-500'}`}>{d.status}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <div className="w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center mb-3">
+            <Receipt size={16} className="text-content-tertiary opacity-40" />
+          </div>
+          <p className="text-[13px] font-medium text-content-primary mb-1">Bank statement matching — Sprint 3</p>
+          <p className="text-xs text-content-secondary">Upload a bank statement to reconcile deposits against ERA payments. This feature will be available once the bank feed integration is live.</p>
+        </div>
       </div>
     </ModuleShell>
   )

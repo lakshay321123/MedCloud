@@ -150,8 +150,12 @@ async function runSchemaMigration() {
       -- ── era_files: rename aliases ────────────────────────────────────────────
       ALTER TABLE era_files ADD COLUMN IF NOT EXISTS total_paid    NUMERIC(10,2) DEFAULT 0;
       ALTER TABLE era_files ADD COLUMN IF NOT EXISTS payment_date  DATE;
+      ALTER TABLE era_files ADD COLUMN IF NOT EXISTS updated_at    TIMESTAMPTZ;
       UPDATE era_files SET total_paid   = COALESCE(total_amount, 0) WHERE total_paid = 0 OR total_paid IS NULL;
       UPDATE era_files SET payment_date = COALESCE(check_date, CURRENT_DATE) WHERE payment_date IS NULL;
+
+      -- ── payments: add updated_at (create()/update() helpers always write it) ──
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
 
       -- ── scrub_rules: add ordering column ────────────────────────────────────
       ALTER TABLE scrub_rules ADD COLUMN IF NOT EXISTS rule_order INTEGER DEFAULT 0;
