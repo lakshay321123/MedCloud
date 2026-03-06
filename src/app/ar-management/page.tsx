@@ -582,7 +582,7 @@ function InboundCallPanel() {
                     client_id: found?.clientId,
                   })
                   toast.success(b.msg)
-                } catch { toast.success(b.msg) }
+                } catch { toast.error('Failed to create task') }
               }}
                 className={`${b.color} rounded-lg py-2.5 text-xs font-medium border hover:opacity-80 transition-opacity`}>
                 {b.label}
@@ -860,7 +860,7 @@ export default function ARManagementPage() {
                       try {
                         await createTask({ title: `SLA Escalation: ${r.title}`, description: `${Math.round(r.hours_overdue)}h overdue — escalation level ${r.escalation_level}`, task_type: 'ar_follow_up', priority: 'urgent', status: 'open' })
                         toast.success(`Escalation task created for ${r.task_id}`)
-                      } catch { toast.success(`Escalation email sent for ${r.task_id}`) }
+                      } catch { toast.error('Failed to create escalation task') }
                     }}
                       className="text-[10px] px-2 py-1 bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 transition-colors whitespace-nowrap">
                       Send Escalation

@@ -92,7 +92,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
                   await createCoding({ status: 'pending', notes: `Document: ${doc.name || doc.patient || 'Unknown'}` })
                   toast.success('Sent to coding queue')
                   onClose()
-                } catch { toast.success('Sent to coding queue') } finally { setSendingToCoding(false) }
+                } catch { toast.error('Failed to send to coding queue') } finally { setSendingToCoding(false) }
               }} disabled={sendingToCoding}
                 className="w-full bg-brand text-white rounded-lg py-2 text-xs font-medium hover:bg-brand-deep transition-colors mt-1 disabled:opacity-50">
                 {sendingToCoding ? 'Sending…' : 'Send to Coding Queue'}
