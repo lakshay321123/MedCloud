@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useApp } from '@/lib/context'
 import { usePatients, useRequestUploadUrl, useCreateDocument } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
+import { computeCRC32Base64 } from '@/lib/utils'
 import ModuleShell from '@/components/shared/ModuleShell'
 import { Upload, CheckCircle2, FileText, X, Plus, ArrowRight, Loader2, AlertCircle, ChevronDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -113,11 +114,17 @@ export default function ScanSubmitPage() {
 
         if (!urlResult?.upload_url || !urlResult?.s3_key) throw new Error('Could not get upload URL')
 
-        await fetch(urlResult.upload_url, {
+        const crc32 = await computeCRC32Base64(entry.file)
+        const s3Upload = await fetch(urlResult.upload_url, {
           method: 'PUT',
           body: entry.file,
-          headers: { 'Content-Type': entry.file.type || 'application/octet-stream' },
+          headers: {
+            'Content-Type': entry.file.type || 'application/octet-stream',
+            'x-amz-checksum-crc32': crc32,
+            'x-amz-sdk-checksum-algorithm': 'CRC32',
+          },
         })
+        if (!s3Upload.ok) throw new Error(`Upload failed (${s3Upload.status})`)
 
         const docResult = await createDoc({
           document_type: 'Other',
