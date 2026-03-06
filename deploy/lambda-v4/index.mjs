@@ -182,6 +182,11 @@ async function runSchemaMigration() {
         called_by UUID, created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
+      -- ── ar_call_log: add missing columns if table already existed ────────────
+      ALTER TABLE ar_call_log ADD COLUMN IF NOT EXISTS call_type VARCHAR(50) DEFAULT 'manual';
+      ALTER TABLE ar_call_log ADD COLUMN IF NOT EXISTS call_result VARCHAR(100);
+      ALTER TABLE ar_call_log ADD COLUMN IF NOT EXISTS reference_number VARCHAR(100);
+      ALTER TABLE ar_call_log ADD COLUMN IF NOT EXISTS follow_up_action TEXT;
     `);
     safeLog('info', 'Schema migration completed successfully');
   } catch (e) {
@@ -6060,12 +6065,19 @@ export const handler = async (event) => {
             org_id UUID NOT NULL, client_id UUID,
             claim_id UUID, denial_id UUID,
             call_date TIMESTAMPTZ DEFAULT NOW(),
-            contact_name VARCHAR(200), contact_number VARCHAR(50),
+            call_type VARCHAR(50) DEFAULT 'manual',
             call_result VARCHAR(100), notes TEXT,
+            contact_name VARCHAR(200), contact_number VARCHAR(50),
+            reference_number VARCHAR(100),
             follow_up_date DATE, follow_up_action TEXT,
             called_by UUID, created_at TIMESTAMPTZ DEFAULT NOW(),
             updated_at TIMESTAMPTZ DEFAULT NOW()
-          )`).catch(()=>{});
+          );
+          ALTER TABLE ar_call_log ADD COLUMN IF NOT EXISTS call_type VARCHAR(50) DEFAULT 'manual';
+          ALTER TABLE ar_call_log ADD COLUMN IF NOT EXISTS call_result VARCHAR(100);
+          ALTER TABLE ar_call_log ADD COLUMN IF NOT EXISTS reference_number VARCHAR(100);
+          ALTER TABLE ar_call_log ADD COLUMN IF NOT EXISTS follow_up_action TEXT;
+          `).catch(()=>{});
           return respond(200, { data: [], meta: { total: 0 } });
         }
         throw e;
