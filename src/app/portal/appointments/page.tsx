@@ -1,6 +1,7 @@
 'use client'
 import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context'
 import { getClientName } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
@@ -108,6 +109,7 @@ interface ApptDrawerProps {
 
 function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) {
   const { toast } = useToast()
+  const router = useRouter()
   const isProvider = currentUserRole === 'provider'
   const isFrontDesk = currentUserRole === 'client'
 
@@ -148,7 +150,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
         }`}>
           <span className={`w-2 h-2 rounded-full ${ec.color}`}/>
           Eligibility: {ec.label}
-          {elig !== 'verified' && <button onClick={() => toast.info('Verifying eligibility...')} className="ml-auto text-brand underline text-[10px]">Verify Now</button>}
+          {elig !== 'verified' && <button onClick={() => router.push(`/eligibility?patientId=${appt.patientId}`)} className="ml-auto text-brand underline text-[10px]">Verify Now</button>}
         </div>
 
         {/* Content */}
@@ -188,7 +190,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
 
           {/* AI Scribe CTA — provider only */}
           {isProvider && (
-            <button onClick={() => toast.info('Launching AI Scribe for this visit...')}
+            <button onClick={() => { onClose(); router.push(`/ai-scribe?patient=${appt.patientId}`) }}
               className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium flex items-center justify-center gap-2 hover:bg-brand-deep transition-colors">
               <Mic size={15}/> Start AI Scribe for this Visit
             </button>
@@ -204,7 +206,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
                 <div><span className="text-content-tertiary block">Policy</span>{patient.insurance.policyNo}</div>
                 {patient.insurance.copay !== undefined && <div><span className="text-content-tertiary block">Copay</span>${patient.insurance.copay}</div>}
               </div>
-              <button onClick={() => toast.info('Eligibility verification initiated...')}
+              <button onClick={() => router.push(`/eligibility?patientId=${appt.patientId}`)}
                 className="mt-2 w-full flex items-center justify-center gap-2 bg-brand/10 text-brand border border-brand/20 rounded-lg py-2 text-[12px] font-medium hover:bg-brand/20 transition-colors">
                 <ShieldCheck size={13}/> Verify Eligibility
               </button>

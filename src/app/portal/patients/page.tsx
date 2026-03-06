@@ -1,6 +1,7 @@
 'use client'
 import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context'
 import type { DemoPatient } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
@@ -406,6 +407,7 @@ function PatientMessagesTab({ patientId, clientId, patientName }: { patientId: s
 function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClose: () => void }) {
   const { country } = useApp()
   const { toast } = useToast()
+  const router = useRouter()
   const [tab, setTab] = useState<DetailTab>('demographics')
   const [editMode, setEditMode] = useState(false)
   const [localPatient, setLocalPatient] = useState(patient)
@@ -621,6 +623,12 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
                   </div>
                 </div>
               ) : <div className="text-center py-6 text-xs text-content-secondary">No insurance on file. <button onClick={() => toast.info('Upload insurance card to update coverage details')} className="text-brand underline">Upload insurance card</button></div>}
+              {localPatient.insurance && (
+                <button onClick={() => { onClose(); router.push(`/eligibility?patientId=${localPatient.id}`) }}
+                  className="w-full flex items-center justify-center gap-2 bg-brand/10 text-brand border border-brand/20 rounded-lg py-2 text-[12px] font-medium hover:bg-brand/20 transition-colors">
+                  Run Eligibility Check →
+                </button>
+              )}
               {localPatient.secondaryInsurance && (
                 <div className="bg-surface-elevated border border-separator rounded-lg p-3">
                   <div className="text-xs text-content-secondary mb-2">Secondary Insurance</div>
