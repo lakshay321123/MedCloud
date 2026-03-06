@@ -528,7 +528,7 @@ export default function DenialsPage() {
         <h3 className="text-sm font-semibold mb-3">⏰ Upcoming Appeal Deadlines</h3>
         {appealDeadlines.length > 0 ? (
           <div className="space-y-2">
-            {appealDeadlines.slice(0, 8).sort((a, b) => a.days_remaining - b.days_remaining).map(d => (
+            {appealDeadlines.slice().sort((a, b) => a.days_remaining - b.days_remaining).slice(0, 8).map(d => (
               <div key={d.denial_id} className={`flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2 ${d.days_remaining <= 3 ? 'border border-red-500/30' : ''}`}>
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-mono">{d.claim_number || d.denial_id.slice(0, 8)}</span>
