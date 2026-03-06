@@ -105,6 +105,22 @@ export default function PaymentPostingPage() {
   // Silent denials: ERA lines with denied > 0 that have action 'post' (not yet routed)
   const silentDenials = lineItems.filter(l => l.denied > 0 && l.action === 'post')
 
+  // ── ERA stats — single pass, no repeated .filter() calls ──────────────────
+  const eraStats = useMemo(() => {
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+    return eras.reduce((acc, e) => {
+      acc.totalValue += e.total
+      if (e.status === 'posted') {
+        acc.postedCount++
+        // Only count as "posted today" if updated_at falls on today
+        if (e.receivedAt && new Date(e.receivedAt) >= todayStart) acc.postedToday++
+      } else {
+        acc.pendingCount++
+      }
+      return acc
+    }, { postedCount: 0, pendingCount: 0, postedToday: 0, totalValue: 0 })
+  }, [eras])
+
   if (!selectedEra) {
     return (
       <ModuleShell title={t("posting","title")} subtitle="Process ERAs and post payments">
@@ -113,9 +129,9 @@ export default function PaymentPostingPage() {
           Payment posting connected — processing live ERAs
         </div>
         <div className="grid grid-cols-4 gap-4 mb-4">
-          <KPICard label={t('posting','erasPending')} value={eras.filter(e => e.status !== 'posted').length} icon={<Receipt size={20} />} />
-          <KPICard label={t('posting','postedToday')} value={eras.filter(e => e.status === 'posted').length} icon={<CheckCircle2 size={20} />} />
-          <KPICard label={t('posting','autoPostRate')} value={apiERAResult?.data ? `${Math.round((apiERAResult.data.filter(e => e.status === 'posted').length / Math.max(apiERAResult.data.length, 1)) * 100)}%` : '—'} icon={<Send size={20} />} />
+          <KPICard label={t('posting','erasPending')} value={eraStats.pendingCount} icon={<Receipt size={20} />} />
+          <KPICard label={t('posting','postedToday')} value={eraStats.postedToday} icon={<CheckCircle2 size={20} />} />
+          <KPICard label={t('posting','autoPostRate')} value={eras.length > 0 ? `${Math.round((eraStats.postedCount / eras.length) * 100)}%` : '—'} icon={<Send size={20} />} />
           <KPICard label={t('posting','unmatched')} value={0} icon={<AlertTriangle size={20} />} />
         </div>
 
@@ -404,9 +420,9 @@ export default function PaymentPostingPage() {
         <div className="grid grid-cols-4 gap-3 mb-4">
           {[
             { l: 'ERAs Processed', v: String(eras.length), c: 'text-content-primary' },
-            { l: 'Total ERA Value', v: `$${eras.reduce((s, e) => s + e.total, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, c: 'text-emerald-500' },
-            { l: 'Posted', v: String(eras.filter(e => e.status === 'posted').length), c: 'text-brand' },
-            { l: 'Pending', v: String(eras.filter(e => e.status !== 'posted').length), c: 'text-amber-500' },
+            { l: 'Total ERA Value', v: `$${eraStats.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, c: 'text-emerald-500' },
+            { l: 'Posted', v: String(eraStats.postedCount), c: 'text-brand' },
+            { l: 'Pending', v: String(eraStats.pendingCount), c: 'text-amber-500' },
           ].map(k =>
             <div key={k.l} className="bg-surface-elevated rounded-lg p-3 text-center">
               <p className={`text-lg font-bold ${k.c}`}>{k.v}</p>
