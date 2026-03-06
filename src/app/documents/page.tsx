@@ -23,6 +23,8 @@ const typeIcon: Record<string, React.ReactNode> = {
   'Denial Letter': <XCircle size={14} className="text-red-500"/>,
   'Contract': <FileText size={14} className="text-brand"/>,
   'Credential': <File size={14} className="text-gray-400"/>,
+  'License':    <File size={14} className="text-indigo-400"/>,
+  'Referral':   <Send size={14} className="text-teal-500"/>,
   'Fax': <Send size={14} className="text-gray-400"/>,
 }
 
@@ -186,7 +188,7 @@ function AllDocsTab() {
   const [statusFilter, setStatusFilter] = useState('')
   const [selectedDoc, setSelectedDoc] = useState<DemoDocRecord | null>(null)
 
-  const types = ['Superbill','Clinical Note','Insurance Card','EOB','Denial Letter','Contract','Credential','Fax']
+  const types = ['Superbill','Clinical Note','Insurance Card','EOB','Denial Letter','Contract','Credential','License','Referral','Fax']
   const toggleType = (t: string) => setTypeFilter(p => p.includes(t) ? p.filter(x=>x!==t) : [...p,t])
 
   const filtered = apiDocs.filter(d => {
@@ -645,12 +647,12 @@ function UploadModal({ onClose }: { onClose: () => void }) {
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
-    const dropped = Array.from(e.dataTransfer.files).slice(0, 1)
-    setFiles(dropped)
+    const dropped = Array.from(e.dataTransfer.files)
+    setFiles(prev => [...prev, ...dropped])
   }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    if (e.target.files) setFiles([Array.from(e.target.files!)[0]])
+    if (e.target.files) setFiles(prev => [...prev, ...Array.from(e.target.files!)])
   }
 
   async function handleUpload() {
@@ -702,8 +704,8 @@ function UploadModal({ onClose }: { onClose: () => void }) {
         <div onDragOver={e => e.preventDefault()} onDrop={handleDrop}
           className="border-2 border-dashed border-separator rounded-lg p-6 text-center hover:border-brand/40 transition-colors">
           <Upload size={24} className="mx-auto text-content-tertiary mb-2" />
-          <p className="text-xs text-content-secondary mb-1">Drag a file here or click to browse</p>
-          <input type="file" onChange={handleFileSelect} className="hidden" id="doc-upload" />
+          <p className="text-xs text-content-secondary mb-1">Drag files here or click to browse</p>
+          <input type="file" multiple onChange={handleFileSelect} className="hidden" id="doc-upload" />
           <label htmlFor="doc-upload" className="text-xs text-brand cursor-pointer hover:underline">Browse files</label>
         </div>
 
@@ -741,7 +743,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
 
         <button onClick={handleUpload} disabled={uploading || files.length === 0}
           className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep disabled:opacity-50 transition-colors">
-          {uploading ? `Uploading… ${progress}%` : files.length === 1 ? `Upload "${files[0].name}"` : 'Upload File'}
+          {uploading ? `Uploading… ${progress}%` : `Upload ${files.length} file${files.length !== 1 ? 's' : ''}`}
         </button>
       </div>
     </div>
