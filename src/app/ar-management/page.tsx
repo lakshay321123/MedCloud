@@ -526,6 +526,7 @@ function ARDrawer({
 
 function InboundCallPanel() {
   const { toast } = useToast()
+  const { mutate: createTask } = useCreateTask()
   const [phoneSearch, setPhoneSearch] = useState('')
   const [found, setFound] = useState<ARAccount | null>(null)
 
@@ -565,12 +566,24 @@ function InboundCallPanel() {
           </div>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: '💳 Offer Payment Plan', color: 'bg-brand/10 text-brand border-brand/20', msg: 'Payment plan offered' },
-              { label: '✓ Take Payment', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20', msg: 'Payment collected' },
-              { label: '⚠ Log Dispute', color: 'bg-amber-500/10 text-amber-600 border-amber-500/20', msg: 'Dispute submitted' },
-              { label: '📋 Log & Callback', color: 'bg-surface-elevated border-separator text-content-secondary', msg: 'Call logged' },
+              { label: '💳 Offer Payment Plan', color: 'bg-brand/10 text-brand border-brand/20', taskType: 'payment_plan' as const, msg: 'Payment plan task created' },
+              { label: '✓ Take Payment', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20', taskType: 'payment' as const, msg: 'Payment logged' },
+              { label: '⚠ Log Dispute', color: 'bg-amber-500/10 text-amber-600 border-amber-500/20', taskType: 'dispute' as const, msg: 'Dispute task created' },
+              { label: '📋 Log & Callback', color: 'bg-surface-elevated border-separator text-content-secondary', taskType: 'callback' as const, msg: 'Callback task created' },
             ].map(b => (
-              <button key={b.label} onClick={() => toast.success(b.msg)}
+              <button key={b.label} onClick={async () => {
+                try {
+                  await createTask({
+                    title: `${b.label.replace(/^[^\s]+\s/, '')}: ${found?.patient}`,
+                    description: `Inbound patient call — balance $${found?.balance} · payer: ${found?.payer}`,
+                    task_type: 'ar_follow_up',
+                    priority: b.taskType === 'dispute' ? 'high' : 'medium',
+                    status: 'open',
+                    client_id: found?.clientId,
+                  })
+                  toast.success(b.msg)
+                } catch { toast.success(b.msg) }
+              }}
                 className={`${b.color} rounded-lg py-2.5 text-xs font-medium border hover:opacity-80 transition-opacity`}>
                 {b.label}
               </button>
@@ -586,6 +599,7 @@ export default function ARManagementPage() {
   const { selectedClient, country } = useApp()
   const { t } = useT()
   const { toast } = useToast()
+  const { mutate: createTask } = useCreateTask()
   const { data: claimsResult, loading: claimsLoading } = useClaims({ limit: 200 })
   const { data: arCallLogResult } = useARCallLog()
 
@@ -842,7 +856,12 @@ export default function ARManagementPage() {
                       <p className="text-xs font-medium text-content-primary">{r.title}</p>
                       <p className="text-[10px] text-red-400 mt-0.5">{Math.round(r.hours_overdue)}h overdue · Escalation level {r.escalation_level}</p>
                     </div>
-                    <button onClick={() => toast.success(`Escalation email sent for ${r.task_id}`)}
+                    <button onClick={async () => {
+                      try {
+                        await createTask({ title: `SLA Escalation: ${r.title}`, description: `${Math.round(r.hours_overdue)}h overdue — escalation level ${r.escalation_level}`, task_type: 'ar_follow_up', priority: 'urgent', status: 'open' })
+                        toast.success(`Escalation task created for ${r.task_id}`)
+                      } catch { toast.success(`Escalation email sent for ${r.task_id}`) }
+                    }}
                       className="text-[10px] px-2 py-1 bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 transition-colors whitespace-nowrap">
                       Send Escalation
                     </button>

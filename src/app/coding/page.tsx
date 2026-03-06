@@ -1,6 +1,7 @@
 'use client'
 import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
@@ -201,6 +202,7 @@ function AddCodeRow({ type, onAdd }: { type: 'ICD' | 'CPT'; onAdd: (code: string
 
 // ── Main Page Component ──────────────────────────────────────────────────────
 export default function CodingPage() {
+  const router = useRouter()
   const { selectedClient, currentUser, country } = useApp()
   const { t } = useT()
   const [reassignTarget, setReassignTarget] = useState<string | null>(null)
@@ -777,7 +779,7 @@ export default function CodingPage() {
                         <div className="space-y-4">
                           {item.source === 'ai_scribe' && (
                             <button
-                              onClick={() => toast.info('Playing AI Scribe recording...')}
+                              onClick={() => router.push(`/ai-scribe${item.encounterId ? `?encounter=${item.encounterId}` : ''}`)}
                               className="inline-flex items-center gap-2 text-[12px] rounded-btn px-3 py-1.5 bg-brand/10 text-brand"
                             >
                               <Play size={13} /> <Mic size={13} /> Play Recording
@@ -787,7 +789,7 @@ export default function CodingPage() {
                             <div className="flex items-center gap-2 px-3 py-2 bg-surface-elevated border border-separator rounded-lg">
                               <FileText size={13} className="text-content-tertiary shrink-0" />
                               <span className="text-xs text-content-secondary flex-1">Source chart — {item.patientName}</span>
-                              <button onClick={() => toast.info('Opening source document...')} className="text-xs text-brand underline shrink-0">
+                              <button onClick={() => router.push(`/documents${item.documentId ? `?doc=${item.documentId}` : ''}`)} className="text-xs text-brand underline shrink-0">
                                 View Original
                               </button>
                             </div>
@@ -809,7 +811,7 @@ export default function CodingPage() {
                             <FileText size={28} className="mx-auto mb-2 text-content-tertiary opacity-40" />
                             <p className="text-sm font-medium text-content-primary mb-0.5">{item.patientName}</p>
                             <p className="text-xs text-content-secondary mb-3">Uploaded superbill</p>
-                            <button onClick={() => toast.info('Opening superbill PDF...')} className="text-xs text-brand underline">
+                            <button onClick={() => item.documentId ? window.open(`/documents?doc=${item.documentId}`, '_blank') : router.push('/documents')} className="text-xs text-brand underline">
                               View PDF
                             </button>
                           </div>

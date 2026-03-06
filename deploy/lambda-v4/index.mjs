@@ -6039,6 +6039,49 @@ export const handler = async (event) => {
       return respond(200, result);
     }
 
+    // ════ Contracts ════════════════════════════════════════════════════════
+    if (path.includes('/contracts') && !path.includes('/payer-contracts')) {
+      if (method === 'GET' && !pathParams.id) {
+        let q = `SELECT c.*, py.name AS payer_name FROM contracts c LEFT JOIN payers py ON c.payer_id = py.id WHERE c.org_id = $1`;
+        const params = [effectiveOrgId];
+        if (clientId) { params.push(clientId); q += ` AND c.client_id = $${params.length}`; }
+        if (qs.status) { params.push(qs.status); q += ` AND c.status = $${params.length}`; }
+        if (qs.payer_id) { params.push(qs.payer_id); q += ` AND c.payer_id = $${params.length}`; }
+        q += ' ORDER BY c.effective_date DESC LIMIT 500';
+        try {
+          const rows = (await orgQuery(effectiveOrgId, q, params)).rows;
+          return respond(200, { data: rows, meta: { total: rows.length } });
+        } catch(e) {
+          if (e.message?.includes('does not exist')) return respond(200, { data: [], meta: { total: 0 } });
+          throw e;
+        }
+      }
+      if (method === 'GET' && pathParams.id) {
+        const contract = await getById('contracts', pathParams.id, effectiveOrgId);
+        if (!contract || contract.org_id !== effectiveOrgId) return respond(404, { error: 'Contract not found' });
+        return respond(200, contract);
+      }
+      if (method === 'POST') {
+        const contract = await create('contracts', body, effectiveOrgId);
+        await auditLog(effectiveOrgId, userId, 'create', 'contracts', contract.id, { payer_id: body.payer_id, contract_name: body.contract_name });
+        return respond(201, contract);
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const existing = await getById('contracts', pathParams.id, effectiveOrgId);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Contract not found' });
+        const contract = await update('contracts', pathParams.id, body, effectiveOrgId);
+        await auditLog(effectiveOrgId, userId, 'update', 'contracts', pathParams.id, body);
+        return respond(200, contract);
+      }
+      if (method === 'DELETE' && pathParams.id) {
+        const existing = await getById('contracts', pathParams.id, effectiveOrgId);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Contract not found' });
+        await pool.query('DELETE FROM contracts WHERE id = $1 AND org_id = $2', [pathParams.id, effectiveOrgId]);
+        await auditLog(effectiveOrgId, userId, 'delete', 'contracts', pathParams.id, {});
+        return respond(200, { success: true });
+      }
+    }
+
     // ════ Fee Schedules (Contract Rates) ══════════════════════════════════
     if (path.includes('/fee-schedules')) {
       if (method === 'GET' && !pathParams.id) {
@@ -6073,7 +6116,7 @@ export const handler = async (event) => {
       return respond(200, result);
     }
 
-    if (path.includes('/era-files') && !path.includes('/parse-835') && !path.includes('/reconcile')) {
+    if (path.includes('/era-files') && !path.includes('/parse-835') && !path.includes('/reconcile') && !path.includes('/download')) {
       if (method === 'GET' && !pathParams.id) {
         return respond(200, await list('era_files', effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
       }
@@ -6085,6 +6128,12 @@ export const handler = async (event) => {
       if (method === 'POST') {
         const e = await create('era_files', body, effectiveOrgId);
         return respond(201, e);
+      }
+      if (method === 'PUT' && pathParams.id) {
+        const e = await getById('era_files', pathParams.id);
+        if (!e || e.org_id !== effectiveOrgId) return respond(404, { error: 'ERA file not found' });
+        const updated = await update('era_files', pathParams.id, body);
+        return respond(200, updated);
       }
     }
 
