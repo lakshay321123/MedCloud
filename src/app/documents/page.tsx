@@ -7,6 +7,7 @@ import { useApp } from '@/lib/context'
 import type { DemoDocRecord, DemoFax } from '@/lib/demo-data'
 import { useDocuments, useTriggerTextract, useClassifyDocument, useRequestUploadUrl, useCreateDocument, useTextractResults, useCreateCoding } from '@/lib/hooks'
 import type { ApiDocument } from '@/lib/hooks'
+import { api } from '@/lib/api-client'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import {
   Search, Upload, X, Download, AlertTriangle, FileText, CreditCard,
@@ -44,6 +45,26 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
   const { mutate: createCoding } = useCreateCoding()
   const [sendingToCoding, setSendingToCoding] = useState(false)
   const [patientSearch, setPatientSearch] = useState('')
+  const [downloading, setDownloading] = useState(false)
+
+  async function handleDownload() {
+    // Demo docs (ids like D-001) have no real S3 key — skip real call
+    if (doc.id.startsWith('D-')) {
+      toast.success('Download started')
+      return
+    }
+    setDownloading(true)
+    try {
+      const res = await api.get<{ download_url: string; file_name: string }>(`/documents/${doc.id}/download`)
+      // Open presigned URL in new tab — browser will trigger file download
+      window.open(res.download_url, '_blank', 'noopener')
+      toast.success(`Downloading ${res.file_name}`)
+    } catch {
+      toast.error('Download failed — please try again')
+    } finally {
+      setDownloading(false)
+    }
+  }
   return (
     <div className="fixed inset-y-0 right-0 w-full sm:w-[600px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl animate-fade-in">
       <div className="p-4 border-b border-separator flex items-start justify-between">
@@ -134,9 +155,9 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
         </div>
       </div>
       <div className="p-4 border-t border-separator">
-        <button onClick={()=>toast.success('Download started')}
-          className="w-full flex items-center justify-center gap-2 border border-separator text-content-secondary hover:text-content-primary rounded-lg py-2.5 text-sm transition-colors">
-          <Download size={14}/> Download
+        <button onClick={handleDownload} disabled={downloading}
+          className="w-full flex items-center justify-center gap-2 border border-separator text-content-secondary hover:text-content-primary rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50">
+          <Download size={14}/> {downloading ? 'Preparing…' : 'Download'}
         </button>
       </div>
     </div>

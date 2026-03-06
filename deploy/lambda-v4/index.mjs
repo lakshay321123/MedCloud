@@ -5667,6 +5667,25 @@ export const handler = async (event) => {
       if (method === 'GET' && !pathParams.id) {
         return respond(200, await list('documents', effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
       }
+      // ── Document download — presigned GET URL ─────────────────────────────
+      if (method === 'GET' && pathParams.id && path.includes('/download')) {
+        const doc = await getById('documents', pathParams.id);
+        if (!doc || doc.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
+        if (!doc.s3_key) return respond(400, { error: 'No file attached to this document' });
+        if (!/^[\w/.\-]+$/.test(doc.s3_key)) return respond(400, { error: 'Invalid file key' });
+        const safeFileName = (doc.file_name || 'document').replace(/["\\r\\n]/g, '');
+        if (s3Client && getSignedUrl && GetObjectCommand) {
+          const cmd = new GetObjectCommand({
+            Bucket: S3_BUCKET,
+            Key: doc.s3_key,
+            ResponseContentDisposition: `attachment; filename="${safeFileName}"`,
+          });
+          const url = await getSignedUrl(s3Client, cmd, { expiresIn: 300 });
+          await auditLog(effectiveOrgId, userId, 'download', 'documents', doc.id, { file_name: safeFileName });
+          return respond(200, { download_url: url, file_name: safeFileName, expires_in: 300 });
+        }
+        return respond(200, { download_url: `https://${S3_BUCKET}.s3.amazonaws.com/${doc.s3_key}`, file_name: safeFileName, expires_in: 300 });
+      }
       if (method === 'GET' && pathParams.id) {
         const d = await getById('documents', pathParams.id);
         if (!d || d.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
