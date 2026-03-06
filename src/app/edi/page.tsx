@@ -304,8 +304,8 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
 
   // Lock body scroll while drawer is open
   useEffect(() => {
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
+    document.body.classList.add('overflow-hidden')
+    return () => { document.body.classList.remove('overflow-hidden') }
   }, [])
 
   const content = (
@@ -316,7 +316,7 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative w-full max-w-lg bg-[#1C1C1E] border-l border-separator shadow-2xl overflow-y-auto"
+        className="relative w-full max-w-lg bg-surface-secondary border-l border-separator shadow-2xl overflow-y-auto"
       >
         {/* Header */}
         <div className="sticky top-0 bg-surface border-b border-separator px-6 py-4 flex items-center justify-between z-10">
