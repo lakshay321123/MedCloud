@@ -4867,6 +4867,26 @@ async function calculateTimelyFilingDeadlines(orgId, clientId) {
 
 // ─── Credit Balance Identification ──────────────────────────────────────────
 async function identifyCreditBalances(orgId, clientId) {
+  // Ensure table exists with full schema (handles first-run and schema migrations)
+  await pool.query(`CREATE TABLE IF NOT EXISTS credit_balances (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id UUID NOT NULL, client_id UUID,
+    claim_id UUID, patient_id UUID, payer_id UUID,
+    amount NUMERIC(10,2) DEFAULT 0,
+    source VARCHAR(100), reason VARCHAR(200), status VARCHAR(50) DEFAULT 'identified',
+    resolution_method VARCHAR(100), resolution_claim_id UUID, notes TEXT,
+    resolution_date DATE, assigned_to UUID,
+    resolution_type VARCHAR(100), resolution_notes TEXT,
+    resolved_by UUID, resolved_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  )`).catch(()=>{});
+  // Add payer_id column if it was created without it (migration for existing tables)
+  await pool.query(`ALTER TABLE credit_balances ADD COLUMN IF NOT EXISTS payer_id UUID`).catch(()=>{});
+  await pool.query(`ALTER TABLE credit_balances ADD COLUMN IF NOT EXISTS source VARCHAR(100)`).catch(()=>{});
+  await pool.query(`ALTER TABLE credit_balances ADD COLUMN IF NOT EXISTS resolution_method VARCHAR(100)`).catch(()=>{});
+  await pool.query(`ALTER TABLE credit_balances ADD COLUMN IF NOT EXISTS resolution_date DATE`).catch(()=>{});
+  await pool.query(`ALTER TABLE credit_balances ADD COLUMN IF NOT EXISTS assigned_to UUID`).catch(()=>{});
   let q = `SELECT c.id as claim_id, c.claim_number, c.patient_id, c.payer_id,
             c.total_charges, c.total_paid, c.adjustment_amount,
             p.first_name || ' ' || p.last_name as patient_name, py.name as payer_name,
@@ -5565,8 +5585,8 @@ export const handler = async (event) => {
     const callerRole  = authCtx.role   || headers['x-role']      || 'unknown';
 
     const effectiveOrgId = validateUUID(rawOrgId, 'org_id');
-    const userId = rawUserId ? validateUUID(rawUserId, 'user_id') : null;
-    const clientId = rawClientId ? validateUUID(rawClientId, 'client_id') : null;
+    const userId = (rawUserId && UUID_RE.test(rawUserId)) ? rawUserId : null;
+    const clientId = (rawClientId && UUID_RE.test(rawClientId)) ? rawClientId : null;
 
     // Parse path params (for /:id patterns)
     const pathParts = path.replace(/^\/+|\/+$/g, '').split('/');
@@ -5584,11 +5604,14 @@ export const handler = async (event) => {
     if (_parts[0] === 'api' && _parts[1] === 'v1') _parts = _parts.slice(2);
     else if (_parts[0] === 'api') _parts = _parts.slice(1);
     const resource = _parts[0] || '';
-    // Auto-detect ID from path: /entity/uuid (e.g. /api/v1/denials/some-uuid via proxy+)
+    // Auto-detect ID from path: /entity/uuid or /entity/uuid/action (e.g. /claims/{uuid}/generate-edi)
     if (!pathParams.id && pathParts.length >= 2) {
-      const maybeId = pathParts[pathParts.length - 1];
-      if (maybeId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-        pathParams.id = maybeId;
+      // Search all path parts for the first UUID (not just the last segment)
+      for (const part of pathParts) {
+        if (part.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+          pathParams.id = part;
+          break;
+        }
       }
     }
 
@@ -6798,9 +6821,11 @@ export const handler = async (event) => {
             await pool.query(`CREATE TABLE IF NOT EXISTS credit_balances (
               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
               org_id UUID NOT NULL, client_id UUID,
-              claim_id UUID, patient_id UUID,
+              claim_id UUID, patient_id UUID, payer_id UUID,
               amount NUMERIC(10,2) DEFAULT 0,
-              reason VARCHAR(200), status VARCHAR(50) DEFAULT 'open',
+              source VARCHAR(100), reason VARCHAR(200), status VARCHAR(50) DEFAULT 'identified',
+              resolution_method VARCHAR(100), resolution_claim_id UUID, notes TEXT,
+              resolution_date DATE, assigned_to UUID,
               resolution_type VARCHAR(100), resolution_notes TEXT,
               resolved_by UUID, resolved_at TIMESTAMPTZ,
               created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -6922,7 +6947,26 @@ export const handler = async (event) => {
         return respond(201, await initOnboarding(body.client_id, effectiveOrgId, userId));
       }
       if (method === 'GET' && !pathParams.id) {
-        return respond(200, await list('client_onboarding', effectiveOrgId, clientId));
+        try {
+          return respond(200, await list('client_onboarding', effectiveOrgId, clientId));
+        } catch(e) {
+          if (e.message?.includes('does not exist')) {
+            await pool.query(`CREATE TABLE IF NOT EXISTS client_onboarding (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              org_id UUID NOT NULL, client_id UUID,
+              status VARCHAR(50) DEFAULT 'not_started',
+              current_step INTEGER DEFAULT 0,
+              total_steps INTEGER DEFAULT 10,
+              checklist JSONB DEFAULT '[]',
+              started_at TIMESTAMPTZ, completed_at TIMESTAMPTZ,
+              assigned_to UUID, notes TEXT,
+              created_at TIMESTAMPTZ DEFAULT NOW(),
+              updated_at TIMESTAMPTZ DEFAULT NOW()
+            )`).catch(()=>{});
+            return respond(200, { data: [], meta: { total: 0 } });
+          }
+          throw e;
+        }
       }
       if (method === 'GET' && pathParams.id) {
         const r = await getById('client_onboarding', pathParams.id);
@@ -6973,7 +7017,31 @@ export const handler = async (event) => {
         return respond(201, await generateInvoice(body.client_id, body.period_start, body.period_end, effectiveOrgId));
       }
       if (method === 'GET' && !pathParams.id) {
-        return respond(200, await list('invoices', effectiveOrgId, clientId, 'ORDER BY issued_date DESC'));
+        try {
+          return respond(200, await list('invoices', effectiveOrgId, clientId, 'ORDER BY issued_date DESC'));
+        } catch(e) {
+          if (e.message?.includes('does not exist')) {
+            await pool.query(`CREATE TABLE IF NOT EXISTS invoices (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              org_id UUID NOT NULL, client_id UUID,
+              invoice_number VARCHAR(50), invoice_type VARCHAR(50) DEFAULT 'monthly',
+              period_start DATE, period_end DATE,
+              issued_date DATE DEFAULT CURRENT_DATE,
+              due_date DATE,
+              subtotal NUMERIC(12,2) DEFAULT 0,
+              tax_amount NUMERIC(12,2) DEFAULT 0,
+              total_amount NUMERIC(12,2) DEFAULT 0,
+              paid_amount NUMERIC(12,2) DEFAULT 0,
+              status VARCHAR(50) DEFAULT 'draft',
+              line_items JSONB DEFAULT '[]',
+              notes TEXT, payment_terms TEXT,
+              created_at TIMESTAMPTZ DEFAULT NOW(),
+              updated_at TIMESTAMPTZ DEFAULT NOW()
+            )`).catch(()=>{});
+            return respond(200, { data: [], meta: { total: 0 } });
+          }
+          throw e;
+        }
       }
       if (method === 'GET' && pathParams.id) {
         const r = await getById('invoices', pathParams.id);
@@ -6996,7 +7064,28 @@ export const handler = async (event) => {
         return respond(201, await createAccessRequest(body, effectiveOrgId, userId));
       }
       if (method === 'GET' && !pathParams.id) {
-        return respond(200, await list('patient_access_requests', effectiveOrgId, clientId, 'ORDER BY deadline_date ASC'));
+        try {
+          return respond(200, await list('patient_access_requests', effectiveOrgId, clientId, 'ORDER BY deadline_date ASC'));
+        } catch(e) {
+          if (e.message?.includes('does not exist')) {
+            await pool.query(`CREATE TABLE IF NOT EXISTS patient_access_requests (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              org_id UUID NOT NULL, client_id UUID,
+              patient_id UUID, request_type VARCHAR(100),
+              requester_name VARCHAR(200), requester_relationship VARCHAR(100),
+              request_date DATE, deadline_date DATE,
+              status VARCHAR(50) DEFAULT 'pending',
+              priority VARCHAR(20) DEFAULT 'normal',
+              task_type VARCHAR(50) DEFAULT 'patient_access',
+              description TEXT, fulfillment_notes TEXT,
+              fulfilled_by UUID, fulfilled_at TIMESTAMPTZ,
+              created_at TIMESTAMPTZ DEFAULT NOW(),
+              updated_at TIMESTAMPTZ DEFAULT NOW()
+            )`).catch(()=>{});
+            return respond(200, { data: [], meta: { total: 0 } });
+          }
+          throw e;
+        }
       }
       if (method === 'GET' && pathParams.id) {
         const r = await getById('patient_access_requests', pathParams.id);
