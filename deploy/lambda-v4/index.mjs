@@ -2603,7 +2603,9 @@ async function generate276(claimId, orgId) {
   }
   edi += `TRN*1*${claim.claim_number || claimId.slice(0, 12)}*COSENTUS~\n`;
   if (claim.payer_claim_number) edi += `REF*1K*${claim.payer_claim_number}~\n`;
-  edi += `DTP*472*RD8*${(claim.dos_from || '').replace(/-/g, '')}-${(claim.dos_to || claim.dos_from || '').replace(/-/g, '')}~\n`;
+  const dosFrom276 = claim.dos_from ? new Date(claim.dos_from).toISOString().slice(0,10).replace(/-/g,'') : '';
+  const dosTo276   = claim.dos_to   ? new Date(claim.dos_to).toISOString().slice(0,10).replace(/-/g,'') : dosFrom276;
+  edi += `DTP*472*RD8*${dosFrom276}-${dosTo276}~\n`;
   edi += `AMT*T3*${claim.total_charges || 0}~\n`;
   const segCount = edi.split('~').filter(Boolean).length;
   edi += `SE*${segCount + 1}*0001~\n`;
@@ -5823,7 +5825,10 @@ export const handler = async (event) => {
     // Claim lines
     if (path.includes('/lines')) {
       if (method === 'GET') {
-        const r = await pool.query('SELECT * FROM claim_lines WHERE claim_id = $1 ORDER BY line_number', [pathParams.id]);
+        const r = await pool.query(
+          `SELECT *, charges AS charge_amount FROM claim_lines WHERE claim_id = $1 ORDER BY line_number`,
+          [pathParams.id]
+        );
         return respond(200, { data: r.rows, meta: { total: r.rows.length, page: 1, limit: r.rows.length } });
       }
       if (method === 'POST') {
@@ -5835,7 +5840,10 @@ export const handler = async (event) => {
     // Claim diagnoses
     if (path.includes('/diagnoses')) {
       if (method === 'GET') {
-        const r = await pool.query('SELECT * FROM claim_diagnoses WHERE claim_id = $1 ORDER BY sequence', [pathParams.id]);
+        const r = await pool.query(
+          `SELECT *, (sequence = 1) AS is_primary FROM claim_diagnoses WHERE claim_id = $1 ORDER BY sequence`,
+          [pathParams.id]
+        );
         return respond(200, { data: r.rows, meta: { total: r.rows.length, page: 1, limit: r.rows.length } });
       }
       if (method === 'POST') {

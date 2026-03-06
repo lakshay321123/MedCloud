@@ -12,7 +12,7 @@ import { useToast } from '@/components/shared/Toast'
 import { useRouter } from 'next/navigation'
 import { useClaims, useScrubClaim, useTransitionClaim, useGenerateEDI,
          useClaimLines, useAddClaimLine, useClaimDiagnoses, useAddClaimDiagnosis,
-         useScrubRules, useCreateClaim, useUpdateClaim, usePredictDenial, useGenerate837I, useTriggerSecondaryClaim, useUnderpaymentCheck, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useParse277, useEDITransactions, useCreateEDITransaction, useScrubResults, useCARCCodes, useRARCCodes, useSendMessage, useMessages, useRequestUploadUrl, useCreateDocument } from '@/lib/hooks'
+         useScrubRules, useUpdateClaim, useGenerate837I, useTriggerSecondaryClaim, useUnderpaymentCheck, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useSendMessage, useMessages, useAuditLog, useRequestUploadUrl, useCreateDocument } from '@/lib/hooks'
 import type { ApiClaim } from '@/lib/hooks'
 import type { ClaimStatus } from '@/types'
 import { ErrorBanner } from '@/components/shared/ApiStates'
@@ -124,13 +124,20 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
   const { currentUser } = useApp()
   const [tab, setTab] = useState<'overview' | 'lines' | 'docs' | 'messages' | 'audit' | 'scrub'>('overview')
   const { toast } = useToast()
-  const [localMessages, setLocalMessages] = useState<any[]>([])
+  const [newMessages, setNewMessages] = useState<any[]>([])
   const [msgInput, setMsgInput] = useState('')
   const [ediOutput, setEdiOutput] = useState<string | null>(null)
   const [edi837IOutput, setEdi837IOutput] = useState<string | null>(null)
   const [underpayResult, setUnderpayResult] = useState<{ total_underpaid: number; underpayments: Array<{ cpt_code: string; expected_payment: number; actual_allowed: number; underpaid_amount: number; variance_pct: string }> } | null>(null)
   const [secondaryResult, setSecondaryResult] = useState<{ secondary_claim_id?: string; claim_number?: string } | null>(null)
   const [statusInquiryResult, setStatusInquiryResult] = useState<string | null>(null)
+
+  // Real audit log + messages from API
+  const claimApiIdForQuery = claim.apiId || null
+  const { data: auditData } = useAuditLog(claimApiIdForQuery ? { entity_type: 'claims', entity_id: claimApiIdForQuery, limit: 50 } : undefined)
+  const { data: messagesData } = useMessages(claimApiIdForQuery ? { entity_type: 'claim', entity_id: claim.id, limit: 50 } : undefined)
+  const apiAuditEntries = auditData?.data ?? []
+  const apiMessages = messagesData?.data ?? []
 
   // Edit mode state
   const [editMode, setEditMode] = useState(false)
@@ -374,7 +381,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
       timestamp: new Date().toISOString(), unread: false, status: 'open',
       messages: [{ sender: senderName, role: senderRole as 'staff'|'client', text: msgInput, time: new Date().toISOString() }]
     }
-    setLocalMessages(prev => [...prev, newLocal])
+    setNewMessages(prev => [...prev, newLocal])
     const body = msgInput
     setMsgInput('')
     // Persist to backend so Messages page picks it up
@@ -386,9 +393,20 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
     toast.success('Message sent to back office')
   }
 
-  const handleSaveEdit = () => {
-    toast.success('Claim updated — changes logged to audit trail')
-    setEditMode(false)
+  const { mutate: updateClaim, loading: savingEdit } = useUpdateClaim(claimApiId)
+
+  const handleSaveEdit = async () => {
+    if (!claimApiId) { toast.warning('Cannot save — no claim ID'); return }
+    const result = await updateClaim({
+      place_of_service: editedClaim.placeOfService,
+    })
+    if (result) {
+      toast.success('Claim updated — changes logged to audit trail')
+      setEditMode(false)
+      onRefetch?.()
+    } else {
+      toast.error('Save failed — please try again')
+    }
   }
 
   const TABS = [
@@ -416,9 +434,9 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
             </button>
           ) : (
             <>
-              <button onClick={handleSaveEdit}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-brand text-white rounded-btn ml-2">
-                <Save size={13} /> Save
+              <button onClick={handleSaveEdit} disabled={savingEdit}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-brand text-white rounded-btn ml-2 disabled:opacity-50">
+                <Save size={13} /> {savingEdit ? 'Saving…' : 'Save'}
               </button>
               <button onClick={() => setEditMode(false)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-surface-elevated border border-separator rounded-btn text-content-secondary hover:text-content-primary">
@@ -455,34 +473,21 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
               {/* Editable fields */}
               {editMode ? (
                 <div className="space-y-3">
-                  <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold">Billing Details</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[11px] text-content-tertiary block mb-1">Billing NPI</label>
-                      <input value={editedClaim.billingNpi}
-                        onChange={e => setEditedClaim(p => ({ ...p, billingNpi: e.target.value }))}
-                        className="w-full bg-surface-elevated border border-separator rounded-btn px-2.5 py-1.5 text-[13px] text-content-primary font-mono focus:outline-none focus:border-brand/40" />
-                    </div>
-                    <div>
-                      <label className="text-[11px] text-content-tertiary block mb-1">Rendering NPI</label>
-                      <input value={editedClaim.renderingNpi}
-                        onChange={e => setEditedClaim(p => ({ ...p, renderingNpi: e.target.value }))}
-                        className="w-full bg-surface-elevated border border-separator rounded-btn px-2.5 py-1.5 text-[13px] text-content-primary font-mono focus:outline-none focus:border-brand/40" />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="text-[11px] text-content-tertiary block mb-1">Place of Service</label>
-                      <select value={editedClaim.placeOfService}
-                        onChange={e => setEditedClaim(p => ({ ...p, placeOfService: e.target.value }))}
-                        className="w-full bg-surface-elevated border border-separator rounded-btn px-2.5 py-1.5 text-[13px] text-content-primary focus:outline-none focus:border-brand/40">
-                        {POS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                      </select>
-                    </div>
+                  <div className="flex items-start gap-2 bg-surface-elevated border border-separator rounded-lg p-3">
+                    <AlertTriangle size={13} className="text-content-tertiary mt-0.5 shrink-0" />
+                    <p className="text-[12px] text-content-secondary">
+                      Only <span className="font-medium text-content-primary">Place of Service</span> can be edited here.
+                      To update NPIs, edit the provider record. To correct CPT codes, use the{' '}
+                      <button onClick={() => setTab('lines')} className="text-brand hover:underline">Line Items tab</button>.
+                    </p>
                   </div>
                   <div>
-                    <label className="text-[11px] text-content-tertiary block mb-1">CPT Codes (comma-separated)</label>
-                    <input value={editedClaim.cptCodes.join(', ')}
-                      onChange={e => setEditedClaim(p => ({ ...p, cptCodes: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))}
-                      className="w-full bg-surface-elevated border border-separator rounded-btn px-2.5 py-1.5 text-[13px] text-content-primary font-mono focus:outline-none focus:border-brand/40" />
+                    <label className="text-[11px] text-content-tertiary block mb-1.5">Place of Service</label>
+                    <select value={editedClaim.placeOfService}
+                      onChange={e => setEditedClaim(p => ({ ...p, placeOfService: e.target.value }))}
+                      className="w-full bg-surface-elevated border border-separator rounded-btn px-2.5 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40">
+                      {POS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
                   </div>
                 </div>
               ) : (
@@ -829,12 +834,26 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
 
           {tab === 'messages' && (
             <div className="flex flex-col h-full gap-3">
-              <div className="flex-1 space-y-3 min-h-[200px]">
-                {localMessages.length === 0 && (
+              <div className="flex-1 space-y-3 min-h-[200px] overflow-y-auto">
+                {apiMessages.length === 0 && newMessages.length === 0 && (
                   <p className="text-[13px] text-content-tertiary text-center py-8">No messages for this claim</p>
                 )}
-                {localMessages.flatMap(m => m.messages).map((msg, i) => (
-                  <div key={`${msg.sender}-${i}-${msg.text.slice(0, 10)}`} className={`flex gap-2 ${msg.role === 'staff' ? 'flex-row-reverse' : ''}`}>
+                {/* Persisted messages from API */}
+                {apiMessages.map((msg, i) => {
+                  const isStaff = msg.sender_role !== 'client'
+                  return (
+                    <div key={msg.id || i} className={`flex gap-2 ${isStaff ? 'flex-row-reverse' : ''}`}>
+                      <div className={`max-w-[80%] px-3 py-2 rounded-lg text-[13px] ${isStaff ? 'bg-brand/10 text-content-primary' : 'bg-surface-elevated text-content-primary'}`}>
+                        <p className="text-[11px] text-content-tertiary mb-1">{msg.sender_email || msg.sender_role || 'Staff'}</p>
+                        {msg.body}
+                        <p className="text-[10px] text-content-tertiary mt-1">{new Date(msg.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+                {/* New messages sent this session */}
+                {newMessages.flatMap(m => m.messages).map((msg: any, i: number) => (
+                  <div key={msg.time || `new-${i}`} className={`flex gap-2 ${msg.role === 'staff' ? 'flex-row-reverse' : ''}`}>
                     <div className={`max-w-[80%] px-3 py-2 rounded-lg text-[13px] ${msg.role === 'staff' ? 'bg-brand/10 text-content-primary' : 'bg-surface-elevated text-content-primary'}`}>
                       <p className="text-[11px] text-content-tertiary mb-1">{msg.sender}</p>
                       {msg.text}
@@ -854,25 +873,33 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
 
           {tab === 'audit' && (
             <div className="space-y-3">
-              {[
-                { icon: <FileText size={14} />, label: 'Claim created', detail: 'Created by Maria Rodriguez', time: `${claim.dos} 9:14 AM` },
-                { icon: <Activity size={14} />, label: 'AI coding complete', detail: 'Codes: ' + claim.cptCodes.join(', '), time: `${claim.dos} 9:22 AM` },
-                { icon: <CheckCircle2 size={14} />, label: 'Scrub passed', detail: '0 errors found', time: `${claim.dos} 9:23 AM` },
-                { icon: <Eye size={14} />, label: 'Reviewed', detail: 'Reviewed by James Wilson', time: claim.submittedDate ? `${claim.submittedDate} 8:50 AM` : `${claim.dos} 10:00 AM` },
-                { icon: <CheckSquare size={14} />, label: 'Submitted', detail: 'Submitted to clearinghouse', time: claim.submittedDate ? `${claim.submittedDate} 9:00 AM` : '—' },
-                { icon: <DollarSign size={14} />, label: 'ERA received', detail: `Paid $${claim.paid}`, time: claim.paymentDate ? `${claim.paymentDate} 11:00 AM` : '—' },
-                { icon: <CheckCircle2 size={14} />, label: 'Posted', detail: 'Auto-posted by system', time: claim.paymentDate ? `${claim.paymentDate} 11:05 AM` : '—' },
-                { icon: <Activity size={14} />, label: 'Patient statement sent', detail: 'Balance: $0', time: claim.paymentDate ? `${claim.paymentDate} 12:00 PM` : '—' },
-              ].map((entry, i) => (
-                <div key={i} className="flex items-start gap-3 py-2 border-b border-separator last:border-0">
-                  <div className="text-brand mt-0.5">{entry.icon}</div>
-                  <div>
-                    <p className="text-[13px] font-medium text-content-primary">{entry.label}</p>
-                    <p className="text-[12px] text-content-secondary">{entry.detail}</p>
-                  </div>
-                  <span className="ml-auto text-[11px] text-content-tertiary whitespace-nowrap">{entry.time}</span>
+              {apiAuditEntries.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Activity size={28} className="text-content-tertiary opacity-30 mb-3" />
+                  <p className="text-[13px] text-content-tertiary">No audit events recorded yet</p>
+                  <p className="text-[11px] text-content-tertiary mt-1">Events are logged when you scrub, transition, or edit this claim</p>
                 </div>
-              ))}
+              )}
+              {apiAuditEntries.map((entry, i) => {
+                const actionIcon = entry.action?.includes('scrub') ? <CheckCircle2 size={14} /> :
+                  entry.action?.includes('submit') || entry.action?.includes('transition') ? <CheckSquare size={14} /> :
+                  entry.action?.includes('post') || entry.action?.includes('pay') ? <DollarSign size={14} /> :
+                  entry.action?.includes('upload') || entry.action?.includes('doc') ? <FileText size={14} /> :
+                  <Activity size={14} />
+                const details = entry.details ? (typeof entry.details === 'string' ? entry.details : JSON.stringify(entry.details)) : ''
+                return (
+                  <div key={entry.id || i} className="flex items-start gap-3 py-2 border-b border-separator last:border-0">
+                    <div className="text-brand mt-0.5">{actionIcon}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium text-content-primary capitalize">{(entry.action || '').replace(/_/g, ' ')}</p>
+                      <p className="text-[12px] text-content-secondary truncate">{entry.user_email || entry.user_id || 'System'}{details ? ` — ${details.slice(0, 80)}` : ''}</p>
+                    </div>
+                    <span className="ml-auto text-[11px] text-content-tertiary whitespace-nowrap shrink-0">
+                      {new Date(entry.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
@@ -895,6 +922,7 @@ export default function ClaimsPage() {
   const [selectedRows, setSelectedRows] = useState<string[]>([])
   const [drawerClaim, setDrawerClaim] = useState<DemoClaim | null>(null)
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
+  const [voidConfirmId, setVoidConfirmId] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<'id' | 'age' | 'billed'>('id')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -1067,7 +1095,25 @@ export default function ClaimsPage() {
                 className={`px-3 py-1.5 rounded-btn text-[12px] font-medium transition-colors ${allReady ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-surface-elevated text-content-tertiary cursor-not-allowed'}`}>
                 Submit Selected
               </button>
-              <button onClick={() => toast.info('CSV exported')}
+              <button onClick={() => {
+                  // csvSafe: escape existing double quotes, then prefix formula chars to prevent injection
+                  const csvSafe = (v: unknown): string => {
+                    const s = String(v ?? '')
+                    const escaped = s.replace(/"/g, '""')   // escape embedded double quotes
+                    // Prefix =, +, -, @ with a tab to neutralise formula injection in Excel / Sheets
+                    return /^[=+\-@]/.test(escaped) ? `\t${escaped}` : escaped
+                  }
+                  const headers = ['Claim ID','Patient','Client','Payer','Billed','Status','DOS','Days']
+                  const rows = allClaims
+                    .filter(c => selectedRows.includes(c.id))
+                    .map(c => [c.id, c.patientName, c.clientName, c.payer, c.billed, c.status, c.dos, c.age])
+                  const csv = [headers, ...rows].map(r => r.map(v => `"${csvSafe(v)}"`).join(',')).join('\n')
+                  const blob = new Blob([csv], { type: 'text/csv' })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a'); a.href = url; a.download = 'claims-export.csv'; a.click()
+                  URL.revokeObjectURL(url)
+                  toast.success(`${selectedRows.length} claims exported`)
+                }}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-btn text-[12px] font-medium bg-surface-elevated text-content-secondary hover:text-content-primary">
                 <Download size={12} /> Export CSV
               </button>
@@ -1164,14 +1210,31 @@ export default function ClaimsPage() {
                         <>
                           <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(null)} />
                           <div className="absolute right-0 top-full mt-1 bg-surface-secondary border border-separator rounded-lg shadow-elevated z-50 w-40 overflow-hidden">
-                            {[
-                              { label: 'View Detail', action: () => { setDrawerClaim(c); setMenuOpen(null) } },
-                              { label: 'Correct Claim', action: () => { setDrawerClaim(c); setMenuOpen(null) } },
-                              { label: 'Route to Denials', action: () => { router.push(`/denials?claimId=${c.id}`); setMenuOpen(null) } },
-                              { label: 'Void Claim', action: () => { if (confirm(`Void claim ${c.id}?`)) { toast.warning(`Claim ${c.id} voided`) } setMenuOpen(null) } },
-                            ].map(item => (
+                            {([
+                              { label: 'View Detail',      variant: 'default',             action: () => { setDrawerClaim(c); setMenuOpen(null) } },
+                              { label: 'Correct Claim',    variant: 'default',             action: () => { setDrawerClaim(c); setMenuOpen(null) } },
+                              { label: 'Route to Denials', variant: 'default',             action: () => { router.push(`/denials?claimId=${c.id}`); setMenuOpen(null) } },
+                              { label: voidConfirmId === c.id ? '⚠ Confirm Void' : 'Void Claim',
+                                variant: voidConfirmId === c.id ? 'destructive-confirm' : 'destructive',
+                                action: () => {
+                                  if (voidConfirmId === c.id) {
+                                    toast.warning(`Claim ${c.id} voided`)
+                                    setVoidConfirmId(null)
+                                    setMenuOpen(null)
+                                  } else {
+                                    setVoidConfirmId(c.id)
+                                  }
+                                }
+                              },
+                              ...(voidConfirmId === c.id ? [{ label: 'Cancel', variant: 'cancel' as const, action: () => { setVoidConfirmId(null) } }] : []),
+                            ] as Array<{ label: string; variant: 'default' | 'destructive' | 'destructive-confirm' | 'cancel'; action: () => void }>).map(item => (
                               <button key={item.label} onClick={item.action}
-                                className="w-full text-left px-3 py-2 text-xs text-content-primary hover:bg-surface-elevated transition-colors">
+                                className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-elevated ${
+                                  item.variant === 'destructive-confirm' ? 'text-red-500 font-semibold' :
+                                  item.variant === 'cancel'              ? 'text-content-tertiary' :
+                                  item.variant === 'destructive'         ? 'text-red-400' :
+                                  'text-content-primary'
+                                }`}>
                                 {item.label}
                               </button>
                             ))}
@@ -1249,8 +1312,8 @@ export default function ClaimsPage() {
         <div className="grid grid-cols-4 gap-3 text-center">
           {[{label:'Ready to Submit',value:allClaims.filter(c=>c.status==='ready').length,color:'text-brand'},
             {label:'Pending Response',value:allClaims.filter(c=>c.status==='submitted').length,color:'text-amber-500'},
-            {label:'Filing Deadline <7d',value:3,color:'text-red-500'},
-            {label:'EDI Transactions Today',value:12,color:'text-emerald-500'}].map(k=>
+            {label:'Filing Deadline <7d',value:timelyFilingData?.data?.filter(tf=>tf.days_remaining<=7).length ?? 0,color:'text-red-500'},
+            {label:'EDI Transactions Today',value:allClaims.filter(c=>c.status==='submitted'||c.status==='accepted').length,color:'text-emerald-500'}].map(k=>
             <div key={k.label} className="bg-surface-elevated rounded-lg p-3">
               <p className={`text-lg font-bold ${k.color}`}>{k.value}</p>
               <p className="text-[10px] text-content-tertiary">{k.label}</p>
