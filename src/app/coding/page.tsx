@@ -779,7 +779,7 @@ export default function CodingPage() {
                         <div className="space-y-4">
                           {item.source === 'ai_scribe' && (
                             <button
-                              onClick={() => router.push(`/ai-scribe${item.encounterId ? `?encounter=${item.encounterId}` : ''}`)}
+                              onClick={() => router.push(`/ai-scribe?encounter=${item.id}`)}
                               className="inline-flex items-center gap-2 text-[12px] rounded-btn px-3 py-1.5 bg-brand/10 text-brand"
                             >
                               <Play size={13} /> <Mic size={13} /> Play Recording
