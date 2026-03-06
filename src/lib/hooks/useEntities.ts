@@ -133,6 +133,9 @@ export interface ApiERAFile {
   status?: string
   claim_count?: number
   created_at?: string
+  s3_key?: string
+  s3_bucket?: string
+  file_type?: string
 }
 
 export interface ApiCodingItem {

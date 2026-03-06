@@ -11,6 +11,7 @@ import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
 import { useERAFiles, useAutoPostPayments, useCreateERAFile } from '@/lib/hooks'
+import { api } from '@/lib/api-client'
 
 interface LineItem {
   id: string
@@ -309,7 +310,18 @@ export default function PaymentPostingPage() {
           <span className="text-[12px] font-semibold text-content-secondary uppercase tracking-wider">ERA / EOB Document</span>
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-content-tertiary">{era?.file}</span>
-            <button onClick={() => toast.success('Download started')}
+            <button
+              onClick={async () => {
+                try {
+                  const result = await api.get<{ download_url: string; file_name: string }>(
+                    `/era-files/${selectedEra}/download`
+                  )
+                  // Open presigned URL in new tab — browser will prompt save-as
+                  window.open(result.download_url, '_blank')
+                } catch {
+                  toast.error('Download failed — file may not be stored on server yet')
+                }
+              }}
               className="text-[11px] text-brand border border-brand/20 rounded px-2 py-1 hover:bg-brand/10 transition-colors">
               Download 835
             </button>
