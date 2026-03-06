@@ -1,6 +1,7 @@
 'use client'
 import { useT } from '@/lib/i18n'
 import React, { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -9,7 +10,7 @@ import { UAE_ORG_IDS, US_ORG_IDS, filterByRegion, filterPayersByCountry } from '
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
-import { useERAFiles, useAutoPostPayments, useParse835, useReconcilePayments, useBankDeposits, useReconcileBankDeposit, usePayments, useUpdatePayment, useCreateBankDeposit, useCreateERAFile } from '@/lib/hooks'
+import { useERAFiles, useAutoPostPayments, useCreateERAFile } from '@/lib/hooks'
 
 interface LineItem {
   id: string
@@ -104,6 +105,22 @@ export default function PaymentPostingPage() {
   // Silent denials: ERA lines with denied > 0 that have action 'post' (not yet routed)
   const silentDenials = lineItems.filter(l => l.denied > 0 && l.action === 'post')
 
+  // ── ERA stats — single pass, no repeated .filter() calls ──────────────────
+  const eraStats = useMemo(() => {
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+    return eras.reduce((acc, e) => {
+      acc.totalValue += e.total
+      if (e.status === 'posted') {
+        acc.postedCount++
+        // Only count as "posted today" if updated_at falls on today
+        if (e.receivedAt && new Date(e.receivedAt) >= todayStart) acc.postedToday++
+      } else {
+        acc.pendingCount++
+      }
+      return acc
+    }, { postedCount: 0, pendingCount: 0, postedToday: 0, totalValue: 0 })
+  }, [eras])
+
   if (!selectedEra) {
     return (
       <ModuleShell title={t("posting","title")} subtitle="Process ERAs and post payments">
@@ -112,9 +129,9 @@ export default function PaymentPostingPage() {
           Payment posting connected — processing live ERAs
         </div>
         <div className="grid grid-cols-4 gap-4 mb-4">
-          <KPICard label={t('posting','erasPending')} value={eras.filter(e => e.status !== 'posted').length} icon={<Receipt size={20} />} />
-          <KPICard label={t('posting','postedToday')} value="89" icon={<CheckCircle2 size={20} />} />
-          <KPICard label={t('posting','autoPostRate')} value={apiERAResult?.data ? `${Math.round((apiERAResult.data.filter(e => e.status === 'posted').length / Math.max(apiERAResult.data.length, 1)) * 100)}%` : '76%'} icon={<Send size={20} />} />
+          <KPICard label={t('posting','erasPending')} value={eraStats.pendingCount} icon={<Receipt size={20} />} />
+          <KPICard label={t('posting','postedToday')} value={eraStats.postedToday} icon={<CheckCircle2 size={20} />} />
+          <KPICard label={t('posting','autoPostRate')} value={eras.length > 0 ? `${Math.round((eraStats.postedCount / eras.length) * 100)}%` : '—'} icon={<Send size={20} />} />
           <KPICard label={t('posting','unmatched')} value={0} icon={<AlertTriangle size={20} />} />
         </div>
 
@@ -194,15 +211,15 @@ export default function PaymentPostingPage() {
           </div>
         </div>
 
-        {/* Upload ERA Modal */}
-        {showUploadModal && (
+        {/* Upload ERA Modal — portal to escape overflow:hidden AppShell */}
+        {showUploadModal && typeof document !== 'undefined' && createPortal(
           <>
-            <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setShowUploadModal(false)} />
-            <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="fixed inset-0 bg-black/50 z-[200]" onClick={() => { setUploadedFile(null); setShowUploadModal(false) }} />
+            <div className="fixed inset-0 flex items-center justify-center z-[200] p-4">
               <div className="bg-surface-secondary rounded-xl shadow-2xl w-full max-w-md border border-separator">
                 <div className="flex items-center justify-between px-5 py-4 border-b border-separator">
                   <h3 className="font-semibold text-content-primary">Upload ERA File</h3>
-                  <button onClick={() => setShowUploadModal(false)}><X size={16} className="text-content-secondary" /></button>
+                  <button onClick={() => { setUploadedFile(null); setShowUploadModal(false) }}><X size={16} className="text-content-secondary" /></button>
                 </div>
                 <div className="p-5 space-y-4">
                   <div
@@ -234,23 +251,28 @@ export default function PaymentPostingPage() {
                       if (!uploadedFile) return
                       setUploading(true)
                       try {
-                        const text = await uploadedFile.text()
+                        const ext = uploadedFile.name.split('.').pop()?.toLowerCase() || 'txt'
                         const result = await createERAFile({
                           file_name: uploadedFile.name,
-                          file_type: uploadedFile.name.endsWith('.835') ? '835' : uploadedFile.name.endsWith('.txt') ? 'txt' : 'edi',
-                          raw_content: text.slice(0, 10000), // first 10k chars for preview
+                          file_type: ext === '835' ? '835' : ext === 'edi' ? 'edi' : 'txt',
+                          payer_name: '',
                           status: 'new',
+                          claim_count: 0,
+                          total_amount: 0,
                         })
-                        if (result) {
-                          toast.success(`ERA file "${uploadedFile.name}" uploaded — queued for processing`)
-                          refetchERAs()
+                        if (result?.id) {
+                          toast.success(`"${uploadedFile.name}" uploaded — opening ERA`)
+                          setShowUploadModal(false)
+                          setUploadedFile(null)
+                          await refetchERAs()
+                          setSelectedEra(result.id)
+                        } else {
+                          toast.error('Upload failed — server did not confirm the new ERA')
                         }
                       } catch {
                         toast.error('Upload failed — please try again')
                       } finally {
                         setUploading(false)
-                        setUploadedFile(null)
-                        setShowUploadModal(false)
                       }
                     }}
                     className={`flex-1 rounded-btn py-2.5 text-[13px] font-medium transition-colors ${uploadedFile && !uploading ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-surface-elevated text-content-tertiary cursor-not-allowed border border-separator'}`}>
@@ -263,7 +285,8 @@ export default function PaymentPostingPage() {
                 </div>
               </div>
             </div>
-          </>
+          </>,
+          document.body
         )}
       </ModuleShell>
     )
@@ -392,32 +415,28 @@ export default function PaymentPostingPage() {
       <div className="card p-4 mt-6">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold">Bank Deposit Reconciliation</h3>
-          <button onClick={() => toast.info('Upload bank statement to reconcile')} className="text-xs bg-emerald-500/10 text-emerald-500 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-colors">Upload Statement</button>
+          <button onClick={() => toast.info('Bank statement upload coming in Sprint 3')} className="text-xs bg-emerald-500/10 text-emerald-500 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-colors">Upload Statement</button>
         </div>
         <div className="grid grid-cols-4 gap-3 mb-4">
-          {[{l:'Total Deposits',v:'$124,560',c:'text-emerald-500'},{l:'Matched',v:'$118,230',c:'text-brand'},{l:'Unmatched',v:'$6,330',c:'text-amber-500'},{l:'Variance',v:'$0.00',c:'text-content-secondary'}].map(k=>
+          {[
+            { l: 'ERAs Processed', v: String(eras.length), c: 'text-content-primary' },
+            { l: 'Total ERA Value', v: `$${eraStats.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, c: 'text-emerald-500' },
+            { l: 'Posted', v: String(eraStats.postedCount), c: 'text-brand' },
+            { l: 'Pending', v: String(eraStats.pendingCount), c: 'text-amber-500' },
+          ].map(k =>
             <div key={k.l} className="bg-surface-elevated rounded-lg p-3 text-center">
               <p className={`text-lg font-bold ${k.c}`}>{k.v}</p>
               <p className="text-[10px] text-content-tertiary">{k.l}</p>
             </div>
           )}
         </div>
-        <table className="w-full text-xs">
-          <thead><tr className="border-b border-separator text-content-secondary"><th className="text-left px-3 py-2">Deposit Date</th><th className="text-left px-3 py-2">Bank Amount</th><th className="text-left px-3 py-2">Posted Amount</th><th className="text-left px-3 py-2">Variance</th><th className="text-left px-3 py-2">Status</th></tr></thead>
-          <tbody>
-            {[{date:'2026-03-03',bank:'$45,200',posted:'$45,200',variance:'$0',status:'matched'},
-              {date:'2026-03-02',bank:'$38,100',posted:'$38,100',variance:'$0',status:'matched'},
-              {date:'2026-03-01',bank:'$41,260',posted:'$34,930',variance:'$6,330',status:'unmatched'}
-            ].map(d=>(
-              <tr key={d.date} className="border-b border-separator last:border-0">
-                <td className="px-3 py-2">{d.date}</td><td className="px-3 py-2">{d.bank}</td>
-                <td className="px-3 py-2">{d.posted}</td>
-                <td className={`px-3 py-2 ${d.variance!=='$0'?'text-amber-500 font-medium':''}`}>{d.variance}</td>
-                <td className="px-3 py-2"><span className={`text-[10px] px-2 py-0.5 rounded-full ${({matched:'bg-emerald-500/10 text-emerald-500',unmatched:'bg-amber-500/10 text-amber-500'} as Record<string,string>)[d.status] || 'bg-amber-500/10 text-amber-500'}`}>{d.status}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <div className="w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center mb-3">
+            <Receipt size={16} className="text-content-tertiary opacity-40" />
+          </div>
+          <p className="text-[13px] font-medium text-content-primary mb-1">Bank statement matching — Sprint 3</p>
+          <p className="text-xs text-content-secondary">Upload a bank statement to reconcile deposits against ERA payments. This feature will be available once the bank feed integration is live.</p>
+        </div>
       </div>
     </ModuleShell>
   )
