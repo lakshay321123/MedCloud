@@ -1,6 +1,7 @@
 'use client'
 import { useT } from '@/lib/i18n'
 import React, { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -194,15 +195,15 @@ export default function PaymentPostingPage() {
           </div>
         </div>
 
-        {/* Upload ERA Modal */}
-        {showUploadModal && (
+        {/* Upload ERA Modal — portal to escape overflow:hidden AppShell */}
+        {showUploadModal && typeof document !== 'undefined' && createPortal(
           <>
-            <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setShowUploadModal(false)} />
-            <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="fixed inset-0 bg-black/50 z-[200]" onClick={() => { setUploadedFile(null); setShowUploadModal(false) }} />
+            <div className="fixed inset-0 flex items-center justify-center z-[200] p-4">
               <div className="bg-surface-secondary rounded-xl shadow-2xl w-full max-w-md border border-separator">
                 <div className="flex items-center justify-between px-5 py-4 border-b border-separator">
                   <h3 className="font-semibold text-content-primary">Upload ERA File</h3>
-                  <button onClick={() => setShowUploadModal(false)}><X size={16} className="text-content-secondary" /></button>
+                  <button onClick={() => { setUploadedFile(null); setShowUploadModal(false) }}><X size={16} className="text-content-secondary" /></button>
                 </div>
                 <div className="p-5 space-y-4">
                   <div
@@ -234,23 +235,28 @@ export default function PaymentPostingPage() {
                       if (!uploadedFile) return
                       setUploading(true)
                       try {
-                        const text = await uploadedFile.text()
+                        const ext = uploadedFile.name.split('.').pop()?.toLowerCase() || 'txt'
                         const result = await createERAFile({
                           file_name: uploadedFile.name,
-                          file_type: uploadedFile.name.endsWith('.835') ? '835' : uploadedFile.name.endsWith('.txt') ? 'txt' : 'edi',
-                          raw_content: text.slice(0, 10000), // first 10k chars for preview
+                          file_type: ext === '835' ? '835' : ext === 'edi' ? 'edi' : 'txt',
+                          payer_name: '',
                           status: 'new',
+                          claim_count: 0,
+                          total_amount: 0,
                         })
-                        if (result) {
-                          toast.success(`ERA file "${uploadedFile.name}" uploaded — queued for processing`)
-                          refetchERAs()
+                        if (result?.id) {
+                          toast.success(`"${uploadedFile.name}" uploaded — opening ERA`)
+                          setShowUploadModal(false)
+                          setUploadedFile(null)
+                          await refetchERAs()
+                          setSelectedEra(result.id)
+                        } else {
+                          toast.error('Upload failed — server did not confirm the new ERA')
                         }
                       } catch {
                         toast.error('Upload failed — please try again')
                       } finally {
                         setUploading(false)
-                        setUploadedFile(null)
-                        setShowUploadModal(false)
                       }
                     }}
                     className={`flex-1 rounded-btn py-2.5 text-[13px] font-medium transition-colors ${uploadedFile && !uploading ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-surface-elevated text-content-tertiary cursor-not-allowed border border-separator'}`}>
@@ -263,7 +269,8 @@ export default function PaymentPostingPage() {
                 </div>
               </div>
             </div>
-          </>
+          </>,
+          document.body
         )}
       </ModuleShell>
     )

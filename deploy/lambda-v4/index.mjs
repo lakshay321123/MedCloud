@@ -151,6 +151,8 @@ async function runSchemaMigration() {
       ALTER TABLE era_files ADD COLUMN IF NOT EXISTS total_paid    NUMERIC(10,2) DEFAULT 0;
       ALTER TABLE era_files ADD COLUMN IF NOT EXISTS payment_date  DATE;
       ALTER TABLE era_files ADD COLUMN IF NOT EXISTS updated_at    TIMESTAMPTZ;
+      ALTER TABLE era_files ADD COLUMN IF NOT EXISTS file_type     VARCHAR(20);
+      ALTER TABLE era_files ADD COLUMN IF NOT EXISTS raw_content   TEXT;
       UPDATE era_files SET total_paid   = COALESCE(total_amount, 0) WHERE total_paid = 0 OR total_paid IS NULL;
       UPDATE era_files SET payment_date = COALESCE(check_date, CURRENT_DATE) WHERE payment_date IS NULL;
 
