@@ -12,7 +12,7 @@ import { useToast } from '@/components/shared/Toast'
 import { useRouter } from 'next/navigation'
 import { useClaims, useScrubClaim, useTransitionClaim, useGenerateEDI,
          useClaimLines, useAddClaimLine, useClaimDiagnoses, useAddClaimDiagnosis,
-         useScrubRules, useCreateClaim, useUpdateClaim, usePredictDenial, useGenerate837I, useTriggerSecondaryClaim, useUnderpaymentCheck, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useParse277, useEDITransactions, useCreateEDITransaction, useScrubResults, useCARCCodes, useRARCCodes, useSendMessage, useMessages, useRequestUploadUrl, useCreateDocument } from '@/lib/hooks'
+         useScrubRules, useUpdateClaim, useGenerate837I, useTriggerSecondaryClaim, useUnderpaymentCheck, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useSendMessage, useRequestUploadUrl, useCreateDocument } from '@/lib/hooks'
 import type { ApiClaim } from '@/lib/hooks'
 import type { ClaimStatus } from '@/types'
 import { ErrorBanner } from '@/components/shared/ApiStates'
@@ -386,9 +386,20 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
     toast.success('Message sent to back office')
   }
 
-  const handleSaveEdit = () => {
-    toast.success('Claim updated — changes logged to audit trail')
-    setEditMode(false)
+  const { mutate: updateClaim, loading: savingEdit } = useUpdateClaim(claimApiId)
+
+  const handleSaveEdit = async () => {
+    if (!claimApiId) { toast.warning('Cannot save — no claim ID'); return }
+    const result = await updateClaim({
+      place_of_service: editedClaim.placeOfService,
+    })
+    if (result) {
+      toast.success('Claim updated — changes logged to audit trail')
+      setEditMode(false)
+      onRefetch?.()
+    } else {
+      toast.error('Save failed — please try again')
+    }
   }
 
   const TABS = [
@@ -416,9 +427,9 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
             </button>
           ) : (
             <>
-              <button onClick={handleSaveEdit}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-brand text-white rounded-btn ml-2">
-                <Save size={13} /> Save
+              <button onClick={handleSaveEdit} disabled={savingEdit}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-brand text-white rounded-btn ml-2 disabled:opacity-50">
+                <Save size={13} /> {savingEdit ? 'Saving…' : 'Save'}
               </button>
               <button onClick={() => setEditMode(false)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-surface-elevated border border-separator rounded-btn text-content-secondary hover:text-content-primary">
@@ -1067,7 +1078,18 @@ export default function ClaimsPage() {
                 className={`px-3 py-1.5 rounded-btn text-[12px] font-medium transition-colors ${allReady ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-surface-elevated text-content-tertiary cursor-not-allowed'}`}>
                 Submit Selected
               </button>
-              <button onClick={() => toast.info('CSV exported')}
+              <button onClick={() => {
+                  const headers = ['Claim ID','Patient','Client','Payer','Billed','Status','DOS','Days']
+                  const rows = allClaims
+                    .filter(c => selectedRows.includes(c.id))
+                    .map(c => [c.id, c.patientName, c.clientName, c.payer, c.billed, c.status, c.dos, c.age])
+                  const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n')
+                  const blob = new Blob([csv], { type: 'text/csv' })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a'); a.href = url; a.download = 'claims-export.csv'; a.click()
+                  URL.revokeObjectURL(url)
+                  toast.success(`${selectedRows.length} claims exported`)
+                }}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-btn text-[12px] font-medium bg-surface-elevated text-content-secondary hover:text-content-primary">
                 <Download size={12} /> Export CSV
               </button>
@@ -1166,7 +1188,7 @@ export default function ClaimsPage() {
                           <div className="absolute right-0 top-full mt-1 bg-surface-secondary border border-separator rounded-lg shadow-elevated z-50 w-40 overflow-hidden">
                             {[
                               { label: 'View Detail', action: () => { setDrawerClaim(c); setMenuOpen(null) } },
-                              { label: 'Correct Claim', action: () => { setDrawerClaim(c); setMenuOpen(null) } },
+                              { label: 'Correct Claim', action: () => { setDrawerClaim(c); setMenuOpen(null); } },
                               { label: 'Route to Denials', action: () => { router.push(`/denials?claimId=${c.id}`); setMenuOpen(null) } },
                               { label: 'Void Claim', action: () => { if (confirm(`Void claim ${c.id}?`)) { toast.warning(`Claim ${c.id} voided`) } setMenuOpen(null) } },
                             ].map(item => (
@@ -1249,8 +1271,8 @@ export default function ClaimsPage() {
         <div className="grid grid-cols-4 gap-3 text-center">
           {[{label:'Ready to Submit',value:allClaims.filter(c=>c.status==='ready').length,color:'text-brand'},
             {label:'Pending Response',value:allClaims.filter(c=>c.status==='submitted').length,color:'text-amber-500'},
-            {label:'Filing Deadline <7d',value:3,color:'text-red-500'},
-            {label:'EDI Transactions Today',value:12,color:'text-emerald-500'}].map(k=>
+            {label:'Filing Deadline <7d',value:timelyFilingData?.data?.filter(tf=>tf.days_remaining<=7).length ?? 0,color:'text-red-500'},
+            {label:'EDI Transactions Today',value:allClaims.filter(c=>c.status==='submitted'||c.status==='accepted').length,color:'text-emerald-500'}].map(k=>
             <div key={k.label} className="bg-surface-elevated rounded-lg p-3">
               <p className={`text-lg font-bold ${k.color}`}>{k.value}</p>
               <p className="text-[10px] text-content-tertiary">{k.label}</p>
