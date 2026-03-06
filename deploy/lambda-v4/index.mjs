@@ -155,6 +155,33 @@ async function runSchemaMigration() {
 
       -- ── scrub_rules: add ordering column ────────────────────────────────────
       ALTER TABLE scrub_rules ADD COLUMN IF NOT EXISTS rule_order INTEGER DEFAULT 0;
+
+      -- ── notifications: create if not exists ─────────────────────────────────
+      CREATE TABLE IF NOT EXISTS notifications (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        org_id UUID NOT NULL, user_id UUID,
+        title VARCHAR(500), message TEXT,
+        type VARCHAR(50) DEFAULT 'info',
+        priority VARCHAR(50) DEFAULT 'normal',
+        entity_type VARCHAR(100), entity_id UUID,
+        action_url TEXT, read BOOLEAN DEFAULT FALSE,
+        read_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      -- ── ar_call_log: create if not exists ───────────────────────────────────
+      CREATE TABLE IF NOT EXISTS ar_call_log (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        org_id UUID NOT NULL, client_id UUID,
+        claim_id UUID, denial_id UUID,
+        call_date TIMESTAMPTZ DEFAULT NOW(),
+        call_type VARCHAR(50) DEFAULT 'manual',
+        call_result VARCHAR(100),
+        contact_name VARCHAR(200), contact_number VARCHAR(50),
+        notes TEXT, reference_number VARCHAR(100),
+        follow_up_date DATE, follow_up_action TEXT,
+        called_by UUID, created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
     `);
     safeLog('info', 'Schema migration completed successfully');
   } catch (e) {
@@ -4571,14 +4598,40 @@ async function approveWriteOff(writeOffId, body, orgId, userId) {
 async function createNotification(orgId, body) {
   const { user_id, title, message, type, priority, entity_type, entity_id, action_url } = body;
   const id = uuid();
-  await pool.query(
-    `INSERT INTO notifications (id, org_id, user_id, title, message, type, priority,
-      entity_type, entity_id, action_url, read, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, FALSE, NOW())`,
-    [id, orgId, user_id, title, message,
-     type || 'info', priority || 'normal',
-     entity_type || null, entity_id || null, action_url || null]
-  );
+  try {
+    await pool.query(
+      `INSERT INTO notifications (id, org_id, user_id, title, message, type, priority,
+        entity_type, entity_id, action_url, read, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, FALSE, NOW())`,
+      [id, orgId, user_id, title, message,
+       type || 'info', priority || 'normal',
+       entity_type || null, entity_id || null, action_url || null]
+    );
+  } catch (err) {
+    if (err.message?.includes('does not exist')) {
+      // Create table and retry
+      await pool.query(`CREATE TABLE IF NOT EXISTS notifications (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        org_id UUID NOT NULL, user_id UUID,
+        title VARCHAR(500), message TEXT,
+        type VARCHAR(50) DEFAULT 'info',
+        priority VARCHAR(50) DEFAULT 'normal',
+        entity_type VARCHAR(100), entity_id UUID,
+        action_url TEXT, read BOOLEAN DEFAULT FALSE,
+        read_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW()
+      )`).catch(() => {});
+      await pool.query(
+        `INSERT INTO notifications (id, org_id, user_id, title, message, type, priority,
+          entity_type, entity_id, action_url, read, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, FALSE, NOW())`,
+        [id, orgId, user_id, title, message,
+         type || 'info', priority || 'normal',
+         entity_type || null, entity_id || null, action_url || null]
+      ).catch(e2 => console.error('[createNotification] retry failed:', e2.message));
+    } else {
+      console.error('[createNotification] failed:', err.message);
+    }
+  }
   return { id, status: 'created' };
 }
 
@@ -5962,7 +6015,17 @@ export const handler = async (event) => {
 
     // ════ AR Management ════════════════════════════════════════════════════
     if (path.includes('/ar/log-call') && method === 'POST') {
-      const call = await create('ar_call_log', body, effectiveOrgId);
+      // Normalize frontend field names to DB column names
+      const callBody = {
+        ...body,
+        call_result: body.call_result || body.outcome || body.status || null,
+        call_type:   body.call_type || 'manual',
+        notes:       body.notes || body.note || null,
+      };
+      // Remove frontend-only keys that don't exist in ar_call_log
+      delete callBody.outcome;
+      delete callBody.note;
+      const call = await create('ar_call_log', callBody, effectiveOrgId);
       // Create follow-up task if needed
       if (body.next_follow_up) {
         await create('tasks', {
@@ -6261,7 +6324,7 @@ export const handler = async (event) => {
                     ) AS patient_name,
                     p.first_name,
                     p.last_name,
-                    COALESCE(pr.name, a.provider_name) AS provider_name
+                    COALESCE(NULLIF(TRIM(pr.first_name || ' ' || pr.last_name), ''), a.provider_name) AS provider_name
              FROM appointments a
              LEFT JOIN patients p ON a.patient_id = p.id AND p.org_id = a.org_id
              LEFT JOIN providers pr ON a.provider_id = pr.id AND pr.org_id = a.org_id
@@ -6291,7 +6354,7 @@ export const handler = async (event) => {
         if (enrichedBody.provider_id && !enrichedBody.provider_name) {
           try {
             const prv = await pool.query(
-              `SELECT name FROM providers WHERE id = $1 AND org_id = $2`,
+              `SELECT first_name || ' ' || last_name AS name FROM providers WHERE id = $1 AND org_id = $2`,
               [enrichedBody.provider_id, effectiveOrgId]
             );
             if (prv.rows[0]?.name) enrichedBody.provider_name = prv.rows[0].name;
