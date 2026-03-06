@@ -6,7 +6,7 @@ import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 import { getSLAStatus } from '@/lib/utils/time'
-import { useCodingQueue, useAIAutoCode, useChartCheck, useApproveCoding, useAssignCoding, useChargeCapture, useCodingItem, useSubmitCoding, useSendCodingQuery, useAICodingSuggestion, useCodingQAAudits, useCreateCodingQAAudit, useCodingQAStats, useCodingQASample, useUsers } from '@/lib/hooks'
+import { useCodingQueue, useUsers } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { sanitizeForPrompt } from '@/lib/ai-utils'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
@@ -518,9 +518,21 @@ export default function CodingPage() {
     <ModuleShell title={t("coding","title")} subtitle={t("coding","subtitle")}>
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KPICard label={t('coding','myQueue')} value={apiQueueResult?.meta?.total ?? queue.length} icon={<BrainCircuit size={20} />} />
-        <KPICard label={t('coding','codedToday')} value="4" icon={<CheckCircle2 size={20} />} />
-        <KPICard label={t('coding','aiAcceptance')} value="89%" icon={<Activity size={20} />} />
-        <KPICard label={t('coding','avgTimeChart')} value="6.2m" icon={<Clock size={20} />} />
+        <KPICard label={t('coding','codedToday')} value={
+          (apiQueueResult?.data ?? []).filter((c: any) =>
+            c.status === 'completed' && c.completed_at &&
+            new Date(c.completed_at).toDateString() === new Date().toDateString()
+          ).length
+        } icon={<CheckCircle2 size={20} />} />
+        <KPICard label={t('coding','aiAcceptance')} value={
+          (() => {
+            const done = (apiQueueResult?.data ?? []).filter((c: any) => c.status === 'completed')
+            if (done.length === 0) return '—'
+            const aiUsed = done.filter((c: any) => c.ai_suggested_cpt?.length > 0 || c.ai_suggested_icd?.length > 0)
+            return `${Math.round((aiUsed.length / done.length) * 100)}%`
+          })()
+        } icon={<Activity size={20} />} />
+        <KPICard label={t('coding','avgTimeChart')} value="—" icon={<Clock size={20} />} />
       </div>
 
       <div className={`grid gap-4 h-[calc(100vh-280px)] ${docOpen ? 'grid-cols-12' : 'grid-cols-12'}`}>
@@ -705,31 +717,25 @@ export default function CodingPage() {
 
                 <div className="p-4 overflow-y-auto flex-1">
                   {tab === 'history' && (
-                    <div className='text-center py-8 text-xs text-content-secondary'>
-                      No prior visit history on file
+                    <div className='flex flex-col items-center justify-center py-10 text-center'>
+                      <div className='w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center mb-3'>
+                        <Clock size={16} className='text-content-tertiary opacity-40' />
+                      </div>
+                      <p className='text-[13px] font-medium text-content-primary mb-1'>Prior Visit History</p>
+                      <p className='text-xs text-content-secondary'>Visit history will appear here once the patient&apos;s prior encounters are linked.</p>
                     </div>
                   )}
                   {tab === 'qa' && (
                     <div className="p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">QA Coding Audit</h4>
-                        <button onClick={() => { toast.success('QA sample generated') }} className="text-[10px] bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-colors">Pull Random Sample</button>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <div className="bg-surface-elevated rounded-lg p-3"><p className="text-lg font-bold text-emerald-500">96.2%</p><p className="text-[10px] text-content-tertiary">Accuracy Rate</p></div>
-                        <div className="bg-surface-elevated rounded-lg p-3"><p className="text-lg font-bold text-brand">142</p><p className="text-[10px] text-content-tertiary">Charts Audited</p></div>
-                        <div className="bg-surface-elevated rounded-lg p-3"><p className="text-lg font-bold text-amber-500">8</p><p className="text-[10px] text-content-tertiary">Findings Open</p></div>
-                      </div>
-                      <div className="space-y-2">
-                        {[{type:'Upcoding',count:3,severity:'high'},{type:'Missing Modifier',count:2,severity:'medium'},{type:'Unbundling',count:2,severity:'high'},{type:'Under-coding',count:1,severity:'low'}].map(f=>(
-                          <div key={f.type} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
-                            <span className="text-xs">{f.type}</span>
-                            <div className="flex items-center gap-2">
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full ${({high:'bg-red-500/10 text-red-500',medium:'bg-amber-500/10 text-amber-500',low:'bg-blue-500/10 text-blue-500'} as Record<string,string>)[f.severity] || 'bg-blue-500/10 text-blue-500'}`}>{f.severity}</span>
-                              <span className="text-xs font-mono font-semibold">{f.count}</span>
-                            </div>
-                          </div>
-                        ))}
+                      <div className="flex flex-col items-center justify-center py-10 text-center">
+                        <div className="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center mb-3">
+                          <Receipt size={20} className="text-content-tertiary opacity-40" />
+                        </div>
+                        <p className="text-[13px] font-medium text-content-primary mb-1">QA Auditing — Sprint 4</p>
+                        <p className="text-[12px] text-content-secondary">Coding QA audit reports will be available once the audit module is live in Sprint 4.</p>
                       </div>
                     </div>
                   )}
@@ -1308,9 +1314,17 @@ export default function CodingPage() {
             <div className="flex gap-2">
               <button onClick={() => setShowHoldModal(false)} className="flex-1 border border-separator rounded-lg py-2 text-[13px] text-content-secondary">Cancel</button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (!holdReason) { toast.error('Please select a reason'); return }
-                  toast.success(`Chart placed on hold: ${holdReason}`)
+                  try {
+                    await api.put(`/coding/${item.id}/hold`, {
+                      reason: holdReason,
+                      user_id: currentUser?.id,
+                    })
+                    toast.success(`Chart placed on hold: ${holdReason}`)
+                  } catch {
+                    toast.error('Failed to place chart on hold — please try again')
+                  }
                   setShowHoldModal(false)
                   setHoldReason('')
                 }}
