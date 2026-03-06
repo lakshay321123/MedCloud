@@ -1,10 +1,11 @@
 'use client'
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useApp } from '@/lib/context'
 import { usePatients, useRequestUploadUrl, useCreateDocument } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import ModuleShell from '@/components/shared/ModuleShell'
 import { Upload, CheckCircle2, FileText, X, Plus, ArrowRight, Loader2, AlertCircle, ChevronDown } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 const MAX_FILES = 20
 
@@ -38,6 +39,7 @@ interface FileEntry {
 type Step = 1 | 2 | 3
 
 export default function ScanSubmitPage() {
+  const router = useRouter()
   const { currentUser } = useApp()
   const { data: apiPatientResult } = usePatients({ limit: 200 })
   const patients = ((apiPatientResult as any)?.data || []).map((p: any) => ({
@@ -172,6 +174,7 @@ export default function ScanSubmitPage() {
           )
       )
       setSubmitted(true)
+      setTimeout(() => router.push("/portal/watch-track"), 2000)
     } catch {
       setSubmitting(false)
     }
@@ -192,19 +195,22 @@ export default function ScanSubmitPage() {
     <ModuleShell title="Scan & Submit" subtitle="Upload documents to Cosentus for processing">
       <div className="max-w-lg mx-auto">
         <div className="card p-10 text-center mb-6">
-          <CheckCircle2 size={56} className="text-emerald-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">Submitted Successfully</h2>
+          <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 size={36} className="text-emerald-500" />
+          </div>
+          <h2 className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">Submitted Successfully!</h2>
           <p className="text-sm text-content-secondary mb-1">Tracking ID: <span className="font-mono font-bold text-content-primary">{trackingId}</span></p>
           <p className="text-sm text-content-secondary mt-2">
             <span className="font-medium text-content-primary">{successCount} document{successCount !== 1 ? 's' : ''}</span> uploaded and linked to{' '}
             <span className="font-medium text-content-primary">{(selectedPatient as any)?.name || 'New Patient'}</span>
           </p>
           <p className="text-xs text-content-tertiary mt-1">Your billing team will process them shortly.</p>
-          <div className="flex gap-3 mt-6">
-            <button onClick={handleReset} className="flex-1 border border-separator text-content-secondary rounded-lg py-2.5 text-sm hover:text-content-primary transition-colors">Submit Another</button>
-            <button onClick={() => window.location.href = '/portal/watch-track'} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep flex items-center justify-center gap-2 transition-colors">
-              Watch & Track <ArrowRight size={14} />
-            </button>
+          <div className="mt-6 flex items-center justify-center gap-2 text-sm text-content-secondary">
+            <Loader2 size={14} className="animate-spin text-brand" />
+            Taking you to Watch &amp; Track…
+          </div>
+          <div className="mt-3">
+            <button onClick={handleReset} className="text-xs text-content-tertiary hover:text-content-secondary underline transition-colors">Submit another batch instead</button>
           </div>
         </div>
       </div>
