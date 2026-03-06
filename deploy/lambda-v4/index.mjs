@@ -213,7 +213,7 @@ async function runSchemaMigration() {
   }
 }
 // Bedrock model — override via BEDROCK_MODEL env var. Verify model availability in your region.
-const BEDROCK_MODEL = process.env.BEDROCK_MODEL || 'anthropic.claude-sonnet-4-5-20250929-v1:0';
+const BEDROCK_MODEL = process.env.BEDROCK_MODEL || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
 const BEDROCK_REGION = process.env.AWS_REGION || 'us-east-1';
 
 // ─── PHI Scrubber — strips PHI before any console.log/CloudWatch output ────────
@@ -6245,6 +6245,114 @@ export const handler = async (event) => {
         });
       }
       return respond(201, call);
+    }
+
+    // ════ AR Drawer Actions ════════════════════════════════════════════════
+    // POST /ar/request-info — log a request for additional information from payer
+    if (path.includes('/ar/request-info') && method === 'POST') {
+      const { claim_id, payer_name, requested_info, notes, due_date } = body;
+      if (!claim_id) return respond(400, { error: 'claim_id required' });
+      // Create a task to track the request
+      const task = await create('tasks', {
+        org_id: effectiveOrgId,
+        client_id: body.client_id || clientId,
+        title: `Info Request: ${payer_name || 'Payer'} — Claim ${claim_id.slice(0, 8)}`,
+        description: `Requested: ${requested_info || ''}\nNotes: ${notes || ''}`,
+        status: 'pending',
+        priority: 'medium',
+        task_type: 'ar_info_request',
+        due_date: due_date || null,
+        assigned_to: userId,
+        reference_id: claim_id,
+        reference_type: 'claim',
+      }, effectiveOrgId);
+      // Log in ar_call_log
+      await create('ar_call_log', {
+        org_id: effectiveOrgId,
+        client_id: body.client_id || clientId,
+        claim_id,
+        call_type: 'request_info',
+        call_result: 'info_requested',
+        notes: `${requested_info || ''} — ${notes || ''}`,
+        called_by: userId,
+        call_date: new Date().toISOString(),
+        follow_up_date: due_date || null,
+        follow_up_action: 'Await payer response',
+      }, effectiveOrgId).catch(() => null);
+      await auditLog(effectiveOrgId, userId, 'ar_request_info', 'claims', claim_id, { requested_info, payer_name });
+      return respond(201, { success: true, task });
+    }
+
+    // POST /ar/escalate — escalate a claim to supervisor or payer
+    if (path.includes('/ar/escalate') && method === 'POST') {
+      const { claim_id, escalation_reason, escalated_to, priority, notes } = body;
+      if (!claim_id) return respond(400, { error: 'claim_id required' });
+      // Update claim priority if provided
+      if (priority) {
+        await update('claims', claim_id, { priority, updated_at: new Date().toISOString() }, effectiveOrgId)
+          .catch(() => null);
+      }
+      // Create escalation task
+      const task = await create('tasks', {
+        org_id: effectiveOrgId,
+        client_id: body.client_id || clientId,
+        title: `ESCALATED: Claim ${claim_id.slice(0, 8)} — ${escalation_reason || 'Manager Review'}`,
+        description: `Reason: ${escalation_reason || ''}\nNotes: ${notes || ''}\nEscalated to: ${escalated_to || 'Supervisor'}`,
+        status: 'pending',
+        priority: 'high',
+        task_type: 'ar_escalation',
+        assigned_to: escalated_to || userId,
+        reference_id: claim_id,
+        reference_type: 'claim',
+      }, effectiveOrgId);
+      // Log
+      await create('ar_call_log', {
+        org_id: effectiveOrgId,
+        client_id: body.client_id || clientId,
+        claim_id,
+        call_type: 'escalation',
+        call_result: 'escalated',
+        notes: `Escalated: ${escalation_reason || ''} — ${notes || ''}`,
+        called_by: userId,
+        call_date: new Date().toISOString(),
+        follow_up_action: `Follow up with ${escalated_to || 'Supervisor'}`,
+      }, effectiveOrgId).catch(() => null);
+      await auditLog(effectiveOrgId, userId, 'ar_escalate', 'claims', claim_id, { escalation_reason, escalated_to, priority });
+      return respond(201, { success: true, task });
+    }
+
+    // POST /ar/send-statement — send a patient or payer statement
+    if (path.includes('/ar/send-statement') && method === 'POST') {
+      const { claim_id, patient_id, statement_type, delivery_method, notes } = body;
+      if (!claim_id && !patient_id) return respond(400, { error: 'claim_id or patient_id required' });
+      // Create a record of statement sent
+      const stmt = await create('tasks', {
+        org_id: effectiveOrgId,
+        client_id: body.client_id || clientId,
+        title: `Statement Sent — ${statement_type || 'Patient'} via ${delivery_method || 'Mail'}`,
+        description: notes || '',
+        status: 'completed',
+        priority: 'low',
+        task_type: 'statement_sent',
+        assigned_to: userId,
+        reference_id: claim_id || patient_id,
+        reference_type: claim_id ? 'claim' : 'patient',
+      }, effectiveOrgId);
+      // Log action
+      if (claim_id) {
+        await create('ar_call_log', {
+          org_id: effectiveOrgId,
+          client_id: body.client_id || clientId,
+          claim_id,
+          call_type: 'send_statement',
+          call_result: 'statement_sent',
+          notes: `${statement_type || 'Patient'} statement sent via ${delivery_method || 'mail'}. ${notes || ''}`,
+          called_by: userId,
+          call_date: new Date().toISOString(),
+        }, effectiveOrgId).catch(() => null);
+        await auditLog(effectiveOrgId, userId, 'send_statement', 'claims', claim_id, { statement_type, delivery_method });
+      }
+      return respond(201, { success: true, statement_task: stmt, sent_at: new Date().toISOString() });
     }
 
     if (path.includes('/ar/call-log') && method === 'GET') {

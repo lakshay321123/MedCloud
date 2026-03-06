@@ -871,6 +871,41 @@ export function useARFollowUps() {
   return useApi<ApiARCallLog[]>('/ar/follow-ups', useClientParams())
 }
 
+export function useARRequestInfo() {
+  return useMutation<{ success: boolean; task: ApiTask }, {
+    claim_id: string
+    payer_name?: string
+    requested_info?: string
+    notes?: string
+    due_date?: string
+    client_id?: string
+  }>('post', '/ar/request-info')
+}
+
+export function useARescalate() {
+  return useMutation<{ success: boolean; task: ApiTask }, {
+    claim_id: string
+    escalation_reason?: string
+    escalated_to?: string
+    priority?: string
+    notes?: string
+    client_id?: string
+  }>('post', '/ar/escalate')
+}
+
+export function useARSendStatement() {
+  return useMutation<{ success: boolean; statement_task: ApiTask; sent_at: string }, {
+    claim_id?: string
+    patient_id?: string
+    statement_type?: string
+    delivery_method?: string
+    notes?: string
+    client_id?: string
+  }>('post', '/ar/send-statement')
+}
+
+
+
 // ── Sprint 2 v3: Payment Auto-Post ──────────────────────────────────────────
 
 export interface ApiAutoPostResult {

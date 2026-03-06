@@ -12,6 +12,7 @@ import {
 import { api } from '@/lib/api-client'
 import type { ApiEligibilityCheck, ApiPriorAuth, ApiPatient } from '@/lib/hooks'
 import { ErrorBanner } from '@/components/shared/ApiStates'
+import { filterByRegion } from '@/lib/utils/region'
 import {
   ShieldCheck, AlertTriangle, CheckCircle2, Clock, Search, X, Plus,
   RefreshCw, ChevronDown, ChevronUp, FileText, Phone, Calendar,
@@ -60,8 +61,14 @@ function EligibilityContent() {
   const { data: eligResult, loading: eligLoading, error: eligError, refetch: refetchElig } = useEligibilityChecks({ limit: 200 })
   const { data: paResult, loading: paLoading, error: paError, refetch: refetchPA } = usePriorAuths({ limit: 200 })
 
-  const eligChecks = eligResult?.data || []
-  const priorAuths = paResult?.data || []
+  const { selectedClient, country, currentUser } = useApp()
+
+  const eligChecksRaw = eligResult?.data || []
+  const priorAuthsRaw = paResult?.data || []
+
+  // Apply region filter — prevents US+UAE data mixing when "All Clients" is selected
+  const eligChecks = filterByRegion(eligChecksRaw, currentUser?.organization_id || '', currentUser?.role || '', selectedClient?.id, country)
+  const priorAuths = filterByRegion(priorAuthsRaw, currentUser?.organization_id || '', currentUser?.role || '', selectedClient?.id, country)
 
   /* KPIs */
   const kpis = useMemo(() => {
