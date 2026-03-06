@@ -452,6 +452,8 @@ export function useCreateERAFile() {
   return useMutation<ApiERAFile, {
     file_name: string
     payer_name?: string
+    check_number?: string
+    check_date?: string
     client_id?: string
     total_amount?: number
     claim_count?: number
