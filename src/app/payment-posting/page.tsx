@@ -253,11 +253,27 @@ export default function PaymentPostingPage() {
                       setUploading(true)
                       try {
                         const ext = uploadedFile.name.split('.').pop()?.toLowerCase() || 'txt'
+                        const contentType = 'text/plain'
+
+                        // Step 1: Get a presigned PUT URL
+                        const presigned = await api.post<{ upload_url: string; s3_key: string; s3_bucket: string }>(
+                          '/documents/upload-url',
+                          { folder: 'era', file_name: uploadedFile.name, content_type: contentType }
+                        )
+
+                        // Step 2: PUT the actual file bytes to S3
+                        await fetch(presigned.upload_url, {
+                          method: 'PUT',
+                          body: uploadedFile,
+                          headers: { 'Content-Type': contentType },
+                        })
+
+                        // Step 3: Create the ERA record pointing at the uploaded S3 object
                         const result = await createERAFile({
                           file_name: uploadedFile.name,
                           file_type: ext === '835' ? '835' : ext === 'edi' ? 'edi' : 'txt',
-                          s3_key: `era/${uploadedFile.name}`,
-                          s3_bucket: 'medcloud-documents',
+                          s3_key: presigned.s3_key,
+                          s3_bucket: presigned.s3_bucket || 'medcloud-documents',
                           payer_name: '',
                           status: 'new',
                           claim_count: 0,
@@ -316,10 +332,16 @@ export default function PaymentPostingPage() {
                   const result = await api.get<{ download_url: string; file_name: string }>(
                     `/era-files/${selectedEra}/download`
                   )
-                  // Open presigned URL in new tab — browser will prompt save-as
-                  window.open(result.download_url, '_blank')
+                  // Use anchor click — window.open is blocked by Chrome in async handlers
+                  const a = document.createElement('a')
+                  a.href = result.download_url
+                  a.download = result.file_name || 'era-file.835'
+                  a.target = '_blank'
+                  document.body.appendChild(a)
+                  a.click()
+                  document.body.removeChild(a)
                 } catch {
-                  toast.error('Download failed — file may not be stored on server yet')
+                  toast.error('File not available — this ERA was created without an upload')
                 }
               }}
               className="text-[11px] text-brand border border-brand/20 rounded px-2 py-1 hover:bg-brand/10 transition-colors">
