@@ -789,7 +789,7 @@ export default function CodingPage() {
                             <div className="flex items-center gap-2 px-3 py-2 bg-surface-elevated border border-separator rounded-lg">
                               <FileText size={13} className="text-content-tertiary shrink-0" />
                               <span className="text-xs text-content-secondary flex-1">Source chart — {item.patientName}</span>
-                              <button onClick={() => router.push(`/documents${item.documentId ? `?doc=${item.documentId}` : ''}`)} className="text-xs text-brand underline shrink-0">
+                              <button onClick={() => router.push('/documents')} className="text-xs text-brand underline shrink-0">
                                 View Original
                               </button>
                             </div>
@@ -811,7 +811,7 @@ export default function CodingPage() {
                             <FileText size={28} className="mx-auto mb-2 text-content-tertiary opacity-40" />
                             <p className="text-sm font-medium text-content-primary mb-0.5">{item.patientName}</p>
                             <p className="text-xs text-content-secondary mb-3">Uploaded superbill</p>
-                            <button onClick={() => item.documentId ? window.open(`/documents?doc=${item.documentId}`, '_blank') : router.push('/documents')} className="text-xs text-brand underline">
+                            <button onClick={() => router.push('/documents')} className="text-xs text-brand underline">
                               View PDF
                             </button>
                           </div>
