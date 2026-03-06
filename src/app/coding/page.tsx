@@ -541,7 +541,36 @@ export default function CodingPage() {
         {/* ── Queue Panel ── */}
         <div className="col-span-2">
           <div className="card p-3 h-full flex flex-col">
-            <h3 className="text-[11px] font-semibold uppercase text-content-tertiary tracking-wider mb-2">Coding Queue ({queue.length})</h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-[11px] font-semibold uppercase text-content-tertiary tracking-wider">Coding Queue ({queue.length})</h3>
+            {queue.length > 1 && (
+              <button
+                onClick={async () => {
+                  if (!window.confirm(`Batch accept AI codes for all ${queue.length} charts?\n\nThis will auto-approve each chart using its AI-suggested codes and create claims.`)) return
+                  let done = 0; let failed = 0
+                  for (const qItem of queue) {
+                    try {
+                      await api.post(`/coding/${qItem.id}/approve`, {
+                        icd_codes: (qItem.aiSuggestedIcd || []).slice(0, 4).map(c => ({ code: c.code, description: c.desc })),
+                        cpt_codes: (qItem.aiSuggestedCpt || []).slice(0, 4).map(c => ({ code: c.code, units: 1, charge: 0 })),
+                        patient_id: qItem.patientId,
+                        provider_id: '',
+                        client_id: qItem.clientId,
+                        dos: qItem.dos,
+                        user_id: currentUser?.id,
+                      })
+                      done++
+                    } catch { failed++ }
+                  }
+                  if (done > 0) toast.success(`${done} chart${done > 1 ? 's' : ''} accepted → ${done} claim${done > 1 ? 's' : ''} created${failed > 0 ? ` (${failed} failed)` : ''}`)
+                  else toast.error('Batch accept failed — no charts approved')
+                }}
+                className="text-[10px] px-2 py-1 rounded bg-brand/10 text-brand hover:bg-brand/20 font-medium transition-colors"
+              >
+                Accept All
+              </button>
+            )}
+          </div>
             <div className="overflow-y-auto space-y-1 flex-1">
               {queue.length === 0 && (
                 <div className='flex flex-col items-center justify-center py-16 text-center'>
