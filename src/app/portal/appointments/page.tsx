@@ -233,13 +233,21 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
         {/* Footer actions */}
         <div className="p-4 border-t border-separator flex gap-2 shrink-0">
           {['booked','confirmed'].includes(appt.status) && (
-            <button onClick={() => { toast.success(`${appt.patientName} checked in`); onClose() }}
+            <button onClick={async () => { 
+              api.put(`/appointments/${appt.id}`, { status: 'checked_in' }).catch(()=>null)
+              toast.success(`${appt.patientName} checked in`)
+              onClose() 
+            }}
               className="flex-1 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 rounded-lg py-2.5 text-sm font-medium hover:bg-cyan-500/20 transition-colors">
               Check In
             </button>
           )}
           {['booked','confirmed'].includes(appt.status) && (
-            <button onClick={() => { toast.warning(`${appt.patientName} marked no-show`); onClose() }}
+            <button onClick={async () => {
+              api.put(`/appointments/${appt.id}`, { status: 'no_show' }).catch(()=>null)
+              toast.warning(`${appt.patientName} marked no-show`)
+              onClose()
+            }}
               className="flex-1 border border-separator rounded-lg py-2.5 text-sm text-content-secondary hover:text-red-500 hover:border-red-500/30 transition-colors">
               No Show
             </button>

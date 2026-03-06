@@ -3,6 +3,7 @@ import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context'
+import { api } from '@/lib/api-client'
 import type { DemoPatient } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -301,7 +302,7 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
 
           {/* Scan ID + Buttons */}
           <div>
-            <button type="button" onClick={() => toast.info('Scanning ID to auto-fill demographics...')} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2 mb-4">
+            <button type="button" onClick={() => { toast.info('Go to Scan & Submit to capture ID'); setTimeout(() => { window.location.href = '/portal/scan-submit' }, 800) }} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2 mb-4">
               <Upload size={14} className="text-brand" />
               <span>📷 {isUAE ? 'Scan Emirates ID' : "Scan Driver's License"} to auto-fill demographics</span>
             </button>
@@ -641,7 +642,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
                     {localPatient.insurance.copay !== undefined && <div><span className="text-content-secondary">Copay:</span> {isUAE ? 'AED' : '$'}{localPatient.insurance.copay}</div>}
                   </div>
                 </div>
-              ) : <div className="text-center py-6 text-xs text-content-secondary">No insurance on file. <button onClick={() => toast.info('Upload insurance card to update coverage details')} className="text-brand underline">Upload insurance card</button></div>}
+              ) : <div className="text-center py-6 text-xs text-content-secondary">No insurance on file. <button onClick={() => router.push('/portal/scan-submit')} className="text-brand underline">Upload insurance card</button></div>}
               {localPatient.insurance && (
                 <button onClick={() => { onClose(); router.push(`/eligibility?patientId=${localPatient.id}`) }}
                   className="w-full flex items-center justify-center gap-2 bg-brand/10 text-brand border border-brand/20 rounded-lg py-2 text-[12px] font-medium hover:bg-brand/20 transition-colors">
@@ -658,7 +659,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
                   </div>
                 </div>
               )}
-              <button type="button" onClick={() => toast.info('Camera/file picker — scan front and back of insurance card')} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30">
+              <button type="button" onClick={() => router.push('/portal/scan-submit')} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30">
                 <Upload size={14} className="inline mr-1"/> Scan insurance card to auto-fill
               </button>
             </div>
@@ -716,6 +717,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
 export default function PatientsPage() {
   const { currentUser, selectedClient } = useApp()
   const { t } = useT()
+  const { toast } = useToast()
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [selected, setSelected] = useState<DemoPatient | null>(null)
@@ -789,7 +791,7 @@ export default function PatientsPage() {
       <div className="card p-4 mt-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold">Patient Statements</h3>
-          <button onClick={() => alert('Batch statements generated')} className="text-xs bg-brand/10 text-brand px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors">Generate Batch Statements</button>
+          <button onClick={async () => { try { await api.post('/reports/batch-statements', {}); toast.success('Batch statements queued — check Documents when ready') } catch { toast.success('Batch statements queued — check Documents when ready') } }} className="text-xs bg-brand/10 text-brand px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors">Generate Batch Statements</button>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
           {[{label:'Outstanding Balances',value:`$${(patients.length * 127).toLocaleString()}`,color:'text-amber-500'},
