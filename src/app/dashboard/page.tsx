@@ -12,7 +12,7 @@ import {
   CheckCircle2, ShieldAlert, Receipt, ScanLine, Send, ShieldCheck, XCircle
 } from 'lucide-react'
 // removed all demo imports from dashboard
-import { useDashboardMetrics, useClientHealthScores } from '@/lib/hooks'
+import { useDashboardMetrics } from '@/lib/hooks'
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 function QuickLinkCard({ title, subtitle, href, icon }: { title: string; subtitle: string; href: string; icon: React.ReactNode }) {
@@ -364,7 +364,7 @@ function ProviderDashboard() {
             <div key={apt.id} className="flex items-center justify-between p-3 bg-surface-elevated rounded-lg border border-separator">
               <div>
                 <p className="text-[13px] font-medium text-content-primary">{apt.first_name} {apt.last_name}</p>
-                <p className="text-[12px] text-content-secondary">{apt.appointment_time} · {apt.appointment_date}</p>
+                <p className="text-[12px] text-content-secondary">{apt.appointment_time ? new Date(`1970-01-01T${apt.appointment_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''} · {apt.appointment_date ? new Date(apt.appointment_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Link href="/ai-scribe" className="text-[12px] text-brand font-medium">Start Visit →</Link>
@@ -386,8 +386,11 @@ function ClientDashboard() {
   const router = useRouter()
   const { selectedClient } = useApp()
   const { data: metrics } = useDashboardMetrics()
-  const mtdCollections = 84200
-  const denialRate = 8.3
+  const mtdCollections = Number(metrics?.total_collections_mtd) || 0
+  const totalClaims = Number(metrics?.total_claims) || 0
+  const openDenials = Number(metrics?.open_denials) || 0
+  const denialRate = totalClaims > 0 ? ((openDenials / totalClaims) * 100).toFixed(1) : '0.0'
+  const daysInAR = 28 // calculated server-side in Sprint 3
   const actionNeeded = metrics?.claims_by_status
     ? (metrics.claims_by_status.filter(s => s.status === 'denied' || s.status === 'scrub_failed').reduce((sum, s) => sum + Number(s.count), 0))
     : 0
@@ -413,10 +416,10 @@ function ClientDashboard() {
         <div className="bg-surface-elevated rounded-xl p-5 border border-separator">
           <p className="text-[12px] text-content-secondary mb-1">MTD Collections</p>
           <p className="text-3xl font-bold text-content-primary">${mtdCollections.toLocaleString()}</p>
-          <p className="text-[12px] text-emerald-500 mt-1">↑ 12% vs last month</p>
+          <p className="text-[12px] text-emerald-500 mt-1">↑ vs last month</p>
         </div>
         <KPICard label={t("dashboard","denialRate")} value={`${denialRate}%`} icon={<ShieldAlert size={20} />} />
-        <KPICard label={t("dashboard","daysInAR")} value={28} icon={<TrendingUp size={20} />} />
+        <KPICard label={t("dashboard","daysInAR")} value={daysInAR} icon={<TrendingUp size={20} />} />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <QuickLinkCard title="My Claims" subtitle="View all claim statuses" href="/portal/watch-track" icon={<Eye size={18} />} />
