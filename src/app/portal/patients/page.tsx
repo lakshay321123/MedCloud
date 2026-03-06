@@ -56,6 +56,7 @@ function SectionHeader({ title, badge, open, onToggle }: { title: string; badge?
 function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: () => void }) {
   const { country, currentUser, selectedClient } = useApp()
   const { toast } = useToast()
+  const router = useRouter()
   const createPatient = useCreatePatient()
   const isUAE = country === 'uae'
   const [sections, setSections] = useState({ address: false, id: false, insurance: false, secondary: false, emergency: false, employment: false, medical: false })
@@ -302,7 +303,7 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
 
           {/* Scan ID + Buttons */}
           <div>
-            <button type="button" onClick={() => { toast.info('Go to Scan & Submit to capture ID'); setTimeout(() => { window.location.href = '/portal/scan-submit' }, 800) }} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2 mb-4">
+            <button type="button" onClick={() => { toast.info('Go to Scan & Submit to capture ID'); setTimeout(() => router.push('/portal/scan-submit'), 800) }} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2 mb-4">
               <Upload size={14} className="text-brand" />
               <span>📷 {isUAE ? 'Scan Emirates ID' : "Scan Driver's License"} to auto-fill demographics</span>
             </button>

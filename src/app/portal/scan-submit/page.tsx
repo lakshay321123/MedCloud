@@ -1,9 +1,11 @@
 'use client'
 import React, { useState, useRef, useEffect } from 'react'
+import { useT } from '@/lib/i18n'
 import { useApp } from '@/lib/context'
 import { usePatients, useRequestUploadUrl, useCreateDocument } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import ModuleShell from '@/components/shared/ModuleShell'
+import { useToast } from '@/components/shared/Toast'
 import { Upload, CheckCircle2, FileText, X, Plus, ArrowRight, Loader2, AlertCircle, ChevronDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -18,6 +20,7 @@ const DOC_TYPE_META: Record<string, { icon: string }> = {
   'EOB':            { icon: '💵' },
   'Denial Letter':  { icon: '❌' },
   'Contract':       { icon: '📄' },
+  'Credential':     { icon: '🔖' },
   'Other':          { icon: '📁' },
 }
 
@@ -40,6 +43,8 @@ type Step = 1 | 2 | 3
 
 export default function ScanSubmitPage() {
   const router = useRouter()
+  const { t } = useT()
+  const { toast } = useToast()
   const { currentUser } = useApp()
   const { data: apiPatientResult } = usePatients({ limit: 200 })
   const patients = ((apiPatientResult as any)?.data || []).map((p: any) => ({
@@ -58,6 +63,7 @@ export default function ScanSubmitPage() {
   const [showNewPatient, setShowNewPatient] = useState(false)
   const [files, setFiles] = useState<FileEntry[]>([])
   const [note, setNote] = useState('')
+  const [newPatient, setNewPatient] = useState({ firstName: '', lastName: '', dob: '', phone: '' })
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [dragging, setDragging] = useState(false)
@@ -156,7 +162,7 @@ export default function ScanSubmitPage() {
       } catch (err) {
         setFileField(id, {
           status: 'error',
-          error: err instanceof Error ? err.message : 'Upload failed',
+          error: 'Upload failed — please try again or contact support',
         })
       }
     }
@@ -165,7 +171,7 @@ export default function ScanSubmitPage() {
   async function handleFinalSubmit() {
     setSubmitting(true)
     try {
-      await Promise.all(
+      const results = await Promise.allSettled(
         files
           .filter(f => f.status === 'done' && f.documentId)
           .map(f =>
@@ -173,9 +179,11 @@ export default function ScanSubmitPage() {
               document_type: f.approvedType || f.aiType || 'Other',
               patient_id: patientId !== 'NEW' ? patientId : undefined,
               notes: note || undefined,
-            }).catch(() => null)
+            })
           )
       )
+      const failed = results.filter(r => r.status === 'rejected').length
+      if (failed > 0) toast.warning(`${failed} document(s) could not be updated — billing team will reconcile`)
       setSubmitted(true)
       setTimeout(() => router.push("/portal/watch-track"), 2000)
     } catch {
@@ -195,7 +203,7 @@ export default function ScanSubmitPage() {
   const anyError = files.some(f => f.status === 'error')
 
   if (submitted) return (
-    <ModuleShell title="Scan & Submit" subtitle="Upload documents to Cosentus for processing">
+    <ModuleShell title={t("scan","title")} subtitle="Upload documents to Cosentus for processing">
       <div className="max-w-lg mx-auto">
         <div className="card p-10 text-center mb-6">
           <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -221,7 +229,7 @@ export default function ScanSubmitPage() {
   )
 
   return (
-    <ModuleShell title="Scan & Submit" subtitle="Upload documents to Cosentus for processing">
+    <ModuleShell title={t("scan","title")} subtitle="Upload documents to Cosentus for processing">
       <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
         <span className="text-lg shrink-0">📄</span>
         Scan & Submit connected — live document upload
@@ -285,10 +293,10 @@ export default function ScanSubmitPage() {
               ) : (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className="text-xs text-content-secondary block mb-1">First Name *</label><input placeholder="John" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" /></div>
-                    <div><label className="text-xs text-content-secondary block mb-1">Last Name *</label><input placeholder="Smith" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" /></div>
-                    <div><label className="text-xs text-content-secondary block mb-1">Date of Birth</label><input type="date" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" /></div>
-                    <div><label className="text-xs text-content-secondary block mb-1">Phone</label><input placeholder="(949) 555-0100" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" /></div>
+                    <div><label className="text-xs text-content-secondary block mb-1">First Name *</label><input value={newPatient.firstName} onChange={e => setNewPatient(p => ({ ...p, firstName: e.target.value }))} placeholder="John" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" /></div>
+                    <div><label className="text-xs text-content-secondary block mb-1">Last Name *</label><input value={newPatient.lastName} onChange={e => setNewPatient(p => ({ ...p, lastName: e.target.value }))} placeholder="Smith" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" /></div>
+                    <div><label className="text-xs text-content-secondary block mb-1">Date of Birth</label><input type="date" value={newPatient.dob} onChange={e => setNewPatient(p => ({ ...p, dob: e.target.value }))} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" /></div>
+                    <div><label className="text-xs text-content-secondary block mb-1">Phone</label><input value={newPatient.phone} onChange={e => setNewPatient(p => ({ ...p, phone: e.target.value }))} placeholder="(949) 555-0100" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" /></div>
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => { setPatientId('NEW'); setShowNewPatient(false) }} className="flex-1 bg-brand text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-deep transition-colors">Use New Patient</button>
@@ -458,7 +466,7 @@ function FileReviewRow({ entry, onTypeChange }: { entry: FileEntry; onTypeChange
               <ChevronDown size={10} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
             {open && (
-              <div className="absolute right-0 top-full mt-1 z-50 bg-[#1C1C1E] dark:bg-[#1C1C1E] border border-white/10 rounded-xl shadow-2xl py-1.5 min-w-[170px] overflow-hidden">
+              <div className="absolute right-0 top-full mt-1 z-50 bg-surface-secondary border border-separator rounded-xl shadow-2xl py-1.5 min-w-[170px] overflow-hidden">
                 {Object.entries(DOC_TYPE_META).map(([type, m]) => (
                   <button
                     key={type}
@@ -466,7 +474,7 @@ function FileReviewRow({ entry, onTypeChange }: { entry: FileEntry; onTypeChange
                     className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2.5 transition-colors
                       ${currentType === type
                         ? 'bg-brand/20 text-brand font-semibold'
-                        : 'text-white hover:bg-white/10'
+                        : 'text-content-primary hover:bg-surface-elevated'
                       }`}
                   >
                     <span className="text-sm">{m.icon}</span>

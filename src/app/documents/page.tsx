@@ -6,7 +6,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
 import type { DemoDocRecord, DemoFax } from '@/lib/demo-data'
-import { useDocuments, useTriggerTextract, useClassifyDocument, useRequestUploadUrl, useCreateDocument, useTextractResults, useCreateCoding } from '@/lib/hooks'
+import { useDocuments, usePatients, useTriggerTextract, useClassifyDocument, useRequestUploadUrl, useCreateDocument, useTextractResults, useCreateCoding } from '@/lib/hooks'
 import type { ApiDocument } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
@@ -48,6 +48,9 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
   const { mutate: createCoding } = useCreateCoding()
   const [sendingToCoding, setSendingToCoding] = useState(false)
   const [patientSearch, setPatientSearch] = useState('')
+  const [selectedLinkPatientId, setSelectedLinkPatientId] = useState<string | null>(doc.patientId || null)
+  const { data: apiPtResult } = usePatients({ limit: 200 })
+  const apiPatients = ((apiPtResult as any)?.data || []).map((p: any) => ({ id: p.id, name: `${p.first_name || ''} ${p.last_name || ''}`.trim() }))
   const [downloading, setDownloading] = useState(false)
 
   async function handleDownload() {
@@ -135,8 +138,18 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
               </div>
             )}
             <input value={patientSearch} onChange={e=>setPatientSearch(e.target.value)} placeholder="Search patient name..."
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary mb-3"/>
-            <button onClick={async ()=>{ try { await api.patch(`/documents/${doc.id}`, { patient_id: doc.patientId, status: 'linked' }); toast.success('Document linked to patient') } catch { toast.error('Link failed') } }}
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary mb-2"/>
+            {patientSearch.trim().length > 0 && (
+              <div className="max-h-32 overflow-y-auto border border-separator rounded-lg mb-2">
+                {apiPatients.filter((p: any) => p.name.toLowerCase().includes(patientSearch.toLowerCase())).slice(0,5).map((p: any) => (
+                  <button key={p.id} onClick={() => { setSelectedLinkPatientId(p.id); setPatientSearch(p.name) }}
+                    className={`w-full text-left px-3 py-1.5 text-xs hover:bg-surface-elevated border-b border-separator last:border-0 ${selectedLinkPatientId === p.id ? 'bg-brand/5 text-brand' : 'text-content-primary'}`}>
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            <button disabled={!selectedLinkPatientId} onClick={async ()=>{ try { await api.patch(`/documents/${doc.id}`, { patient_id: selectedLinkPatientId, status: 'linked' }); toast.success('Document linked to patient') } catch { toast.error('Link failed') } }}
               className="w-full bg-brand text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-deep transition-colors">
               Link Document
             </button>
@@ -274,7 +287,10 @@ function AllDocsTab() {
 function UnlinkedQueueTab() {
   const { toast } = useToast()
   const [patientSearch, setPatientSearch] = useState<Record<string,string>>({})
+  const [selectedPatientIds, setSelectedPatientIds] = useState<Record<string,string>>({})
   const [linking, setLinking] = useState<string|null>(null)
+  const { data: apiPtRaw } = usePatients({ limit: 200 })
+  const ptList = ((apiPtRaw as any)?.data || []).map((p: any) => ({ id: p.id, name: `${p.first_name || ''} ${p.last_name || ''}`.trim() }))
   const { data: apiDocRaw2 } = useDocuments()
   const apiDocs2: any[] = (Array.isArray(apiDocRaw2) ? apiDocRaw2 : []).map((d: ApiDocument) => ({
     id: d.id, name: d.file_name || 'document',
@@ -304,10 +320,20 @@ function UnlinkedQueueTab() {
             <div className="flex gap-2 shrink-0">
               {linking===d.id ? (
                 <div className="flex gap-2 items-center">
-                  <input value={patientSearch[d.id]||''} onChange={e=>setPatientSearch(p=>({...p,[d.id]:e.target.value}))}
-                    placeholder="Patient name..." className="bg-surface-elevated border border-separator rounded px-2 py-1 text-xs text-content-primary w-40"/>
-                  <button onClick={async ()=>{ if (!linking) return; try { await api.patch(`/documents/${linking}`, { status: 'linked' }); toast.success('Document linked'); setLinking(null) } catch { toast.error('Link failed') } }}
-                    className="text-[10px] bg-brand text-white px-3 py-1.5 rounded-lg">Link</button>
+                  <div className="relative">
+                    <input value={patientSearch[d.id]||''} onChange={e=>{setPatientSearch(p=>({...p,[d.id]:e.target.value})); setSelectedPatientIds(p=>({...p,[d.id]:''}))}}
+                      placeholder="Patient name..." className="bg-surface-elevated border border-separator rounded px-2 py-1 text-xs text-content-primary w-40"/>
+                    {(patientSearch[d.id]||'').length > 0 && !selectedPatientIds[d.id] && (
+                      <div className="absolute top-full left-0 mt-1 z-50 bg-surface-secondary border border-separator rounded-lg shadow-xl max-h-28 overflow-y-auto w-48">
+                        {ptList.filter((p:any)=>p.name.toLowerCase().includes((patientSearch[d.id]||'').toLowerCase())).slice(0,4).map((p:any)=>(
+                          <button key={p.id} onClick={()=>{setSelectedPatientIds(prev=>({...prev,[d.id]:p.id}));setPatientSearch(prev=>({...prev,[d.id]:p.name}))}}
+                            className="w-full text-left px-2 py-1.5 text-xs hover:bg-surface-elevated border-b border-separator last:border-0">{p.name}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button disabled={!selectedPatientIds[d.id]} onClick={async ()=>{ if (!linking || !selectedPatientIds[d.id]) return; try { await api.patch(`/documents/${linking}`, { patient_id: selectedPatientIds[d.id], status: 'linked' }); toast.success('Document linked'); setLinking(null) } catch { toast.error('Link failed') } }}
+                    className="text-[10px] bg-brand text-white px-3 py-1.5 rounded-lg disabled:opacity-40">Link</button>
                   <button onClick={()=>setLinking(null)} className="text-[10px] border border-separator px-2 py-1.5 rounded-lg text-content-secondary">Cancel</button>
                 </div>
               ) : (
@@ -367,7 +393,7 @@ function FaxCenterTab() {
               <td className="px-4 py-3 text-xs text-brand">{f.document??'—'}</td>
               <td className="px-4 py-3 flex gap-1">
                 {f.document&&<button onClick={e=>{e.stopPropagation();window.open(f.document || '#', '_blank'); toast.info('Opening fax...')}} className="text-[10px] text-content-secondary hover:text-content-primary border border-separator px-2 py-1 rounded transition-colors">View</button>}
-                {f.direction==='Inbound'&&<button onClick={e=>{e.stopPropagation();api.patch(`/documents/${f.id}`, { status: 'linked' }).then(()=>toast.success('Fax linked')).catch(()=>toast.error('Link failed'))}} className="text-[10px] text-brand hover:underline px-2 py-1">Link</button>}
+                {f.direction==='Inbound'&&<button onClick={e=>{e.stopPropagation();toast.info('Open fax in preview drawer to link to a patient')}} className="text-[10px] text-brand hover:underline px-2 py-1">Link</button>}
               </td>
             </tr>
           ))}</tbody>
@@ -692,7 +718,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
           document_type: docType,
           file_name: file.name,
           s3_key: urlResult.s3_key,
-          s3_bucket: urlResult.s3_bucket || 'medcloud-documents-us-prod',
+          s3_bucket: urlResult.s3_bucket,
           content_type: file.type || 'application/octet-stream',
           file_size: file.size,
           source: 'Manual Upload',
