@@ -996,7 +996,7 @@ async function generateDHAeClaim(claimId, orgId) {
         <Type>CPT</Type>
         <Code>${escXml(line.cpt_code)}</Code>
         <Quantity>${escXml(line.units || 1)}</Quantity>
-        <Net>${escXml(line.charge)}</Net>
+        <Net>${escXml(line.charges)}</Net>
         <Clinician>${escXml(provider?.npi)}</Clinician>
         ${line.prior_auth_number ? `<PriorAuthorizationID>${escXml(line.prior_auth_number)}</PriorAuthorizationID>` : ''}
       </Activity>`;
@@ -1079,7 +1079,7 @@ async function generateEDI(claimId, orgId) {
   for (const line of linesR.rows) {
     const dos = line.dos ? new Date(line.dos).toISOString().slice(0, 10).replace(/-/g, '') : dateStr;
     edi += `LX*${lineNum}~\n`;
-    edi += `SV1*HC:${line.cpt_code}${line.modifier ? ':' + line.modifier : ''}*${line.charge}*UN*${line.units || 1}*${claim.pos || '11'}**`;
+    edi += `SV1*HC:${line.cpt_code}${line.modifier ? ':' + line.modifier : ''}*${line.charges}*UN*${line.units || 1}*${claim.pos || '11'}**`;
     // Diagnosis pointers
     const pointers = dxR.rows.slice(0, 4).map((_, i) => i + 1).join(':');
     edi += `${pointers}~\n`;
@@ -1127,10 +1127,10 @@ async function scrubClaim(claimId, orgId, userId) {
 
   // ── Line-Level Validation (11-20) ───────────────────────────────────────
   check('cpt_present', 'All lines have CPT codes', 'error', !lines.some(l => !l.cpt_code), 'One or more lines missing CPT code');
-  check('charges_positive', 'All line charges positive', 'error', !lines.some(l => !l.charge || Number(l.charge) <= 0), 'Line has zero or negative charge');
+  check('charges_positive', 'All line charges positive', 'error', !lines.some(l => !l.charges || Number(l.charges) <= 0), 'Line has zero or negative charge');
   check('units_valid', 'All line units valid', 'warning', !lines.some(l => !l.units || Number(l.units) < 1), 'Line has invalid units');
   check('units_excessive', 'Units not excessive (>50)', 'warning', !lines.some(l => Number(l.units) > 50), 'Line has >50 units — review');
-  const highCharge = lines.find(l => Number(l.charge) > 50000);
+  const highCharge = lines.find(l => Number(l.charges) > 50000);
   check('charge_threshold', 'No unusually high charges', 'warning', !highCharge, `Line ${highCharge?.cpt_code || ''} charge > $50,000`);
   const cpts = lines.map(l => l.cpt_code);
   const dupCpts = cpts.filter((c, i) => cpts.indexOf(c) !== i);
@@ -1141,7 +1141,7 @@ async function scrubClaim(claimId, orgId, userId) {
   check('line_dos_to_valid', 'Line DOS not after claim end', 'warning',
     !lines.some(l => l.dos && claim.dos_to && new Date(l.dos) > new Date(claim.dos_to)),
     'Service line DOS after claim DOS end');
-  const totalCalc = lines.reduce((s, l) => s + Number(l.charge || 0) * Number(l.units || 1), 0);
+  const totalCalc = lines.reduce((s, l) => s + Number(l.charges || 0) * Number(l.units || 1), 0);
   check('total_matches_lines', 'Total charge matches line sum', 'warning',
     Math.abs(totalCalc - Number(claim.total_charges || 0)) < 0.02, `Total charge ${claim.total_charges} doesn't match line sum ${totalCalc.toFixed(2)}`);
   check('pos_valid', 'Place of service valid', 'warning',
@@ -2524,7 +2524,7 @@ async function predictDenial(claimId, orgId, userId) {
   if (bedrockClient && risks.length > 0) {
     try {
       const riskSummary = risks.map(r => `- ${r.category.replace('_',' ').toUpperCase()} (score +${r.score}): ${r.detail}`).join('\n');
-      const claimLines = linesR.rows.map(l => `${l.cpt_code}${l.modifier ? '-'+l.modifier : ''} x${l.units||1} $${l.charge||0}`).join(', ');
+      const claimLines = linesR.rows.map(l => `${l.cpt_code}${l.modifier ? '-'+l.modifier : ''} x${l.units||1} $${l.charges||0}`).join(', ');
       const aiPrompt = `You are a denial prevention specialist. A claim has been flagged with a ${riskLevel.toUpperCase()} denial risk score of ${riskScore}/100.
 
 CLAIM: #${claim.claim_number || 'N/A'}, DOS: ${claim.dos_from || 'N/A'}, Total: $${claim.total_charges || 0}
@@ -2892,7 +2892,7 @@ async function generate837I(claimId, orgId) {
     const rc = line.revenue_code || '0250'; // 0250 = General pharmacy
     const hcpcs = line.cpt_code || '';
     edi += `LX*${segCount}~\n`;
-    edi += `SV2*${rc}*HC:${hcpcs}*${line.charge || 0}*UN*${line.units || 1}~\n`;
+    edi += `SV2*${rc}*HC:${hcpcs}*${line.charges || 0}*UN*${line.units || 1}~\n`;
     if (line.dos_from) edi += `DTP*472*D8*${new Date(line.dos_from).toISOString().slice(0,10).replace(/-/g,'')}~\n`;
   }
 
@@ -3390,7 +3390,7 @@ async function triggerSecondaryClaim(claimId, orgId, userId) {
         units, charge, dos_from, dos_to, place_of_service, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())`,
       [uuid(), orgId, newClaimId, line.line_number, line.cpt_code, line.modifier,
-       line.units, line.charge, line.dos_from, line.dos_to, line.place_of_service]
+       line.units, line.charges, line.dos_from, line.dos_to, line.place_of_service]
     );
   }
 
@@ -3756,7 +3756,7 @@ async function generateAppeal(denialId, orgId, userId) {
   const clinicalContext = [
     soap ? `CLINICAL NOTE:\nSubjective: ${sanitizeForPrompt(soap.subjective) || 'N/A'}\nObjective: ${sanitizeForPrompt(soap.objective) || 'N/A'}\nAssessment: ${sanitizeForPrompt(soap.assessment) || 'N/A'}\nPlan: ${sanitizeForPrompt(soap.plan) || 'N/A'}` : '',
     dxR.rows.length ? `DIAGNOSES: ${dxR.rows.map(d => `${d.icd_code} - ${sanitizeForPrompt(d.description) || ''}`).join('; ')}` : '',
-    linesR.rows.length ? `PROCEDURES: ${linesR.rows.map(l => `${l.cpt_code} x${l.units || 1} ($${l.charge || l.charges || l.charge_amount || 0})`).join('; ')}` : '',
+    linesR.rows.length ? `PROCEDURES: ${linesR.rows.map(l => `${l.cpt_code} x${l.units || 1} ($${l.charges || l.charges || l.charge_amount || 0})`).join('; ')}` : '',
     callsR.rows.length ? `PRIOR CALLS: ${callsR.rows.map(c => `${c.call_date?.toISOString?.()?.slice(0,10) || 'N/A'}: ${sanitizeForPrompt(c.outcome)} - ${sanitizeForPrompt(c.notes) || ''}`).join(' | ')}` : '',
   ].filter(Boolean).join('\n\n');
 
