@@ -3435,7 +3435,7 @@ async function generateReport(reportType, orgId, clientId, params) {
     denial_analysis: async () => {
       const r = await pool.query(
         `SELECT d.id, d.claim_id, c.claim_number, d.denial_reason, d.carc_code, d.rarc_code,
-                d.amount, d.status AS denial_status, d.appeal_level,
+                d.denied_amount AS amount, d.status AS denial_status, d.appeal_level,
                 p.first_name || ' ' || p.last_name AS patient_name,
                 py.name AS payer_name, d.created_at
          FROM denials d
@@ -3907,7 +3907,7 @@ async function categorizeDenials(orgId, clientId) {
   if (clientId) { cf = ' AND c.client_id = $2'; params.push(clientId); }
 
   const r = await pool.query(
-    `SELECT d.id, d.carc_code, d.rarc_code, d.amount, d.status, d.denial_reason,
+    `SELECT d.id, d.carc_code, d.rarc_code, d.denied_amount AS amount, d.status, d.denial_reason,
             c.claim_number, c.dos_from, p.first_name || ' ' || p.last_name AS patient_name,
             py.name AS payer_name
      FROM denials d
@@ -4916,29 +4916,41 @@ async function calculateAllClientHealth(orgId) {
 
 // ─── Appeal Deadline Tracking ───────────────────────────────────────────────
 async function checkAppealDeadlines(orgId) {
-  const r = await pool.query(
-    `SELECT d.id, d.claim_id, d.carc_code, d.amount, d.appeal_deadline, d.appeal_deadline_alert_sent,
-            c.claim_number, py.name as payer_name,
-            EXTRACT(DAY FROM (d.appeal_deadline::date - CURRENT_DATE)) as days_until_deadline
-     FROM denials d JOIN claims c ON d.claim_id = c.id LEFT JOIN payers py ON d.payer_id = py.id
-     WHERE d.org_id = $1 AND d.status IN ('open','pending','in_review')
-       AND d.appeal_deadline IS NOT NULL AND d.appeal_deadline >= CURRENT_DATE
-       AND (d.appeal_deadline_alert_sent IS NULL OR d.appeal_deadline_alert_sent = false)
-     ORDER BY d.appeal_deadline ASC`, [orgId]);
-  const alerts = [];
-  for (const denial of r.rows) {
-    const daysLeft = Number(denial.days_until_deadline);
-    if ([25, 14, 7, 3, 1].some(d => daysLeft <= d)) {
-      const urgency = daysLeft <= 3 ? 'urgent' : daysLeft <= 7 ? 'high' : 'normal';
-      await createNotification(orgId, { type: 'denial', priority: urgency,
-        title: `Appeal deadline in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`,
-        message: `${denial.payer_name} denial ${denial.claim_number} (CARC ${denial.carc_code}) — $${denial.amount}. Deadline: ${denial.appeal_deadline}`,
-        entity_type: 'denial', entity_id: denial.id, action_url: `/denials?id=${denial.id}` });
-      if (daysLeft <= 3) { await pool.query('UPDATE denials SET appeal_deadline_alert_sent = true WHERE id = $1', [denial.id]); }
-      alerts.push({ denial_id: denial.id, claim_number: denial.claim_number, days_remaining: daysLeft, urgency });
+  // FIX: column is denied_amount not amount; appeal_deadline column may not exist on all schema versions
+  try {
+    const colCheck = await pool.query(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_name='denials' AND column_name='appeal_deadline'`);
+    if (colCheck.rows.length === 0) {
+      return { alerts_sent: 0, alerts: [] };
     }
+    const r = await pool.query(
+      `SELECT d.id, d.claim_id, d.carc_code, d.denied_amount, d.appeal_deadline,
+              c.claim_number, py.name as payer_name,
+              EXTRACT(DAY FROM (d.appeal_deadline::date - CURRENT_DATE)) as days_until_deadline
+       FROM denials d JOIN claims c ON d.claim_id = c.id LEFT JOIN payers py ON d.payer_id = py.id
+       WHERE d.org_id = $1 AND d.status IN ('open','pending','in_review','in_appeal')
+         AND d.appeal_deadline IS NOT NULL AND d.appeal_deadline >= CURRENT_DATE
+       ORDER BY d.appeal_deadline ASC`, [orgId]);
+    const alerts = [];
+    for (const denial of r.rows) {
+      const daysLeft = Number(denial.days_until_deadline);
+      if ([25, 14, 7, 3, 1].some(d => daysLeft <= d)) {
+        const urgency = daysLeft <= 3 ? 'urgent' : daysLeft <= 7 ? 'high' : 'normal';
+        try {
+          await createNotification(orgId, { type: 'denial', priority: urgency,
+            title: `Appeal deadline in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`,
+            message: `${denial.payer_name} denial ${denial.claim_number} (CARC ${denial.carc_code}) — $${denial.denied_amount}. Deadline: ${denial.appeal_deadline}`,
+            entity_type: 'denial', entity_id: denial.id, action_url: `/denials?id=${denial.id}` });
+        } catch(notifErr) { /* non-fatal */ }
+        alerts.push({ denial_id: denial.id, claim_number: denial.claim_number, days_remaining: daysLeft, urgency });
+      }
+    }
+    return { alerts_sent: alerts.length, alerts };
+  } catch(err) {
+    console.error('[checkAppealDeadlines] error:', err.message);
+    return { alerts_sent: 0, alerts: [] };
   }
-  return { alerts_sent: alerts.length, alerts };
 }
 
 // ─── SLA Escalation Check ───────────────────────────────────────────────────
