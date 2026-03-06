@@ -5770,20 +5770,21 @@ export const handler = async (event) => {
     // Claim transition — with state machine validation (AD-2)
     if (path.includes('/transition') && method === 'POST') {
       const VALID_TRANSITIONS = {
-        'draft':       ['ready', 'scrubbing'],
-        'ready':       ['scrubbing', 'submitted'],
-        'scrubbing':   ['scrubbed', 'scrub_failed'],
-        'scrub_failed':['corrected', 'draft'],
-        'scrubbed':    ['submitted', 'corrected'],
-        'corrected':   ['scrubbing', 'submitted'],
-        'submitted':   ['accepted', 'denied', 'in_process'],
-        'accepted':    ['in_process', 'paid', 'partial_pay', 'denied'],
-        'in_process':  ['paid', 'partial_pay', 'denied'],
-        'denied':      ['appealed', 'corrected', 'write_off'],
-        'appealed':    ['paid', 'partial_pay', 'denied', 'write_off'],
+        'draft':       ['ready', 'scrubbing', 'void'],
+        'ready':       ['scrubbing', 'submitted', 'void'],
+        'scrubbing':   ['scrubbed', 'scrub_failed', 'void'],
+        'scrub_failed':['corrected', 'draft', 'void'],
+        'scrubbed':    ['submitted', 'corrected', 'void'],
+        'corrected':   ['scrubbing', 'submitted', 'void'],
+        'submitted':   ['accepted', 'denied', 'in_process', 'void'],
+        'accepted':    ['in_process', 'paid', 'partial_pay', 'denied', 'void'],
+        'in_process':  ['paid', 'partial_pay', 'denied', 'void'],
+        'denied':      ['appealed', 'corrected', 'write_off', 'void'],
+        'appealed':    ['paid', 'partial_pay', 'denied', 'write_off', 'void'],
         'paid':        ['write_off'],
         'partial_pay': ['paid', 'write_off', 'denied'],
         'write_off':   [],
+        'void':        [],
       };
       const { status: newStatus } = body;
       if (!newStatus) return respond(400, { error: 'Missing status field' });

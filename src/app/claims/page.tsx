@@ -10,6 +10,7 @@ import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import type { DemoClaim, ClaimTimelineEvent } from '@/lib/demo-data'
 import { useToast } from '@/components/shared/Toast'
 import { useRouter } from 'next/navigation'
+import { api } from '@/lib/api-client'
 import { useClaims, useScrubClaim, useTransitionClaim, useGenerateEDI,
          useClaimLines, useAddClaimLine, useClaimDiagnoses, useAddClaimDiagnosis,
          useScrubRules, useUpdateClaim, useGenerate837I, useTriggerSecondaryClaim, useUnderpaymentCheck, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useSendMessage, useMessages, useAuditLog, useRequestUploadUrl, useCreateDocument } from '@/lib/hooks'
@@ -102,9 +103,10 @@ const STATUS_COLORS: Record<string, string> = {
   appealed: 'bg-orange-500/10 text-orange-400 border border-orange-500/20',
   corrected: 'bg-teal-500/10 text-teal-400 border border-teal-500/20',
   write_off: 'bg-gray-500/10 text-gray-400 border border-gray-500/20 line-through',
+  void: 'bg-gray-500/10 text-gray-400 border border-gray-500/20 line-through opacity-60',
 }
 
-const ALL_STATUSES = ['draft','scrubbing','scrub_failed','ready','submitted','accepted','in_process','paid','partial_pay','denied','appealed','corrected','write_off'] as const
+const ALL_STATUSES = ['draft','scrubbing','scrub_failed','ready','submitted','accepted','in_process','paid','partial_pay','denied','appealed','corrected','write_off','void'] as const
 
 function ClaimStatusBadge({ status }: { status: string }) {
   return (
@@ -923,6 +925,7 @@ export default function ClaimsPage() {
   const [drawerClaim, setDrawerClaim] = useState<DemoClaim | null>(null)
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
   const [voidConfirmId, setVoidConfirmId] = useState<string | null>(null)
+  const [voidingId, setVoidingId] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<'id' | 'age' | 'billed'>('id')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -1214,13 +1217,17 @@ export default function ClaimsPage() {
                               { label: 'View Detail',      variant: 'default',             action: () => { setDrawerClaim(c); setMenuOpen(null) } },
                               { label: 'Correct Claim',    variant: 'default',             action: () => { setDrawerClaim(c); setMenuOpen(null) } },
                               { label: 'Route to Denials', variant: 'default',             action: () => { router.push(`/denials?claimId=${c.id}`); setMenuOpen(null) } },
-                              { label: voidConfirmId === c.id ? '⚠ Confirm Void' : 'Void Claim',
+                              { label: voidConfirmId === c.id ? (voidingId === c.id ? 'Voiding…' : '⚠ Confirm Void') : 'Void Claim',
                                 variant: voidConfirmId === c.id ? 'destructive-confirm' : 'destructive',
                                 action: () => {
                                   if (voidConfirmId === c.id) {
-                                    toast.warning(`Claim ${c.id} voided`)
-                                    setVoidConfirmId(null)
-                                    setMenuOpen(null)
+                                    const apiId = c.apiId
+                                    if (!apiId) { toast.warning(`Claim ${c.id} voided`); setVoidConfirmId(null); setMenuOpen(null); return }
+                                    setVoidingId(c.id)
+                                    api.post(`/claims/${apiId}/transition`, { status: 'void' })
+                                      .then(() => { toast.success(`Claim ${c.id} voided`); refetch() })
+                                      .catch(() => toast.error('Failed to void claim'))
+                                      .finally(() => { setVoidingId(null); setVoidConfirmId(null); setMenuOpen(null) })
                                   } else {
                                     setVoidConfirmId(c.id)
                                   }
