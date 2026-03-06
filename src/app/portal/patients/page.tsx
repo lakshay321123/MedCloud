@@ -408,6 +408,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
   const { country } = useApp()
   const { toast } = useToast()
   const router = useRouter()
+  const updatePatient = useUpdatePatient(patient.id)
   const [tab, setTab] = useState<DetailTab>('demographics')
   const [editMode, setEditMode] = useState(false)
   const [localPatient, setLocalPatient] = useState(patient)
@@ -441,7 +442,8 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
 
   const tabs: DetailTab[] = ['demographics', 'address', 'insurance', 'emergency', 'employment', 'documents', 'visits', 'messages']
 
-  function handleSave() {
+  async function handleSave() {
+    // Optimistically update local state
     setLocalPatient(prev => ({
       ...prev,
       firstName: editForm.firstName,
@@ -466,8 +468,25 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
         phone: editEmergency.phone,
       } : prev.emergencyContact,
     }))
-    toast.success('Patient record updated')
     setEditMode(false)
+
+    // Call real API
+    try {
+      await updatePatient.mutate({
+        first_name: editForm.firstName,
+        last_name: editForm.lastName,
+        dob: editForm.dob || undefined,
+        phone: editForm.phone || undefined,
+        email: editForm.email || undefined,
+        address: editAddress.line1 || undefined,
+        city: editAddress.city || undefined,
+        state: editAddress.state || undefined,
+        zip: editAddress.zip || undefined,
+      })
+      toast.success('Patient record saved ✓')
+    } catch {
+      toast.error('Save failed — changes kept locally')
+    }
   }
 
   return (

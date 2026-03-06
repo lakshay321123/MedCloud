@@ -10,6 +10,7 @@ import { useToast } from '@/components/shared/Toast'
 import { Plus, AlertTriangle, ChevronLeft, ChevronRight, X, Mic, ShieldCheck, CalendarDays } from 'lucide-react'
 import NewAppointmentModal from './NewAppointmentModal'
 import { useAppointments, useCreateAppointment, useUpdateAppointment } from '@/lib/hooks'
+import { api } from '@/lib/api-client'
 import type { ApiAppointment } from '@/lib/hooks'
 import type { AppointmentStatus } from '@/types'
 import { formatDOB } from '@/lib/utils/region'
@@ -319,14 +320,16 @@ export default function AppointmentsPage() {
     'APT-005': 'verified', 'APT-006': 'not_checked', 'APT-009': 'not_checked',
   }
 
-  function checkIn(apptId: string, patientName: string) {
+  async function checkIn(apptId: string, patientName: string) {
     setStatusOverrides(prev => ({ ...prev, [apptId]: 'checked_in' }))
     toast.success(`${patientName} checked in`)
+    api.put(`/appointments/${apptId}`, { status: 'checked_in' }).catch(() => null)
   }
 
-  function markNoShow(apptId: string, patientName: string) {
+  async function markNoShow(apptId: string, patientName: string) {
     setStatusOverrides(prev => ({ ...prev, [apptId]: 'no_show' }))
     toast.warning(`${patientName} marked no-show`)
+    api.put(`/appointments/${apptId}`, { status: 'no_show' }).catch(() => null)
   }
 
   return (
