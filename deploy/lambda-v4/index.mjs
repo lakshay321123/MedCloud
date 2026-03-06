@@ -196,6 +196,8 @@ async function runSchemaMigration() {
         'submitted','accepted','in_process','paid','partial_pay',
         'denied','appealed','corrected','write_off','cancelled','void'
       ));
+      -- ── coding_queue: add hold_reason column ─────────────────────────────────
+      ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS hold_reason TEXT;
     `);
     safeLog('info', 'Schema migration completed successfully');
   } catch (e) {
@@ -2762,7 +2764,7 @@ async function approveCoding(codingQueueId, body, orgId, userId) {
     status: 'draft',
     claim_type: '837P',
     dos_from: item.received_at || new Date().toISOString(),
-    total_charge: cptCodes.reduce((s, c) => s + (Number(c.charge) || 0), 0),
+    total_charges: cptCodes.reduce((s, c) => s + (Number(c.charge) || 0), 0),
   };
   const claim = await create('claims', claimData, orgId);
 
@@ -5608,7 +5610,11 @@ export const handler = async (event) => {
     const rawOrgId  = authCtx.org_id   || headers['x-org-id']    || qs.org_id    || body.org_id    || 'a0000000-0000-0000-0000-000000000001';
     const rawUserId = authCtx.user_id  || headers['x-user-id']   || qs.user_id   || body.user_id   || null;
     const rawClientId = authCtx.client_id || headers['x-client-id'] || qs.client_id || body.client_id || null;
-    const callerRole  = authCtx.role   || headers['x-role']      || 'unknown';
+    // SECURITY: role MUST come from Cognito JWT (authCtx) only — never from
+    // user-supplied headers. Accepting x-role from headers would allow any caller
+    // to send x-role: admin and bypass authorization checks on privileged routes
+    // (e.g. /admin/run-migrations executes arbitrary SQL).
+    const callerRole  = authCtx.role   || 'staff';
 
     const effectiveOrgId = validateUUID(rawOrgId, 'org_id');
     const userId = (rawUserId && UUID_RE.test(rawUserId)) ? rawUserId : null;
@@ -5923,15 +5929,15 @@ export const handler = async (event) => {
     // Coding query (send to provider)
     if (path.includes('/coding') && path.includes('/query') && method === 'POST') {
       await update('coding_queue', pathParams.id, { status: 'query_sent' }, effectiveOrgId);
-      // Create task for provider
+      // Create task for provider — use valid status 'open' and task_type 'billing' (coding_query not in constraint)
       await create('tasks', {
         org_id: effectiveOrgId,
         client_id: clientId,
         title: `Coding Query: ${body.query_text || 'Documentation needed'}`,
         description: body.query_text,
-        status: 'pending',
+        status: 'open',
         priority: 'high',
-        task_type: 'coding_query',
+        task_type: 'billing',
         assigned_to: body.provider_id || null,
       }, effectiveOrgId);
       await auditLog(effectiveOrgId, userId, 'query', 'coding_queue', pathParams.id, { query: body.query_text });
@@ -5941,6 +5947,14 @@ export const handler = async (event) => {
     // Coding reassign
     if (path.includes('/coding') && path.includes('/assign') && method === 'PUT') {
       const c = await update('coding_queue', pathParams.id, { assigned_to: body.assigned_to }, effectiveOrgId);
+      return respond(200, c);
+    }
+
+    // Coding hold
+    if (path.includes('/coding') && path.includes('/hold') && method === 'PUT') {
+      const reason = body.reason || '';
+      const c = await update('coding_queue', pathParams.id, { status: 'on_hold', hold_reason: reason }, effectiveOrgId);
+      await auditLog(effectiveOrgId, userId, 'hold', 'coding_queue', pathParams.id, { reason });
       return respond(200, c);
     }
 
