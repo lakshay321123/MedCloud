@@ -2807,7 +2807,6 @@ async function approveCoding(codingQueueId, body, orgId, userId) {
 async function generate837I(claimId, orgId) {
   const claim = await getById('claims', claimId);
   if (!claim || claim.org_id !== orgId) throw new Error('Claim not found');
-  if (claim.claim_type !== '837I') throw new Error('Claim is not institutional (837I)');
 
   const linesR = await pool.query('SELECT * FROM claim_lines WHERE claim_id = $1 ORDER BY line_number', [claimId]);
   const dxR = await pool.query('SELECT * FROM claim_diagnoses WHERE claim_id = $1 ORDER BY sequence', [claimId]);
@@ -2901,12 +2900,26 @@ async function generate837I(claimId, orgId) {
   edi += `GE*1*${ctrlNum}~\n`;
   edi += `IEA*1*${ctrlNum}~\n`;
 
-  // Log EDI transaction
+  // Log EDI transaction (non-fatal)
+  await pool.query(`CREATE TABLE IF NOT EXISTS edi_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id UUID NOT NULL, client_id UUID,
+    transaction_type VARCHAR(50), direction VARCHAR(20) DEFAULT 'outbound',
+    claim_id UUID, claim_count INTEGER DEFAULT 1,
+    status VARCHAR(50) DEFAULT 'pending',
+    file_name VARCHAR(255), file_size INTEGER,
+    edi_content TEXT, response_content TEXT,
+    transaction_set_control_number VARCHAR(50),
+    submitted_at TIMESTAMPTZ, response_at TIMESTAMPTZ,
+    error_message TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  )`).catch(()=>{});
   await pool.query(
     `INSERT INTO edi_transactions (id, org_id, client_id, transaction_type, direction, claim_id, status, submitted_at, created_at)
      VALUES ($1, $2, $3, '837I', 'outbound', $4, 'pending', NOW(), NOW())`,
     [uuid(), orgId, claim.client_id, claimId]
-  );
+  ).catch(()=>{});
 
   return { edi_content: edi, claim_id: claimId, claim_number: claim.claim_number, format: '837I' };
 }
