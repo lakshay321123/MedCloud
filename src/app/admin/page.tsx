@@ -81,6 +81,7 @@ function UsersTab() {
   const [localUsers, setLocalUsers] = useState(users)
   const [newUser, setNewUser] = useState({ name: '', email: '', role: 'coder', clients: '' })
   const [creating, setCreating] = useState(false)
+  const [editingUser, setEditingUser] = useState<typeof users[0] | null>(null)
   const filtered = localUsers.filter(u => !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()))
 
   async function handleCreateUser() {
@@ -132,7 +133,7 @@ function UsersTab() {
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${u.active?'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400':'bg-gray-500/10 text-gray-400'}`}>{u.active?'Active':'Disabled'}</span></td>
               <td className="px-4 py-3 text-xs text-content-secondary">{u.lastLogin}</td>
               <td className="px-4 py-3 flex gap-1">
-                <button onClick={()=>toast.info(`Edit user "${u.name}" — full edit flow coming in Sprint 3`)} className="text-[10px] text-brand hover:underline">Edit</button>
+                <button onClick={()=>setEditingUser(u)} className="text-[10px] text-brand hover:underline">Edit</button>
                 <span className="text-content-tertiary">·</span>
                 <button onClick={()=>handleToggleActive(u.email, u.active)} className={`text-[10px] hover:underline ${u.active ? 'text-red-500' : 'text-emerald-500'}`}>{u.active ? 'Disable' : 'Enable'}</button>
               </td>
@@ -169,6 +170,46 @@ function UsersTab() {
               </div>
               <button onClick={handleCreateUser} disabled={creating}
                 className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors disabled:opacity-50">{creating ? 'Creating…' : 'Create User & Send Invite'}</button>
+            </div>
+          </div>
+        </>
+      )}
+      {editingUser&&(
+        <>
+          <div className="fixed inset-0 bg-black/40 z-40" onClick={()=>setEditingUser(null)}/>
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            <div className="bg-surface-secondary rounded-xl p-6 w-full max-w-md shadow-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold">Edit User</h3>
+                <button onClick={()=>setEditingUser(null)}><X size={16} className="text-content-secondary"/></button>
+              </div>
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">Full Name</label>
+                <input value={editingUser.name} onChange={e=>setEditingUser(u=>u?{...u,name:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40"/>
+              </div>
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">Email</label>
+                <input value={editingUser.email} readOnly className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-tertiary cursor-not-allowed focus:outline-none"/>
+              </div>
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">Role</label>
+                <select value={editingUser.role} onChange={e=>setEditingUser(u=>u?{...u,role:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40">
+                  {Object.keys(roleColors).map(r=><option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-content-secondary block mb-1">Assigned Clients</label>
+                <input value={editingUser.clients} onChange={e=>setEditingUser(u=>u?{...u,clients:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40"/>
+              </div>
+              <button onClick={async ()=>{
+                // NOTE: MedCloud user management is via Cognito — role/group changes
+                // require Cognito adminUpdateUserAttributes + adminAddUserToGroup.
+                // Sprint 4 will add a /users PUT Lambda route for this.
+                // For now: persist locally so the UI is consistent within the session.
+                setLocalUsers(prev=>prev.map(u=>u.email===editingUser.email?{...editingUser}:u))
+                toast.success(`User "${editingUser.name}" updated (local session only — full persistence in Sprint 4)`)
+                setEditingUser(null)
+              }} className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">Save Changes</button>
             </div>
           </div>
         </>

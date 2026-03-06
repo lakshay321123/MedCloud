@@ -10,7 +10,8 @@ import { UAE_ORG_IDS, US_ORG_IDS, filterByRegion, filterPayersByCountry } from '
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
-import { useERAFiles, useAutoPostPayments, useCreateERAFile } from '@/lib/hooks'
+import { useERAFiles, useAutoPostPayments, useCreateERAFile, useCreateBankDeposit, useRequestUploadUrl } from '@/lib/hooks'
+import type { ApiBankDeposit } from '@/lib/hooks/useEntities'
 import { api } from '@/lib/api-client'
 
 interface LineItem {
@@ -215,6 +216,8 @@ export default function PaymentPostingPage() {
   const { t } = useT()
   const { toast } = useToast()
   const { data: apiERAResult, refetch: refetchERAs } = useERAFiles({ limit: 50 })
+  const { mutate: createBankDeposit } = useCreateBankDeposit()
+  const { mutate: requestUploadUrl } = useRequestUploadUrl()
   const { mutate: autoPost } = useAutoPostPayments()
   const { mutate: createERAFile } = useCreateERAFile()
   const [uploading, setUploading] = useState(false)
@@ -240,6 +243,10 @@ export default function PaymentPostingPage() {
   const [editValue, setEditValue] = useState<string>('')
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [showDepositModal, setShowDepositModal] = useState(false)
+  const [depositAmount, setDepositAmount] = useState('')
+  const [depositDate, setDepositDate] = useState(new Date().toISOString().split('T')[0])
+  const [savingDeposit, setSavingDeposit] = useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const era = eras.find(e => e.id === selectedEra)
@@ -613,8 +620,40 @@ export default function PaymentPostingPage() {
       <div className="card p-4 mt-6">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold">Bank Deposit Reconciliation</h3>
-          <button onClick={() => toast.info('Bank statement upload coming in Sprint 3')} className="text-xs bg-emerald-500/10 text-emerald-500 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-colors">Upload Statement</button>
+          <button onClick={() => { setDepositAmount(''); setDepositDate(new Date().toISOString().split('T')[0]); setShowDepositModal(true) }} className="text-xs bg-emerald-500/10 text-emerald-500 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-colors">Upload Statement</button>
         </div>
+        {showDepositModal && (
+          <>
+            <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowDepositModal(false)} />
+            <div className="fixed inset-0 flex items-center justify-center z-50">
+              <div className="bg-surface-secondary rounded-xl p-6 w-full max-w-sm shadow-2xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">Record Bank Deposit</h3>
+                  <button onClick={() => setShowDepositModal(false)} className="text-content-secondary hover:text-content-primary"><X size={16} /></button>
+                </div>
+                <div>
+                  <label className="text-xs text-content-secondary block mb-1">Deposit Amount ($) *</label>
+                  <input type="number" step="0.01" min="0" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} placeholder="12345.67" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40" />
+                </div>
+                <div>
+                  <label className="text-xs text-content-secondary block mb-1">Deposit Date *</label>
+                  <input type="date" value={depositDate} onChange={e => setDepositDate(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40" />
+                </div>
+                <button disabled={savingDeposit || !depositAmount || isNaN(parseFloat(depositAmount))} onClick={async () => {
+                  if (!depositAmount || isNaN(parseFloat(depositAmount)) || !depositDate) return
+                  setSavingDeposit(true)
+                  try {
+                    await createBankDeposit({ amount: parseFloat(depositAmount), deposit_date: depositDate, deposit_method: 'manual', reconciled: false, notes: 'Uploaded via Payment Posting' } as Partial<ApiBankDeposit>)
+                    toast.success(`Bank deposit of $${parseFloat(depositAmount).toLocaleString()} recorded`)
+                    setShowDepositModal(false)
+                  } catch { toast.error('Failed to record bank deposit') } finally { setSavingDeposit(false) }
+                }} className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors disabled:opacity-50">
+                  {savingDeposit ? 'Recording…' : 'Record Deposit'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
         <div className="grid grid-cols-4 gap-3 mb-4">
           {[
             { l: 'ERAs Processed', v: String(eras.length), c: 'text-content-primary' },

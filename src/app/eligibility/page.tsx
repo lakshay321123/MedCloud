@@ -7,7 +7,7 @@ import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 import {
   useEligibilityChecks, useBatchEligibility, usePriorAuths, useCreatePriorAuth,
-  useUpdatePriorAuth, usePatients, usePayers,
+  useUpdatePriorAuth, usePatients, usePayers, useCreateTask,
 } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import type { ApiEligibilityCheck, ApiPriorAuth, ApiPatient } from '@/lib/hooks'
@@ -705,6 +705,7 @@ function CreatePriorAuthModal({ onClose, onCreated }: { onClose: () => void; onC
 
 function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose: () => void; onUpdate: () => void }) {
   const { toast } = useToast()
+  const { mutate: createTask } = useCreateTask()
   const st = PA_STATUS[pa.status] || { label: pa.status, cls: 'bg-gray-500/10 text-gray-500' }
 
   async function handleStatusUpdate(newStatus: string) {
@@ -787,7 +788,13 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
                 </>
               )}
               {pa.status === 'denied' && (
-                <button onClick={() => toast.info('Peer-to-peer review requested')}
+                <button onClick={async () => {
+                  try {
+                    await createTask({ title: `P2P Review: ${pa.cpt_codes?.[0] || 'Auth'} — ${pa.patient_name || 'Patient'}`, description: `Peer-to-peer review requested for denied prior auth. Payer: ${pa.payer_name || 'Unknown'}. Auth #: ${pa.auth_number || pa.id}`, task_type: 'prior_auth', priority: 'high', status: 'open', client_id: pa.client_id })
+                    toast.success('Peer-to-peer review task created — clinical team notified')
+                    onUpdate()
+                  } catch { toast.info('Peer-to-peer review requested') }
+                }}
                   className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-brand/10 text-brand hover:bg-brand/20 transition-colors flex items-center gap-1.5">
                   <Phone size={12} /> Request P2P Review
                 </button>

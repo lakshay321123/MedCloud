@@ -152,7 +152,7 @@ export default function CredentialingPage() {
                   className="bg-brand/10 text-brand rounded-lg py-2 text-xs font-medium hover:bg-brand/20 transition-colors">
                   Initiate Re-credentialing
                 </button>
-                <button onClick={() => toast.info('CAQH portal opened')}
+                <button onClick={() => { window.open('https://proview.caqh.org/PR', '_blank'); toast.success('CAQH ProView opened') }}
                   className="bg-surface-elevated border border-separator rounded-lg py-2 text-xs font-medium">
                   Update CAQH
                 </button>

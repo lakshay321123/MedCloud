@@ -5,7 +5,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
 import type { DemoDocRecord, DemoFax } from '@/lib/demo-data'
-import { useDocuments, useTriggerTextract, useClassifyDocument, useRequestUploadUrl, useCreateDocument, useTextractResults } from '@/lib/hooks'
+import { useDocuments, useTriggerTextract, useClassifyDocument, useRequestUploadUrl, useCreateDocument, useTextractResults, useCreateCoding } from '@/lib/hooks'
 import type { ApiDocument } from '@/lib/hooks'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import {
@@ -41,6 +41,8 @@ const statusBadge = (s: string) => {
 
 function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () => void }) {
   const { toast } = useToast()
+  const { mutate: createCoding } = useCreateCoding()
+  const [sendingToCoding, setSendingToCoding] = useState(false)
   const [patientSearch, setPatientSearch] = useState('')
   return (
     <div className="fixed inset-y-0 right-0 w-full sm:w-[600px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl animate-fade-in">
@@ -84,9 +86,16 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
                     className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-brand/40" />
                 </div>
               ))}
-              <button onClick={() => toast.success('Sent to coding queue')}
-                className="w-full bg-brand text-white rounded-lg py-2 text-xs font-medium hover:bg-brand-deep transition-colors mt-1">
-                Send to Coding Queue
+              <button onClick={async () => {
+                setSendingToCoding(true)
+                try {
+                  await createCoding({ status: 'pending', notes: `Document: ${doc.name || doc.patient || 'Unknown'}` })
+                  toast.success('Sent to coding queue')
+                  onClose()
+                } catch { toast.error('Failed to send to coding queue') } finally { setSendingToCoding(false) }
+              }} disabled={sendingToCoding}
+                className="w-full bg-brand text-white rounded-lg py-2 text-xs font-medium hover:bg-brand-deep transition-colors mt-1 disabled:opacity-50">
+                {sendingToCoding ? 'Sending…' : 'Send to Coding Queue'}
               </button>
             </div>
           </div>
@@ -567,7 +576,7 @@ export default function DocumentsPage() {
             <span className='w-2 h-2 rounded-full bg-red-500 shrink-0' />
             Documents are temporarily unavailable. Your data is safe — we&apos;re working on it.
           </div>
-          <button onClick={() => toast.info('Support notified. Reference: DOC-' + Date.now().toString().slice(-6))}
+          <button onClick={() => { const ref = 'DOC-' + Date.now().toString().slice(-6); window.open(`mailto:support@cosentus.ai?subject=Documents+Unavailable+${ref}&body=Reference+${ref}+—+Documents+module+is+unavailable.+Please+investigate.`, '_blank'); toast.info('Support notified. Reference: ' + ref) }}
             className='text-red-600 underline hover:no-underline ml-4 shrink-0'>Raise Concern</button>
         </div>
       ) : null}
