@@ -5753,7 +5753,21 @@ export const handler = async (event) => {
     // 837P/837I EDI generate
     if (path.includes('/generate-edi') && method === 'POST') {
       const r = await generateEDI(pathParams.id, effectiveOrgId);
-      // Log EDI transaction
+      // Log EDI transaction (non-fatal - auto-create table if needed)
+      await pool.query(`CREATE TABLE IF NOT EXISTS edi_transactions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        org_id UUID NOT NULL, client_id UUID,
+        transaction_type VARCHAR(50), direction VARCHAR(20) DEFAULT 'outbound',
+        claim_id UUID, claim_count INTEGER DEFAULT 1,
+        status VARCHAR(50) DEFAULT 'pending',
+        file_name VARCHAR(255), file_size INTEGER,
+        edi_content TEXT, response_content TEXT,
+        transaction_set_control_number VARCHAR(50),
+        submitted_at TIMESTAMPTZ, response_at TIMESTAMPTZ,
+        error_message TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )`).catch(()=>{});
       await create('edi_transactions', {
         org_id: effectiveOrgId,
         client_id: clientId,
@@ -5762,7 +5776,8 @@ export const handler = async (event) => {
         claim_id: pathParams.id,
         claim_count: 1,
         status: 'pending',
-      }, effectiveOrgId);
+        submitted_at: new Date().toISOString(),
+      }, effectiveOrgId).catch(()=>{});
       return respond(200, r);
     }
 
