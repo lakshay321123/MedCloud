@@ -596,7 +596,10 @@ export default function CodingPage() {
                     className={`w-full text-left p-2 rounded-btn border transition-colors ${selected === q.id ? 'bg-brand/10 border-brand/20' : 'border-transparent hover:bg-surface-elevated'}`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-[14px] font-semibold text-content-primary leading-tight">{q.patientName}</p>
+                      <button onClick={e => { e.stopPropagation(); router.push(`/portal/patients?id=${q.patientId}`) }}
+                        className="text-[14px] font-semibold text-content-primary leading-tight hover:text-brand hover:underline text-left">
+                        {q.patientName}
+                      </button>
                       <span className={`w-2 h-2 rounded-full mt-1 ${priorityColor[q.priority ?? 'medium']}`} />
                     </div>
                     <p className="text-[12px] text-content-secondary truncate">{q.clientName || '—'} · {q.dos}</p>
@@ -652,7 +655,10 @@ export default function CodingPage() {
                 <div className="p-4 border-b border-separator">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="text-[15px] font-semibold text-content-primary">{item.patientName}</h3>
+                      <button onClick={() => router.push(`/portal/patients?id=${item.patientId}`)}
+                        className="text-[15px] font-semibold text-content-primary hover:text-brand hover:underline text-left block">
+                        {item.patientName}
+                      </button>
                       <p className="text-[12px] text-content-secondary">{item.provider} · NPI: {item.providerNpi}</p>
                     </div>
                     {item.priorAuthStatus === 'not_obtained' && (

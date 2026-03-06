@@ -126,6 +126,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
   const { currentUser } = useApp()
   const [tab, setTab] = useState<'overview' | 'lines' | 'docs' | 'messages' | 'audit' | 'scrub'>('overview')
   const { toast } = useToast()
+  const router = useRouter()
   const [newMessages, setNewMessages] = useState<any[]>([])
   const [msgInput, setMsgInput] = useState('')
   const [ediOutput, setEdiOutput] = useState<string | null>(null)
@@ -626,6 +627,8 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                     <div className="mt-2">
                       <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-1">Generated 837P EDI</p>
                       <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[10px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{ediOutput}</pre>
+                      <button onClick={() => router.push('/edi')}
+                        className="mt-1.5 text-[11px] text-brand hover:underline block">View in EDI Center →</button>
                     </div>
                   )}
                   {edi837IOutput && (

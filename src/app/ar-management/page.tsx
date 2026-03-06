@@ -322,6 +322,10 @@ function ARDrawer({
           <div>
             <h3 className="font-semibold text-content-primary">{account.patient}</h3>
             <p className="text-xs text-content-secondary">{account.client} · {account.payer}</p>
+            <button onClick={() => router.push(`/claims?id=${account.id}`)}
+              className="text-[11px] text-brand hover:underline mt-0.5 block">
+              View Claim {account.claimNumber || account.id} →
+            </button>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-surface-elevated rounded-btn">
             <X size={16} className="text-content-secondary" />

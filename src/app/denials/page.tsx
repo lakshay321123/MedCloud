@@ -1,4 +1,5 @@
 'use client'
+import { useRouter } from 'next/navigation'
 import { useT } from '@/lib/i18n'
 import React, { useState, useEffect } from 'react'
 import { useApp } from '@/lib/context'
@@ -11,7 +12,6 @@ import { useToast } from '@/components/shared/Toast'
 import { useDenials, useSubmitAppeal, useCheckAppealDeadlines } from '@/lib/hooks'
 import { filterByRegion } from '@/lib/utils/region'
 import { ErrorBanner } from '@/components/shared/ApiStates'
-import { useRouter } from 'next/navigation'
 import { sanitizeForPrompt } from '@/lib/ai-utils'
 
 // ─── Dynamic appeal template ──────────────────────────────────────────────
@@ -298,7 +298,10 @@ export default function DenialsPage() {
               {denials.map(d => (
               <tr key={d.id} onClick={() => { setSelected(d.id); setAppealLevel('L1') }}
                 className={`border-b border-separator table-row cursor-pointer ${selected === d.id ? 'bg-brand/5' : ''}`}>
-                <td className="px-4 py-3 font-mono text-xs">{d.id}</td>
+                <td className="px-4 py-3 font-mono text-xs">
+                  <button onClick={e => { e.stopPropagation(); router.push(`/claims?id=${d.id}`) }}
+                    className="text-brand hover:underline">{d.id}</button>
+                </td>
                 <td className="px-4 py-3">{d.patientName}</td>
                 <td className="px-4 py-3 text-xs text-content-secondary">{d.payer}</td>
                 <td className="px-4 py-3 text-xs text-red-600 dark:text-red-400">{d.denialReason}</td>
@@ -326,7 +329,9 @@ export default function DenialsPage() {
           {selected && selectedDenial ? (
             <>
               <h3 className="text-sm font-semibold mb-1">{selectedDenial.id} — {selectedDenial.patientName}</h3>
-              <p className="text-xs text-content-secondary mb-3">{selectedDenial.clientName} · {selectedDenial.payer} · DOS: {selectedDenial.dos}</p>
+              <p className="text-xs text-content-secondary mb-1">{selectedDenial.clientName} · {selectedDenial.payer} · DOS: {selectedDenial.dos}</p>
+              <button onClick={() => router.push(`/claims?id=${selectedDenial.id}`)}
+                className="text-[11px] text-brand hover:underline mb-3 block">View Originating Claim →</button>
               <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-2 mb-2 text-xs text-red-600 dark:text-red-400">Denial: {selectedDenial.denialReason}</div>
               <div className="bg-surface-elevated border border-separator rounded-lg p-2 mb-3 text-xs text-content-secondary inline-flex items-center gap-1">
                 <AlertTriangle size={12} />Source: Routed from {selectedDenial.source}
