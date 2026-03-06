@@ -302,15 +302,21 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
 
   const titleId = `edi-drawer-title-${tx.id.slice(0, 8)}`
 
+  // Lock body scroll while drawer is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
   const content = (
-    <div className="fixed inset-0 z-[200] flex justify-end" aria-hidden="false">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+    <div className="fixed inset-0 z-[9999] flex justify-end" aria-hidden="false">
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
       <div
         ref={drawerRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative w-full max-w-lg bg-surface border-l border-separator shadow-xl overflow-y-auto"
+        className="relative w-full max-w-lg bg-[#1C1C1E] border-l border-separator shadow-2xl overflow-y-auto"
       >
         {/* Header */}
         <div className="sticky top-0 bg-surface border-b border-separator px-6 py-4 flex items-center justify-between z-10">
