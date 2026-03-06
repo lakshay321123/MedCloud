@@ -140,6 +140,76 @@ function parse835(eraId: string, raw: string): ParsedERA {
   return result
 }
 
+// ─── ERA download helpers ─────────────────────────────────────────────────────
+interface ERARecord { file_name?: string; raw_content?: string; payer_name?: string; check_number?: string; total_amount?: number; check_date?: string }
+
+function buildMock835Content(eraRecord: ERARecord): string {
+  const date = (eraRecord.check_date || new Date().toISOString()).slice(0, 10).replace(/-/g, '')
+  const fname = (eraRecord.file_name || '').toLowerCase()
+  const payer = eraRecord.payer_name || 'UNKNOWN PAYER'
+  const chk = eraRecord.check_number || 'CHK-00000'
+  const total = eraRecord.total_amount ?? '0.00'
+  const payerZ = payer.replace(/\s+/g, '').toUpperCase().padEnd(15).slice(0, 15)
+  const isDenied = fname.includes('denied') || fname.includes('deny')
+  const isZeroPaid = fname.includes('zero') || fname.includes('adjustment')
+  const hdr = [
+    `ISA*00*          *00*          *ZZ*${payerZ}*ZZ*IRVFAMPRAC     *${date}*1200*^*00501*000000001*0*P*:~`,
+    `GS*HP*${payer.split(' ')[0].toUpperCase()}*IRVFAMPRAC*${date}*1200*1*X*005010X221A1~`,
+    `ST*835*0001~`,
+    `BPR*I*${total}*C*ACH*CTX*01*999999999*DA*12345678*1234567890**01*071000013*DA*87654321*${date}~`,
+    `TRN*1*${chk}*1234567890~`,
+    `DTM*405*${date}~`,
+    `N1*PR*${payer}*XV*00000~`,
+    `N1*PE*Irvine Family Practice*XX*1234567893~`,
+  ]
+  const claimLines = isDenied ? [
+    `LX*1~`,`CLP*CLM-0091*4*185.00*0.00*0.00*MC*837-0091*11~`,
+    `NM1*QC*1*JOHNSON*ROBERT*A***MI*MBR001~`,`SVC*HC:99213*185.00*0.00*185.00~`,
+    `DTM*472*${date}~`,`CAS*CO*50*185.00~`,`AMT*B6*0.00~`,
+    `LX*2~`,`CLP*CLM-0092*4*95.00*0.00*0.00*MC*837-0092*11~`,
+    `NM1*QC*1*GARCIA*MARIA*L***MI*MBR002~`,`SVC*HC:93000*95.00*0.00*95.00~`,
+    `DTM*472*${date}~`,`CAS*CO*50*95.00~`,`AMT*B6*0.00~`,
+    `LX*3~`,`CLP*CLM-0093*4*45.00*0.00*0.00*MC*837-0093*11~`,
+    `NM1*QC*1*WILSON*JAMES*T***MI*MBR003~`,`SVC*HC:85025*45.00*0.00*45.00~`,
+    `DTM*472*${date}~`,`CAS*CO*50*45.00~`,`AMT*B6*0.00~`,
+  ] : isZeroPaid ? [
+    `LX*1~`,`CLP*CLM-0101*2*185.00*0.00*65.00*HM*837-0101*11~`,
+    `NM1*QC*1*JOHNSON*ROBERT*A***MI*MBR001~`,`SVC*HC:99213*185.00*0.00*185.00~`,
+    `DTM*472*${date}~`,`CAS*CO*45*120.00*PR*2*65.00~`,`AMT*B6*0.00~`,
+    `LX*2~`,`CLP*CLM-0102*2*95.00*0.00*23.00*HM*837-0102*11~`,
+    `NM1*QC*1*GARCIA*MARIA*L***MI*MBR002~`,`SVC*HC:93000*95.00*0.00*95.00~`,
+    `DTM*472*${date}~`,`CAS*CO*45*72.00*PR*2*23.00~`,`AMT*B6*0.00~`,
+    `LX*3~`,`CLP*CLM-0103*2*45.00*0.00*17.00*HM*837-0103*11~`,
+    `NM1*QC*1*WILSON*JAMES*T***MI*MBR003~`,`SVC*HC:85025*45.00*0.00*45.00~`,
+    `DTM*472*${date}~`,`CAS*CO*45*28.00*PR*3*17.00~`,`AMT*B6*0.00~`,
+  ] : [
+    `LX*1~`,`CLP*CLM-0001*1*${total}*${total}*0.00*MC*837-0001*11~`,
+    `NM1*QC*1*JOHNSON*ROBERT*A***MI*MBR001~`,`SVC*HC:99213*${total}*${total}*0.00~`,
+    `DTM*472*${date}~`,`CAS*CO*45*0.00~`,`AMT*B6*${total}~`,
+  ]
+  return [...hdr, ...claimLines, `SE*${hdr.length + claimLines.length + 1}*0001~`, `GE*1*1~`, `IEA*1*000000001~`].join('\n')
+}
+
+async function downloadERAFile(eraId: string, onError: (msg: string) => void) {
+  try {
+    const { api } = await import('@/lib/api-client')
+    const eraRecord = await api.get<ERARecord>(`/era-files/${eraId}`)
+    const content = eraRecord.raw_content || buildMock835Content(eraRecord)
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = eraRecord.file_name || 'era-file.835'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('[payment-posting] ERA download failed:', error)
+    onError('Download failed — could not load ERA file')
+  }
+}
+
 export default function PaymentPostingPage() {
   const { selectedClient, country } = useApp()
   const { t } = useT()
@@ -195,7 +265,8 @@ export default function PaymentPostingPage() {
         }
         // No raw_content or no parseable lines — empty state handled in render
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error('[payment-posting] Failed to fetch ERA file content:', error)
         // API error — leave lines empty
       })
       .finally(() => setLoadingLines(false))
@@ -371,7 +442,7 @@ export default function PaymentPostingPage() {
                           file_name: uploadedFile.name,
                           file_type: ext === '835' ? '835' : ext === 'edi' ? 'edi' : 'txt',
                           s3_key: `era/${uploadedFile.name}`,
-                          s3_bucket: 'medcloud-documents-us-prod',
+                          s3_bucket: process.env.NEXT_PUBLIC_S3_BUCKET || 'medcloud-documents-us-prod',
                           raw_content,
                           payer_name: preparse.payerName || '',
                           check_number: preparse.checkNumber || '',
@@ -432,77 +503,7 @@ export default function PaymentPostingPage() {
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-content-tertiary">{era?.file}</span>
             <button
-              onClick={async () => {
-                try {
-                  // Fetch the full ERA record to get raw_content
-                  const eraRecord = await api.get<{
-                    file_name?: string; raw_content?: string;
-                    payer_name?: string; check_number?: string;
-                    total_amount?: number; check_date?: string;
-                  }>(`/era-files/${selectedEra}`)
-
-                  let content = eraRecord.raw_content
-                  // No stored raw_content — generate realistic 835 EDI based on filename + metadata
-                  if (!content) {
-                    const date = (eraRecord.check_date || new Date().toISOString()).slice(0, 10).replace(/-/g, '')
-                    const fname = (eraRecord.file_name || '').toLowerCase()
-                    const payer = eraRecord.payer_name || 'UNKNOWN PAYER'
-                    const chk = eraRecord.check_number || 'CHK-00000'
-                    const total = eraRecord.total_amount ?? '0.00'
-                    const payerZ = payer.replace(/\s+/g, '').toUpperCase().padEnd(15).slice(0, 15)
-                    const isDenied = fname.includes('denied') || fname.includes('deny')
-                    const isZeroPaid = fname.includes('zero') || fname.includes('adjustment')
-                    const hdr = [
-                      `ISA*00*          *00*          *ZZ*${payerZ}*ZZ*IRVFAMPRAC     *${date}*1200*^*00501*000000001*0*P*:~`,
-                      `GS*HP*${payer.split(' ')[0].toUpperCase()}*IRVFAMPRAC*${date}*1200*1*X*005010X221A1~`,
-                      `ST*835*0001~`,
-                      `BPR*I*${total}*C*ACH*CTX*01*999999999*DA*12345678*1234567890**01*071000013*DA*87654321*${date}~`,
-                      `TRN*1*${chk}*1234567890~`,
-                      `DTM*405*${date}~`,
-                      `N1*PR*${payer}*XV*00000~`,
-                      `N1*PE*Irvine Family Practice*XX*1234567893~`,
-                    ]
-                    const claimLines = isDenied ? [
-                      `LX*1~`,`CLP*CLM-0091*4*185.00*0.00*0.00*MC*837-0091*11~`,
-                      `NM1*QC*1*JOHNSON*ROBERT*A***MI*MBR001~`,`SVC*HC:99213*185.00*0.00*185.00~`,
-                      `DTM*472*${date}~`,`CAS*CO*50*185.00~`,`AMT*B6*0.00~`,
-                      `LX*2~`,`CLP*CLM-0092*4*95.00*0.00*0.00*MC*837-0092*11~`,
-                      `NM1*QC*1*GARCIA*MARIA*L***MI*MBR002~`,`SVC*HC:93000*95.00*0.00*95.00~`,
-                      `DTM*472*${date}~`,`CAS*CO*50*95.00~`,`AMT*B6*0.00~`,
-                      `LX*3~`,`CLP*CLM-0093*4*45.00*0.00*0.00*MC*837-0093*11~`,
-                      `NM1*QC*1*WILSON*JAMES*T***MI*MBR003~`,`SVC*HC:85025*45.00*0.00*45.00~`,
-                      `DTM*472*${date}~`,`CAS*CO*50*45.00~`,`AMT*B6*0.00~`,
-                    ] : isZeroPaid ? [
-                      `LX*1~`,`CLP*CLM-0101*2*185.00*0.00*65.00*HM*837-0101*11~`,
-                      `NM1*QC*1*JOHNSON*ROBERT*A***MI*MBR001~`,`SVC*HC:99213*185.00*0.00*185.00~`,
-                      `DTM*472*${date}~`,`CAS*CO*45*120.00*PR*2*65.00~`,`AMT*B6*0.00~`,
-                      `LX*2~`,`CLP*CLM-0102*2*95.00*0.00*23.00*HM*837-0102*11~`,
-                      `NM1*QC*1*GARCIA*MARIA*L***MI*MBR002~`,`SVC*HC:93000*95.00*0.00*95.00~`,
-                      `DTM*472*${date}~`,`CAS*CO*45*72.00*PR*2*23.00~`,`AMT*B6*0.00~`,
-                      `LX*3~`,`CLP*CLM-0103*2*45.00*0.00*17.00*HM*837-0103*11~`,
-                      `NM1*QC*1*WILSON*JAMES*T***MI*MBR003~`,`SVC*HC:85025*45.00*0.00*45.00~`,
-                      `DTM*472*${date}~`,`CAS*CO*45*28.00*PR*3*17.00~`,`AMT*B6*0.00~`,
-                    ] : [
-                      `LX*1~`,`CLP*CLM-0001*1*${total}*${total}*0.00*MC*837-0001*11~`,
-                      `NM1*QC*1*JOHNSON*ROBERT*A***MI*MBR001~`,`SVC*HC:99213*${total}*${total}*0.00~`,
-                      `DTM*472*${date}~`,`CAS*CO*45*0.00~`,`AMT*B6*${total}~`,
-                    ]
-                    content = [...hdr, ...claimLines, `SE*${hdr.length + claimLines.length + 1}*0001~`, `GE*1*1~`, `IEA*1*000000001~`].join('\n')
-                  }
-
-                  const blob = new Blob([content], { type: 'text/plain' })
-                  const url = URL.createObjectURL(blob)
-                  const a = document.createElement('a')
-                  a.href = url
-                  a.download = eraRecord.file_name || 'era-file.835'
-                  document.body.appendChild(a)
-                  a.click()
-                  document.body.removeChild(a)
-                  URL.revokeObjectURL(url)
-                } catch {
-                  toast.error('Download failed — could not load ERA file')
-                }
-              }}
+              onClick={() => downloadERAFile(selectedEra!, (msg) => toast.error(msg))}
               className="text-[11px] text-brand border border-brand/20 rounded px-2 py-1 hover:bg-brand/10 transition-colors">
               Download 835
             </button>
