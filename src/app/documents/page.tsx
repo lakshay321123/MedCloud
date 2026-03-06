@@ -700,6 +700,34 @@ function UploadModal({ onClose }: { onClose: () => void }) {
           <button onClick={onClose}><X size={18} className="text-content-secondary" /></button>
         </div>
 
+        {/* Document type chips */}
+        <div>
+          <p className="text-xs text-content-secondary mb-2">Select document type:</p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: 'Superbill',      icon: '🧾' },
+              { key: 'Clinical Note',  icon: '📋' },
+              { key: 'Insurance Card', icon: '🏥' },
+              { key: 'EOB',            icon: '💵' },
+              { key: 'Denial Letter',  icon: '❌' },
+              { key: 'Referral',       icon: '📨' },
+              { key: 'License',        icon: '🪪' },
+              { key: 'Contract',       icon: '📄' },
+              { key: 'Credential',     icon: '🔖' },
+              { key: 'Other',          icon: '📁' },
+            ].map(dt => (
+              <button key={dt.key} onClick={() => setDocType(dt.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all
+                  ${docType === dt.key
+                    ? 'bg-brand text-white border-brand'
+                    : 'bg-surface-elevated text-content-primary border-separator hover:border-brand/40 hover:bg-brand/5'
+                  }`}>
+                <span>{dt.icon}</span> {dt.key}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Drop zone */}
         <div onDragOver={e => e.preventDefault()} onDrop={handleDrop}
           className="border-2 border-dashed border-separator rounded-lg p-6 text-center hover:border-brand/40 transition-colors">
@@ -722,17 +750,6 @@ function UploadModal({ onClose }: { onClose: () => void }) {
             ))}
           </div>
         )}
-
-        {/* Document type */}
-        <div>
-          <label className="text-xs text-content-secondary mb-1 block">Document Type</label>
-          <select value={docType} onChange={e => setDocType(e.target.value)}
-            className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
-            {['Superbill', 'Clinical Note', 'Insurance Card', 'EOB', 'Denial Letter', 'Contract', 'Credential', 'Lab Report', 'Referral', 'Other'].map(t =>
-              <option key={t} value={t}>{t}</option>
-            )}
-          </select>
-        </div>
 
         {/* Progress */}
         {uploading && (

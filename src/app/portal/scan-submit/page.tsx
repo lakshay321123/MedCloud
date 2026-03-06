@@ -257,13 +257,20 @@ export default function ScanSubmitPage() {
 
               <div
                 onDragOver={e=>e.preventDefault()}
-                onDrop={e=>{e.preventDefault();addSimFiles()}}
-                onClick={addSimFiles}
+                onDrop={e=>{e.preventDefault(); const f=Array.from(e.dataTransfer.files); if(f.length>0){const items=f.map(file=>({name:file.name,size:(file.size/1024/1024).toFixed(1)+' MB',docType:'Other'})); setFiles(prev=>[...prev,...items].slice(0,MAX_FILES))}}}
+                onClick={()=>document.getElementById('scan-file-input')?.click()}
                 className={`border-2 border-dashed rounded-xl py-10 text-center cursor-pointer transition-all ${files.length?'border-brand/40 bg-brand/5':'border-separator hover:border-brand/30 hover:bg-surface-elevated'}`}>
                 <Upload size={28} className={`mx-auto mb-3 ${files.length?'text-brand':'text-content-tertiary'}`}/>
                 <p className="text-sm font-medium text-content-primary">Drop superbills, visit notes, referrals, or insurance cards</p>
                 <p className="text-[11px] text-content-secondary mt-1">PDF, JPG, PNG, HEIC · Up to {MAX_FILES} files · Max 25MB each</p>
                 {files.length < MAX_FILES && <p className="text-[10px] text-brand mt-2">Click to browse</p>}
+                <input id="scan-file-input" type="file" multiple className="hidden" onChange={e=>{
+                  if(e.target.files){
+                    const items=Array.from(e.target.files).map(f=>({name:f.name,size:(f.size/1024/1024).toFixed(1)+' MB',docType:'Other'}))
+                    setFiles(prev=>[...prev,...items].slice(0,MAX_FILES))
+                    e.target.value=''
+                  }
+                }}/>
               </div>
 
               {files.length > 0 && (
