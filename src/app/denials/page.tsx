@@ -391,8 +391,12 @@ export default function DenialsPage() {
                   }
                   if (selectedDenialApiId) {
                     try {
-                      await submitAppeal({ appeal_level: appealLevel, appeal_reason: selectedDenial.denialReason || 'Denial dispute', appeal_letter: text })
+                      const result = await submitAppeal({ appeal_level: appealLevel, appeal_reason: selectedDenial.denialReason || 'Denial dispute', appeal_letter: text })
                       toast.success(`${appealLevel} appeal submitted for ${selectedDenial.id}`)
+                      // Navigate to Documents with appealId filter so user can find the letter
+                      if (result?.id) {
+                        setTimeout(() => router.push(`/documents?appealId=${result.id}`), 1500)
+                      }
                       refetch()
                     } catch { toast.error('Failed to submit appeal — try again') }
                   } else {

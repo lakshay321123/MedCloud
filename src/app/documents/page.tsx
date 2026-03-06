@@ -1,6 +1,7 @@
 'use client'
 import { useT } from '@/lib/i18n'
 import React, { useState, useMemo, useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
@@ -587,9 +588,21 @@ export default function DocumentsPage() {
   const [tab, setTab] = useState<TabId>('all')
   const [showUpload, setShowUpload] = useState(false)
   const [apiDown, setApiDown] = useState(false)
+  const searchParams = useSearchParams()
+  const appealId = searchParams?.get('appealId')
   return (
     <ModuleShell title={t("documents","title")} subtitle={t("documents","subtitle")}
       actions={<button onClick={()=>setShowUpload(true)} className="bg-brand text-white rounded-lg px-4 py-2 text-sm flex items-center gap-2 hover:bg-brand-deep transition-colors"><Upload size={16}/> {t("documents","bulkUpload")}</button>}>
+      {/* Appeal letter context banner */}
+      {appealId && (
+        <div className='mx-4 mb-3 px-4 py-2.5 bg-brand/5 border border-brand/20 rounded-lg flex items-center justify-between text-xs'>
+          <div className='flex items-center gap-2 text-brand'>
+            <FileText size={14} />
+            <span>Appeal submitted — search for the letter below or upload supporting documentation.</span>
+          </div>
+          <span className='text-content-tertiary font-mono'>ID: {appealId.slice(0,8)}…</span>
+        </div>
+      )}
       {/* Quiet connection status — only visible if there's a problem */}
       {apiDown ? (
         <div className='mx-4 mb-4 px-4 py-2.5 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center justify-between text-xs'>
