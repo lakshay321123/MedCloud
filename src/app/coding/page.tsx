@@ -516,24 +516,25 @@ export default function CodingPage() {
 
   return (
     <ModuleShell title={t("coding","title")} subtitle={t("coding","subtitle")}>
-      <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label={t('coding','myQueue')} value={apiQueueResult?.meta?.total ?? queue.length} icon={<BrainCircuit size={20} />} />
-        <KPICard label={t('coding','codedToday')} value={
-          (apiQueueResult?.data ?? []).filter((c: any) =>
-            c.status === 'completed' && c.completed_at &&
-            new Date(c.completed_at).toDateString() === new Date().toDateString()
-          ).length
-        } icon={<CheckCircle2 size={20} />} />
-        <KPICard label={t('coding','aiAcceptance')} value={
-          (() => {
-            const done = (apiQueueResult?.data ?? []).filter((c: any) => c.status === 'completed')
-            if (done.length === 0) return '—'
-            const aiUsed = done.filter((c: any) => c.ai_suggested_cpt?.length > 0 || c.ai_suggested_icd?.length > 0)
-            return `${Math.round((aiUsed.length / done.length) * 100)}%`
-          })()
-        } icon={<Activity size={20} />} />
-        <KPICard label={t('coding','avgTimeChart')} value="—" icon={<Clock size={20} />} />
-      </div>
+      {/* Pre-compute for KPIs — avoid repeated filter passes */}
+      {(() => {
+        const completedItems = (apiQueueResult?.data ?? []).filter((c: any) => c.status === 'completed')
+        const codedTodayCount = completedItems.filter((c: any) =>
+          c.completed_at && new Date(c.completed_at).toDateString() === new Date().toDateString()
+        ).length
+        const aiUsageRate = completedItems.length === 0 ? '—' : (() => {
+          const aiUsed = completedItems.filter((c: any) => c.ai_suggested_cpt?.length > 0 || c.ai_suggested_icd?.length > 0).length
+          return `${Math.round((aiUsed / completedItems.length) * 100)}%`
+        })()
+        return (
+          <div className="grid grid-cols-4 gap-4 mb-4">
+            <KPICard label={t('coding','myQueue')} value={apiQueueResult?.meta?.total ?? queue.length} icon={<BrainCircuit size={20} />} />
+            <KPICard label={t('coding','codedToday')} value={codedTodayCount} icon={<CheckCircle2 size={20} />} />
+            <KPICard label="AI Usage Rate" value={aiUsageRate} icon={<Activity size={20} />} />
+            <KPICard label={t('coding','avgTimeChart')} value="—" icon={<Clock size={20} />} />
+          </div>
+        )
+      })()}
 
       <div className={`grid gap-4 h-[calc(100vh-280px)] ${docOpen ? 'grid-cols-12' : 'grid-cols-12'}`}>
         {/* ── Queue Panel ── */}

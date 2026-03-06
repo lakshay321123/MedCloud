@@ -196,6 +196,8 @@ async function runSchemaMigration() {
         'submitted','accepted','in_process','paid','partial_pay',
         'denied','appealed','corrected','write_off','cancelled','void'
       ));
+      -- ── coding_queue: add hold_reason column ─────────────────────────────────
+      ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS hold_reason TEXT;
     `);
     safeLog('info', 'Schema migration completed successfully');
   } catch (e) {
@@ -5608,7 +5610,11 @@ export const handler = async (event) => {
     const rawOrgId  = authCtx.org_id   || headers['x-org-id']    || qs.org_id    || body.org_id    || 'a0000000-0000-0000-0000-000000000001';
     const rawUserId = authCtx.user_id  || headers['x-user-id']   || qs.user_id   || body.user_id   || null;
     const rawClientId = authCtx.client_id || headers['x-client-id'] || qs.client_id || body.client_id || null;
-    const callerRole  = authCtx.role   || headers['x-role']      || 'unknown';
+    // SECURITY: role MUST come from Cognito JWT (authCtx) only — never from
+    // user-supplied headers. Accepting x-role from headers would allow any caller
+    // to send x-role: admin and bypass authorization checks on privileged routes
+    // (e.g. /admin/run-migrations executes arbitrary SQL).
+    const callerRole  = authCtx.role   || 'staff';
 
     const effectiveOrgId = validateUUID(rawOrgId, 'org_id');
     const userId = (rawUserId && UUID_RE.test(rawUserId)) ? rawUserId : null;
@@ -5947,9 +5953,9 @@ export const handler = async (event) => {
     // Coding hold
     if (path.includes('/coding') && path.includes('/hold') && method === 'PUT') {
       const reason = body.reason || '';
-      const c = await update('coding_queue', pathParams.id, { status: 'on_hold' }, effectiveOrgId);
+      const c = await update('coding_queue', pathParams.id, { status: 'on_hold', hold_reason: reason }, effectiveOrgId);
       await auditLog(effectiveOrgId, userId, 'hold', 'coding_queue', pathParams.id, { reason });
-      return respond(200, { ...c, hold_reason: reason });
+      return respond(200, c);
     }
 
     // AI auto-code
