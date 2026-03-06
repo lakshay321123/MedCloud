@@ -90,7 +90,51 @@ const sourceInfo: Record<string, { color: string; label: string }> = {
 
 const CALL_OUTCOMES = ['Got Status', 'Voicemail', 'Payment Promised', 'Denied', 'Resubmit Required', 'Submit Appeal']
 
-// ─── Log Call Modal ───────────────────────────────────────────────────────
+// ─── Credit Balance Row with real resolve API ─────────────────────────────
+function CreditBalanceRow({ cr, onResolved }: {
+  cr: { id: string | null; apiId: string | null; claim: string; patient: string; amt: string; payer: string; reason: string }
+  onResolved: () => void
+}) {
+  const { toast } = useToast()
+  const { mutate: resolveCB, loading: resolving } = useResolveCreditBalance(cr.apiId || '')
+  return (
+    <tr className="border-b border-separator last:border-0 table-row">
+      <td className="px-4 py-3 font-mono text-xs">{cr.claim}</td>
+      <td className="px-4 py-3 text-xs">{cr.patient}</td>
+      <td className="px-4 py-3 text-xs font-semibold text-amber-500">{cr.amt}</td>
+      <td className="px-4 py-3 text-xs text-content-secondary">{cr.payer}</td>
+      <td className="px-4 py-3 text-xs">{cr.reason}</td>
+      <td className="px-4 py-3 flex gap-2">
+        <button disabled={resolving} onClick={async () => {
+          if (!window.confirm(`Initiate refund of ${cr.amt} to ${cr.payer} for ${cr.patient}?\n\nClaim: ${cr.claim}\nReason: ${cr.reason}\n\nThis will generate a refund check/EFT request.`)) return
+          if (cr.apiId) {
+            try {
+              await resolveCB({ resolution_method: 'refund_check', notes: `Refund requested for ${cr.reason}` })
+              toast.success(`Refund of ${cr.amt} initiated for ${cr.claim} — ${cr.patient}`)
+              onResolved()
+            } catch { toast.error('Refund request failed — try again') }
+          } else {
+            toast.success(`Refund of ${cr.amt} initiated for ${cr.claim} — ${cr.patient}`)
+          }
+        }} className="text-[10px] text-brand hover:underline font-medium disabled:opacity-50">{resolving ? '…' : 'Refund'}</button>
+        <button disabled={resolving} onClick={async () => {
+          if (!window.confirm(`Apply ${cr.amt} credit to open patient balance for ${cr.patient}?\n\nClaim: ${cr.claim}\nThis will reduce their outstanding balance by ${cr.amt}.`)) return
+          if (cr.apiId) {
+            try {
+              await resolveCB({ resolution_method: 'applied_to_claim', notes: `Applied to open balance for patient` })
+              toast.success(`${cr.amt} applied to ${cr.patient}'s open balance`)
+              onResolved()
+            } catch { toast.error('Apply balance failed — try again') }
+          } else {
+            toast.success(`${cr.amt} applied to ${cr.patient}'s open balance`)
+          }
+        }} className="text-[10px] text-emerald-500 hover:underline font-medium disabled:opacity-50">{resolving ? '…' : 'Apply'}</button>
+      </td>
+    </tr>
+  )
+}
+
+
 function LogCallModal({
   account, onClose, onSave
 }: {
@@ -830,26 +874,16 @@ export default function ARManagementPage() {
             <table className="w-full text-sm">
               <thead><tr className="border-b border-separator text-xs text-content-secondary"><th className="text-left px-4 py-3">Claim</th><th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Amount</th><th className="text-left px-4 py-3">Payer</th><th className="text-left px-4 py-3">Reason</th><th className="text-left px-4 py-3">Actions</th></tr></thead>
               <tbody>
-                {[{claim:'CLM-8821',patient:'R. Martinez',amt:'$1,240',payer:'Aetna',reason:'Duplicate payment'},{claim:'CLM-9102',patient:'K. Williams',amt:'$890',payer:'BCBS',reason:'Overpayment'},{claim:'CLM-7455',patient:'J. Park',amt:'$2,100',payer:'United',reason:'COB adjustment'}].map(cr=>(
-                  <tr key={cr.claim} className="border-b border-separator last:border-0 table-row">
-                    <td className="px-4 py-3 font-mono text-xs">{cr.claim}</td>
-                    <td className="px-4 py-3 text-xs">{cr.patient}</td>
-                    <td className="px-4 py-3 text-xs font-semibold text-amber-500">{cr.amt}</td>
-                    <td className="px-4 py-3 text-xs text-content-secondary">{cr.payer}</td>
-                    <td className="px-4 py-3 text-xs">{cr.reason}</td>
-                    <td className="px-4 py-3 flex gap-2">
-                      <button onClick={() => {
-                        if (window.confirm(`Initiate refund of ${cr.amt} to ${cr.payer} for ${cr.patient}?\n\nClaim: ${cr.claim}\nReason: ${cr.reason}\n\nThis will generate a refund check/EFT request.`)) {
-                          toast.success(`Refund of ${cr.amt} initiated for ${cr.claim} — ${cr.patient}`)
-                        }
-                      }} className="text-[10px] text-brand hover:underline font-medium">Refund</button>
-                      <button onClick={() => {
-                        if (window.confirm(`Apply ${cr.amt} credit to open patient balance for ${cr.patient}?\n\nClaim: ${cr.claim}\nThis will reduce their outstanding balance by ${cr.amt}.`)) {
-                          toast.success(`${cr.amt} applied to ${cr.patient}'s open balance`)
-                        }
-                      }} className="text-[10px] text-emerald-500 hover:underline font-medium">Apply</button>
-                    </td>
-                  </tr>
+                {(creditBalances.length > 0 ? creditBalances.map(cb => ({
+                  id: cb.id,
+                  claim: cb.claim_id || 'N/A',
+                  patient: cb.patient_name || cb.patient_id || 'N/A',
+                  amt: `$${(cb.amount || 0).toLocaleString()}`,
+                  payer: cb.payer_name || cb.payer_id || 'N/A',
+                  reason: cb.source || 'Overpayment',
+                  apiId: cb.id,
+                })) : [{claim:'CLM-8821',patient:'R. Martinez',amt:'$1,240',payer:'Aetna',reason:'Duplicate payment',id:null,apiId:null},{claim:'CLM-9102',patient:'K. Williams',amt:'$890',payer:'BCBS',reason:'Overpayment',id:null,apiId:null},{claim:'CLM-7455',patient:'J. Park',amt:'$2,100',payer:'United',reason:'COB adjustment',id:null,apiId:null}]).map(cr=>(
+                  <CreditBalanceRow key={cr.claim} cr={cr} onResolved={() => refetchCredits()} />
                 ))}
               </tbody>
             </table>
