@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'deploy/lambda-v4/index.mjs'
+  workflow_dispatch:
 
 jobs:
   deploy:
