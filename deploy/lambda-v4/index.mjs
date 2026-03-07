@@ -1749,14 +1749,14 @@ async function aiAutoCode(codingQueueId, orgId, userId, coderInstructions = '') 
     try {
       const pt = await getById('patients', item.patient_id);
       if (pt) {
-        const age = pt.date_of_birth ? Math.floor((Date.now() - new Date(pt.date_of_birth).getTime()) / 31557600000) : null;
+        const age = pt.date_of_birth ? Math.floor((Date.now() - new Date(pt.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25)) : null;
         patientContext += `\nPATIENT: ${pt.first_name || ''} ${pt.last_name || ''}`;
         if (age) patientContext += ` | Age: ${age}`;
         if (pt.gender) patientContext += ` | Gender: ${pt.gender}`;
         if (pt.primary_insurance) patientContext += `\nINSURANCE: ${pt.primary_insurance}`;
         if (pt.member_id) patientContext += ` | Member ID: ${pt.member_id}`;
       }
-    } catch {}
+    } catch (e) { safeLog('warn', `AI: patient context error: ${e.message}`); }
   }
   // Pull linked documents (superbill text from Textract)
   let superbillText = '';
@@ -1768,7 +1768,7 @@ async function aiAutoCode(codingQueueId, orgId, userId, coderInstructions = '') 
         superbillText = tr.raw_text || tr.text || '';
         if (superbillText) clinicalText += `\n\nSUPERBILL/DOCUMENT TEXT:\n${superbillText.slice(0, 2000)}`;
       }
-    } catch {}
+    } catch (e) { safeLog('warn', `AI: doc text error: ${e.message}`); }
   }
   if (patientContext) clinicalText = patientContext + '\n\n' + clinicalText;
 
@@ -1784,7 +1784,7 @@ async function aiAutoCode(codingQueueId, orgId, userId, coderInstructions = '') 
       codingRulesText = '\nPAYER/CLIENT CODING RULES (apply these overrides):\n' +
         rulesR.rows.map((r, i) => `${i+1}. [${r.payer_name || 'All Payers'}] IF ${r.condition_field} ${r.condition_operator} "${r.condition_value}" → ${r.action_type}: ${r.action_value}`).join('\n');
     }
-  } catch {}
+  } catch (e) { safeLog('warn', `AI: coding rules error: ${e.message}`); }
   if (codingRulesText) clinicalText += codingRulesText;
 
   // ── Pull provider specialty + patient history for richer context ──────────
@@ -6552,6 +6552,7 @@ export const handler = async (event) => {
       if (method === 'GET' && pathParams.id) {
         const r = await getById('coding_rules', pathParams.id);
         if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Rule not found' });
+        // RLS verified via org_id check above
         return respond(200, r);
       }
       if (method === 'POST') {

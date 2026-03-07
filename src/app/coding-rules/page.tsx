@@ -190,7 +190,7 @@ export default function CodingRulesPage() {
               <p className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold mb-3">Condition → Action</p>
               <div className="grid grid-cols-3 gap-3 mb-3">
                 <select value={form.condition_field} onChange={e => setForm(p => ({ ...p, condition_field: e.target.value }))}
-                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm">
+                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
                   <option value="diagnosis">IF Diagnosis (ICD)</option>
                   <option value="cpt_code">IF CPT Code</option>
                   <option value="specialty">IF Provider Specialty</option>
@@ -201,7 +201,7 @@ export default function CodingRulesPage() {
                   <option value="em_level">IF E/M Level</option>
                 </select>
                 <select value={form.condition_operator} onChange={e => setForm(p => ({ ...p, condition_operator: e.target.value }))}
-                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm">
+                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
                   <option value="contains">contains</option>
                   <option value="equals">equals</option>
                   <option value="starts_with">starts with</option>
@@ -210,11 +210,11 @@ export default function CodingRulesPage() {
                   <option value="less_than">less than</option>
                 </select>
                 <input value={form.condition_value} onChange={e => setForm(p => ({ ...p, condition_value: e.target.value }))} placeholder="Value"
-                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm" />
+                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <select value={form.action_type} onChange={e => setForm(p => ({ ...p, action_type: e.target.value }))}
-                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm">
+                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
                   <option value="auto_code">→ Auto-assign code</option>
                   <option value="add_modifier">→ Add modifier</option>
                   <option value="replace_code">→ Replace code with</option>
@@ -226,7 +226,7 @@ export default function CodingRulesPage() {
                 </select>
                 <input value={form.action_value} onChange={e => setForm(p => ({ ...p, action_value: e.target.value }))}
                   placeholder="e.g. 99214-25, E11.65, or custom instruction..."
-                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm" />
+                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" />
               </div>
             </div>
 
