@@ -103,7 +103,8 @@ try {
   const bedMod = await import('@aws-sdk/client-bedrock-runtime');
   bedrockClient = new bedMod.BedrockRuntimeClient({ region: process.env.AWS_REGION || 'us-east-1' });
   InvokeModelCommand = bedMod.InvokeModelCommand;
-} catch { console.log('Bedrock SDK not available — AI coding will return mock suggestions'); }
+  console.log('Bedrock SDK loaded successfully — bedrockClient ready');
+} catch (e) { console.log('Bedrock SDK not available:', e.message, '— AI coding will return mock suggestions'); }
 
 const S3_BUCKET = process.env.S3_BUCKET || 'medcloud-documents-us-prod';
 
@@ -685,83 +686,32 @@ async function seedDemoData(orgId) {
 const BEDROCK_MODEL = process.env.BEDROCK_MODEL || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
 
 // ═══ VERCEL AI PROXY — calls Anthropic via Vercel when Bedrock unavailable ═══
-const VERCEL_AI_URL = process.env.VERCEL_AI_URL || 'https://med-cloud-cosentus.vercel.app/api/ai-internal';
-const INTERNAL_AI_KEY = process.env.INTERNAL_AI_KEY || 'mcloud-internal-2026';
 
-async function callAI(prompt, { max_tokens = 2000, system = 'You are an expert medical coding and billing AI assistant.', timeoutMs = 15000 } = {}) {
-  // Try Bedrock first
-  if (bedrockClient && InvokeModelCommand) {
-    try {
-      const bedrockBody = JSON.stringify({
-        anthropic_version: 'bedrock-2023-05-31',
-        max_tokens,
-        system,
-        messages: [{ role: 'user', content: prompt }],
-      });
-      const result = await Promise.race([
-        bedrockClient.send(new InvokeModelCommand({ modelId: BEDROCK_MODEL, body: bedrockBody, contentType: 'application/json' })),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Bedrock timeout')), timeoutMs))
-      ]);
-      const parsed = JSON.parse(new TextDecoder().decode(result.body));
-      return parsed.content?.[0]?.text || '';
-    } catch (e) {
-      safeLog('warn', 'Bedrock failed, falling back to Vercel AI proxy:', e.message);
-    }
+async function callAI(prompt, { max_tokens = 2000, system = 'You are an expert medical coding and billing AI assistant.', timeoutMs = 25000 } = {}) {
+  // HIPAA: ALL AI calls go through AWS Bedrock ONLY — PHI never leaves AWS account
+  if (!bedrockClient || !InvokeModelCommand) {
+    safeLog('warn', 'Bedrock not available — returning null (mock fallback)');
+    return null;
   }
-
-  // Fallback: Call Anthropic API directly (api.anthropic.com is in Lambda's allowed domains)
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  if (anthropicKey) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
-      const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514';
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': anthropicKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens,
-          system,
-          messages: [{ role: 'user', content: prompt }],
-        }),
-        signal: controller.signal,
-      });
-      clearTimeout(timer);
-      if (!resp.ok) {
-        const errText = await resp.text().catch(() => '');
-        throw new Error(`Anthropic API: ${resp.status} ${errText.substring(0, 100)}`);
-      }
-      const data = await resp.json();
-      const text = data.content?.map(c => c.text || '').join('') || '';
-      safeLog('info', `AI call success: ${text.length} chars, model=${model}`);
-      return text;
-    } catch (e) {
-      safeLog('warn', 'Anthropic API direct call failed:', e.message);
-    }
-  }
-
-  // Fallback: Vercel AI proxy (if api.anthropic.com unreachable)
+  
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    const resp = await fetch(VERCEL_AI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-internal-key': INTERNAL_AI_KEY },
-      body: JSON.stringify({ prompt, max_tokens, system }),
-      signal: controller.signal,
+    const bedrockBody = JSON.stringify({
+      anthropic_version: 'bedrock-2023-05-31',
+      max_tokens,
+      system,
+      messages: [{ role: 'user', content: prompt }],
     });
-    clearTimeout(timer);
-    if (!resp.ok) throw new Error(`Vercel AI: ${resp.status}`);
-    const data = await resp.json();
-    return data.text || '';
+    const result = await Promise.race([
+      bedrockClient.send(new InvokeModelCommand({ modelId: BEDROCK_MODEL, body: bedrockBody, contentType: 'application/json' })),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Bedrock timeout')), timeoutMs))
+    ]);
+    const parsed = JSON.parse(new TextDecoder().decode(result.body));
+    const text = parsed.content?.[0]?.text || '';
+    safeLog('info', `Bedrock AI success: ${text.length} chars`);
+    return text;
   } catch (e) {
-    safeLog('warn', 'Vercel AI proxy also failed:', e.message);
-    return null; // null = use mock fallback
+    safeLog('warn', 'Bedrock call failed:', e.name, e.message, e.code || '', JSON.stringify(e.$metadata || {}).substring(0,200));
+    return null; // null = smart mock fallback
   }
 }
 
@@ -2089,12 +2039,12 @@ Check for:
 
 Respond ONLY in JSON: {"ai_findings": [{"rule_code": "AI-xxx", "rule_name": "string", "severity": "warning|error", "message": "string"}]}
 Return empty array if no issues found.`,
-      { max_tokens: 500, timeoutMs: 10000 }
+      { max_tokens: 500, timeoutMs: 20000 }
     );
 
     if (aiResult) {
       try {
-        const parsed = JSON.parse(aiResult.replace(/\`\`\`json|\`\`\`/g, '').trim());
+        const parsed = JSON.parse(aiResult.replace(/```json|```/g, '').trim());
         if (parsed.ai_findings?.length > 0) {
           for (const finding of parsed.ai_findings) {
             results.push({ rule_code: finding.rule_code, rule_name: `AI: ${finding.rule_name}`, severity: finding.severity || 'warning', passed: false, message: finding.message });
@@ -2333,9 +2283,9 @@ Respond ONLY with valid JSON (no markdown, no backticks):
 
   // Use callAI() — tries Bedrock first, falls back to Vercel AI proxy
   try {
-    const aiText = await callAI(prompt, { max_tokens: 2048, timeoutMs: 12000 });
+    const aiText = await callAI(prompt, { max_tokens: 2048, timeoutMs: 25000 });
     if (aiText) {
-      suggestion = JSON.parse(aiText.replace(/\`\`\`json|\`\`\`/g, '').trim());
+      suggestion = JSON.parse(aiText.replace(/```json|```/g, '').trim());
     }
   } catch (e) {
     safeLog('warn', 'AI coding call failed, using smart mock:', e.message);
@@ -3047,7 +2997,7 @@ async function triggerTextract(documentId, orgId, userId) {
     // CPT codes (5 digits starting with 9, 8, 7, 3, 2, 1, 0)
     const cptCodes = [...text.matchAll(/\b(\d{5})\b/g)].map(m => m[1]).filter(c => /^(99|9[0-8]|8[0-9]|7[0-9]|6[0-9]|3[0-9]|2[0-9]|1[0-9]|0[0-9])/.test(c));
     // Charges
-    const charges = [...text.matchAll(/\$(\d+(?:\.\d{2})?)/g)].map(m => parseFloat(m[1]));
+    const charges = [...text.matchAll(/$(\d+(?:\.\d{2})?)/g)].map(m => parseFloat(m[1]));
     
     mockFields = {
       patient_name:    { value: nameMatch ? nameMatch[1] : 'Unknown', confidence: nameMatch ? 0.85 : 0.30, source: 'mock_extraction' },
@@ -3593,11 +3543,11 @@ Risk factors found: ${risks.map(r => r.detail).join('; ')}
 
 Based on your knowledge of payer denial patterns, what is the TOP recommendation to reduce denial risk? Respond in JSON:
 {"adjusted_score": number, "top_recommendation": "string", "specific_action": "string"}`,
-        { max_tokens: 200, timeoutMs: 8000 }
+        { max_tokens: 200, timeoutMs: 15000 }
       );
       if (aiRisk) {
         try {
-          const parsed = JSON.parse(aiRisk.replace(/\`\`\`json|\`\`\`/g, '').trim());
+          const parsed = JSON.parse(aiRisk.replace(/```json|```/g, '').trim());
           if (parsed.top_recommendation) {
             risks.push({ category: 'ai_recommendation', score: 0, detail: parsed.top_recommendation });
           }
@@ -4048,8 +3998,8 @@ async function chargeCapture(encounterId, orgId, userId) {
 
   const prompt = `You are a medical charge capture specialist and Certified Professional Coder (CPC) with expertise in maximizing compliant revenue capture. Identify every billable service documented while flagging anything that could be denied.
 
-REGION: \${isUAE ? 'UAE — ICD-10-AM + DRG/ACHI codes, DHA Abu Dhabi guidelines' : 'US — ICD-10-CM + CPT codes, CMS guidelines'}
-PATIENT: \${sanitizeForPrompt(encounter.patient_name) || 'Unknown'}, DOS: \${encounter.encounter_date || 'Unknown'}
+REGION: ${isUAE ? 'UAE — ICD-10-AM + DRG/ACHI codes, DHA Abu Dhabi guidelines' : 'US — ICD-10-CM + CPT codes, CMS guidelines'}
+PATIENT: ${sanitizeForPrompt(encounter.patient_name) || 'Unknown'}, DOS: ${encounter.encounter_date || 'Unknown'}
 
 CHARGE CAPTURE RULES:
 1. CAPTURE EVERYTHING: E/M visits, procedures, injections, in-office labs drawn, supplies for procedures, imaging (if technical component billable)
@@ -4060,7 +4010,7 @@ CHARGE CAPTURE RULES:
 6. MISSED CHARGES: Flag services hinted at but not fully documented
 
 CLINICAL DOCUMENTATION:
-\${sanitizeForPrompt(clinicalText)}
+${sanitizeForPrompt(clinicalText)}
 
 Return ONLY valid JSON:
 {

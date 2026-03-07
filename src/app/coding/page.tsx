@@ -599,22 +599,6 @@ export default function CodingPage() {
   }
 
 
-  // Try Vercel AI route (direct Anthropic), fall back to Lambda
-  async function callAICoding(itemId: string, clinicalText: string, instr: string) {
-    try {
-      const resp = await fetch('/api/ai-coding', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clinical_text: clinicalText, instructions: instr }),
-      })
-      if (resp.ok) {
-        const data = await resp.json()
-        if (data.suggested_icd || data.suggested_cpt) return data
-      }
-    } catch (e) { console.warn('[coding] Vercel AI unavailable, using Lambda:', e) }
-    // Fallback to Lambda
-    return api.post(`/coding/${itemId}/ai-suggest`, { instructions: instr })
-  }
 
   async function generateAICodes(soapAssessment: string, soapPlan: string, specialty: string, instructions?: string) {
     if (!item) return
@@ -624,13 +608,13 @@ export default function CodingPage() {
       await ensureDocumentExtracted(item)
       
       // Primary: call Lambda /coding/:id/ai-suggest (persists to ai_coding_suggestions table)
-      const result = await callAICoding(item.id, `Assessment: ${soapAssessment}\nPlan: ${soapPlan}\nSpecialty: ${specialty}`, instructions || '') as {
+      const result = await api.post<{
         suggested_cpt?: Array<{ code: string; description: string; confidence: number; modifier?: string; modifier_reason?: string; ncci_note?: string }>
         suggested_icd?: Array<{ code: string; description: string; confidence: number; is_primary?: boolean; is_hcc?: boolean; specificity_note?: string }>
         suggested_em?: string; em_confidence?: number; reasoning?: string
         mock?: boolean; suggestion_id?: string; processing_ms?: number; confidence?: number
         documentation_gaps?: string[]; audit_flags?: string[]; hcc_diagnoses?: string[]
-      }
+      }>(`/coding/${item.id}/ai-suggest`, { instructions: instructions || '' })
 
       // Map Lambda response format → frontend format
       const icd: AISuggestedCode[] = (result.suggested_icd || []).map(c => ({
