@@ -402,7 +402,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
     // Persist to backend so Messages page picks it up
     await sendMessageMutation.mutate({
       entity_type: 'claim', entity_id: claimApiIdForQuery,
-      client_id: claim.clientId, subject: `Claim ${claim.claimNumber || claim.id}`,
+      client_id: claim.clientId, subject: `Claim ${claim.id}`,
       body, sender_name: senderName, sender_role: currentUser?.role || 'staff',
     } as any)
     toast.success('Message sent to back office')
