@@ -129,6 +129,7 @@ export default function ScanSubmitPage() {
         if (!s3Upload.ok) throw new Error(`Upload failed (${s3Upload.status})`)
 
         const docResult = await createDoc({
+          doc_type: 'Other',
           document_type: 'Other',
           file_name: entry.name,
           s3_key: urlResult.s3_key,
@@ -176,6 +177,7 @@ export default function ScanSubmitPage() {
           .filter(f => f.status === 'done' && f.documentId)
           .map(f =>
             api.patch(`/documents/${f.documentId}`, {
+              doc_type: f.approvedType || f.aiType || 'Other',
               document_type: f.approvedType || f.aiType || 'Other',
               patient_id: patientId !== 'NEW' ? patientId : undefined,
               notes: note || undefined,

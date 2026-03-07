@@ -94,7 +94,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
             <span className="text-sm font-semibold text-content-primary">{doc.type}</span>
           </div>
           <p className="text-xs text-content-secondary font-mono">{doc.name}</p>
-          <p className="text-[10px] text-content-tertiary mt-0.5">Uploaded {doc.uploadDate} · {doc.source}</p>
+          <p className="text-[10px] text-content-tertiary mt-0.5">Uploaded {doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'} · {doc.source}</p>
         </div>
         <button onClick={onClose} className="p-1 hover:bg-surface-elevated rounded-btn"><X size={16} className="text-content-secondary"/></button>
       </div>
@@ -297,7 +297,7 @@ function AllDocsTab() {
               <td className="px-4 py-3 text-xs">{d.type}</td>
               <td className="px-4 py-3 text-xs text-content-secondary">{d.client}</td>
               <td className="px-4 py-3 text-xs">{d.patient}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{d.uploadDate}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{d.uploadDate ? new Date(d.uploadDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${sourceBadge(d.source)}`}>{d.source}</span></td>
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusBadge(d.status)}`}>{d.status}</span></td>
               <td className="px-4 py-3">
@@ -346,7 +346,7 @@ function UnlinkedQueueTab() {
                 <div className="flex items-center gap-2 mt-1">
                   <span className={`text-[10px] px-2 py-0.5 rounded-full ${sourceBadge(d.source)}`}>{d.source}</span>
                   {d.aiConfidence&&<span className="text-[10px] text-brand">AI: {d.type} · {d.aiConfidence}% conf</span>}
-                  <span className="text-[10px] text-content-tertiary">Arrived: {d.uploadDate}</span>
+                  <span className="text-[10px] text-content-tertiary">Arrived: {d.uploadDate ? new Date(d.uploadDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</span>
                 </div>
               </div>
             </div>
@@ -759,6 +759,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
         if (!s3Res.ok) throw new Error(`S3 upload failed (${s3Res.status})`)
         // Step 3: Create document record
         await createDoc({
+          doc_type: docType,
           document_type: docType,
           file_name: file.name,
           s3_key: urlResult.s3_key,
