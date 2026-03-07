@@ -774,12 +774,13 @@ function ProviderView() {
               <div className="p-3 border-t border-separator flex gap-2">
                 <button disabled={isSigning} onClick={async () => {
                   setIsSigning(true)
-                  const keptIcd = aiResult?.icd.filter(c => keptCodes[c.code] !== false) || []
-                  const keptCpt = aiResult?.cpt.filter(c => keptCodes[c.code] !== false) || []
-                  const manualKept = manualCodes.filter(c => keptCodes[c.code] !== false)
+                  try {
+                    const keptIcd = aiResult?.icd.filter(c => keptCodes[c.code] !== false) || []
+                    const keptCpt = aiResult?.cpt.filter(c => keptCodes[c.code] !== false) || []
+                    const manualKept = manualCodes.filter(c => keptCodes[c.code] !== false)
 
-                  const results = await Promise.allSettled([
-                    createSOAP.mutate({
+                    // Step 1: Save SOAP note — get back the ID
+                    const soapResult = await createSOAP.mutate({
                       patient_id: selectedVisit.patientId || '',
                       provider_id: currentUser?.id || '',
                       encounter_id: `ENC-${crypto.randomUUID()}`,
@@ -792,24 +793,26 @@ function ProviderView() {
                         em_level: aiResult?.em_level, avs_summary: aiResult?.avs_summary,
                         manual_codes: manualKept,
                       },
-                    }),
-                    createCoding.mutate({
-                      patient_id: selectedVisit.patientId || '',
-                      received_at: new Date().toISOString(),
-                      priority: 'normal' as any, status: 'pending',
-                      notes: `AI Scribe: ${selectedVisit.encounterType} · ${selectedVisit.dos} | ICD: ${[...keptIcd.map(c => c.code), ...manualKept.filter(c => c.type === 'icd').map(c => c.code)].join(', ')} | CPT: ${[...keptCpt.map(c => c.code), ...manualKept.filter(c => c.type === 'cpt').map(c => c.code)].join(', ')}`,
-                    }),
-                  ])
+                    })
+                    if (!soapResult?.id) throw new Error('SOAP note save failed — no ID returned')
 
-                  const allOk = results.every(r => r.status === 'fulfilled' && r.value !== null)
-                  if (allOk) {
-                    toast.success(`✓ Note signed & saved — routing to Coding Queue`)
-                  } else {
-                    // Backend unavailable (demo mode) — note is signed locally, will sync when online
-                    toast.warning(`Note signed locally — will sync to backend when available`)
-                    console.warn('[scribe] Sign API partially failed:', results.map(r => r.status))
+                    // Step 2: Create coding queue item — linked to SOAP note via soap_note_id
+                    await createCoding.mutate({
+                      patient_id: selectedVisit.patientId || '',
+                      soap_note_id: soapResult.id,
+                      received_at: new Date().toISOString(),
+                      priority: 'medium', status: 'pending',
+                      notes: `AI Scribe: ${selectedVisit.encounterType} · ${selectedVisit.dos} | ICD: ${[...keptIcd.map(c => c.code), ...manualKept.filter(c => c.type === 'icd').map(c => c.code)].join(', ')} | CPT: ${[...keptCpt.map(c => c.code), ...manualKept.filter(c => c.type === 'cpt').map(c => c.code)].join(', ')}`,
+                    })
+
+                    toast.success('✓ Note signed & saved — routing to Coding Queue')
+                    router.push('/coding')
+                  } catch (err) {
+                    const msg = err instanceof Error ? err.message : 'Unknown error'
+                    toast.error(`Sign failed: ${msg}. Please try again.`)
+                  } finally {
+                    setIsSigning(false)
                   }
-                  router.push('/coding')
                 }} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep flex items-center justify-center gap-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                   {isSigning ? <><Loader2 size={15} className="animate-spin" /> Signing…</> : <><Check size={16} /> Sign & Send to Coding</>}
                 </button>

@@ -144,13 +144,21 @@ export interface ApiCodingItem {
   client_id: string
   patient_id?: string
   provider_id?: string
+  soap_note_id?: string
   status?: string
   received_at?: string
   priority?: Priority
-  // enriched
+  // enriched from JOINs
   patient_name?: string
   provider_name?: string
   client_name?: string
+  // SOAP content (from LEFT JOIN soap_notes)
+  subjective?: string
+  objective?: string
+  assessment?: string
+  soap_plan?: string
+  soap_transcript?: string
+  soap_ai_suggestions?: Record<string, unknown>
   created_at?: string
   updated_at?: string
 }
@@ -477,6 +485,7 @@ export function useCreateCoding() {
     patient_id?: string
     provider_id?: string
     client_id?: string
+    soap_note_id?: string
     received_at?: string
     priority?: Priority
     status?: string
