@@ -269,11 +269,14 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
     }
   }
 
+  const [scrubResults, setScrubResults] = useState<Array<{ rule_code: string; rule_name: string; severity: string; passed: boolean; message: string }>>([])
+
   async function handleScrub() {
     if (!claimApiId) { toast.warning('No API ID — demo claim cannot be scrubbed'); return }
     const result = await scrubClaim({ user_id: currentUser?.id })
     if (result) {
-      if (result.passed) {
+      setScrubResults((result as any).results || result.violations?.map((v: any) => ({...v, passed: false})) || [])
+      if (result.errors === 0) {
         toast.success(`Scrub passed — ${result.total_rules} rules checked, 0 errors`)
       } else {
         toast.error(`Scrub failed — ${result.errors} error(s), ${result.warnings} warning(s)`)
@@ -281,6 +284,15 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
       onRefetch?.()
     }
   }
+
+  // Load existing scrub results when opening scrub tab
+  React.useEffect(() => {
+    if (tab === 'scrub' && claimApiId && scrubResults.length === 0) {
+      api.get<{ data: Array<{ rule_code: string; rule_name: string; severity: string; passed: boolean; message: string }> }>(`/claims/${claimApiId}/scrub-results`)
+        .then(r => { if (r.data?.length > 0) setScrubResults(r.data) })
+        .catch((err: any) => { console.warn('Failed to load scrub results:', err) })
+    }
+  }, [tab, claimApiId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleTransition(toStatus: string) {
     if (!claimApiId) { toast.warning('No API ID — demo claim cannot be transitioned'); return }
@@ -300,8 +312,8 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
   async function handleGenerateEDI() {
     if (!claimApiId) { toast.warning('No API ID — demo claim cannot generate EDI'); return }
     const result = await generateEDI({} as Record<string, never>)
-    if (result?.edi) {
-      setEdiOutput(result.edi)
+    if ((result as any)?.edi_content || result?.edi) {
+      setEdiOutput((result as any)?.edi_content || (result as any)?.edi || '')
       toast.success('837P EDI generated')
     }
   }
@@ -787,33 +799,65 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   </div>
                 )}
               </div>
-              {/* Right: scrub rules */}
+              {/* Right: AI scrub results + manual checklist */}
               <div className="card overflow-y-auto p-4 space-y-4">
-                <div className="flex items-start gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
-                  <CheckSquare size={14} className="text-blue-400 mt-0.5 shrink-0" />
-                  <p className="text-[12px] text-blue-400">
-                    Complete all {apiScrubRules.length} scrub rules before submitting. {checkedRules.size} / {apiScrubRules.length} checked.
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  {apiScrubRules.map(rule => (
-                    <label key={rule.id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-surface-elevated cursor-pointer group">
-                      <input type="checkbox" checked={checkedRules.has(rule.id)} onChange={() => toggleRule(rule.id)}
-                        className="rounded accent-brand w-4 h-4 shrink-0" />
-                      <span className={`text-[12px] font-mono text-content-tertiary w-10 shrink-0`}>{rule.id}</span>
-                      <span className={`text-[13px] flex-1 ${checkedRules.has(rule.id) ? 'line-through text-content-tertiary' : 'text-content-primary'}`}>{rule.label}</span>
-                    </label>
-                  ))}
-                </div>
-                <button
-                  disabled={!allRulesChecked}
-                  onClick={() => {
-                    toast.success('Manual scrub complete — claim marked ready for submission')
-                    setCheckedRules(new Set())
-                  }}
-                  className={`w-full py-2.5 rounded-btn text-[13px] font-medium transition-colors ${allRulesChecked ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-surface-elevated text-content-tertiary cursor-not-allowed border border-separator'}`}>
-                  {allRulesChecked ? 'Submit Manual Scrub' : `Check all ${apiScrubRules.length - checkedRules.size} remaining rules to continue`}
-                </button>
+                {scrubResults.length > 0 ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-content-primary uppercase tracking-wider">AI Scrub Results</p>
+                      <div className="flex gap-2 text-[11px]">
+                        <span className="text-emerald-500">{scrubResults.filter(r => r.passed).length} passed</span>
+                        <span className="text-red-500">{scrubResults.filter(r => !r.passed && r.severity === 'error').length} errors</span>
+                        <span className="text-amber-500">{scrubResults.filter(r => !r.passed && r.severity === 'warning').length} warnings</span>
+                      </div>
+                    </div>
+                    {scrubResults.filter(r => !r.passed).length > 0 && (
+                      <div className="space-y-1">
+                        {scrubResults.filter(r => !r.passed).map(r => (
+                          <div key={r.rule_code} className={`flex items-start gap-2 px-3 py-2 rounded-lg ${r.severity === 'error' ? 'bg-red-500/10 border border-red-500/20' : 'bg-amber-500/10 border border-amber-500/20'}`}>
+                            <span className={`text-[10px] font-mono mt-0.5 shrink-0 ${r.severity === 'error' ? 'text-red-500' : 'text-amber-500'}`}>{r.severity === 'error' ? '✕' : '⚠'}</span>
+                            <div>
+                              <p className="text-[12px] text-content-primary font-medium">{r.rule_name}</p>
+                              <p className="text-[11px] text-content-tertiary">{r.message}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {scrubResults.filter(r => r.passed).length > 0 && (
+                      <details className="text-xs">
+                        <summary className="text-content-tertiary cursor-pointer hover:text-content-secondary py-1">{scrubResults.filter(r => r.passed).length} rules passed</summary>
+                        <div className="space-y-0.5 mt-1">
+                          {scrubResults.filter(r => r.passed).map(r => (
+                            <div key={r.rule_code} className="flex items-center gap-2 px-3 py-1 text-[11px] text-content-tertiary">
+                              <span className="text-emerald-500">✓</span> {r.rule_name}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex items-start gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                    <CheckSquare size={14} className="text-blue-400 mt-0.5 shrink-0" />
+                    <p className="text-[12px] text-blue-400">
+                      Click &quot;Run AI Scrub&quot; to check rules automatically, or complete the manual checklist below.
+                    </p>
+                  </div>
+                )}
+                <details className="text-xs" open={scrubResults.length === 0}>
+                  <summary className="text-content-tertiary cursor-pointer hover:text-content-secondary py-1 font-semibold uppercase tracking-wider">Manual Checklist ({checkedRules.size}/{apiScrubRules.length})</summary>
+                  <div className="space-y-1 mt-2">
+                    {apiScrubRules.map(rule => (
+                      <label key={rule.id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-surface-elevated cursor-pointer group">
+                        <input type="checkbox" checked={checkedRules.has(rule.id)} onChange={() => toggleRule(rule.id)}
+                          className="rounded accent-brand w-4 h-4 shrink-0" />
+                        <span className={`text-[12px] font-mono text-content-tertiary w-10 shrink-0`}>{rule.id}</span>
+                        <span className={`text-[13px] flex-1 ${checkedRules.has(rule.id) ? 'line-through text-content-tertiary' : 'text-content-primary'}`}>{rule.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </details>
               </div>
             </div>
           )}
