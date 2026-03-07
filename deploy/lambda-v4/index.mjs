@@ -461,7 +461,8 @@ async function runSchemaMigration() {
       cpt_code VARCHAR(10), expected_amount NUMERIC(12,2), paid_amount NUMERIC(12,2),
       variance NUMERIC(12,2), payer_id UUID, status VARCHAR(30) DEFAULT 'open',
       resolved_at TIMESTAMPTZ, resolved_by UUID, notes TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW()
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(org_id, claim_id, cpt_code)
     )`);
     await pool.query('CREATE INDEX IF NOT EXISTS idx_underpayments_org ON underpayments(org_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_underpayments_claim ON underpayments(claim_id)');
@@ -505,7 +506,7 @@ async function seedDemoData(orgId) {
           (gen_random_uuid(),$1,$2,$3,'UnitedHealth Commercial 2025','fee_for_service','active','2025-01-01','2025-12-31',2400000,'Standard commercial rates. 110% Medicare for E/M, 95% for procedures.'),
           (gen_random_uuid(),$1,$2,$4,'Aetna HMO 2025','capitation','active','2025-01-01','2025-12-31',1800000,'Capitation $42 PMPM. Shared savings on quality metrics.'),
           (gen_random_uuid(),$1,$2,$5,'Medicare Fee Schedule 2025','fee_for_service','active','2025-01-01','2025-12-31',3200000,'CMS 2025 physician fee schedule. GPCIs applied.')
-        ON CONFLICT DO NOTHING
+        ON CONFLICT (org_id, claim_id, cpt_code) DO NOTHING
       `, [_org, _c1, payerRow.rows[0]?.id, payerRow.rows[1]?.id || payerRow.rows[0]?.id, payerRow.rows[2]?.id || payerRow.rows[0]?.id]);
       safeLog('info', 'Seeded 3 contracts');
     }
@@ -531,7 +532,7 @@ async function seedDemoData(orgId) {
            'Type 2 diabetes mellitus with inadequate control (E11.65). Hypertension (I10). Obesity (E66.09).',
            'Increase metformin to 1000mg BID. Add lisinopril 10mg QD for BP + renal protection. Dietary counseling referral. Recheck A1c in 3 months.',
            '99396',TRUE,TRUE,NOW()-INTERVAL '5 days')
-        ON CONFLICT DO NOTHING
+        ON CONFLICT (org_id, claim_id, cpt_code) DO NOTHING
       `, [_org, _c1, _enc1 || null, _pt1, _pr1, _enc2 || null, _pt2 || _pt1]);
       safeLog('info', 'Seeded 2 SOAP notes');
     }
@@ -552,7 +553,7 @@ async function seedDemoData(orgId) {
           (gen_random_uuid(),$1,$2,$3,'71046',82.00,'2025-01-01',NULL),
           (gen_random_uuid(),$1,$2,$3,'85025',12.00,'2025-01-01',NULL),
           (gen_random_uuid(),$1,$2,$3,'80053',22.00,'2025-01-01',NULL)
-        ON CONFLICT DO NOTHING
+        ON CONFLICT (org_id, claim_id, cpt_code) DO NOTHING
       `, [_org, _c1, _py1]);
       safeLog('info', 'Seeded 10 fee schedule entries');
     }
@@ -567,7 +568,7 @@ async function seedDemoData(orgId) {
           ($2,$1,'837P','MEDCLOUD','AVAILITY-UHC','000000001','000000001','accepted','outbound',8,12450.00,NOW()-INTERVAL '2 days'),
           ($3,$1,'835','AVAILITY-UHC','MEDCLOUD','000000002','000000002','processed','inbound',6,8320.50,NOW()-INTERVAL '1 day'),
           ($4,$1,'270','MEDCLOUD','AVAILITY','000000003','000000003','accepted','outbound',3,NULL,NOW()-INTERVAL '3 hours')
-        ON CONFLICT DO NOTHING
+        ON CONFLICT (org_id, claim_id, cpt_code) DO NOTHING
       `, [_org, _edi1, _edi2, _edi3]);
       safeLog('info', 'Seeded 3 EDI transactions');
     }
@@ -581,7 +582,7 @@ async function seedDemoData(orgId) {
           (gen_random_uuid(),$1,$2,$3,$4,$5,'27447','M17.11','Orthopedic Surgery','approved','routine',NOW()-INTERVAL '10 days',NOW()-INTERVAL '5 days','AUTH-2026-00441','Total knee arthroplasty approved for 1 unit. Valid 90 days.'),
           (gen_random_uuid(),$1,$2,$6,$7,$5,'70553','G35','Radiology','pending','urgent',NOW()-INTERVAL '2 days',NULL,NULL,'MRI brain with/without contrast for MS workup. Awaiting medical necessity review.'),
           (gen_random_uuid(),$1,$2,$3,$4,$5,'90837','F32.1','Mental Health','denied','routine',NOW()-INTERVAL '20 days',NOW()-INTERVAL '15 days',NULL,'Denied: frequency exceeds plan limit. Appeal submitted with medical necessity documentation.')
-        ON CONFLICT DO NOTHING
+        ON CONFLICT (org_id, claim_id, cpt_code) DO NOTHING
       `, [_org, _c1, _pt1, _py1, _pr1, _pt2 || _pt1, payerRow.rows[1]?.id || _py1]);
       safeLog('info', 'Seeded 3 prior auth requests');
     }
@@ -595,7 +596,7 @@ async function seedDemoData(orgId) {
           (gen_random_uuid(),$1,$2,$3,125.00,'Timely filing limit exceeded — payer rejected 181 days post DOS','bad_debt','approved','director',$4),
           (gen_random_uuid(),$1,$2,$3,45.00,'Small balance write-off — patient unable to pay','bad_debt','approved','auto',$4),
           (gen_random_uuid(),$1,$2,$5,680.00,'Medical necessity denial after 2 appeal levels exhausted','contractual','pending_approval','director',$4)
-        ON CONFLICT DO NOTHING
+        ON CONFLICT (org_id, claim_id, cpt_code) DO NOTHING
       `, [_org, _c1, _cl1, _pr1, claimRow.rows[1]?.id || _cl1]);
       safeLog('info', 'Seeded 3 write-off requests');
     }
@@ -1747,6 +1748,9 @@ async function scrubClaim(claimId, orgId, userId) {
            errors: errors.length, warnings: warnings.length, results };
 }
 
+const UNDERPAYMENT_THRESHOLD_PCT = 0.95; // Flag if paid < 95% of contracted rate
+const HIGH_DENIAL_RISK_THRESHOLD = 70;   // Log warning if risk score > 70%
+
 // ─── Bedrock AI Auto-Coding ────────────────────────────────────────────────────
 async function aiAutoCode(codingQueueId, orgId, userId, coderInstructions = '') {
   const item = await getById('coding_queue', codingQueueId);
@@ -2832,18 +2836,18 @@ async function autoPostPayments(eraFileId, orgId, userId) {
           if (feeR.rows.length > 0) {
             const expected = Number(feeR.rows[0].contracted_rate) || 0;
             const medicare = Number(feeR.rows[0].medicare_rate) || 0;
-            if (expected > 0 && paid < expected * 0.95) {
+            if (expected > 0 && paid < expected * UNDERPAYMENT_THRESHOLD_PCT) {
               underpaymentFlag = { expected, paid, variance: expected - paid, pct: Math.round((1 - paid/expected) * 100) };
               // Create underpayment record
               await pool.query(
                 `INSERT INTO underpayments (id, org_id, claim_id, payment_id, cpt_code, expected_amount, paid_amount, variance, payer_id, created_at)
                  VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, NOW())
-                 ON CONFLICT DO NOTHING`,
+                 ON CONFLICT (org_id, claim_id, cpt_code) DO NOTHING`,
                 [orgId, pmt.claim_id, pmt.id, pmt.cpt_code, expected, paid, expected - paid, pmt.payer_id || null]
-              ).catch(() => {});
+              ).catch((err) => safeLog('warn', 'Underpayment insert failed:', err.message));
             }
           }
-        } catch {}
+        } catch (err) { safeLog('warn', 'Underpayment check failed:', err.message); }
       }
       results.auto_posted++;
       results.details.push({ payment_id: pmt.id, action: 'posted', reason: 'Auto-post criteria met', underpayment: underpaymentFlag });
@@ -4877,7 +4881,7 @@ Return ONLY JSON (no markdown):
     await pool.query(
       `INSERT INTO tasks (id, org_id, client_id, title, description, status, priority, assigned_to, due_date, created_at)
        VALUES ($1, $2, $3, $4, $5, 'open', 'high', $6, $7, NOW())
-       ON CONFLICT DO NOTHING`,
+       ON CONFLICT (org_id, claim_id, cpt_code) DO NOTHING`,
       [uuid(), orgId, encounter.client_id, `Documentation Query: ${encounter.patient_name || 'Patient'}`,
        `Encounter ${encounter.encounter_date || 'N/A'} — incomplete documentation (${completenessScore}%).\nMissing: ${missingFields.join('; ')}${aiAnalysis?.query_message ? '\n\nSuggested query: ' + aiAnalysis.query_message : ''}`,
        encounter.provider_id,
@@ -6540,7 +6544,7 @@ export const handler = async (event) => {
       // Auto-trigger denial prediction when claim submitted
       if (newStatus === 'submitted') {
         predictDenial(pathParams.id, effectiveOrgId, userId).then(pred => {
-          if (pred && pred.risk_score > 70) {
+          if (pred && pred.risk_score > HIGH_DENIAL_RISK_THRESHOLD) {
             safeLog('info', `High denial risk (${pred.risk_score}%) for ${pathParams.id}: ${pred.top_risk}`);
           }
         }).catch(() => {});
@@ -7907,7 +7911,7 @@ export const handler = async (event) => {
           for (const py of seedPayers.rows) {
             const tfDays = py.name?.includes('Medicare') ? 365 : py.name?.includes('Medicaid') ? 180 : 90;
             await pool.query(`INSERT INTO payer_config (org_id, payer_id, timely_filing_days_initial, timely_filing_days_appeal, era_enabled, eft_enabled)
-              VALUES ($1, $2, $3, $4, true, true) ON CONFLICT DO NOTHING`,
+              VALUES ($1, $2, $3, $4, true, true) ON CONFLICT (org_id, claim_id, cpt_code) DO NOTHING`,
               [effectiveOrgId, py.id, tfDays, tfDays * 2]);
           }
         }
@@ -9325,10 +9329,9 @@ export const handler = async (event) => {
           `SELECT u.*, c.claim_number, p.first_name || ' ' || p.last_name AS patient_name, py.name AS payer_name
            FROM underpayments u
            LEFT JOIN claims c ON u.claim_id = c.id
-           LEFT JOIN patients pt ON c.patient_id = pt.id
-           LEFT JOIN payers py ON u.payer_id = py.id
            LEFT JOIN patients p ON c.patient_id = p.id
-           WHERE u.org_id = $1 ORDER BY u.created_at DESC LIMIT 100`,
+           LEFT JOIN payers py ON u.payer_id = py.id
+           WHERE u.org_id = $1 ORDER BY u.created_at DESC LIMIT ${Math.min(parseInt(qs.limit) || 100, 500)}`,
           [effectiveOrgId]);
         return respond(200, { data: r.rows, meta: { total: r.rows.length } });
       }

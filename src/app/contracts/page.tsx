@@ -45,7 +45,7 @@ export default function ContractsPage() {
   const [tab, setTab] = useState<'fee' | 'underpayments' | 'terms' | 'extract'>('fee')
   const [apiUnderpayments, setApiUnderpayments] = useState<any[]>([])
   React.useEffect(() => {
-    api.get<{ data: any[] }>('/underpayments').then(r => setApiUnderpayments(r.data || [])).catch(() => {})
+    api.get<{ data: any[] }>('/underpayments').then(r => setApiUnderpayments(r.data || [])).catch(() => toast.error('Failed to load underpayments'))
   }, [])
   const [editingRow, setEditingRow] = useState<string | null>(null)
   const [addingCpt, setAddingCpt] = useState(false)
