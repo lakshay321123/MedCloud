@@ -6655,6 +6655,15 @@ export const handler = async (event) => {
         }
         return respond(201, item);
       }
+      if ((method === 'PUT' || method === 'PATCH') && pathParams.id) {
+        const existing = await getById('coding_queue', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Coding item not found' });
+        const allowed = ['status','priority','notes','assigned_to','document_id','hold_reason','coding_method','soap_note_id','patient_id','provider_id'];
+        const safeBody = {};
+        for (const k of allowed) { if (body[k] !== undefined) safeBody[k] = body[k]; }
+        const updated = await update('coding_queue', pathParams.id, safeBody, effectiveOrgId);
+        return respond(200, updated);
+      }
     }
 
     // Coding approve → create claim

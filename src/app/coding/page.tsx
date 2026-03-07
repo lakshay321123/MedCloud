@@ -545,10 +545,65 @@ export default function CodingPage() {
   const [showQuickSoap, setShowQuickSoap] = useState(false)
   const [coderInstructions, setCoderInstructions] = useState('')
 
+  // On-demand document text extraction — ensures AI has superbill data before coding
+  async function ensureDocumentExtracted(codingItem: typeof item) {
+    if (!codingItem) return
+    try {
+      // Get patient's documents
+      const docsResp = await api.get<{ data: Array<{ id: string; file_name: string; s3_key?: string; textract_result?: any; textract_status?: string }> }>('/documents', { patient_id: codingItem.patientId } as any)
+      const docs = docsResp.data || []
+      for (const doc of docs) {
+        if (!doc.s3_key) continue
+        // Check if textract_result is empty or has no extracted codes
+        let needsExtraction = !doc.textract_result
+        if (doc.textract_result) {
+          const tr = typeof doc.textract_result === 'string' ? JSON.parse(doc.textract_result) : doc.textract_result
+          const cptParsed = tr?.fields?.cpt_codes?.parsed || []
+          const icdParsed = tr?.fields?.diagnoses?.parsed || []
+          if (cptParsed.length === 0 && icdParsed.length === 0) needsExtraction = true
+        }
+        if (needsExtraction) {
+          // Get presigned URL, then extract text via Vercel route
+          const dl = await api.get<{ download_url: string }>(`/documents/${doc.id}/download`, { mode: 'inline' } as any)
+          if (!dl.download_url) continue
+          const extractResp = await fetch('/api/extract-text', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ presigned_url: dl.download_url, document_id: doc.id }),
+          }).then(r => r.json())
+          if (extractResp.raw_text && extractResp.text_length > 20) {
+            // Save to document AND link to coding queue item
+            await api.patch(`/documents/${doc.id}`, {
+              textract_result: JSON.stringify({
+                fields: {
+                  patient_name: { value: extractResp.fields?.patient_name || 'Unknown', confidence: 0.85 },
+                  date_of_service: { value: extractResp.fields?.date_of_service || '', confidence: 0.85 },
+                  cpt_codes: { value: (extractResp.fields?.cpt_codes || []).join(' '), parsed: extractResp.fields?.cpt_codes || [], confidence: 0.85 },
+                  diagnoses: { value: (extractResp.fields?.icd_codes || []).join(' '), parsed: extractResp.fields?.icd_codes || [], confidence: 0.85 },
+                  billed_amount: { value: String(extractResp.fields?.total_charges || 0), confidence: 0.85 },
+                },
+                raw_text: extractResp.raw_text,
+                mode: 'vercel_on_demand',
+              }),
+              textract_status: 'completed',
+            } as any)
+            // Link document to coding queue item if not linked
+            if (!codingItem.id) continue
+            try { await api.patch(`/coding/${codingItem.id}`, { document_id: doc.id } as any) } catch {}
+            console.log(`[coding] Extracted ${extractResp.fields?.cpt_codes?.length || 0} CPT + ${extractResp.fields?.icd_codes?.length || 0} ICD from ${doc.file_name}`)
+            break // Only need first document
+          }
+        }
+      }
+    } catch (e) { console.warn('[coding] Doc extraction failed:', e) }
+  }
+
   async function generateAICodes(soapAssessment: string, soapPlan: string, specialty: string, instructions?: string) {
     if (!item) return
     setAiCoding(true)
     try {
+      // Extract text from linked documents first (ensures AI has superbill data)
+      await ensureDocumentExtracted(item)
+      
       // Primary: call Lambda /coding/:id/ai-suggest (persists to ai_coding_suggestions table)
       const result = await api.post<{
         suggested_cpt?: Array<{ code: string; description: string; confidence: number; modifier?: string; modifier_reason?: string; ncci_note?: string }>
