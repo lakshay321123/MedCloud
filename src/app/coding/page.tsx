@@ -126,7 +126,7 @@ const priorityColor: Record<'urgent' | 'high' | 'medium' | 'low', string> = {
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
-type CodingTab = 'note' | 'superbill' | 'history' | 'qa'
+type CodingTab = 'note' | 'superbill' | 'history' | 'qa' | 'rules'
 
 type CodeOverride = {
   action: 'removed' | 'edited'
@@ -201,6 +201,103 @@ function AddCodeRow({ type, onAdd }: { type: 'ICD' | 'CPT'; onAdd: (code: string
 }
 
 // ── Main Page Component ──────────────────────────────────────────────────────
+// (e) Payer-specific coding rules engine panel
+function CodingRulesPanel() {
+  const [rules, setRules] = React.useState<Array<{ id: string; rule_name: string; payer_name?: string; condition_field: string; condition_operator: string; condition_value: string; action_type: string; action_value: string; is_active: boolean }>>([])
+  const [loading, setLoading] = React.useState(true)
+  const [showAdd, setShowAdd] = React.useState(false)
+  const [form, setForm] = React.useState({ rule_name: '', payer_name: '', condition_field: 'diagnosis', condition_operator: 'contains', condition_value: '', action_type: 'auto_code', action_value: '' })
+  const { toast } = useToast()
+
+  React.useEffect(() => {
+    api.get<{ data: typeof rules }>('/coding-rules').then(r => { setRules(r.data || []); setLoading(false) }).catch(() => setLoading(false))
+  }, [])
+
+  const addRule = async () => {
+    try {
+      const r = await api.post<{ id: string }>('/coding-rules', { ...form, is_active: true })
+      setRules(prev => [...prev, { ...form, id: r.id, is_active: true }])
+      setForm({ rule_name: '', payer_name: '', condition_field: 'diagnosis', condition_operator: 'contains', condition_value: '', action_type: 'auto_code', action_value: '' })
+      setShowAdd(false)
+      toast.success('Rule added')
+    } catch { toast.error('Failed to save rule') }
+  }
+
+  const deleteRule = async (id: string) => {
+    try {
+      await api.delete('/coding-rules/' + id)
+      setRules(prev => prev.filter(r => r.id !== id))
+      toast.success('Rule deleted')
+    } catch { toast.error('Failed to delete') }
+  }
+
+  return (
+    <div className="p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Payer Coding Rules</h4>
+        <button onClick={() => setShowAdd(!showAdd)} className="text-[10px] px-2 py-1 rounded bg-brand text-white">+ Add Rule</button>
+      </div>
+      <p className="text-[11px] text-content-tertiary">Rules are automatically applied by AI when generating codes. E.g. &quot;For Aetna, always add modifier 25 to E/M with injection&quot;</p>
+      {showAdd && (
+        <div className="space-y-2 p-3 bg-surface-elevated rounded-lg border border-separator">
+          <input value={form.rule_name} onChange={e => setForm(p => ({...p, rule_name: e.target.value}))} placeholder="Rule name (e.g. Aetna modifier 25)" className="w-full bg-surface-default border border-separator rounded px-2 py-1.5 text-xs" />
+          <input value={form.payer_name} onChange={e => setForm(p => ({...p, payer_name: e.target.value}))} placeholder="Payer (blank = all payers)" className="w-full bg-surface-default border border-separator rounded px-2 py-1.5 text-xs" />
+          <div className="grid grid-cols-3 gap-2">
+            <select value={form.condition_field} onChange={e => setForm(p => ({...p, condition_field: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs">
+              <option value="diagnosis">IF Diagnosis</option>
+              <option value="cpt_code">IF CPT Code</option>
+              <option value="specialty">IF Specialty</option>
+              <option value="visit_type">IF Visit Type</option>
+              <option value="age">IF Patient Age</option>
+            </select>
+            <select value={form.condition_operator} onChange={e => setForm(p => ({...p, condition_operator: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs">
+              <option value="contains">contains</option>
+              <option value="equals">equals</option>
+              <option value="starts_with">starts with</option>
+              <option value="greater_than">&gt;</option>
+              <option value="less_than">&lt;</option>
+            </select>
+            <input value={form.condition_value} onChange={e => setForm(p => ({...p, condition_value: e.target.value}))} placeholder="Value" className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <select value={form.action_type} onChange={e => setForm(p => ({...p, action_type: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs">
+              <option value="auto_code">→ Auto-code to</option>
+              <option value="add_modifier">→ Add modifier</option>
+              <option value="replace_code">→ Replace code</option>
+              <option value="flag_review">→ Flag for review</option>
+              <option value="deny_code">→ Never use code</option>
+            </select>
+            <input value={form.action_value} onChange={e => setForm(p => ({...p, action_value: e.target.value}))} placeholder="e.g. 99214-25, E11.65" className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs" />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setShowAdd(false)} className="flex-1 border border-separator rounded py-1.5 text-xs text-content-secondary">Cancel</button>
+            <button onClick={addRule} disabled={!form.rule_name || !form.condition_value || !form.action_value} className="flex-1 bg-brand text-white rounded py-1.5 text-xs disabled:opacity-40">Save Rule</button>
+          </div>
+        </div>
+      )}
+      {loading ? <p className="text-xs text-content-tertiary text-center py-4">Loading rules...</p> : rules.length === 0 ? (
+        <div className="text-center py-6">
+          <p className="text-xs text-content-tertiary">No coding rules configured yet.</p>
+          <p className="text-[10px] text-content-tertiary mt-1">Add rules to customize AI coding by payer, diagnosis, or specialty.</p>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {rules.map(r => (
+            <div key={r.id} className="flex items-center gap-2 px-3 py-2 bg-surface-elevated rounded-lg border border-separator text-xs">
+              <div className="flex-1">
+                <span className="font-medium text-content-primary">{r.rule_name}</span>
+                {r.payer_name && <span className="text-content-tertiary ml-2">[{r.payer_name}]</span>}
+                <p className="text-[10px] text-content-tertiary">IF {r.condition_field} {r.condition_operator} &quot;{r.condition_value}&quot; → {r.action_type}: {r.action_value}</p>
+              </div>
+              <button onClick={() => deleteRule(r.id)} className="text-[10px] text-red-500 hover:text-red-600">✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function CodingPage() {
   const router = useRouter()
   const { selectedClient, currentUser, country } = useApp()
@@ -281,8 +378,9 @@ export default function CodingPage() {
   const [aiCodeCache, setAiCodeCache] = useState<Record<string, { icd: AISuggestedCode[], cpt: AISuggestedCode[] }>>({})
   const [quickSoap, setQuickSoap] = useState<{ assessment: string; plan: string; specialty: string }>({ assessment: '', plan: '', specialty: '' })
   const [showQuickSoap, setShowQuickSoap] = useState(false)
+  const [coderInstructions, setCoderInstructions] = useState('')
 
-  async function generateAICodes(soapAssessment: string, soapPlan: string, specialty: string) {
+  async function generateAICodes(soapAssessment: string, soapPlan: string, specialty: string, instructions?: string) {
     if (!item) return
     setAiCoding(true)
     try {
@@ -293,7 +391,7 @@ export default function CodingPage() {
         suggested_em?: string; em_confidence?: number; reasoning?: string
         mock?: boolean; suggestion_id?: string; processing_ms?: number; confidence?: number
         documentation_gaps?: string[]; audit_flags?: string[]; hcc_diagnoses?: string[]
-      }>(`/coding/${item.id}/ai-suggest`, {})
+      }>(`/coding/${item.id}/ai-suggest`, { instructions: instructions || '' })
 
       // Map Lambda response format → frontend format
       const icd: AISuggestedCode[] = (result.suggested_icd || []).map(c => ({
@@ -381,7 +479,7 @@ export default function CodingPage() {
     }
   }
   const [showHoldModal, setShowHoldModal] = useState(false)
-  const [docOpen, setDocOpen] = useState<'note' | 'superbill' | null>(null)
+  const [docOpen, setDocOpen] = useState<'note' | 'superbill' | 'split' | null>(null)
   const [queryText, setQueryText] = useState('')
   const [holdReason, setHoldReason] = useState('')
 
@@ -684,6 +782,16 @@ export default function CodingPage() {
                       </button>
                     )}
                     <button
+                      onClick={() => setDocOpen(docOpen === 'split' ? null : 'split')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border transition-colors ${
+                        docOpen === 'split'
+                          ? 'bg-brand text-white border-brand'
+                          : 'border-separator text-content-secondary hover:border-brand/40 hover:text-content-primary'
+                      }`}
+                    >
+                      ⬜ Split View
+                    </button>
+                    <button
                       onClick={() => setTab(tab === 'history' ? 'note' : 'history')}
                       className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border transition-colors ${
                         tab === 'history'
@@ -702,6 +810,16 @@ export default function CodingPage() {
                       }`}
                     >
                       QA Audit
+                    </button>
+                    <button
+                      onClick={() => setTab(tab === 'rules' ? 'note' : 'rules')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border transition-colors ${
+                        tab === 'rules'
+                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-600'
+                          : 'border-separator text-content-secondary hover:border-amber-500/40 hover:text-content-primary'
+                      }`}
+                    >
+                      ⚙ Coding Rules
                     </button>
                   </div>
                   {/* Only show fields that have values */}
@@ -757,6 +875,7 @@ export default function CodingPage() {
                       </div>
                     </div>
                   )}
+                  {tab === 'rules' && <CodingRulesPanel />}
                 </div>
                 {/* ── Doc Viewer Overlay ── */}
                 {docOpen && item && (
@@ -857,6 +976,49 @@ export default function CodingPage() {
                           ) : (
                             <p className="text-xs text-content-tertiary text-center py-4">No superbill codes available</p>
                           )}
+                        </div>
+                      )}
+
+                      {/* (d) Split View — Visit Note + Superbill side by side */}
+                      {docOpen === 'split' && (
+                        <div className="grid grid-cols-2 gap-3 h-full">
+                          {/* Left: Visit Note */}
+                          <div className="overflow-y-auto border-r border-separator pr-3 space-y-3">
+                            <p className="text-[10px] uppercase tracking-widest text-brand font-bold">Visit Note</p>
+                            {(['subjective', 'objective', 'assessment', 'plan'] as const).map(section => (
+                              <div key={section} className="pb-2 border-b border-separator last:border-0">
+                                <p className="text-[9px] uppercase tracking-widest text-content-tertiary font-bold mb-1">{section}</p>
+                                <p className="text-[12px] text-content-secondary leading-relaxed whitespace-pre-line">
+                                  {item.visitNote[section] || <span className="italic text-content-tertiary text-[11px]">—</span>}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Right: Superbill */}
+                          <div className="overflow-y-auto pl-3 space-y-3">
+                            <p className="text-[10px] uppercase tracking-widest text-brand font-bold">Superbill</p>
+                            <div className="bg-surface-elevated border border-separator rounded-lg p-4 text-center">
+                              <FileText size={24} className="mx-auto mb-2 text-content-tertiary opacity-40" />
+                              <p className="text-xs text-content-secondary mb-2">Uploaded document</p>
+                              <button onClick={() => router.push('/documents')} className="text-xs text-brand underline">View PDF</button>
+                            </div>
+                            {item.superbillCpt && item.superbillCpt.length > 0 ? (
+                              <div className="space-y-1.5">
+                                <p className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold">Superbill Codes</p>
+                                {item.superbillCpt.map(code => (
+                                  <div key={code} className="flex items-center justify-between px-2 py-1.5 bg-surface-elevated rounded border border-separator">
+                                    <span className="font-mono text-[11px] text-content-primary">{code}</span>
+                                    {aiCptCodes.includes(code)
+                                      ? <span className="text-[10px] text-emerald-500">✓ matched</span>
+                                      : <span className="text-[10px] text-amber-500">⚠ missing</span>
+                                    }
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-[10px] text-content-tertiary text-center py-3">No superbill codes extracted yet</p>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -990,19 +1152,35 @@ export default function CodingPage() {
                       </div>
                     )}
 
-                    {/* Regenerate button when codes exist */}
+                    {/* Chat-style regenerate with coder instructions */}
                     {hasRealCodes && !aiCoding && (
-                      <button
-                        onClick={() => {
-                          if (item) {
-                            setAiCodeCache(p => { const n = {...p}; delete n[item.id]; return n })
-                            autoTriggeredRef.current.delete(item.id)
-                            generateAICodes(item.visitNote.assessment, item.visitNote.plan, item.providerSpecialty || '')
-                          }
-                        }}
-                        className="text-[10px] text-purple-500 hover:text-purple-600 flex items-center gap-1 mb-2 ml-auto">
-                        ✦ Regenerate codes
-                      </button>
+                      <div className="mb-3 flex gap-1.5">
+                        <input
+                          value={coderInstructions}
+                          onChange={e => setCoderInstructions(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && item) {
+                              autoTriggeredRef.current.delete(item.id)
+                              generateAICodes(item.visitNote.assessment, item.visitNote.plan, item.providerSpecialty || '', coderInstructions)
+                              setCoderInstructions('')
+                            }
+                          }}
+                          placeholder="e.g. add modifier 25, use E11.65 instead, remove 36415..."
+                          className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-[11px] text-content-primary placeholder:text-content-tertiary focus:border-purple-500/40 outline-none"
+                        />
+                        <button
+                          onClick={() => {
+                            if (item) {
+                              autoTriggeredRef.current.delete(item.id)
+                              setAiCodeCache(p => { const n = {...p}; delete n[item.id]; return n })
+                              generateAICodes(item.visitNote.assessment, item.visitNote.plan, item.providerSpecialty || '', coderInstructions)
+                              setCoderInstructions('')
+                            }
+                          }}
+                          className="text-[10px] px-3 py-1.5 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors whitespace-nowrap">
+                          ✦ {coderInstructions ? 'Re-code' : 'Regenerate'}
+                        </button>
+                      </div>
                     )}
 
                     {/* ICD Codes */}

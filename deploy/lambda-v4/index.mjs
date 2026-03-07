@@ -386,6 +386,27 @@ async function runSchemaMigration() {
   for (const sql of colFixes) {
     try { await pool.query(sql); } catch (e) { if (e.code !== '42701' && e.code !== '42704') safeLog('warn', `colFix: ${e.message}`); }
   }
+  // (e) Create coding_rules table for payer-specific rules engine
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS coding_rules (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      org_id UUID NOT NULL,
+      client_id UUID,
+      payer_id UUID,
+      payer_name VARCHAR(200),
+      rule_name VARCHAR(200) NOT NULL,
+      condition_field VARCHAR(100) NOT NULL,
+      condition_operator VARCHAR(20) NOT NULL DEFAULT 'equals',
+      condition_value TEXT NOT NULL,
+      action_type VARCHAR(50) NOT NULL DEFAULT 'auto_code',
+      action_value TEXT NOT NULL,
+      priority INT DEFAULT 100,
+      is_active BOOLEAN DEFAULT true,
+      created_by UUID,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
+  } catch (e) { if (e.code !== '42P07') safeLog('warn', `coding_rules table: ${e.message}`); }
   safeLog('info', `Column fixes applied (${colFixes.length} statements)`);
 }
 
@@ -1664,7 +1685,7 @@ async function scrubClaim(claimId, orgId, userId) {
 }
 
 // ─── Bedrock AI Auto-Coding ────────────────────────────────────────────────────
-async function aiAutoCode(codingQueueId, orgId, userId) {
+async function aiAutoCode(codingQueueId, orgId, userId, coderInstructions = '') {
   const item = await getById('coding_queue', codingQueueId);
   if (!item || item.org_id !== orgId) throw new Error('Coding queue item not found');
 
@@ -1689,6 +1710,50 @@ async function aiAutoCode(codingQueueId, orgId, userId) {
     const client = await getById('clients', item.client_id);
     if (client?.region === 'UAE') codingSystem = 'ICD-10-AM + DRG (UAE/DHA)';
   }
+
+  // (c) Enrich with patient demographics, insurance, and linked documents
+  let patientContext = '';
+  if (item.patient_id) {
+    try {
+      const pt = await getById('patients', item.patient_id);
+      if (pt) {
+        const age = pt.date_of_birth ? Math.floor((Date.now() - new Date(pt.date_of_birth).getTime()) / 31557600000) : null;
+        patientContext += `\nPATIENT: ${pt.first_name || ''} ${pt.last_name || ''}`;
+        if (age) patientContext += ` | Age: ${age}`;
+        if (pt.gender) patientContext += ` | Gender: ${pt.gender}`;
+        if (pt.primary_insurance) patientContext += `\nINSURANCE: ${pt.primary_insurance}`;
+        if (pt.member_id) patientContext += ` | Member ID: ${pt.member_id}`;
+      }
+    } catch {}
+  }
+  // Pull linked documents (superbill text from Textract)
+  let superbillText = '';
+  if (item.document_id) {
+    try {
+      const doc = await getById('documents', item.document_id);
+      if (doc?.textract_result) {
+        const tr = typeof doc.textract_result === 'string' ? JSON.parse(doc.textract_result) : doc.textract_result;
+        superbillText = tr.raw_text || tr.text || '';
+        if (superbillText) clinicalText += `\n\nSUPERBILL/DOCUMENT TEXT:\n${superbillText.slice(0, 2000)}`;
+      }
+    } catch {}
+  }
+  if (patientContext) clinicalText = patientContext + '\n\n' + clinicalText;
+
+  // (e) Pull payer-specific coding rules for this org
+  let codingRulesText = '';
+  try {
+    const rulesR = await pool.query(
+      `SELECT rule_name, condition_field, condition_operator, condition_value, action_type, action_value, payer_name
+       FROM coding_rules WHERE org_id = $1 AND is_active = true ORDER BY priority LIMIT 20`,
+      [orgId]
+    );
+    if (rulesR.rows.length > 0) {
+      codingRulesText = '\nPAYER/CLIENT CODING RULES (apply these overrides):\n' +
+        rulesR.rows.map((r, i) => `${i+1}. [${r.payer_name || 'All Payers'}] IF ${r.condition_field} ${r.condition_operator} "${r.condition_value}" → ${r.action_type}: ${r.action_value}`).join('\n');
+    }
+  } catch {}
+  if (codingRulesText) clinicalText += codingRulesText;
 
   // ── Pull provider specialty + patient history for richer context ──────────
   let providerSpecialty = 'General Practice';
@@ -1800,6 +1865,7 @@ SOAP: "Medicare patient, subsequent AWV. Also reviewed and adjusted HTN meds, di
 
 CLINICAL DOCUMENTATION TO CODE:
 ${sanitizeForPrompt(clinicalText) || 'No clinical documentation provided. Return empty arrays with detailed documentation_gaps.'}
+${coderInstructions ? `\nCODER INSTRUCTIONS (apply these modifications to your code selection):\n${sanitizeForPrompt(coderInstructions, 500)}` : ''}
 
 INSTRUCTIONS:
 - Think step by step before assigning codes
@@ -6388,6 +6454,12 @@ export const handler = async (event) => {
       }
       if (method === 'POST') {
         const item = await create('coding_queue', { ...body, status: body.status || 'pending' }, effectiveOrgId);
+        // (a) Auto-trigger AI coding if SOAP note is linked — don't await (fire & forget)
+        if (item.soap_note_id) {
+          aiAutoCode(item.id, effectiveOrgId, userId).then(result => {
+            safeLog('info', `Auto-coded ${item.id}: ${result.mock ? 'mock' : 'bedrock'}, confidence=${result.confidence}`);
+          }).catch(e => safeLog('warn', `Auto-code failed for ${item.id}: ${e.message}`));
+        }
         return respond(201, item);
       }
     }
@@ -6432,8 +6504,35 @@ export const handler = async (event) => {
 
     // AI auto-code
     if (path.includes('/coding') && path.includes('/ai-suggest') && method === 'POST') {
-      const result = await aiAutoCode(pathParams.id, effectiveOrgId, userId);
+      const result = await aiAutoCode(pathParams.id, effectiveOrgId, userId, body.instructions || '');
       return respond(200, result);
+    }
+
+    // (e) Coding Rules Engine — CRUD
+    if (path.includes('/coding-rules')) {
+      if (method === 'GET' && !pathParams.id) {
+        const r = await orgQuery(effectiveOrgId, 'SELECT * FROM coding_rules WHERE org_id = $1 ORDER BY priority, created_at', [effectiveOrgId]);
+        return respond(200, { data: r.rows, meta: { total: r.rows.length } });
+      }
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('coding_rules', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Rule not found' });
+        return respond(200, r);
+      }
+      if (method === 'POST') {
+        const rule = await create('coding_rules', body, effectiveOrgId);
+        return respond(201, rule);
+      }
+      if ((method === 'PUT' || method === 'PATCH') && pathParams.id) {
+        const existing = await getById('coding_rules', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Rule not found' });
+        const updated = await update('coding_rules', pathParams.id, body, effectiveOrgId);
+        return respond(200, updated);
+      }
+      if (method === 'DELETE' && pathParams.id) {
+        await orgQuery(effectiveOrgId, 'DELETE FROM coding_rules WHERE id = $1 AND org_id = $2', [pathParams.id, effectiveOrgId]);
+        return respond(200, { deleted: true });
+      }
     }
 
     // AI coding suggestions lookup
