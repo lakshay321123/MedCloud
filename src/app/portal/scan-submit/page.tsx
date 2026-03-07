@@ -186,6 +186,24 @@ export default function ScanSubmitPage() {
       )
       const failed = results.filter(r => r.status === 'rejected').length
       if (failed > 0) toast.warning(`${failed} document(s) could not be updated — billing team will reconcile`)
+
+      // Create coding queue items for superbill/clinical docs → routes to coder
+      const codableDocs = files.filter(f => f.status === 'done' && f.documentId && ['Superbill', 'Clinical Note'].includes(f.approvedType || f.aiType || ''))
+      if (codableDocs.length > 0) {
+        await Promise.allSettled(
+          codableDocs.map(f =>
+            api.post('/coding', {
+              document_id: f.documentId,
+              patient_id: patientId !== 'NEW' ? patientId : undefined,
+              priority: 'medium',
+              status: 'pending',
+              notes: `Scan & Submit: ${f.approvedType || f.aiType} — ${f.file.name}`,
+            })
+          )
+        )
+        toast.success(`${codableDocs.length} document(s) sent to coding queue`)
+      }
+
       setSubmitted(true)
       setTimeout(() => router.push("/portal/watch-track"), 2000)
     } catch {
