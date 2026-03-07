@@ -7,6 +7,12 @@ export async function POST(req: NextRequest) {
     const document_id = body.document_id
     if (!presigned_url) return NextResponse.json({ error: 'presigned_url required' }, { status: 400 })
 
+    // SSRF protection: only allow S3 presigned URLs
+    const urlObj = new URL(presigned_url)
+    if (!urlObj.hostname.endsWith('.s3.amazonaws.com') && !urlObj.hostname.endsWith('.s3.us-east-1.amazonaws.com')) {
+      return NextResponse.json({ error: 'Invalid URL — only S3 presigned URLs allowed' }, { status: 403 })
+    }
+
     // Fetch PDF bytes
     const pdfResp = await fetch(presigned_url, { signal: AbortSignal.timeout(20000) })
     if (!pdfResp.ok) return NextResponse.json({ error: `PDF fetch failed: ${pdfResp.status}` }, { status: 502 })

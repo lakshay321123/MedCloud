@@ -6661,6 +6661,16 @@ export const handler = async (event) => {
         const allowed = ['status','priority','notes','assigned_to','document_id','hold_reason','coding_method','soap_note_id','patient_id','provider_id'];
         const safeBody = {};
         for (const k of allowed) { if (body[k] !== undefined) safeBody[k] = body[k]; }
+        // Cross-tenant validation: verify foreign keys belong to same org
+        const fkChecks = [
+          ['document_id', 'documents'], ['patient_id', 'patients'], ['provider_id', 'providers'], ['soap_note_id', 'soap_notes']
+        ];
+        for (const [field, table] of fkChecks) {
+          if (safeBody[field]) {
+            const ref = await getById(table, safeBody[field]);
+            if (!ref || ref.org_id !== effectiveOrgId) return respond(403, { error: `${field} does not belong to your organization` });
+          }
+        }
         const updated = await update('coding_queue', pathParams.id, safeBody, effectiveOrgId);
         return respond(200, updated);
       }

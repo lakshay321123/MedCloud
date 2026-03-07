@@ -588,7 +588,7 @@ export default function CodingPage() {
             } as any)
             // Link document to coding queue item if not linked
             if (!codingItem.id) continue
-            try { await api.patch(`/coding/${codingItem.id}`, { document_id: doc.id } as any) } catch {}
+            try { await api.patch(`/coding/${codingItem.id}`, { document_id: doc.id } as any) } catch (err) { console.warn('[coding] Failed to link doc:', err) }
             console.log(`[coding] Extracted ${extractResp.fields?.cpt_codes?.length || 0} CPT + ${extractResp.fields?.icd_codes?.length || 0} ICD from ${doc.file_name}`)
             break // Only need first document
           }
