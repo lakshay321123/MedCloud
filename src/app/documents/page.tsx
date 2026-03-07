@@ -54,6 +54,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
   const [downloading, setDownloading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
 
   // Auto-fetch presigned URL for preview when drawer opens
   useEffect(() => {
@@ -100,14 +101,15 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
       </div>
       <div className="flex-1 overflow-y-auto">
         {/* Preview area */}
-        <div className="m-4 bg-surface-elevated rounded-lg overflow-hidden border border-separator" style={{ minHeight: '60vh', height: '60vh' }}>
+        <div className={`relative bg-surface-elevated overflow-hidden border border-separator ${fullscreen ? 'fixed inset-0 z-50 rounded-none m-0' : 'm-4 rounded-lg'}`} style={fullscreen ? {} : { height: 'calc(100vh - 240px)', minHeight: '400px' }}>
+          {previewUrl && <button onClick={() => setFullscreen(f => !f)} className="absolute top-2 right-2 z-10 bg-black/60 text-white rounded-lg px-2.5 py-1.5 text-[10px] hover:bg-black/80 transition-colors backdrop-blur-sm">{fullscreen ? '✕ Exit Fullscreen' : '⛶ Fullscreen'}</button>}
           {previewLoading ? (
             <div className="flex flex-col items-center justify-center h-full gap-3">
               <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin" />
               <p className="text-xs text-content-tertiary">Loading preview…</p>
             </div>
           ) : previewUrl && doc.name?.toLowerCase().endsWith('.pdf') ? (
-            <iframe src={previewUrl} className="w-full border-0" style={{ height: '60vh' }} title="Document preview" />
+            <iframe src={previewUrl} className="w-full h-full border-0" title="Document preview" />
           ) : previewUrl && /\.(jpe?g|png|gif|webp|heic)$/i.test(doc.name || '') ? (
             <div className="flex items-center justify-center h-full p-4">
               <img src={previewUrl} alt={doc.name} className="max-w-full max-h-full object-contain rounded" />
@@ -161,7 +163,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
           </div>
         )}
         {/* Link to patient section */}
-        {doc.status === 'Unlinked' && (
+        {!doc.patientId && (
           <div className="mx-4 mb-4 card p-4">
             <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Link to Patient</h4>
             {doc.aiConfidence && (
