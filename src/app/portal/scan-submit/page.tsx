@@ -160,6 +160,36 @@ export default function ScanSubmitPage() {
 
         setFileField(id, { status: 'done', documentId, aiType, aiConfidence, approvedType: aiType })
 
+        // Extract text from PDF/image for AI coding (fire & forget — don't block upload)
+        if (documentId) {
+          (async () => {
+            try {
+              const dlResult = await api.get<{ download_url: string }>(`/documents/${documentId}/download`, { mode: 'inline' } as any)
+              if (!dlResult.download_url) return
+              const extractResult = await fetch('/api/extract-text', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ presigned_url: dlResult.download_url, document_id: documentId }),
+              }).then(r => r.json())
+              if (extractResult.raw_text && extractResult.text_length > 10) {
+                await api.patch(`/documents/${documentId}`, {
+                  textract_result: JSON.stringify({
+                    fields: {
+                      patient_name: { value: extractResult.fields?.patient_name || 'Unknown', confidence: 0.85 },
+                      date_of_service: { value: extractResult.fields?.date_of_service || '', confidence: 0.85 },
+                      cpt_codes: { value: (extractResult.fields?.cpt_codes || []).join(' '), parsed: extractResult.fields?.cpt_codes || [], confidence: 0.85 },
+                      diagnoses: { value: (extractResult.fields?.icd_codes || []).join(' '), parsed: extractResult.fields?.icd_codes || [], confidence: 0.85 },
+                      billed_amount: { value: String(extractResult.fields?.total_charges || 0), confidence: 0.85 },
+                    },
+                    raw_text: extractResult.raw_text,
+                    mode: 'vercel_extraction',
+                  }),
+                  textract_status: 'completed',
+                } as any)
+              }
+            } catch (e) { console.warn('[scan-submit] Text extraction failed:', e) }
+          })()
+        }
+
       } catch (err) {
         setFileField(id, {
           status: 'error',

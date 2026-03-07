@@ -6346,7 +6346,7 @@ export const handler = async (event) => {
         const existing = await getById('documents', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
         // Whitelist allowed fields — prevent mass assignment (s3_key, org_id manipulation)
-        const allowed = ['patient_id','status','doc_type','document_type','notes','client_id','patient_name'];
+        const allowed = ['patient_id','status','doc_type','document_type','notes','client_id','patient_name','textract_result','textract_status','textract_confidence'];
         const safeBody = {};
         for (const k of allowed) { if (body[k] !== undefined) safeBody[k] = body[k]; }
         const updated = await update('documents', pathParams.id, safeBody, effectiveOrgId);
