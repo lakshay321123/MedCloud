@@ -357,6 +357,28 @@ async function runSchemaMigration() {
     "ALTER TABLE coding_queue ALTER COLUMN dos DROP NOT NULL",
     "ALTER TABLE coding_queue DROP CONSTRAINT IF EXISTS coding_queue_priority_check",
     "ALTER TABLE coding_queue DROP CONSTRAINT IF EXISTS coding_queue_status_check",
+    "ALTER TABLE claims ALTER COLUMN patient_id DROP NOT NULL",
+    "ALTER TABLE claims ALTER COLUMN provider_id DROP NOT NULL",
+    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS org_id UUID",
+    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS id UUID DEFAULT gen_random_uuid()",
+    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS claim_id UUID",
+    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS line_number INT",
+    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS cpt_code VARCHAR(10)",
+    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS modifiers JSONB DEFAULT '[]'::jsonb",
+    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS charges NUMERIC(10,2) DEFAULT 0",
+    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS units INT DEFAULT 1",
+    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS dos DATE",
+    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS cpt_description TEXT",
+    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()",
+    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
+    "ALTER TABLE claim_diagnoses ADD COLUMN IF NOT EXISTS org_id UUID",
+    "ALTER TABLE claim_diagnoses ADD COLUMN IF NOT EXISTS id UUID DEFAULT gen_random_uuid()",
+    "ALTER TABLE claim_diagnoses ADD COLUMN IF NOT EXISTS claim_id UUID",
+    "ALTER TABLE claim_diagnoses ADD COLUMN IF NOT EXISTS icd_code VARCHAR(10)",
+    "ALTER TABLE claim_diagnoses ADD COLUMN IF NOT EXISTS sequence INT",
+    "ALTER TABLE claim_diagnoses ADD COLUMN IF NOT EXISTS icd_description TEXT",
+    "ALTER TABLE claim_diagnoses ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()",
+    "ALTER TABLE claim_diagnoses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
     "ALTER TABLE soap_notes ALTER COLUMN patient_id DROP NOT NULL",
     "ALTER TABLE soap_notes ALTER COLUMN provider_id DROP NOT NULL",
     "ALTER TABLE soap_notes ALTER COLUMN encounter_id DROP NOT NULL",
@@ -3055,6 +3077,36 @@ async function approveCoding(codingQueueId, body, orgId, userId) {
   const cptCodes = body.cpt_codes || [];
   const emLevel = body.em_level || null;
 
+  // Resolve provider_id: body → coding_queue → SOAP note → null
+  let providerId = body.provider_id || item.provider_id || null;
+  if (body.provider_id) {
+    try {
+      const prov = await getById('providers', body.provider_id);
+      if (!prov || prov.org_id !== orgId) { providerId = item.provider_id || null; safeLog('warn', 'provider_id rejected — not in org'); }
+    } catch { providerId = item.provider_id || null; }
+  }
+  if (!providerId && item.soap_note_id) {
+    const note = await getById('soap_notes', item.soap_note_id);
+    if (note?.provider_id) providerId = note.provider_id;
+  }
+
+  // Look up fee schedule rates for CPT codes with charge=0 or missing
+  const feeCache = {};
+  for (const cpt of cptCodes) {
+    { // Always look up fee schedule rate
+      if (!feeCache[cpt.code]) {
+        try {
+          const feeRow = await pool.query(
+            `SELECT contracted_rate FROM fee_schedules WHERE org_id = $1 AND cpt_code = $2 ORDER BY effective_date DESC LIMIT 1`,
+            [orgId, cpt.code]
+          );
+          feeCache[cpt.code] = feeRow.rows[0]?.contracted_rate ? Number(feeRow.rows[0].contracted_rate) : 0;
+        } catch (e) { safeLog('error', `Fee schedule lookup failed for CPT ${cpt.code}:`, e.message); feeCache[cpt.code] = 0; }
+      }
+      cpt.charge = feeCache[cpt.code];
+    }
+  }
+
   // Update coding queue
   await update('coding_queue', codingQueueId, {
     status: 'completed',
@@ -3067,7 +3119,7 @@ async function approveCoding(codingQueueId, body, orgId, userId) {
     org_id: orgId,
     client_id: item.client_id,
     patient_id: item.patient_id,
-    provider_id: item.provider_id,
+    provider_id: providerId,
     claim_number: claimNumber,
     status: 'draft',
     claim_type: '837P',
@@ -3076,30 +3128,28 @@ async function approveCoding(codingQueueId, body, orgId, userId) {
   };
   const claim = await create('claims', claimData, orgId);
 
-  // Insert claim lines
+  // Insert claim lines (columns: claim_id, line_number, cpt_code, cpt_description, modifiers, units, charges)
   let lineNum = 1;
   for (const cpt of cptCodes) {
     await create('claim_lines', {
-      org_id: orgId,
       claim_id: claim.id,
       line_number: lineNum++,
       cpt_code: cpt.code,
-      modifier: cpt.modifier || null,
-      charge: Number(cpt.charge) || 0,
+      cpt_description: cpt.description || '',
+      modifiers: cpt.modifier ? [cpt.modifier] : [],
+      charges: Number(cpt.charge) || 0,
       units: Number(cpt.units) || 1,
-      dos: item.received_at || new Date().toISOString(),
     }, orgId);
   }
 
-  // Insert diagnoses
+  // Insert diagnoses (columns: claim_id, sequence, icd_code, icd_description)
   let seq = 1;
   for (const icd of icdCodes) {
     await create('claim_diagnoses', {
-      org_id: orgId,
       claim_id: claim.id,
       icd_code: icd.code,
       sequence: seq++,
-      description: icd.description || '',
+      icd_description: icd.description || '',
     }, orgId);
   }
 

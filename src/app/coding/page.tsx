@@ -487,8 +487,8 @@ export default function CodingPage() {
     const manualIcd = manualCodes.filter(m => m.type === 'icd' && selectedCodes[m.key]).map(m => ({ code: m.code, description: m.description }))
     const approvedCpt = activeCodes.cpt
       .filter(c => selectedCodes[`cpt-${c.code}`] && codeOverrides[`cpt-${c.code}`]?.action !== 'removed')
-      .map(c => ({ code: codeOverrides[`cpt-${c.code}`]?.newCode || c.code, units: 1, charge: 0 }))
-    const manualCpt = manualCodes.filter(m => m.type === 'cpt' && selectedCodes[m.key]).map(m => ({ code: m.code, units: 1, charge: 0 }))
+      .map(c => ({ code: codeOverrides[`cpt-${c.code}`]?.newCode || c.code, units: 1 }))
+    const manualCpt = manualCodes.filter(m => m.type === 'cpt' && selectedCodes[m.key]).map(m => ({ code: m.code, units: 1 }))
 
     try {
       const result = await api.post<{ claim_id: string; claim_number: string }>(
@@ -497,7 +497,6 @@ export default function CodingPage() {
           icd_codes: [...approvedIcd, ...manualIcd],
           cpt_codes: [...approvedCpt, ...manualCpt],
           patient_id: item.patientId,
-          provider_id: '',
           client_id: item.clientId,
           dos: item.dos,
           user_id: currentUser?.id,
