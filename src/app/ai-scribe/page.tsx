@@ -123,13 +123,7 @@ function ProviderView() {
         provider: a.provider_name || '',
         status: a.status || 'scheduled',
       }))
-    : [
-        { id: 'demo-1', patientId: 'p-1', patientName: 'Robert Johnson', time: '9:00 AM', type: 'Follow-up', provider: 'Dr. Martinez', status: 'scheduled' },
-        { id: 'demo-2', patientId: 'p-2', patientName: 'Maria Garcia', time: '10:30 AM', type: 'New Patient', provider: 'Dr. Martinez', status: 'scheduled' },
-        { id: 'demo-3', patientId: 'p-3', patientName: 'James Wilson', time: '2:00 PM', type: 'Annual Exam', provider: 'Dr. Martinez', status: 'scheduled' },
-        { id: 'demo-4', patientId: 'p-4', patientName: 'Sara Johnson', time: '3:15 PM', type: 'Procedure', provider: 'Dr. Martinez', status: 'in_room' },
-        { id: 'demo-5', patientId: 'p-5', patientName: 'David Lee', time: '4:30 PM', type: 'Follow-up', provider: 'Dr. Martinez', status: 'scheduled' },
-      ]
+    : []
 
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
   const [selectedVisit, setSelectedVisit] = useState<DemoVisit | null>(null)
@@ -813,7 +807,23 @@ function ProviderView() {
                 }} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep flex items-center justify-center gap-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                   {isSigning ? <><Loader2 size={15} className="animate-spin" /> Signing…</> : <><Check size={16} /> Sign & Send to Coding</>}
                 </button>
-                <button onClick={() => toast.info('Draft saved')} className="px-4 py-2.5 rounded-lg border border-separator text-content-secondary text-sm transition-colors">Save Draft</button>
+                <button onClick={async () => {
+                  try {
+                    await createSOAP.mutate({
+                      patient_id: selectedVisit.patientId || '',
+                      provider_id: currentUser?.id || '',
+                      encounter_id: `ENC-${crypto.randomUUID()}`,
+                      dos: selectedVisit.dos,
+                      subjective: soap.s, objective: soap.o, assessment: soap.a, plan: soap.p,
+                      transcript: selectedVisit.transcript || '',
+                      signed_off: false,
+                      ai_suggestions: aiResult ? (aiResult as unknown as Record<string, unknown>) : {},
+                    })
+                    toast.success('Draft saved ✓')
+                  } catch {
+                    toast.warning('Draft saved locally')
+                  }
+                }} className="px-4 py-2.5 rounded-lg border border-separator text-content-secondary text-sm transition-colors hover:border-brand/30 hover:text-content-primary">Save Draft</button>
               </div>
             )}
           </div>

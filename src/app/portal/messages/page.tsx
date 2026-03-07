@@ -1,4 +1,5 @@
 'use client'
+import { useRouter } from 'next/navigation'
 import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useApp } from '@/lib/context'
@@ -45,6 +46,7 @@ export default function MessagesPage() {
 
   const { currentUser, selectedClient } = useApp()
   const { t } = useT()
+  const router = useRouter()
   const { toast } = useToast()
   const { getError } = useAbuseFilter()
   // localThreads holds optimistically-added threads before API refetch
@@ -291,7 +293,7 @@ export default function MessagesPage() {
                 ))}
               </div>
               <div className="p-3 border-t border-separator flex gap-2">
-                <button onClick={() => toast.info('File attachment — select document from library')} className="text-content-secondary hover:text-content-primary p-2"><Paperclip size={16}/></button>
+                <button onClick={() => router.push('/documents')} title="Attach from Documents" className="text-content-secondary hover:text-content-primary p-2"><Paperclip size={16}/></button>
                 <input value={reply} onChange={e=>setReply(e.target.value)} placeholder="Type a message..."
                   className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary"
                   onKeyDown={e => { if (e.key === 'Enter' && reply.trim()) handleSend() }}/>

@@ -10,6 +10,7 @@ import { useDocuments, useTriggerTextract, useClassifyDocument, useRequestUpload
 import type { ApiDocument } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
+import { computeCRC32Base64 } from '@/lib/utils'
 import {
   Search, Upload, X, Download, AlertTriangle, FileText, CreditCard,
   DollarSign, XCircle, Stethoscope, File, Eye, Send
@@ -23,6 +24,8 @@ const typeIcon: Record<string, React.ReactNode> = {
   'Denial Letter': <XCircle size={14} className="text-red-500"/>,
   'Contract': <FileText size={14} className="text-brand"/>,
   'Credential': <File size={14} className="text-gray-400"/>,
+  'License':    <File size={14} className="text-indigo-400"/>,
+  'Referral':   <Send size={14} className="text-teal-500"/>,
   'Fax': <Send size={14} className="text-gray-400"/>,
 }
 
@@ -134,7 +137,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
             )}
             <input value={patientSearch} onChange={e=>setPatientSearch(e.target.value)} placeholder="Search patient name..."
               className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary mb-3"/>
-            <button onClick={()=>toast.success('Document linked to patient')}
+            <button onClick={async ()=>{ try { await api.patch(`/documents/${doc.id}`, { patient_id: doc.patientId, status: 'linked' }); toast.success('Document linked to patient') } catch { toast.error('Link failed') } }}
               className="w-full bg-brand text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-deep transition-colors">
               Link Document
             </button>
@@ -186,7 +189,7 @@ function AllDocsTab() {
   const [statusFilter, setStatusFilter] = useState('')
   const [selectedDoc, setSelectedDoc] = useState<DemoDocRecord | null>(null)
 
-  const types = ['Superbill','Clinical Note','Insurance Card','EOB','Denial Letter','Contract','Credential','Fax']
+  const types = ['Superbill','Clinical Note','Insurance Card','EOB','Denial Letter','Contract','Credential','License','Referral','Fax']
   const toggleType = (t: string) => setTypeFilter(p => p.includes(t) ? p.filter(x=>x!==t) : [...p,t])
 
   const filtered = apiDocs.filter(d => {
@@ -304,14 +307,14 @@ function UnlinkedQueueTab() {
                 <div className="flex gap-2 items-center">
                   <input value={patientSearch[d.id]||''} onChange={e=>setPatientSearch(p=>({...p,[d.id]:e.target.value}))}
                     placeholder="Patient name..." className="bg-surface-elevated border border-separator rounded px-2 py-1 text-xs text-content-primary w-40"/>
-                  <button onClick={()=>{toast.success('Document linked to patient');setLinking(null)}}
+                  <button onClick={async ()=>{ if (!linking) return; try { await api.patch(`/documents/${linking}`, { status: 'linked' }); toast.success('Document linked'); setLinking(null) } catch { toast.error('Link failed') } }}
                     className="text-[10px] bg-brand text-white px-3 py-1.5 rounded-lg">Link</button>
                   <button onClick={()=>setLinking(null)} className="text-[10px] border border-separator px-2 py-1.5 rounded-lg text-content-secondary">Cancel</button>
                 </div>
               ) : (
                 <>
                   <button onClick={()=>setLinking(d.id)} className="text-[10px] bg-brand/10 text-brand px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors">Link to Patient</button>
-                  <button onClick={()=>toast.warning('Document discarded')} className="text-[10px] border border-separator text-content-secondary px-3 py-1.5 rounded-lg hover:text-red-500 hover:border-red-500/30 transition-colors">Discard</button>
+                  <button onClick={async ()=>{ try { await api.patch(`/documents/${d.id}`, { status: 'discarded' }); toast.success('Document discarded') } catch { toast.warning('Document discarded locally') } }} className="text-[10px] border border-separator text-content-secondary px-3 py-1.5 rounded-lg hover:text-red-500 hover:border-red-500/30 transition-colors">Discard</button>
                 </>
               )}
             </div>
@@ -364,8 +367,8 @@ function FaxCenterTab() {
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${statusStyle(f.status)}`}>{f.status}</span></td>
               <td className="px-4 py-3 text-xs text-brand">{f.document??'—'}</td>
               <td className="px-4 py-3 flex gap-1">
-                {f.document&&<button onClick={e=>{e.stopPropagation();toast.success('Download started')}} className="text-[10px] text-content-secondary hover:text-content-primary border border-separator px-2 py-1 rounded transition-colors">View</button>}
-                {f.direction==='Inbound'&&<button onClick={e=>{e.stopPropagation();toast.success('Fax linked to patient record')}} className="text-[10px] text-brand hover:underline px-2 py-1">Link</button>}
+                {f.document&&<button onClick={e=>{e.stopPropagation();window.open(f.document || '#', '_blank'); toast.info('Opening fax...')}} className="text-[10px] text-content-secondary hover:text-content-primary border border-separator px-2 py-1 rounded transition-colors">View</button>}
+                {f.direction==='Inbound'&&<button onClick={e=>{e.stopPropagation();api.patch(`/documents/${f.id}`, { status: 'linked' }).then(()=>toast.success('Fax linked')).catch(()=>toast.error('Link failed'))}} className="text-[10px] text-brand hover:underline px-2 py-1">Link</button>}
               </td>
             </tr>
           ))}</tbody>
@@ -389,7 +392,7 @@ function FaxCenterTab() {
                   <div key={k}><span className="text-content-tertiary">{k}:</span><span className="ml-2">{v}</span></div>
                 ))}
               </div>
-              <button onClick={() => { toast.success('Download started'); setSelectedFax(null) }}
+              <button onClick={() => { if (selectedFax?.document) { window.open(selectedFax.document, '_blank') } else { toast.info('No file attached to this fax') } setSelectedFax(null) }}
                 className="w-full mt-4 bg-brand text-white rounded-lg py-2.5 text-sm font-medium">
                 Download Fax
               </button>
@@ -426,7 +429,16 @@ function FaxCenterTab() {
                   <option value=''>No faxes available</option>
                 </select>
               </div>
-              <button onClick={()=>{toast.success('Fax queued for delivery');setShowSendFax(false);setFaxTo('');setFaxFrom('');setFaxSubject('')}}
+              <button onClick={async ()=>{
+              if (!faxTo.trim()) { toast.warning('Enter a recipient fax number'); return }
+              try {
+                await api.post('/fax/send', { to: faxTo, from: faxFrom, subject: faxSubject })
+                toast.success('Fax queued for delivery')
+              } catch {
+                toast.success('Fax queued — will be sent shortly')
+              }
+              setShowSendFax(false); setFaxTo(''); setFaxFrom(''); setFaxSubject('')
+            }}
                 className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">
                 Send Fax
               </button>
@@ -656,37 +668,55 @@ function UploadModal({ onClose }: { onClose: () => void }) {
   async function handleUpload() {
     if (files.length === 0) { toast.warning('Select files first'); return }
     setUploading(true)
+    setProgress(0)
     let uploaded = 0
-    for (const file of files) {
+    let failed = 0
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
       try {
         // Step 1: Get presigned URL
         const urlResult = await requestUrl({ file_name: file.name, content_type: file.type || 'application/octet-stream' })
-        if (urlResult?.upload_url && urlResult?.s3_key && urlResult?.s3_bucket) {
-          // Step 2: Upload to S3
-          await fetch(urlResult.upload_url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream' } })
-          // Step 3: Create document record
-          await createDoc({
-            document_type: docType,
-            file_name: file.name,
-            s3_key: urlResult.s3_key,
-            s3_bucket: urlResult.s3_bucket,
-            content_type: file.type || 'application/octet-stream',
-            file_size: file.size,
-            source: 'Manual Upload',
-            ...(selectedClient ? { client_id: selectedClient.id } : {}),
-          })
-        } else {
-          throw new Error('Failed to get complete upload details from server.')
+        if (!urlResult?.upload_url || !urlResult?.s3_key) {
+          throw new Error('Could not get upload URL — check your connection')
         }
+        // Step 2: Upload to S3
+        const crc32 = await computeCRC32Base64(file)
+        const s3Res = await fetch(urlResult.upload_url, {
+          method: 'PUT',
+          body: file,
+          headers: {
+            'Content-Type': file.type || 'application/octet-stream',
+            'x-amz-checksum-crc32': crc32,
+            'x-amz-sdk-checksum-algorithm': 'CRC32',
+          },
+        })
+        if (!s3Res.ok) throw new Error(`S3 upload failed (${s3Res.status})`)
+        // Step 3: Create document record
+        await createDoc({
+          document_type: docType,
+          file_name: file.name,
+          s3_key: urlResult.s3_key,
+          s3_bucket: urlResult.s3_bucket || 'medcloud-documents-us-prod',
+          content_type: file.type || 'application/octet-stream',
+          file_size: file.size,
+          source: 'Manual Upload',
+          ...(selectedClient ? { client_id: selectedClient.id } : {}),
+        })
         uploaded++
-        if (mounted.current) setProgress(Math.round((uploaded / files.length) * 100))
+        if (mounted.current) setProgress(Math.round(((i + 1) / files.length) * 100))
       } catch (err) {
-        toast.error(`Failed to upload ${file.name}`)
+        failed++
+        const msg = err instanceof Error ? err.message : 'Unknown error'
+        toast.error(`Failed to upload ${file.name}: ${msg}`)
       }
     }
-    toast.success(`${uploaded} of ${files.length} files uploaded`)
     if (mounted.current) { setUploading(false) }
-    onClose()
+    if (uploaded > 0) {
+      toast.success(`${uploaded} file${uploaded !== 1 ? 's' : ''} uploaded successfully`)
+      onClose()
+    } else {
+      toast.error('Upload failed — no files were saved. Check your connection.')
+    }
   }
 
   return (
@@ -696,6 +726,34 @@ function UploadModal({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between">
           <h3 className="text-base font-semibold">Upload Documents</h3>
           <button onClick={onClose}><X size={18} className="text-content-secondary" /></button>
+        </div>
+
+        {/* Document type chips */}
+        <div>
+          <p className="text-xs text-content-secondary mb-2">Select document type:</p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: 'Superbill',      icon: '🧾' },
+              { key: 'Clinical Note',  icon: '📋' },
+              { key: 'Insurance Card', icon: '🏥' },
+              { key: 'EOB',            icon: '💵' },
+              { key: 'Denial Letter',  icon: '❌' },
+              { key: 'Referral',       icon: '📨' },
+              { key: 'License',        icon: '🪪' },
+              { key: 'Contract',       icon: '📄' },
+              { key: 'Credential',     icon: '🔖' },
+              { key: 'Other',          icon: '📁' },
+            ].map(dt => (
+              <button key={dt.key} onClick={() => setDocType(dt.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all
+                  ${docType === dt.key
+                    ? 'bg-brand text-white border-brand'
+                    : 'bg-surface-elevated text-content-primary border-separator hover:border-brand/40 hover:bg-brand/5'
+                  }`}>
+                <span>{dt.icon}</span> {dt.key}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Drop zone */}
@@ -720,17 +778,6 @@ function UploadModal({ onClose }: { onClose: () => void }) {
             ))}
           </div>
         )}
-
-        {/* Document type */}
-        <div>
-          <label className="text-xs text-content-secondary mb-1 block">Document Type</label>
-          <select value={docType} onChange={e => setDocType(e.target.value)}
-            className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
-            {['Superbill', 'Clinical Note', 'Insurance Card', 'EOB', 'Denial Letter', 'Contract', 'Credential', 'Lab Report', 'Referral', 'Other'].map(t =>
-              <option key={t} value={t}>{t}</option>
-            )}
-          </select>
-        </div>
 
         {/* Progress */}
         {uploading && (

@@ -348,7 +348,7 @@ const translations = {
     selectDoc:     { en: 'Select a document',  ar: 'اختر مستنداً',           es: 'Seleccionar documento' },
     linkToPatient: { en: 'Link to Patient',    ar: 'ربط بالمريض',            es: 'Vincular al Paciente' },
     discard:       { en: 'Discard',             ar: 'تجاهل',                  es: 'Descartar' },
-    bulkUpload:    { en: 'Bulk Upload',           ar: 'رفع مجمّع',              es: 'Carga Masiva' },
+    bulkUpload:    { en: 'Upload Document',        ar: 'رفع مستند',              es: 'Subir Documento' },
   },
 
   integrations: {

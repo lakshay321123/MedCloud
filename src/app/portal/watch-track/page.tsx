@@ -1,7 +1,7 @@
 'use client'
 import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
-import { useClaims } from '@/lib/hooks'
+import { useClaims, useDocuments } from '@/lib/hooks'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -15,11 +15,25 @@ export default function WatchTrackPage() {
   const { t } = useT()
   const [expanded, setExpanded] = useState<string | null>(null)
   const { currentUser, selectedClient, country } = useApp()
+  const [activeTab, setActiveTab] = useState<'claims' | 'submissions'>('claims')
   const { data: apiResult } = useClaims({ limit: 200 })
+  const { data: docsRaw } = useDocuments()
+  const allDocs = (Array.isArray(docsRaw) ? docsRaw : (docsRaw as any)?.data || [])
+    .filter((d: any) => d.source === 'Portal Upload' || d.source === 'portal_upload')
+    .map((d: any) => ({
+      id: d.id,
+      fileName: d.file_name || 'document',
+      docType: d.document_type || 'Other',
+      patientId: d.patient_id || '',
+      patientName: d.patient_name || '—',
+      status: d.status || 'uploaded',
+      uploadedAt: d.created_at || '',
+      clientId: d.client_id || '',
+    }))
   const apiClaims = (apiResult?.data || []).map((c: any) => ({
     id: c.claim_number || c.id, patientName: c.patient_name || '', payer: c.payer_name || '',
     billed: Number(c.total_charges || 0), paid: Number(c.paid_amount || 0), status: c.status || '',
-    dos: c.dos_from || '', age: c.dos_from ? Math.ceil((Date.now() - new Date(c.dos_from).getTime()) / 86400000) : 0,
+    dos: c.dos_from ? new Date(c.dos_from).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—', age: c.dos_from ? Math.ceil((Date.now() - new Date(c.dos_from).getTime()) / 86400000) : 0,
     cptCodes: [], icdCodes: [], clientId: c.client_id || '',
   }))
 
@@ -44,6 +58,67 @@ export default function WatchTrackPage() {
   return (
     <ModuleShell title="Watch & Track" subtitle="Track your claims and revenue">
       {!apiClaims.length && <div className='mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2.5 text-xs text-amber-400'>API connecting…</div>}
+      {/* Tabs */}
+      <div className="flex gap-1 mb-5 bg-surface-elevated rounded-xl p-1 w-fit">
+        <button onClick={() => setActiveTab('claims')}
+          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === 'claims' ? 'bg-brand text-white shadow-sm' : 'text-content-secondary hover:text-content-primary'}`}>
+          Claims
+        </button>
+        <button onClick={() => setActiveTab('submissions')}
+          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${activeTab === 'submissions' ? 'bg-brand text-white shadow-sm' : 'text-content-secondary hover:text-content-primary'}`}>
+          My Submissions
+          {allDocs.length > 0 && <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${activeTab === 'submissions' ? 'bg-white/20' : 'bg-brand/20 text-brand'}`}>{allDocs.length}</span>}
+        </button>
+      </div>
+
+      {activeTab === 'submissions' && (
+        <div className="space-y-3 mb-6">
+          {allDocs.length === 0 ? (
+            <div className="card p-10 text-center text-content-tertiary text-sm">No submissions yet — upload documents via Scan &amp; Submit.</div>
+          ) : (
+            <>
+              <p className="text-xs text-content-secondary mb-2">{allDocs.length} document{allDocs.length !== 1 ? 's' : ''} submitted through the portal</p>
+              <div className="card overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b border-separator text-xs text-content-secondary">
+                    <th className="text-left px-4 py-3">File</th>
+                    <th className="text-left px-4 py-3">Type</th>
+                    <th className="text-left px-4 py-3">Patient</th>
+                    <th className="text-left px-4 py-3">Uploaded</th>
+                    <th className="text-left px-4 py-3">Status</th>
+                  </tr></thead>
+                  <tbody>
+                    {allDocs.map((d: any) => (
+                      <tr key={d.id} className="border-b border-separator last:border-0 hover:bg-surface-elevated transition-colors">
+                        <td className="px-4 py-3 text-xs font-mono text-content-secondary truncate max-w-[160px]">{d.fileName}</td>
+                        <td className="px-4 py-3">
+                          <span className="bg-brand/10 text-brand text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                            {d.docType === 'Clinical Note' ? '📋' : d.docType === 'Superbill' ? '🧾' : d.docType === 'Insurance Card' ? '🏥' : d.docType === 'Referral' ? '📨' : d.docType === 'License' ? '🪪' : '📁'} {d.docType}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs">{d.patientName}</td>
+                        <td className="px-4 py-3 text-xs text-content-secondary">
+                          {d.uploadedAt ? new Date(d.uploadedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                            d.status === 'uploaded' ? 'bg-emerald-500/10 text-emerald-500' :
+                            d.status === 'processing' ? 'bg-amber-500/10 text-amber-500' :
+                            'bg-gray-500/10 text-gray-400'}`}>
+                            {d.status === 'uploaded' ? '✓ Received' : d.status === 'processing' ? '⏳ Processing' : d.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'claims' && <>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <KPICard label={t('watch','totalClaims')} value={myClaims.length} icon={<FileText size={20}/>}/>
         <KPICard label={t('watch','totalCharges')} value={`$${totalCharges.toLocaleString()}`} icon={<DollarSign size={20}/>}/>
@@ -114,6 +189,9 @@ export default function WatchTrackPage() {
           ))}</tbody>
         </table>
       </div>
+
+      </>
+      }
 
       {/* ── Claim Timeline ── */}
       <div className="card p-4 mt-4">
