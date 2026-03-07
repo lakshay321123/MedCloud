@@ -52,6 +52,20 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
   const { data: apiPtResult } = usePatients({ limit: 200 })
   const apiPatients = (Array.isArray(apiPtResult) ? apiPtResult : (apiPtResult as any)?.data || []).map((p: any) => ({ id: p.id, name: `${p.first_name || ''} ${p.last_name || ''}`.trim() }))
   const [downloading, setDownloading] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+
+  // Auto-fetch presigned URL for preview when drawer opens
+  useEffect(() => {
+    if (!doc.id || doc.id.startsWith('D-')) return
+    let cancelled = false
+    setPreviewLoading(true)
+    api.get<{ download_url: string }>(`/documents/${doc.id}/download`)
+      .then(res => { if (!cancelled && res.download_url) setPreviewUrl(res.download_url) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setPreviewLoading(false) })
+    return () => { cancelled = true }
+  }, [doc.id])
 
   async function handleDownload() {
     // Demo docs (ids like D-001) have no real S3 key — skip real call
@@ -87,8 +101,27 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
       <div className="flex-1 overflow-y-auto">
         {/* Preview area */}
         <div className="m-4 bg-surface-elevated rounded-lg overflow-hidden border border-separator" style={{ minHeight: '60vh', height: '60vh' }}>
-          {(doc as any).url ? (
-            <embed src={(doc as any).url} type="application/pdf" className="w-full" style={{ height: '60vh' }} />
+          {previewLoading ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3">
+              <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs text-content-tertiary">Loading preview…</p>
+            </div>
+          ) : previewUrl && doc.name?.toLowerCase().endsWith('.pdf') ? (
+            <iframe src={previewUrl} className="w-full border-0" style={{ height: '60vh' }} title="Document preview" />
+          ) : previewUrl && /\.(jpe?g|png|gif|webp|heic)$/i.test(doc.name || '') ? (
+            <div className="flex items-center justify-center h-full p-4">
+              <img src={previewUrl} alt={doc.name} className="max-w-full max-h-full object-contain rounded" />
+            </div>
+          ) : previewUrl ? (
+            <div className="flex flex-col items-center justify-center h-full py-16 gap-3">
+              <FileText size={40} className="opacity-30" />
+              <p className="text-sm font-mono text-content-secondary">{doc.name}</p>
+              <p className="text-xs text-content-tertiary">This file type cannot be previewed inline</p>
+              <button onClick={() => window.open(previewUrl, '_blank', 'noopener')}
+                className="text-xs bg-brand/10 text-brand px-4 py-2 rounded-lg hover:bg-brand/20 transition-colors mt-2">
+                Open in New Tab
+              </button>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full py-16 gap-3">
               <FileText size={40} className="opacity-30" />
