@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api-client'
 import { useClaims, useScrubClaim, useTransitionClaim, useGenerateEDI,
          useClaimLines, useAddClaimLine, useClaimDiagnoses, useAddClaimDiagnosis,
-         useScrubRules, useUpdateClaim, useGenerate837I, useTriggerSecondaryClaim, useUnderpaymentCheck, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useSendMessage, useMessages, useAuditLog, useRequestUploadUrl, useCreateDocument } from '@/lib/hooks'
+         useScrubRules, useUpdateClaim, useGenerate837I, useTriggerSecondaryClaim, useUnderpaymentCheck, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useSendMessage, useMessages, useAuditLog, useRequestUploadUrl, useCreateDocument, useClaimDocuments } from '@/lib/hooks'
 import type { ApiClaim } from '@/lib/hooks'
 import type { ClaimStatus } from '@/types'
 import { ErrorBanner } from '@/components/shared/ApiStates'
@@ -168,6 +168,8 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
   const { mutate: addDx } = useAddClaimDiagnosis(claimApiId)
   const { mutate: requestUploadUrl } = useRequestUploadUrl()
   const { mutate: createDocument } = useCreateDocument()
+  const { data: claimDocsData, refetch: refetchClaimDocs } = useClaimDocuments(claimApiIdForQuery)
+  const claimDocs = claimDocsData?.data ?? []
 
   const claimLines = linesData?.data ?? []
   const claimDiagnoses = dxData?.data ?? []
@@ -187,7 +189,8 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
       const urlResult = await requestUploadUrl({ file_name: file.name, content_type: file.type || 'application/octet-stream', folder: 'claims' })
       if (urlResult?.upload_url) {
         await fetch(urlResult.upload_url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream' } })
-        await createDocument({ document_type: 'claim_attachment', file_name: file.name, s3_key: urlResult.s3_key, s3_bucket: urlResult.s3_bucket, content_type: file.type, file_size: file.size })
+        await createDocument({ document_type: 'claim_attachment', file_name: file.name, s3_key: urlResult.s3_key, s3_bucket: urlResult.s3_bucket, content_type: file.type, file_size: file.size, claim_id: claimApiIdForQuery || undefined })
+        refetchClaimDocs()
         toast.success(`Document "${file.name}" attached to claim`)
       }
     } catch { toast.error('Upload failed — please try again') }
@@ -864,17 +867,37 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
 
           {tab === 'docs' && (
             <div className="space-y-4">
-              {claim.documents.length > 0 ? (
-                <DocViewer documents={claim.documents} mode="inline" />
+              {claimDocs.length === 0 ? (
+                <p className="text-[13px] text-content-tertiary text-center py-8">No documents attached to this claim</p>
               ) : (
-                <p className="text-[13px] text-content-tertiary text-center py-8">No documents attached</p>
+                <div className="space-y-2">
+                  {claimDocs.map((doc: any) => (
+                    <div key={doc.id} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2.5 border border-separator">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium text-content-primary truncate">{doc.file_name || 'Untitled'}</p>
+                        <p className="text-[11px] text-content-tertiary">{doc.doc_type || doc.document_type || 'Attachment'} · {new Date(doc.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await api.get(`/documents/${doc.id}/download?mode=inline`)
+                            if (res.download_url) window.open(res.download_url, '_blank')
+                          } catch { toast.error('Could not open document') }
+                        }}
+                        className="ml-3 px-3 py-1 text-[12px] bg-brand/10 text-brand hover:bg-brand/20 rounded-md transition-colors shrink-0"
+                      >
+                        View
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
               <button
                 onClick={() => docInputRef.current?.click()}
                 disabled={uploadingDoc}
                 className="w-full border border-dashed border-separator rounded-btn py-3 text-[13px] text-content-secondary hover:border-brand hover:text-brand transition-colors disabled:opacity-50"
               >
-                {uploadingDoc ? 'Uploading…' : '+ Add Document'}
+                {uploadingDoc ? 'Uploading…' : '+ Attach Document'}
               </button>
               <input ref={docInputRef} type="file" className="hidden" accept=".pdf,.png,.jpg,.jpeg,.tiff,.txt"
                 onChange={e => { if (e.target.files?.[0]) handleAddDocument(e.target.files[0]) }} />
