@@ -969,6 +969,21 @@ async function enrichedClaims(orgId, clientId) {
   if (clientId) { params.push(clientId); q += ` AND c.client_id = $${params.length}`; }
   q += ' ORDER BY c.created_at DESC';
   const rows = (await orgQuery(orgId, q, params)).rows;
+
+  // Batch-fetch CPT codes and ICD codes for all claims in one query each
+  if (rows.length > 0) {
+    const claimIds = rows.map(r => r.id);
+    const phList = claimIds.map((_, i) => `$${i + 1}`).join(',');
+    const [linesR, dxR] = await Promise.all([
+      pool.query(`SELECT claim_id, cpt_code, charges FROM claim_lines WHERE claim_id IN (${phList})`, claimIds),
+      pool.query(`SELECT claim_id, icd_code FROM claim_diagnoses WHERE claim_id IN (${phList})`, claimIds),
+    ]);
+    const cptMap = {}; const icdMap = {};
+    for (const l of linesR.rows) { (cptMap[l.claim_id] = cptMap[l.claim_id] || []).push(l.cpt_code); }
+    for (const d of dxR.rows) { (icdMap[d.claim_id] = icdMap[d.claim_id] || []).push(d.icd_code); }
+    for (const r of rows) { r.cpt_codes = cptMap[r.id] || []; r.icd_codes = icdMap[r.id] || []; }
+  }
+
   return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
 }
 

@@ -74,6 +74,8 @@ export interface ApiClaim {
   provider_name?: string
   payer_name?: string
   client_name?: string
+  cpt_codes?: string[]
+  icd_codes?: string[]
   created_at?: string
   updated_at?: string
 }
