@@ -180,6 +180,7 @@ interface AISuggestedCode {
   confidence: number
   modifiers?: string[]
   reasoning?: string
+  is_hcc?: boolean
 }
 const priorityColor: Record<'urgent' | 'high' | 'medium' | 'low', string> = {
   urgent: 'bg-red-500',
@@ -616,7 +617,8 @@ export default function CodingPage() {
       // Map Lambda response format → frontend format
       const icd: AISuggestedCode[] = (result.suggested_icd || []).map(c => ({
         code: c.code, desc: c.description, confidence: c.confidence,
-        reasoning: c.specificity_note || (c.is_hcc ? 'HCC diagnosis' : undefined),
+        is_hcc: c.is_hcc,
+        reasoning: c.specificity_note || (c.is_hcc ? 'HCC risk adjustment diagnosis' : undefined),
       }))
       const cpt: AISuggestedCode[] = (result.suggested_cpt || []).map(c => ({
         code: c.code, desc: c.description, confidence: c.confidence,
@@ -1447,6 +1449,7 @@ export default function CodingPage() {
                               <span className="text-[12px] font-mono font-semibold text-content-primary">
                                 {isEdited ? codeOverrides[key].newCode : code.code}
                               </span>
+                              {code.is_hcc && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-400 font-bold uppercase tracking-wider">HCC</span>}
                               <span className="text-[12px] text-content-secondary flex-1">{code.desc}</span>
                               <span className={`text-[12px] font-semibold ${(code.confidence ?? 0) >= 90 ? 'text-emerald-500' : (code.confidence ?? 0) >= 70 ? 'text-amber-500' : 'text-red-500'}`}>{code.confidence ?? 0}%</span>
                               {code.reasoning && <button onClick={() => setExpanded(p => ({ ...p, [key]: !p[key] }))} className="text-content-tertiary">{expanded[key] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button>}
