@@ -2333,7 +2333,7 @@ Respond ONLY with valid JSON (no markdown, no backticks):
 
   // Use callAI() — tries Bedrock first, falls back to Vercel AI proxy
   try {
-    const aiText = await callAI(prompt, { max_tokens: 2048, timeoutMs: 15000 });
+    const aiText = await callAI(prompt, { max_tokens: 2048, timeoutMs: 12000 });
     if (aiText) {
       suggestion = JSON.parse(aiText.replace(/\`\`\`json|\`\`\`/g, '').trim());
     }
