@@ -3,7 +3,7 @@ import { useT } from '@/lib/i18n'
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context'
-import { getClientName } from '@/lib/demo-data'
+// Client name comes from API data now
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
@@ -116,11 +116,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
 
   const patient = null as null | { dob?: string; gender?: string; phone?: string; insurance?: { payer?: string; memberId?: string; policyNo?: string; copay?: number }; allergies?: string[]; medications?: string[]; emiratesId?: string; ssn?: string } // Sprint 2: load from patient API by appt.patientId
 
-  const eligMap: Record<string, keyof typeof eligibilityConfig> = {
-    'APT-001': 'verified', 'APT-002': 'verified', 'APT-003': 'inactive', 'APT-004': 'not_checked',
-    'APT-005': 'verified', 'APT-006': 'not_checked', 'APT-009': 'not_checked',
-  }
-  const elig = eligMap[appt.id] ?? 'not_checked'
+  const elig: keyof typeof eligibilityConfig = (appt as any).eligibility_status || 'not_checked'
   const ec = eligibilityConfig[elig]
 
   return (
@@ -323,10 +319,7 @@ export default function AppointmentsPage() {
     (!clientFilter || a.clientId === clientFilter)
   ) : []
 
-  const eligMap: Record<string, keyof typeof eligibilityConfig> = {
-    'APT-001': 'verified', 'APT-002': 'verified', 'APT-003': 'inactive', 'APT-004': 'not_checked',
-    'APT-005': 'verified', 'APT-006': 'not_checked', 'APT-009': 'not_checked',
-  }
+  // Eligibility status comes from API — no hardcoded map needed
 
   async function checkIn(apptId: string, patientName: string) {
     setStatusOverrides(prev => ({ ...prev, [apptId]: 'checked_in' }))
@@ -383,7 +376,7 @@ export default function AppointmentsPage() {
             </div>
           ) : dayApts.map(a => {
             const currentStatus = a.status
-            const elig = eligMap[a.id] ?? 'not_checked'
+            const elig: keyof typeof eligibilityConfig = (a as any).eligibility_status || 'not_checked'
             const ec = eligibilityConfig[elig]
             const isCheckedIn = ['checked_in', 'in_progress', 'completed'].includes(currentStatus)
             const isNoShow = currentStatus === 'no_show'
@@ -410,7 +403,7 @@ export default function AppointmentsPage() {
                     <div className="flex items-center gap-2 ml-9 flex-wrap">
                       <span className="text-[11px] text-content-secondary">{a.provider}</span>
                       <span className="text-[10px] bg-surface-elevated px-2 py-0.5 rounded border border-separator">{a.type}</span>
-                      {isStaff && <span className="text-[10px] text-content-tertiary">{getClientName(a.clientId)}</span>}
+                      {isStaff && a.clientId && <span className="text-[10px] text-content-tertiary">{(a as any).client_name || ''}</span>}
                       <span className="hidden sm:flex items-center gap-1 ml-auto shrink-0">
                         <span className={`w-2 h-2 rounded-full ${ec.color}`}/>
                         <span className="text-[11px] text-content-secondary">{ec.label}</span>

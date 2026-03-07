@@ -198,11 +198,11 @@ export default function WatchTrackPage() {
         <h3 className="text-sm font-semibold mb-3">Claim Lifecycle Timeline</h3>
         <div className="space-y-3">
           {[
-            {step:'Charge Captured',date:'Mar 1',status:'done',detail:'Office visit E/M 99214 — Dr. Smith'},
-            {step:'Coded & Scrubbed',date:'Mar 1',status:'done',detail:'ICD-10: M54.5, CPT: 99214 — Clean claim'},
-            {step:'Submitted to Payer',date:'Mar 2',status:'done',detail:'837P sent via Availity to Aetna'},
-            {step:'Acknowledged (277CA)',date:'Mar 2',status:'done',detail:'Claim accepted for adjudication'},
-            {step:'In Adjudication',date:'Mar 3',status:'current',detail:'Estimated completion: Mar 15–20'},
+            {step:'Charge Captured',date:'—',status:'pending',detail:'Visit documented → charges captured'},
+            {step:'Coded & Scrubbed',date:'—',status:'pending',detail:'ICD-10 + CPT codes assigned → scrubbed'},
+            {step:'Submitted to Payer',date:'—',status:'pending',detail:'837P sent via clearinghouse'},
+            {step:'Acknowledged (277CA)',date:'—',status:'pending',detail:'Payer confirms receipt'},
+            {step:'In Adjudication',date:'—',status:'pending',detail:'Payer reviewing claim'},
             {step:'Payment / Denial',date:'—',status:'pending',detail:'Expected: 14–21 days from submission'},
             {step:'Posted & Reconciled',date:'—',status:'pending',detail:'Auto-posting enabled for this payer'},
           ].map((s,i)=>(
