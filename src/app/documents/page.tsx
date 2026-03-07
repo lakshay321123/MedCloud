@@ -50,7 +50,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
   const [patientSearch, setPatientSearch] = useState('')
   const [selectedLinkPatientId, setSelectedLinkPatientId] = useState<string | null>(doc.patientId || null)
   const { data: apiPtResult } = usePatients({ limit: 200 })
-  const apiPatients = ((apiPtResult as any)?.data || []).map((p: any) => ({ id: p.id, name: `${p.first_name || ''} ${p.last_name || ''}`.trim() }))
+  const apiPatients = (Array.isArray(apiPtResult) ? apiPtResult : (apiPtResult as any)?.data || []).map((p: any) => ({ id: p.id, name: `${p.first_name || ''} ${p.last_name || ''}`.trim() }))
   const [downloading, setDownloading] = useState(false)
 
   async function handleDownload() {
@@ -183,7 +183,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
 function AllDocsTab() {
   const { selectedClient, country } = useApp()
   const { data: apiDocRaw } = useDocuments()
-  const apiDocs: DemoDocRecord[] = (Array.isArray(apiDocRaw) ? apiDocRaw : []).map((d: ApiDocument) => ({
+  const apiDocs: DemoDocRecord[] = (Array.isArray(apiDocRaw) ? apiDocRaw : (apiDocRaw as any)?.data || []).map((d: ApiDocument) => ({
     id: d.id, name: d.file_name || 'document',
     fileName: d.file_name || 'document',
     type: d.document_type || 'other',
@@ -290,9 +290,9 @@ function UnlinkedQueueTab() {
   const [selectedPatientIds, setSelectedPatientIds] = useState<Record<string,string>>({})
   const [linking, setLinking] = useState<string|null>(null)
   const { data: apiPtRaw } = usePatients({ limit: 200 })
-  const ptList = ((apiPtRaw as any)?.data || []).map((p: any) => ({ id: p.id, name: `${p.first_name || ''} ${p.last_name || ''}`.trim() }))
+  const ptList = (Array.isArray(apiPtRaw) ? apiPtRaw : (apiPtRaw as any)?.data || []).map((p: any) => ({ id: p.id, name: `${p.first_name || ''} ${p.last_name || ''}`.trim() }))
   const { data: apiDocRaw2 } = useDocuments()
-  const apiDocs2: any[] = (Array.isArray(apiDocRaw2) ? apiDocRaw2 : []).map((d: ApiDocument) => ({
+  const apiDocs2: any[] = (Array.isArray(apiDocRaw2) ? apiDocRaw2 : (apiDocRaw2 as any)?.data || []).map((d: ApiDocument) => ({
     id: d.id, name: d.file_name || 'document',
     type: d.document_type || 'other', patient: (d as any).patient_name || '—',
     client: (d as any).client_name || '—', status: d.status || 'uploaded',
@@ -479,7 +479,7 @@ function AIProcessingTab() {
   const { toast } = useToast()
   const { data: apiDocRaw } = useDocuments()
   const allDocs = useMemo(() => {
-    return (Array.isArray(apiDocRaw) ? apiDocRaw : []) as ApiDocument[]
+    return (Array.isArray(apiDocRaw) ? apiDocRaw : (apiDocRaw as any)?.data || []) as ApiDocument[]
   }, [apiDocRaw])
 
   const textractDocs = useMemo(() =>
@@ -668,6 +668,20 @@ export default function DocumentsPage() {
   )
 }
 
+
+const DOCUMENT_TYPES = [
+  { key: 'Superbill',      icon: '🧾' },
+  { key: 'Clinical Note',  icon: '📋' },
+  { key: 'Insurance Card', icon: '🏥' },
+  { key: 'EOB',            icon: '💵' },
+  { key: 'Denial Letter',  icon: '❌' },
+  { key: 'Referral',       icon: '📨' },
+  { key: 'License',        icon: '🪪' },
+  { key: 'Contract',       icon: '📄' },
+  { key: 'Credential',     icon: '🔖' },
+  { key: 'Other',          icon: '📁' },
+] as const
+
 function UploadModal({ onClose }: { onClose: () => void }) {
   const { toast } = useToast()
   const { selectedClient } = useApp()
@@ -679,6 +693,11 @@ function UploadModal({ onClose }: { onClose: () => void }) {
   const [progress, setProgress] = useState(0)
   const mounted = useRef(true)
   useEffect(() => { return () => { mounted.current = false } }, [])
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
@@ -763,18 +782,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
             <div>
               <p className="text-xs font-medium text-content-secondary mb-3">Document Type</p>
               <div className="flex flex-wrap gap-2">
-                {[
-                  { key: 'Superbill',      icon: '🧾' },
-                  { key: 'Clinical Note',  icon: '📋' },
-                  { key: 'Insurance Card', icon: '🏥' },
-                  { key: 'EOB',            icon: '💵' },
-                  { key: 'Denial Letter',  icon: '❌' },
-                  { key: 'Referral',       icon: '📨' },
-                  { key: 'License',        icon: '🪪' },
-                  { key: 'Contract',       icon: '📄' },
-                  { key: 'Credential',     icon: '🔖' },
-                  { key: 'Other',          icon: '📁' },
-                ].map(dt => (
+                {DOCUMENT_TYPES.map(dt => (
                   <button key={dt.key} onClick={() => setDocType(dt.key)}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all
                       ${docType === dt.key
@@ -789,7 +797,9 @@ function UploadModal({ onClose }: { onClose: () => void }) {
 
             {/* Drop zone */}
             <div onDragOver={e => e.preventDefault()} onDrop={handleDrop}
-              className="border-2 border-dashed border-separator rounded-xl py-10 px-6 text-center hover:border-brand/40 hover:bg-brand/5 transition-all cursor-pointer"
+              role="button" tabIndex={0}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('doc-upload')?.click() } }}
+              className="border-2 border-dashed border-separator rounded-xl py-10 px-6 text-center hover:border-brand/40 hover:bg-brand/5 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand/40"
               onClick={() => document.getElementById('doc-upload')?.click()}>
               <div className="w-12 h-12 rounded-full bg-brand/10 flex items-center justify-center mx-auto mb-3">
                 <Upload size={20} className="text-brand" />
@@ -807,13 +817,13 @@ function UploadModal({ onClose }: { onClose: () => void }) {
                   <button onClick={() => setFiles([])} className="text-[10px] text-red-500 hover:text-red-600">Clear all</button>
                 </div>
                 {files.map((f, i) => (
-                  <div key={i} className="flex items-center gap-3 bg-surface-elevated rounded-lg px-3 py-2">
+                  <div key={`${f.name}-${f.lastModified}`} className="flex items-center gap-3 bg-surface-elevated rounded-lg px-3 py-2">
                     <FileText size={14} className="text-brand shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{f.name}</p>
                       <p className="text-[10px] text-content-tertiary">{(f.size / 1024 / 1024).toFixed(1)} MB</p>
                     </div>
-                    <button onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))}>
+                    <button onClick={() => setFiles(prev => prev.filter(file => file !== f))}>
                       <X size={14} className="text-content-tertiary hover:text-red-500 transition-colors" />
                     </button>
                   </div>
