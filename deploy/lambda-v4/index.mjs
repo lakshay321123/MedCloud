@@ -709,7 +709,43 @@ async function callAI(prompt, { max_tokens = 2000, system = 'You are an expert m
     }
   }
 
-  // Fallback: Vercel AI proxy
+  // Fallback: Call Anthropic API directly (api.anthropic.com is in Lambda's allowed domains)
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (anthropicKey) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514';
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': anthropicKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens,
+          system,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => '');
+        throw new Error(`Anthropic API: ${resp.status} ${errText.substring(0, 100)}`);
+      }
+      const data = await resp.json();
+      const text = data.content?.map(c => c.text || '').join('') || '';
+      safeLog('info', `AI call success: ${text.length} chars, model=${model}`);
+      return text;
+    } catch (e) {
+      safeLog('warn', 'Anthropic API direct call failed:', e.message);
+    }
+  }
+
+  // Fallback: Vercel AI proxy (if api.anthropic.com unreachable)
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -724,7 +760,7 @@ async function callAI(prompt, { max_tokens = 2000, system = 'You are an expert m
     const data = await resp.json();
     return data.text || '';
   } catch (e) {
-    safeLog('warn', 'Vercel AI proxy failed:', e.message);
+    safeLog('warn', 'Vercel AI proxy also failed:', e.message);
     return null; // null = use mock fallback
   }
 }
