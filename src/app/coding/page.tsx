@@ -21,36 +21,99 @@ import {
 // Manual fallback code lookup — used when AI Coding is unavailable (BM4 requirement)
 // AI down → type-ahead search from these tables + manual entry, flagged 'manually coded'
 const ICD_FALLBACK_LOOKUP = [
+  // Endocrine
   { code: 'E11.9', description: 'Type 2 diabetes mellitus without complications' },
   { code: 'E11.65', description: 'Type 2 diabetes mellitus with hyperglycemia' },
-  { code: 'E11.21', description: 'Type 2 diabetes mellitus with diabetic nephropathy' },
-  { code: 'E11.40', description: 'Type 2 diabetes mellitus with diabetic neuropathy' },
+  { code: 'E11.21', description: 'Type 2 DM with diabetic nephropathy' },
+  { code: 'E11.40', description: 'Type 2 DM with diabetic neuropathy, unspecified' },
+  { code: 'E11.22', description: 'Type 2 DM with diabetic chronic kidney disease' },
+  { code: 'E11.319', description: 'Type 2 DM with unspecified diabetic retinopathy' },
+  { code: 'E10.9', description: 'Type 1 diabetes mellitus without complications' },
+  { code: 'E78.5', description: 'Hyperlipidemia, unspecified' },
+  { code: 'E78.0', description: 'Pure hypercholesterolemia, unspecified' },
+  { code: 'E03.9', description: 'Hypothyroidism, unspecified' },
+  { code: 'E66.01', description: 'Morbid obesity due to excess calories' },
+  { code: 'E66.9', description: 'Obesity, unspecified' },
+  // Cardiovascular
   { code: 'I10', description: 'Essential (primary) hypertension' },
   { code: 'I25.10', description: 'Atherosclerotic heart disease of native coronary artery' },
   { code: 'I50.9', description: 'Heart failure, unspecified' },
+  { code: 'I50.22', description: 'Chronic systolic (congestive) heart failure' },
   { code: 'I48.91', description: 'Unspecified atrial fibrillation' },
+  { code: 'I48.0', description: 'Paroxysmal atrial fibrillation' },
+  { code: 'I63.9', description: 'Cerebral infarction, unspecified' },
+  { code: 'I73.9', description: 'Peripheral vascular disease, unspecified' },
+  // Musculoskeletal
   { code: 'M54.5', description: 'Low back pain' },
+  { code: 'M54.2', description: 'Cervicalgia (neck pain)' },
   { code: 'M79.3', description: 'Panniculitis, unspecified' },
+  { code: 'M17.11', description: 'Primary osteoarthritis, right knee' },
+  { code: 'M17.12', description: 'Primary osteoarthritis, left knee' },
+  { code: 'M16.11', description: 'Primary osteoarthritis, right hip' },
+  { code: 'M25.511', description: 'Pain in right shoulder' },
+  { code: 'M25.561', description: 'Pain in right knee' },
+  { code: 'M25.562', description: 'Pain in left knee' },
+  { code: 'M19.011', description: 'Primary osteoarthritis, right shoulder' },
+  { code: 'M47.812', description: 'Spondylosis without myelopathy, cervical' },
+  // Respiratory
   { code: 'J06.9', description: 'Acute upper respiratory infection, unspecified' },
   { code: 'J44.1', description: 'COPD with acute exacerbation' },
+  { code: 'J44.0', description: 'COPD with acute lower respiratory infection' },
   { code: 'J18.9', description: 'Pneumonia, unspecified organism' },
-  { code: 'Z79.4', description: 'Long-term (current) use of insulin' },
-  { code: 'Z00.00', description: 'Encounter for general adult medical examination' },
-  { code: 'Z23', description: 'Encounter for immunization' },
+  { code: 'J45.20', description: 'Mild intermittent asthma, uncomplicated' },
+  { code: 'J45.40', description: 'Moderate persistent asthma, uncomplicated' },
+  { code: 'J02.9', description: 'Acute pharyngitis, unspecified' },
+  { code: 'J20.9', description: 'Acute bronchitis, unspecified' },
+  // GI
+  { code: 'K21.0', description: 'GERD with esophagitis' },
+  { code: 'K21.9', description: 'GERD without esophagitis' },
+  { code: 'K58.9', description: 'Irritable bowel syndrome without diarrhea' },
+  { code: 'K76.0', description: 'Fatty change of liver, not elsewhere classified' },
+  // GU
+  { code: 'N39.0', description: 'Urinary tract infection, site not specified' },
+  { code: 'N18.3', description: 'Chronic kidney disease, stage 3' },
+  { code: 'N18.4', description: 'Chronic kidney disease, stage 4' },
+  { code: 'N40.0', description: 'Benign prostatic hyperplasia without LUTS' },
+  // Mental health
+  { code: 'F32.1', description: 'Major depressive disorder, single episode, moderate' },
+  { code: 'F32.9', description: 'Major depressive disorder, single episode, unspecified' },
+  { code: 'F33.1', description: 'Major depressive disorder, recurrent, moderate' },
+  { code: 'F41.1', description: 'Generalized anxiety disorder' },
+  { code: 'F41.9', description: 'Anxiety disorder, unspecified' },
+  { code: 'F17.210', description: 'Nicotine dependence, cigarettes, uncomplicated' },
+  // Neuro
+  { code: 'G43.909', description: 'Migraine, unspecified, not intractable' },
+  { code: 'G47.00', description: 'Insomnia, unspecified' },
+  { code: 'G89.29', description: 'Other chronic pain' },
+  // Skin
+  { code: 'L30.9', description: 'Dermatitis, unspecified' },
+  { code: 'L70.0', description: 'Acne vulgaris' },
+  // Blood
+  { code: 'D64.9', description: 'Anemia, unspecified' },
+  { code: 'D50.9', description: 'Iron deficiency anemia, unspecified' },
+  // Infectious
+  { code: 'B34.9', description: 'Viral infection, unspecified' },
+  { code: 'B95.61', description: 'MRSA as cause of disease classified elsewhere' },
+  // Symptoms
   { code: 'R00.0', description: 'Tachycardia, unspecified' },
   { code: 'R05.9', description: 'Cough, unspecified' },
   { code: 'R10.9', description: 'Unspecified abdominal pain' },
-  { code: 'K21.0', description: 'GERD with esophagitis' },
-  { code: 'F32.1', description: 'Major depressive disorder, single episode, moderate' },
-  { code: 'F41.1', description: 'Generalized anxiety disorder' },
-  { code: 'G43.909', description: 'Migraine, unspecified, not intractable' },
-  { code: 'N39.0', description: 'Urinary tract infection, site not specified' },
-  { code: 'L30.9', description: 'Dermatitis, unspecified' },
-  { code: 'E78.5', description: 'Hyperlipidemia, unspecified' },
-  { code: 'E03.9', description: 'Hypothyroidism, unspecified' },
-  { code: 'B34.9', description: 'Viral infection, unspecified' },
-  { code: 'D64.9', description: 'Anemia, unspecified' },
   { code: 'R50.9', description: 'Fever, unspecified' },
+  { code: 'R06.00', description: 'Dyspnea, unspecified' },
+  { code: 'R51.9', description: 'Headache, unspecified' },
+  { code: 'R42', description: 'Dizziness and giddiness' },
+  { code: 'R63.4', description: 'Abnormal weight loss' },
+  { code: 'R73.03', description: 'Prediabetes' },
+  // Z-codes
+  { code: 'Z79.4', description: 'Long-term (current) use of insulin' },
+  { code: 'Z79.84', description: 'Long-term use of oral hypoglycemic agents' },
+  { code: 'Z79.01', description: 'Long-term use of anticoagulants' },
+  { code: 'Z79.899', description: 'Other long-term drug therapy' },
+  { code: 'Z00.00', description: 'Encounter for general adult medical examination' },
+  { code: 'Z23', description: 'Encounter for immunization' },
+  { code: 'Z87.891', description: 'Personal history of nicotine dependence' },
+  { code: 'Z68.35', description: 'BMI 35.0-35.9, adult' },
+  { code: 'Z96.1', description: 'Presence of intraocular lens' },
 ]
 
 const CPT_FALLBACK_LOOKUP = [
@@ -405,10 +468,19 @@ export default function CodingPage() {
       }))
 
       setAiCodeCache(prev => ({ ...prev, [item.id]: { icd, cpt } }))
-      // Auto-select all generated codes
+      // Auto-select all generated codes + E/M conflict detection
       const newSelected: Record<string, boolean> = {}
       icd.forEach(c => { newSelected[`icd-${c.code}`] = true })
-      cpt.forEach(c => { newSelected[`cpt-${c.code}`] = true })
+      // E/M conflict: only keep the highest-level E/M code
+      const emCodes = cpt.filter(c => /^99(2[0-5][0-9]|[3-4])/.test(c.code))
+      const nonEmCodes = cpt.filter(c => !/^99(2[0-5][0-9]|[3-4])/.test(c.code))
+      if (emCodes.length > 1) {
+        const highest = emCodes.sort((a, b) => b.code.localeCompare(a.code))[0]
+        nonEmCodes.push(highest)
+        nonEmCodes.forEach(c => { newSelected[`cpt-${c.code}`] = true })
+      } else {
+        cpt.forEach(c => { newSelected[`cpt-${c.code}`] = true })
+      }
       setSelectedCodes(prev => ({ ...prev, ...newSelected }))
       setShowQuickSoap(false)
 
@@ -504,7 +576,24 @@ export default function CodingPage() {
   const aiOnly = aiCptCodes.filter(c => !(item?.superbillCpt ?? []).includes(c))
   const allMatch = aiOnly.length === 0 && superbillOnly.length === 0
 
-  const toggleCode = (key: string) => setSelectedCodes(prev => ({ ...prev, [key]: !prev[key] }))
+  const EM_CODES = new Set(['99211','99212','99213','99214','99215','99202','99203','99204','99205'])
+  const toggleCode = (key: string) => {
+    setSelectedCodes(prev => {
+      const next = { ...prev, [key]: !prev[key] }
+      // E/M conflict: if toggling ON an E/M CPT, auto-deselect any other selected E/M
+      if (next[key] && key.startsWith('cpt-')) {
+        const code = key.replace('cpt-', '')
+        if (EM_CODES.has(code)) {
+          const otherEms = Object.keys(next).filter(k => k.startsWith('cpt-') && k !== key && next[k] && EM_CODES.has(k.replace('cpt-', '')))
+          if (otherEms.length > 0) {
+            otherEms.forEach(k => { next[k] = false })
+            toast.info(`Replaced ${otherEms.map(k => k.replace('cpt-','')).join(', ')} with ${code} — only 1 E/M per encounter`)
+          }
+        }
+      }
+      return next
+    })
+  }
 
   const isUAEClient = uaeClientIds.includes(item?.clientId || '')
 
@@ -923,7 +1012,7 @@ export default function CodingPage() {
                             <div className="flex items-center gap-2 px-3 py-2 bg-surface-elevated border border-separator rounded-lg">
                               <FileText size={13} className="text-content-tertiary shrink-0" />
                               <span className="text-xs text-content-secondary flex-1">Source chart — {item.patientName}</span>
-                              <button onClick={() => router.push('/documents')} className="text-xs text-brand underline shrink-0">
+                              <button onClick={() => router.push(`/documents?doc=${item.id}`)} className="text-xs text-brand underline shrink-0">
                                 View Original
                               </button>
                             </div>
