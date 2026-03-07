@@ -312,8 +312,8 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
   async function handleGenerateEDI() {
     if (!claimApiId) { toast.warning('No API ID — demo claim cannot generate EDI'); return }
     const result = await generateEDI({} as Record<string, never>)
-    if (result?.edi) {
-      setEdiOutput(result.edi)
+    if ((result as any)?.edi_content || result?.edi) {
+      setEdiOutput((result as any)?.edi_content || (result as any)?.edi || '')
       toast.success('837P EDI generated')
     }
   }
