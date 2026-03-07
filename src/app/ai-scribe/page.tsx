@@ -801,7 +801,7 @@ function ProviderView() {
                       patient_id: selectedVisit.patientId || '',
                       soap_note_id: soapResult.id,
                       received_at: new Date().toISOString(),
-                      priority: 'normal' as any, status: 'pending',
+                      priority: 'medium', status: 'pending',
                       notes: `AI Scribe: ${selectedVisit.encounterType} · ${selectedVisit.dos} | ICD: ${[...keptIcd.map(c => c.code), ...manualKept.filter(c => c.type === 'icd').map(c => c.code)].join(', ')} | CPT: ${[...keptCpt.map(c => c.code), ...manualKept.filter(c => c.type === 'cpt').map(c => c.code)].join(', ')}`,
                     })
 
