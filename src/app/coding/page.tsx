@@ -21,36 +21,99 @@ import {
 // Manual fallback code lookup — used when AI Coding is unavailable (BM4 requirement)
 // AI down → type-ahead search from these tables + manual entry, flagged 'manually coded'
 const ICD_FALLBACK_LOOKUP = [
+  // Endocrine
   { code: 'E11.9', description: 'Type 2 diabetes mellitus without complications' },
   { code: 'E11.65', description: 'Type 2 diabetes mellitus with hyperglycemia' },
-  { code: 'E11.21', description: 'Type 2 diabetes mellitus with diabetic nephropathy' },
-  { code: 'E11.40', description: 'Type 2 diabetes mellitus with diabetic neuropathy' },
+  { code: 'E11.21', description: 'Type 2 DM with diabetic nephropathy' },
+  { code: 'E11.40', description: 'Type 2 DM with diabetic neuropathy, unspecified' },
+  { code: 'E11.22', description: 'Type 2 DM with diabetic chronic kidney disease' },
+  { code: 'E11.319', description: 'Type 2 DM with unspecified diabetic retinopathy' },
+  { code: 'E10.9', description: 'Type 1 diabetes mellitus without complications' },
+  { code: 'E78.5', description: 'Hyperlipidemia, unspecified' },
+  { code: 'E78.0', description: 'Pure hypercholesterolemia, unspecified' },
+  { code: 'E03.9', description: 'Hypothyroidism, unspecified' },
+  { code: 'E66.01', description: 'Morbid obesity due to excess calories' },
+  { code: 'E66.9', description: 'Obesity, unspecified' },
+  // Cardiovascular
   { code: 'I10', description: 'Essential (primary) hypertension' },
   { code: 'I25.10', description: 'Atherosclerotic heart disease of native coronary artery' },
   { code: 'I50.9', description: 'Heart failure, unspecified' },
+  { code: 'I50.22', description: 'Chronic systolic (congestive) heart failure' },
   { code: 'I48.91', description: 'Unspecified atrial fibrillation' },
+  { code: 'I48.0', description: 'Paroxysmal atrial fibrillation' },
+  { code: 'I63.9', description: 'Cerebral infarction, unspecified' },
+  { code: 'I73.9', description: 'Peripheral vascular disease, unspecified' },
+  // Musculoskeletal
   { code: 'M54.5', description: 'Low back pain' },
+  { code: 'M54.2', description: 'Cervicalgia (neck pain)' },
   { code: 'M79.3', description: 'Panniculitis, unspecified' },
+  { code: 'M17.11', description: 'Primary osteoarthritis, right knee' },
+  { code: 'M17.12', description: 'Primary osteoarthritis, left knee' },
+  { code: 'M16.11', description: 'Primary osteoarthritis, right hip' },
+  { code: 'M25.511', description: 'Pain in right shoulder' },
+  { code: 'M25.561', description: 'Pain in right knee' },
+  { code: 'M25.562', description: 'Pain in left knee' },
+  { code: 'M19.011', description: 'Primary osteoarthritis, right shoulder' },
+  { code: 'M47.812', description: 'Spondylosis without myelopathy, cervical' },
+  // Respiratory
   { code: 'J06.9', description: 'Acute upper respiratory infection, unspecified' },
   { code: 'J44.1', description: 'COPD with acute exacerbation' },
+  { code: 'J44.0', description: 'COPD with acute lower respiratory infection' },
   { code: 'J18.9', description: 'Pneumonia, unspecified organism' },
-  { code: 'Z79.4', description: 'Long-term (current) use of insulin' },
-  { code: 'Z00.00', description: 'Encounter for general adult medical examination' },
-  { code: 'Z23', description: 'Encounter for immunization' },
+  { code: 'J45.20', description: 'Mild intermittent asthma, uncomplicated' },
+  { code: 'J45.40', description: 'Moderate persistent asthma, uncomplicated' },
+  { code: 'J02.9', description: 'Acute pharyngitis, unspecified' },
+  { code: 'J20.9', description: 'Acute bronchitis, unspecified' },
+  // GI
+  { code: 'K21.0', description: 'GERD with esophagitis' },
+  { code: 'K21.9', description: 'GERD without esophagitis' },
+  { code: 'K58.9', description: 'Irritable bowel syndrome without diarrhea' },
+  { code: 'K76.0', description: 'Fatty change of liver, not elsewhere classified' },
+  // GU
+  { code: 'N39.0', description: 'Urinary tract infection, site not specified' },
+  { code: 'N18.3', description: 'Chronic kidney disease, stage 3' },
+  { code: 'N18.4', description: 'Chronic kidney disease, stage 4' },
+  { code: 'N40.0', description: 'Benign prostatic hyperplasia without LUTS' },
+  // Mental health
+  { code: 'F32.1', description: 'Major depressive disorder, single episode, moderate' },
+  { code: 'F32.9', description: 'Major depressive disorder, single episode, unspecified' },
+  { code: 'F33.1', description: 'Major depressive disorder, recurrent, moderate' },
+  { code: 'F41.1', description: 'Generalized anxiety disorder' },
+  { code: 'F41.9', description: 'Anxiety disorder, unspecified' },
+  { code: 'F17.210', description: 'Nicotine dependence, cigarettes, uncomplicated' },
+  // Neuro
+  { code: 'G43.909', description: 'Migraine, unspecified, not intractable' },
+  { code: 'G47.00', description: 'Insomnia, unspecified' },
+  { code: 'G89.29', description: 'Other chronic pain' },
+  // Skin
+  { code: 'L30.9', description: 'Dermatitis, unspecified' },
+  { code: 'L70.0', description: 'Acne vulgaris' },
+  // Blood
+  { code: 'D64.9', description: 'Anemia, unspecified' },
+  { code: 'D50.9', description: 'Iron deficiency anemia, unspecified' },
+  // Infectious
+  { code: 'B34.9', description: 'Viral infection, unspecified' },
+  { code: 'B95.61', description: 'MRSA as cause of disease classified elsewhere' },
+  // Symptoms
   { code: 'R00.0', description: 'Tachycardia, unspecified' },
   { code: 'R05.9', description: 'Cough, unspecified' },
   { code: 'R10.9', description: 'Unspecified abdominal pain' },
-  { code: 'K21.0', description: 'GERD with esophagitis' },
-  { code: 'F32.1', description: 'Major depressive disorder, single episode, moderate' },
-  { code: 'F41.1', description: 'Generalized anxiety disorder' },
-  { code: 'G43.909', description: 'Migraine, unspecified, not intractable' },
-  { code: 'N39.0', description: 'Urinary tract infection, site not specified' },
-  { code: 'L30.9', description: 'Dermatitis, unspecified' },
-  { code: 'E78.5', description: 'Hyperlipidemia, unspecified' },
-  { code: 'E03.9', description: 'Hypothyroidism, unspecified' },
-  { code: 'B34.9', description: 'Viral infection, unspecified' },
-  { code: 'D64.9', description: 'Anemia, unspecified' },
   { code: 'R50.9', description: 'Fever, unspecified' },
+  { code: 'R06.00', description: 'Dyspnea, unspecified' },
+  { code: 'R51.9', description: 'Headache, unspecified' },
+  { code: 'R42', description: 'Dizziness and giddiness' },
+  { code: 'R63.4', description: 'Abnormal weight loss' },
+  { code: 'R73.03', description: 'Prediabetes' },
+  // Z-codes
+  { code: 'Z79.4', description: 'Long-term (current) use of insulin' },
+  { code: 'Z79.84', description: 'Long-term use of oral hypoglycemic agents' },
+  { code: 'Z79.01', description: 'Long-term use of anticoagulants' },
+  { code: 'Z79.899', description: 'Other long-term drug therapy' },
+  { code: 'Z00.00', description: 'Encounter for general adult medical examination' },
+  { code: 'Z23', description: 'Encounter for immunization' },
+  { code: 'Z87.891', description: 'Personal history of nicotine dependence' },
+  { code: 'Z68.35', description: 'BMI 35.0-35.9, adult' },
+  { code: 'Z96.1', description: 'Presence of intraocular lens' },
 ]
 
 const CPT_FALLBACK_LOOKUP = [
@@ -126,7 +189,7 @@ const priorityColor: Record<'urgent' | 'high' | 'medium' | 'low', string> = {
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
-type CodingTab = 'note' | 'superbill' | 'history' | 'qa'
+type CodingTab = 'note' | 'superbill' | 'history' | 'qa' | 'rules'
 
 type CodeOverride = {
   action: 'removed' | 'edited'
@@ -201,6 +264,180 @@ function AddCodeRow({ type, onAdd }: { type: 'ICD' | 'CPT'; onAdd: (code: string
 }
 
 // ── Main Page Component ──────────────────────────────────────────────────────
+// Inline Document Preview — fetches presigned URL and renders PDF/image
+function InlineDocPreview({ patientId, label }: { patientId?: string; label?: string }) {
+  const [docs, setDocs] = React.useState<Array<{ id: string; file_name: string; doc_type: string }>>([])
+  const [selectedDocId, setSelectedDocId] = React.useState<string | null>(null)
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+  const [fullscreen, setFullscreen] = React.useState(false)
+
+  // Fetch patient's documents
+  React.useEffect(() => {
+    if (!patientId) { setLoading(false); return }
+    setLoading(true)
+    api.get<{ data: Array<{ id: string; file_name: string; doc_type: string; s3_key?: string }> }>(`/documents`, { patient_id: patientId })
+      .then(r => {
+        const list = r.data || []
+        setDocs(list)
+        if (list.length > 0) setSelectedDocId(list[0].id)
+        setLoading(false)
+      })
+      .catch(() => { setLoading(false); setError('Failed to load documents') })
+  }, [patientId])
+
+  // Fetch presigned URL for selected document
+  React.useEffect(() => {
+    if (!selectedDocId) return
+    setPreviewUrl(null)
+    api.get<{ download_url: string }>(`/documents/${selectedDocId}/download`, { mode: 'inline' } as any)
+      .then(r => { if (r.download_url) setPreviewUrl(r.download_url) })
+      .catch(() => setError('Failed to load preview'))
+  }, [selectedDocId])
+
+  if (!patientId) return <p className="text-[11px] text-content-tertiary text-center py-4">No patient linked</p>
+  if (loading) return <div className="flex items-center justify-center py-8"><div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" /></div>
+  if (docs.length === 0) return <p className="text-[11px] text-content-tertiary text-center py-4">No documents uploaded for this patient</p>
+
+  const selectedDoc = docs.find(d => d.id === selectedDocId)
+  const fileName = selectedDoc?.file_name || ''
+  const isPdf = fileName.toLowerCase().endsWith('.pdf')
+  const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName)
+
+  return (
+    <div className={fullscreen ? 'fixed inset-0 z-50 bg-surface-default p-4 flex flex-col' : 'flex flex-col h-full'}>
+      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+        {label && <p className="text-[10px] uppercase tracking-widest text-brand font-bold shrink-0">{label}</p>}
+        <div className="flex items-center gap-2 ml-auto shrink-0">
+          {docs.length > 1 && (
+            <select value={selectedDocId || ''} onChange={e => setSelectedDocId(e.target.value)}
+              className="bg-surface-elevated border border-separator rounded px-2 py-1 text-[11px] text-content-primary max-w-[180px]">
+              {docs.map(d => <option key={d.id} value={d.id}>{d.file_name}</option>)}
+            </select>
+          )}
+          {docs.length === 1 && <span className="text-[10px] text-content-tertiary truncate max-w-[140px]">{docs[0].file_name}</span>}
+          <button onClick={() => setFullscreen(!fullscreen)}
+            className="text-[10px] px-2 py-1 rounded border border-separator text-content-secondary hover:text-content-primary hover:border-brand/40 transition-colors whitespace-nowrap">
+            {fullscreen ? '✕ Exit' : '⛶ Fullscreen'}
+          </button>
+        </div>
+      </div>
+      {error && <p className="text-[11px] text-red-500 text-center py-2">{error}</p>}
+      {previewUrl ? (
+        isPdf ? (
+          <iframe src={previewUrl} className="flex-1 w-full rounded-lg border border-separator min-h-[300px]" title="Document Preview" />
+        ) : isImage ? (
+          <img src={previewUrl} alt={fileName} className="max-w-full rounded-lg border border-separator" />
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-brand underline">Open {fileName}</a>
+          </div>
+        )
+      ) : (
+        <div className="flex-1 flex items-center justify-center"><div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" /></div>
+      )}
+    </div>
+  )
+}
+
+// (e) Payer-specific coding rules engine panel
+function CodingRulesPanel() {
+  const [rules, setRules] = React.useState<Array<{ id: string; rule_name: string; payer_name?: string; condition_field: string; condition_operator: string; condition_value: string; action_type: string; action_value: string; is_active: boolean }>>([])
+  const [loading, setLoading] = React.useState(true)
+  const [showAdd, setShowAdd] = React.useState(false)
+  const [form, setForm] = React.useState({ rule_name: '', payer_name: '', condition_field: 'diagnosis', condition_operator: 'contains', condition_value: '', action_type: 'auto_code', action_value: '' })
+  const { toast } = useToast()
+
+  React.useEffect(() => {
+    api.get<{ data: typeof rules }>('/coding-rules').then(r => { setRules(r.data || []); setLoading(false) }).catch(() => setLoading(false))
+  }, [])
+
+  const addRule = async () => {
+    try {
+      const r = await api.post<{ id: string }>('/coding-rules', { ...form, is_active: true })
+      setRules(prev => [...prev, { ...form, id: r.id, is_active: true }])
+      setForm({ rule_name: '', payer_name: '', condition_field: 'diagnosis', condition_operator: 'contains', condition_value: '', action_type: 'auto_code', action_value: '' })
+      setShowAdd(false)
+      toast.success('Rule added')
+    } catch { toast.error('Failed to save rule') }
+  }
+
+  const deleteRule = async (id: string) => {
+    try {
+      await api.delete('/coding-rules/' + id)
+      setRules(prev => prev.filter(r => r.id !== id))
+      toast.success('Rule deleted')
+    } catch { toast.error('Failed to delete') }
+  }
+
+  return (
+    <div className="p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Payer Coding Rules</h4>
+        <button onClick={() => setShowAdd(!showAdd)} className="text-[10px] px-2 py-1 rounded bg-brand text-white">+ Add Rule</button>
+      </div>
+      <p className="text-[11px] text-content-tertiary">Rules are automatically applied by AI when generating codes. E.g. &quot;For Aetna, always add modifier 25 to E/M with injection&quot;</p>
+      {showAdd && (
+        <div className="space-y-2 p-3 bg-surface-elevated rounded-lg border border-separator">
+          <input value={form.rule_name} onChange={e => setForm(p => ({...p, rule_name: e.target.value}))} placeholder="Rule name (e.g. Aetna modifier 25)" className="w-full bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-primary" />
+          <input value={form.payer_name} onChange={e => setForm(p => ({...p, payer_name: e.target.value}))} placeholder="Payer (blank = all payers)" className="w-full bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-primary" />
+          <div className="grid grid-cols-3 gap-2">
+            <select value={form.condition_field} onChange={e => setForm(p => ({...p, condition_field: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-primary">
+              <option value="diagnosis">IF Diagnosis</option>
+              <option value="cpt_code">IF CPT Code</option>
+              <option value="specialty">IF Specialty</option>
+              <option value="visit_type">IF Visit Type</option>
+              <option value="age">IF Patient Age</option>
+            </select>
+            <select value={form.condition_operator} onChange={e => setForm(p => ({...p, condition_operator: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-primary">
+              <option value="contains">contains</option>
+              <option value="equals">equals</option>
+              <option value="starts_with">starts with</option>
+              <option value="greater_than">&gt;</option>
+              <option value="less_than">&lt;</option>
+            </select>
+            <input value={form.condition_value} onChange={e => setForm(p => ({...p, condition_value: e.target.value}))} placeholder="Value" className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-primary" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <select value={form.action_type} onChange={e => setForm(p => ({...p, action_type: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-primary">
+              <option value="auto_code">→ Auto-code to</option>
+              <option value="add_modifier">→ Add modifier</option>
+              <option value="replace_code">→ Replace code</option>
+              <option value="flag_review">→ Flag for review</option>
+              <option value="deny_code">→ Never use code</option>
+            </select>
+            <input value={form.action_value} onChange={e => setForm(p => ({...p, action_value: e.target.value}))} placeholder="e.g. 99214-25, E11.65" className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-primary" />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setShowAdd(false)} className="flex-1 border border-separator rounded py-1.5 text-xs text-content-secondary">Cancel</button>
+            <button onClick={addRule} disabled={!form.rule_name || !form.condition_value || !form.action_value} className="flex-1 bg-brand text-white rounded py-1.5 text-xs disabled:opacity-40">Save Rule</button>
+          </div>
+        </div>
+      )}
+      {loading ? <p className="text-xs text-content-tertiary text-center py-4">Loading rules...</p> : rules.length === 0 ? (
+        <div className="text-center py-6">
+          <p className="text-xs text-content-tertiary">No coding rules configured yet.</p>
+          <p className="text-[10px] text-content-tertiary mt-1">Add rules to customize AI coding by payer, diagnosis, or specialty.</p>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {rules.map(r => (
+            <div key={r.id} className="flex items-center gap-2 px-3 py-2 bg-surface-elevated rounded-lg border border-separator text-xs">
+              <div className="flex-1">
+                <span className="font-medium text-content-primary">{r.rule_name}</span>
+                {r.payer_name && <span className="text-content-tertiary ml-2">[{r.payer_name}]</span>}
+                <p className="text-[10px] text-content-tertiary">IF {r.condition_field} {r.condition_operator} &quot;{r.condition_value}&quot; → {r.action_type}: {r.action_value}</p>
+              </div>
+              <button onClick={() => deleteRule(r.id)} className="text-[10px] text-red-500 hover:text-red-600">✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function CodingPage() {
   const router = useRouter()
   const { selectedClient, currentUser, country } = useApp()
@@ -229,8 +466,9 @@ export default function CodingPage() {
       assessment: c.assessment || '',
       plan: c.soap_plan || '',
     },
-    aiSuggestedIcd: [] as AISuggestedCode[],
-    aiSuggestedCpt: [] as AISuggestedCode[],
+    aiSuggestedIcd: ((c as any).ai_icd ? (typeof (c as any).ai_icd === 'string' ? JSON.parse((c as any).ai_icd) : (c as any).ai_icd) : []).map((d: any) => ({ code: d.code, desc: d.description || d.desc || '', confidence: d.confidence || 0, reasoning: d.specificity_note || d.reasoning })) as AISuggestedCode[],
+    aiSuggestedCpt: ((c as any).ai_cpt ? (typeof (c as any).ai_cpt === 'string' ? JSON.parse((c as any).ai_cpt) : (c as any).ai_cpt) : []).map((d: any) => ({ code: d.code, desc: d.description || d.desc || '', confidence: d.confidence || 0, modifiers: d.modifier ? [d.modifier] : d.modifiers || [], reasoning: d.modifier_reason || d.reasoning })) as AISuggestedCode[],
+    aiAlreadyCoded: !!(c as any).ai_suggestion_id,
     hasSuperbill: false,
     superbillCpt: undefined as string[] | undefined,
     priorAuthStatus: 'not_required' as string,
@@ -281,77 +519,55 @@ export default function CodingPage() {
   const [aiCodeCache, setAiCodeCache] = useState<Record<string, { icd: AISuggestedCode[], cpt: AISuggestedCode[] }>>({})
   const [quickSoap, setQuickSoap] = useState<{ assessment: string; plan: string; specialty: string }>({ assessment: '', plan: '', specialty: '' })
   const [showQuickSoap, setShowQuickSoap] = useState(false)
+  const [coderInstructions, setCoderInstructions] = useState('')
 
-  async function generateAICodes(soapAssessment: string, soapPlan: string, specialty: string) {
+  async function generateAICodes(soapAssessment: string, soapPlan: string, specialty: string, instructions?: string) {
     if (!item) return
     setAiCoding(true)
-    const isUAE = UAE_ORG_IDS.includes(item.clientId)
-    const codeSystem = isUAE ? 'ICD-10-AM (Australian modification, used in UAE/DHA)' : 'ICD-10-CM and CPT'
     try {
-      // Sanitize all user-controlled input before prompt interpolation (prompt injection defence)
-      const safeAssessment = sanitizeForPrompt(soapAssessment, 600)
-      const safePlan       = sanitizeForPrompt(soapPlan, 400)
-      const safeSpecialty  = sanitizeForPrompt(specialty || item.providerSpecialty, 100)
-      const safePatient    = sanitizeForPrompt(item.patientName, 100)
+      // Primary: call Lambda /coding/:id/ai-suggest (persists to ai_coding_suggestions table)
+      const result = await api.post<{
+        suggested_cpt?: Array<{ code: string; description: string; confidence: number; modifier?: string; modifier_reason?: string; ncci_note?: string }>
+        suggested_icd?: Array<{ code: string; description: string; confidence: number; is_primary?: boolean; is_hcc?: boolean; specificity_note?: string }>
+        suggested_em?: string; em_confidence?: number; reasoning?: string
+        mock?: boolean; suggestion_id?: string; processing_ms?: number; confidence?: number
+        documentation_gaps?: string[]; audit_flags?: string[]; hcc_diagnoses?: string[]
+      }>(`/coding/${item.id}/ai-suggest`, { instructions: instructions || '' })
 
-      const prompt = [
-        `You are an expert medical coder. Generate diagnosis and procedure codes for the following clinical encounter.`,
-        `Code system: ${codeSystem}`,
-        `Patient: ${safePatient}`,
-        `Provider specialty: ${safeSpecialty || 'General Medicine'}`,
-        `Date of Service: ${item.dos}`,
-        ``,
-        `Assessment: ${safeAssessment}`,
-        `Plan: ${safePlan}`,
-        ``,
-        `Return ONLY valid JSON in this exact format, no markdown, no explanation:`,
-        `{`,
-        `  "icd": [{"code":"X00.0","desc":"Description","confidence":95,"reasoning":"Why this code"}],`,
-        `  "cpt": [{"code":"99213","desc":"Description","confidence":90,"modifiers":[],"reasoning":"Why this code"}]`,
-        `}`,
-        ``,
-        `Rules:`,
-        `- ICD: 2-5 codes max, most specific codes available, ordered by clinical relevance`,
-        `- CPT: 1-4 codes max, include E&M code + any procedures`,
-        `- confidence: 0-100 integer`,
-        `- reasoning: 1 sentence explaining the code choice`,
-        `- Only include codes you are confident are correct for this encounter`,
-      ].join('\n')
-
-      const res = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'auto_code',
-          patient: safePatient,
-          specialty: safeSpecialty,
-          dos: item.dos,
-          assessment: safeAssessment,
-          plan: safePlan,
-          codeSystem,
-        }),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
-
-      // Strip any markdown fences
-      const cleaned = (data.text || '').replace(/```json|```/g, '').trim()
-      const parsed = JSON.parse(cleaned)
-      const icd = (parsed.icd || []).map((c: { code: string; desc: string; confidence: number; reasoning?: string }) => ({
-        code: c.code, desc: c.desc, confidence: c.confidence, reasoning: c.reasoning,
+      // Map Lambda response format → frontend format
+      const icd: AISuggestedCode[] = (result.suggested_icd || []).map(c => ({
+        code: c.code, desc: c.description, confidence: c.confidence,
+        reasoning: c.specificity_note || (c.is_hcc ? 'HCC diagnosis' : undefined),
       }))
-      const cpt = (parsed.cpt || []).map((c: { code: string; desc: string; confidence: number; modifiers?: string[]; reasoning?: string }) => ({
-        code: c.code, desc: c.desc, confidence: c.confidence, modifiers: c.modifiers || [], reasoning: c.reasoning,
+      const cpt: AISuggestedCode[] = (result.suggested_cpt || []).map(c => ({
+        code: c.code, desc: c.description, confidence: c.confidence,
+        modifiers: c.modifier ? [c.modifier] : [],
+        reasoning: c.modifier_reason || c.ncci_note || undefined,
       }))
+
       setAiCodeCache(prev => ({ ...prev, [item.id]: { icd, cpt } }))
-      // Auto-select all generated codes
+      // Auto-select all generated codes + E/M conflict detection
       const newSelected: Record<string, boolean> = {}
-      icd.forEach((c: { code: string }) => { newSelected[`icd-${c.code}`] = true })
-      cpt.forEach((c: { code: string }) => { newSelected[`cpt-${c.code}`] = true })
+      icd.forEach(c => { newSelected[`icd-${c.code}`] = true })
+      // E/M conflict: only keep the highest-level E/M code
+      const emCodes = cpt.filter(c => /^99(2[0-5][0-9]|[3-4])/.test(c.code))
+      const nonEmCodes = cpt.filter(c => !/^99(2[0-5][0-9]|[3-4])/.test(c.code))
+      if (emCodes.length > 1) {
+        const highest = emCodes.sort((a, b) => b.code.localeCompare(a.code))[0]
+        nonEmCodes.push(highest)
+        nonEmCodes.forEach(c => { newSelected[`cpt-${c.code}`] = true })
+      } else {
+        cpt.forEach(c => { newSelected[`cpt-${c.code}`] = true })
+      }
       setSelectedCodes(prev => ({ ...prev, ...newSelected }))
       setShowQuickSoap(false)
-      toast.success(`AI generated ${icd.length} diagnosis + ${cpt.length} procedure codes`)
+
+      const mockLabel = result.mock ? ' (mock — Bedrock unavailable)' : ''
+      if (result.documentation_gaps?.length) {
+        toast.warning(`AI generated ${icd.length} ICD + ${cpt.length} CPT codes${mockLabel}. ${result.documentation_gaps.length} documentation gap(s) flagged.`)
+      } else {
+        toast.success(`AI generated ${icd.length} ICD + ${cpt.length} CPT codes${mockLabel}`)
+      }
     } catch (e) {
       console.error('AI coding error:', e)
       setAiUnavailable(true)
@@ -360,6 +576,9 @@ export default function CodingPage() {
       setAiCoding(false)
     }
   }
+
+  // Auto-trigger moved below 'item' definition
+  const autoTriggeredRef = React.useRef<Set<string>>(new Set())
 
   async function generateCDIQuery() {
     if (!item) return
@@ -410,21 +629,63 @@ export default function CodingPage() {
     }
   }
   const [showHoldModal, setShowHoldModal] = useState(false)
-  const [docOpen, setDocOpen] = useState<'note' | 'superbill' | null>(null)
+  const [docOpen, setDocOpen] = useState<'note' | 'superbill' | 'split' | null>(null)
   const [queryText, setQueryText] = useState('')
   const [holdReason, setHoldReason] = useState('')
 
   const item = queue.find(q => q.id === selected)
   const cachedCodes = item ? aiCodeCache[item.id] : null
+
+  // Auto-trigger AI coding when selecting an item with SOAP content (only if not already coded)
+  React.useEffect(() => {
+    if (!item || !item.id) return
+    if (aiCodeCache[item.id]) return
+    if (autoTriggeredRef.current.has(item.id)) return
+    if ((item as any).aiAlreadyCoded) return // Already coded by backend — use saved results
+    if (!item.visitNote?.assessment) return
+    if (aiCoding) return
+    autoTriggeredRef.current.add(item.id)
+    generateAICodes(item.visitNote.assessment, item.visitNote.plan, item.providerSpecialty || '')
+  }, [item?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const activeCodes = cachedCodes ?? { icd: item?.aiSuggestedIcd ?? [], cpt: item?.aiSuggestedCpt ?? [] }
   const hasRealCodes = activeCodes.icd.length > 0 || activeCodes.cpt.length > 0
+
+  // Auto-select saved AI codes from backend when switching items
+  const autoSelectedRef = React.useRef<Set<string>>(new Set())
+  React.useEffect(() => {
+    if (!item || autoSelectedRef.current.has(item.id)) return
+    if (item.aiSuggestedIcd.length > 0 || item.aiSuggestedCpt.length > 0) {
+      autoSelectedRef.current.add(item.id)
+      const newSel: Record<string, boolean> = {}
+      item.aiSuggestedIcd.forEach(c => { newSel[`icd-${c.code}`] = true })
+      item.aiSuggestedCpt.forEach(c => { newSel[`cpt-${c.code}`] = true })
+      setSelectedCodes(prev => ({ ...prev, ...newSel }))
+    }
+  }, [item?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const aiCptCodes = item?.aiSuggestedCpt.map(c => c.code) ?? []
   const superbillOnly = item?.superbillCpt?.filter(c => !aiCptCodes.includes(c)) ?? []
   const aiOnly = aiCptCodes.filter(c => !(item?.superbillCpt ?? []).includes(c))
   const allMatch = aiOnly.length === 0 && superbillOnly.length === 0
 
-  const toggleCode = (key: string) => setSelectedCodes(prev => ({ ...prev, [key]: !prev[key] }))
+  const EM_CODES = new Set(['99211','99212','99213','99214','99215','99202','99203','99204','99205'])
+  const toggleCode = (key: string) => {
+    setSelectedCodes(prev => {
+      const next = { ...prev, [key]: !prev[key] }
+      // E/M conflict: if toggling ON an E/M CPT, auto-deselect any other selected E/M
+      if (next[key] && key.startsWith('cpt-')) {
+        const code = key.replace('cpt-', '')
+        if (EM_CODES.has(code)) {
+          const otherEms = Object.keys(next).filter(k => k.startsWith('cpt-') && k !== key && next[k] && EM_CODES.has(k.replace('cpt-', '')))
+          if (otherEms.length > 0) {
+            otherEms.forEach(k => { next[k] = false })
+            toast.info(`Replaced ${otherEms.map(k => k.replace('cpt-','')).join(', ')} with ${code} — only 1 E/M per encounter`)
+          }
+        }
+      }
+      return next
+    })
+  }
 
   const isUAEClient = uaeClientIds.includes(item?.clientId || '')
 
@@ -702,6 +963,16 @@ export default function CodingPage() {
                       </button>
                     )}
                     <button
+                      onClick={() => setDocOpen(docOpen === 'split' ? null : 'split')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border transition-colors ${
+                        docOpen === 'split'
+                          ? 'bg-brand text-white border-brand'
+                          : 'border-separator text-content-secondary hover:border-brand/40 hover:text-content-primary'
+                      }`}
+                    >
+                      ⬜ Split View
+                    </button>
+                    <button
                       onClick={() => setTab(tab === 'history' ? 'note' : 'history')}
                       className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border transition-colors ${
                         tab === 'history'
@@ -720,6 +991,12 @@ export default function CodingPage() {
                       }`}
                     >
                       QA Audit
+                    </button>
+                    <button
+                      onClick={() => router.push('/coding-rules')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border border-separator text-content-secondary hover:border-amber-500/40 hover:text-amber-600 transition-colors"
+                    >
+                      ⚙ Coding Rules
                     </button>
                   </div>
                   {/* Only show fields that have values */}
@@ -822,8 +1099,8 @@ export default function CodingPage() {
                             <div className="flex items-center gap-2 px-3 py-2 bg-surface-elevated border border-separator rounded-lg">
                               <FileText size={13} className="text-content-tertiary shrink-0" />
                               <span className="text-xs text-content-secondary flex-1">Source chart — {item.patientName}</span>
-                              <button onClick={() => router.push('/documents')} className="text-xs text-brand underline shrink-0">
-                                View Original
+                              <button onClick={() => setDocOpen('superbill')} className="text-xs text-brand underline shrink-0">
+                                View Superbill →
                               </button>
                             </div>
                           )}
@@ -839,17 +1116,10 @@ export default function CodingPage() {
                       )}
 
                       {docOpen === 'superbill' && (
-                        <div className="space-y-4">
-                          <div className="bg-surface-elevated border border-separator rounded-lg p-6 text-center">
-                            <FileText size={28} className="mx-auto mb-2 text-content-tertiary opacity-40" />
-                            <p className="text-sm font-medium text-content-primary mb-0.5">{item.patientName}</p>
-                            <p className="text-xs text-content-secondary mb-3">Uploaded superbill</p>
-                            <button onClick={() => router.push('/documents')} className="text-xs text-brand underline">
-                              View PDF
-                            </button>
-                          </div>
-                          {item.superbillCpt && item.superbillCpt.length > 0 ? (
-                            <div className="space-y-2">
+                        <div className="flex flex-col h-full">
+                          <InlineDocPreview patientId={item.patientId} label="Superbill / Uploaded Document" />
+                          {item.superbillCpt && item.superbillCpt.length > 0 && (
+                            <div className="space-y-2 mt-3 border-t border-separator pt-3">
                               <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold">Codes on Superbill</p>
                               {item.superbillCpt.map(code => (
                                 <div key={code} className="flex items-center justify-between px-3 py-2 bg-surface-elevated rounded-lg border border-separator">
@@ -860,21 +1130,46 @@ export default function CodingPage() {
                                   }
                                 </div>
                               ))}
-                              {aiOnly.length > 0 && (
-                                <div className="mt-3 space-y-1">
-                                  <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold">AI Also Suggests</p>
-                                  {aiOnly.map(code => (
-                                    <div key={code} className="flex items-center gap-2 px-3 py-2 bg-blue-500/5 border border-blue-500/20 rounded-lg">
-                                      <span className="font-mono text-xs text-content-primary">{code}</span>
-                                      <span className="text-[11px] text-blue-500">Not on superbill</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
                             </div>
-                          ) : (
-                            <p className="text-xs text-content-tertiary text-center py-4">No superbill codes available</p>
                           )}
+                        </div>
+                      )}
+
+                      {/* (d) Split View — Visit Note + Superbill side by side */}
+                      {docOpen === 'split' && (
+                        <div className="grid grid-cols-2 gap-3 h-full">
+                          {/* Left: Visit Note */}
+                          <div className="overflow-y-auto border-r border-separator pr-3 space-y-3">
+                            <p className="text-[10px] uppercase tracking-widest text-brand font-bold">Visit Note</p>
+                            {(['subjective', 'objective', 'assessment', 'plan'] as const).map(section => (
+                              <div key={section} className="pb-2 border-b border-separator last:border-0">
+                                <p className="text-[9px] uppercase tracking-widest text-content-tertiary font-bold mb-1">{section}</p>
+                                <p className="text-[12px] text-content-secondary leading-relaxed whitespace-pre-line">
+                                  {item.visitNote[section] || <span className="italic text-content-tertiary text-[11px]">—</span>}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Right: Document Preview */}
+                          <div className="overflow-y-auto pl-3 flex flex-col h-full">
+                            <InlineDocPreview patientId={item.patientId} label="Document Preview" />
+                            {item.superbillCpt && item.superbillCpt.length > 0 ? (
+                              <div className="space-y-1.5">
+                                <p className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold">Superbill Codes</p>
+                                {item.superbillCpt.map(code => (
+                                  <div key={code} className="flex items-center justify-between px-2 py-1.5 bg-surface-elevated rounded border border-separator">
+                                    <span className="font-mono text-[11px] text-content-primary">{code}</span>
+                                    {aiCptCodes.includes(code)
+                                      ? <span className="text-[10px] text-emerald-500">✓ matched</span>
+                                      : <span className="text-[10px] text-amber-500">⚠ missing</span>
+                                    }
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-[10px] text-content-tertiary text-center py-3">No superbill codes extracted yet</p>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -926,7 +1221,7 @@ export default function CodingPage() {
 
                 {!aiUnavailable && (
                   <>
-                    {/* ── AI Generate panel (shown when no codes yet) ── */}
+                    {/* ── AI Generate panel ── */}
                     {!hasRealCodes && !aiCoding && (
                       <div className="mb-4 rounded-xl border border-purple-500/30 bg-purple-500/5 p-4">
                         <div className="flex items-center gap-2 mb-2">
@@ -937,7 +1232,7 @@ export default function CodingPage() {
                           <>
                             <p className="text-[12px] text-content-secondary mb-3">
                               {item?.visitNote?.assessment
-                                ? 'Visit note available — generate ICD-10 + CPT codes instantly.'
+                                ? 'Visit note available — auto-coding will run momentarily.'
                                 : 'No visit note attached. Enter assessment & plan to generate codes.'}
                             </p>
                             {item?.visitNote?.assessment ? (
@@ -1008,13 +1303,35 @@ export default function CodingPage() {
                       </div>
                     )}
 
-                    {/* Regenerate button when codes exist */}
+                    {/* Chat-style regenerate with coder instructions */}
                     {hasRealCodes && !aiCoding && (
-                      <button
-                        onClick={() => { setAiCodeCache(p => { const n = {...p}; if (item) delete n[item.id]; return n }); setShowQuickSoap(!item?.visitNote?.assessment) }}
-                        className="text-[10px] text-purple-500 hover:text-purple-600 flex items-center gap-1 mb-2 ml-auto">
-                        ✦ Regenerate codes
-                      </button>
+                      <div className="mb-3 flex gap-1.5">
+                        <input
+                          value={coderInstructions}
+                          onChange={e => setCoderInstructions(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && item) {
+                              autoTriggeredRef.current.delete(item.id)
+                              generateAICodes(item.visitNote.assessment, item.visitNote.plan, item.providerSpecialty || '', coderInstructions)
+                              setCoderInstructions('')
+                            }
+                          }}
+                          placeholder="e.g. add modifier 25, use E11.65 instead, remove 36415..."
+                          className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-[11px] text-content-primary placeholder:text-content-tertiary focus:border-purple-500/40 outline-none"
+                        />
+                        <button
+                          onClick={() => {
+                            if (item) {
+                              autoTriggeredRef.current.delete(item.id)
+                              setAiCodeCache(p => { const n = {...p}; delete n[item.id]; return n })
+                              generateAICodes(item.visitNote.assessment, item.visitNote.plan, item.providerSpecialty || '', coderInstructions)
+                              setCoderInstructions('')
+                            }
+                          }}
+                          className="text-[10px] px-3 py-1.5 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors whitespace-nowrap">
+                          ✦ {coderInstructions ? 'Re-code' : 'Regenerate'}
+                        </button>
+                      </div>
                     )}
 
                     {/* ICD Codes */}
