@@ -442,6 +442,15 @@ async function runSchemaMigration() {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )`);
   } catch (e) { if (e.code !== '42P07') safeLog('warn', 'ai_coding_suggestions table:', e.message); }
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS scrub_results (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      org_id UUID NOT NULL, claim_id UUID NOT NULL,
+      rule_code VARCHAR(50), rule_name VARCHAR(200),
+      severity VARCHAR(20) DEFAULT 'warning', passed BOOLEAN DEFAULT true,
+      message TEXT, scrubbed_by UUID, created_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
+  } catch (e) { if (e.code !== '42P07') safeLog('warn', 'scrub_results:', e.message); }
   safeLog('info', `Column fixes applied (${colFixes.length} statements)`);
 }
 
