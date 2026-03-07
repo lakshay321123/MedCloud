@@ -138,7 +138,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
   // Real audit log + messages from API
   const claimApiIdForQuery = claim.apiId || null
   const { data: auditData } = useAuditLog(claimApiIdForQuery ? { entity_type: 'claims', entity_id: claimApiIdForQuery, limit: 50 } : undefined)
-  const { data: messagesData } = useMessages(claimApiIdForQuery ? { entity_type: 'claim', entity_id: claim.id, limit: 50 } : undefined)
+  const { data: messagesData } = useMessages(claimApiIdForQuery ? { entity_type: 'claim', entity_id: claimApiIdForQuery, limit: 50 } : undefined)
   const apiAuditEntries = auditData?.data ?? []
   const apiMessages = messagesData?.data ?? []
 
@@ -401,8 +401,8 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
     setMsgInput('')
     // Persist to backend so Messages page picks it up
     await sendMessageMutation.mutate({
-      entity_type: 'claim', entity_id: claim.id,
-      client_id: claim.clientId, subject: `Claim ${claim.id}`,
+      entity_type: 'claim', entity_id: claimApiIdForQuery,
+      client_id: claim.clientId, subject: `Claim ${claim.claimNumber || claim.id}`,
       body, sender_name: senderName, sender_role: currentUser?.role || 'staff',
     } as any)
     toast.success('Message sent to back office')
