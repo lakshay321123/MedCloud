@@ -338,6 +338,29 @@ async function runSchemaMigration() {
   } catch (e) {
     safeLog('error', 'Schema migration error (non-fatal):', e.message);
   }
+  // Individual column fixes (run outside try/catch so one failure doesn't block others)
+  const colFixes = [
+    "ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS soap_note_id UUID",
+    "ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS notes TEXT",
+    "ALTER TABLE coding_queue ALTER COLUMN patient_id DROP NOT NULL",
+    "ALTER TABLE coding_queue ALTER COLUMN provider_id DROP NOT NULL",
+    "ALTER TABLE coding_queue ALTER COLUMN encounter_id DROP NOT NULL",
+    "ALTER TABLE coding_queue ALTER COLUMN source DROP NOT NULL",
+    "ALTER TABLE coding_queue ALTER COLUMN dos DROP NOT NULL",
+    "ALTER TABLE coding_queue DROP CONSTRAINT IF EXISTS coding_queue_priority_check",
+    "ALTER TABLE coding_queue DROP CONSTRAINT IF EXISTS coding_queue_status_check",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'uploaded'",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS classification VARCHAR(100)",
+    "ALTER TABLE documents DROP CONSTRAINT IF EXISTS documents_doc_type_check",
+    "ALTER TABLE documents ALTER COLUMN doc_type DROP NOT NULL",
+    "ALTER TABLE soap_notes ALTER COLUMN patient_id DROP NOT NULL",
+    "ALTER TABLE soap_notes ALTER COLUMN provider_id DROP NOT NULL",
+    "ALTER TABLE soap_notes ALTER COLUMN encounter_id DROP NOT NULL",
+  ];
+  for (const sql of colFixes) {
+    try { await pool.query(sql); } catch (e) { if (e.code !== '42701' && e.code !== '42704') safeLog('warn', `colFix: ${e.message}`); }
+  }
+  safeLog('info', `Column fixes applied (${colFixes.length} statements)`);
 }
 
 // ─── Seed Demo Data — fills empty tables once per cold start ────────────────
@@ -985,11 +1008,14 @@ async function enrichedPayments(orgId, clientId) {
 async function enrichedCoding(orgId, clientId) {
   let q = `SELECT cq.*, p.first_name || ' ' || p.last_name AS patient_name,
            pr.first_name || ' ' || pr.last_name AS provider_name,
-           cl.name AS client_name
+           cl.name AS client_name,
+           sn.subjective, sn.objective, sn.assessment, sn.plan AS soap_plan,
+           sn.transcript AS soap_transcript, sn.ai_suggestions AS soap_ai_suggestions
            FROM coding_queue cq
            LEFT JOIN patients p ON cq.patient_id = p.id
            LEFT JOIN providers pr ON cq.provider_id = pr.id
            LEFT JOIN clients cl ON cq.client_id = cl.id
+           LEFT JOIN soap_notes sn ON cq.soap_note_id = sn.id
            WHERE cq.org_id = $1`;
   const params = [orgId];
   if (clientId) { params.push(clientId); q += ` AND cq.client_id = $${params.length}`; }
