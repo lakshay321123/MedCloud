@@ -467,6 +467,69 @@ async function runSchemaMigration() {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_underpayments_org ON underpayments(org_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_underpayments_claim ON underpayments(claim_id)');
   } catch (e) { if (e.code !== '42P07') safeLog('warn', 'underpayments:', e.message); }
+  // HIPAA: BAA tracking table
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS baa_tracking (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      org_id UUID NOT NULL,
+      vendor_name VARCHAR(200) NOT NULL,
+      vendor_type VARCHAR(100),
+      baa_status VARCHAR(30) DEFAULT 'pending',
+      effective_date DATE,
+      expiration_date DATE,
+      signed_by VARCHAR(200),
+      signed_date DATE,
+      document_id UUID,
+      renewal_reminder_days INT DEFAULT 90,
+      notes TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
+  } catch (e) { if (e.code !== '42P07') safeLog('warn', 'baa_tracking:', e.message); }
+  // HIPAA: Breach incidents table
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS breach_incidents (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      org_id UUID NOT NULL,
+      incident_date TIMESTAMPTZ,
+      discovered_date TIMESTAMPTZ,
+      reported_date TIMESTAMPTZ,
+      breach_type VARCHAR(100),
+      description TEXT,
+      individuals_affected INT DEFAULT 0,
+      phi_involved TEXT,
+      root_cause TEXT,
+      corrective_actions TEXT,
+      notification_status VARCHAR(50) DEFAULT 'pending',
+      hhs_notified BOOLEAN DEFAULT false,
+      hhs_notification_date DATE,
+      state_ag_notified BOOLEAN DEFAULT false,
+      individuals_notified BOOLEAN DEFAULT false,
+      investigation_status VARCHAR(50) DEFAULT 'open',
+      risk_assessment TEXT,
+      created_by UUID,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
+  } catch (e) { if (e.code !== '42P07') safeLog('warn', 'breach_incidents:', e.message); }
+  // HIPAA: Patient right of access requests
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS patient_access_requests (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      org_id UUID NOT NULL,
+      patient_id UUID NOT NULL,
+      request_type VARCHAR(50) DEFAULT 'data_export',
+      request_date DATE NOT NULL,
+      due_date DATE,
+      completed_date DATE,
+      status VARCHAR(30) DEFAULT 'received',
+      format VARCHAR(30) DEFAULT 'electronic',
+      delivery_method VARCHAR(50) DEFAULT 'portal',
+      notes TEXT,
+      processed_by UUID,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
+  } catch (e) { if (e.code !== '42P07') safeLog('warn', 'patient_access_requests:', e.message); }
   safeLog('info', `Column fixes applied (${colFixes.length} statements)`);
 }
 
@@ -6373,7 +6436,7 @@ export const handler = async (event) => {
             ResponseContentType: contentType,
           });
           const url = await getSignedUrl(s3Client, cmd, { expiresIn: 300 });
-          await auditLog(effectiveOrgId, userId, 'download', 'documents', doc.id, { file_name: safeFileName });
+          await auditLog(effectiveOrgId, userId, 'download', 'documents', doc.id, { file_name: safeFileName, hipaa_event: 'phi_document_access' });
           return respond(200, { download_url: url, file_name: safeFileName, content_type: contentType, expires_in: 300 });
         }
         return respond(200, { download_url: `https://${S3_BUCKET}.s3.amazonaws.com/${doc.s3_key}`, file_name: safeFileName, expires_in: 300 });
@@ -9320,6 +9383,89 @@ export const handler = async (event) => {
       } catch(e) {
         return respond(500, { error: e.message });
       }
+    }
+
+    // ════ BAA Tracking ═══════════════════════════════════════════════════
+    if (path.includes('/baa-tracking')) {
+      if (method === 'GET') {
+        const r = await orgQuery(effectiveOrgId, 'SELECT * FROM baa_tracking WHERE org_id = $1 ORDER BY created_at DESC', [effectiveOrgId]);
+        return respond(200, { data: r.rows, meta: { total: r.rows.length } });
+      }
+      if (method === 'POST') {
+        const baa = await create('baa_tracking', body, effectiveOrgId);
+        await auditLog(effectiveOrgId, userId, 'create', 'baa_tracking', baa.id, { vendor: body.vendor_name });
+        return respond(201, baa);
+      }
+      if (method === 'PATCH' && pathParams.id) {
+        const existing = await getById('baa_tracking', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'BAA not found' });
+        const updated = await update('baa_tracking', pathParams.id, body, effectiveOrgId);
+        return respond(200, updated);
+      }
+    }
+
+    // ════ Breach Incidents ═══════════════════════════════════════════════
+    if (path.includes('/breach-incidents')) {
+      if (method === 'GET') {
+        const r = await orgQuery(effectiveOrgId, 'SELECT * FROM breach_incidents WHERE org_id = $1 ORDER BY incident_date DESC', [effectiveOrgId]);
+        return respond(200, { data: r.rows, meta: { total: r.rows.length } });
+      }
+      if (method === 'POST') {
+        const incident = await create('breach_incidents', { ...body, created_by: userId }, effectiveOrgId);
+        await auditLog(effectiveOrgId, userId, 'create', 'breach_incidents', incident.id, { breach_type: body.breach_type, hipaa_event: 'breach_reported' });
+        return respond(201, incident);
+      }
+      if (method === 'PATCH' && pathParams.id) {
+        const existing = await getById('breach_incidents', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Incident not found' });
+        const updated = await update('breach_incidents', pathParams.id, body, effectiveOrgId);
+        await auditLog(effectiveOrgId, userId, 'update', 'breach_incidents', pathParams.id, { status: body.investigation_status || body.notification_status });
+        return respond(200, updated);
+      }
+    }
+
+    // ════ Patient Right of Access ════════════════════════════════════════
+    if (path.includes('/patient-access-requests')) {
+      if (method === 'GET') {
+        const r = await orgQuery(effectiveOrgId,
+          `SELECT par.*, p.first_name || ' ' || p.last_name AS patient_name
+           FROM patient_access_requests par
+           LEFT JOIN patients p ON par.patient_id = p.id
+           WHERE par.org_id = $1 ORDER BY par.request_date DESC`,
+          [effectiveOrgId]);
+        return respond(200, { data: r.rows, meta: { total: r.rows.length } });
+      }
+      if (method === 'POST') {
+        const due = new Date(); due.setDate(due.getDate() + 30); // HIPAA: 30-day response deadline
+        const req = await create('patient_access_requests', { ...body, due_date: due.toISOString().split('T')[0], status: 'received' }, effectiveOrgId);
+        await auditLog(effectiveOrgId, userId, 'create', 'patient_access_requests', req.id, { patient_id: body.patient_id, hipaa_event: 'right_of_access_request' });
+        return respond(201, req);
+      }
+      if (method === 'PATCH' && pathParams.id) {
+        const existing = await getById('patient_access_requests', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Request not found' });
+        const updated = await update('patient_access_requests', pathParams.id, { ...body, processed_by: userId }, effectiveOrgId);
+        await auditLog(effectiveOrgId, userId, 'update', 'patient_access_requests', pathParams.id, { status: body.status, hipaa_event: 'access_request_updated' });
+        return respond(200, updated);
+      }
+    }
+
+    // ════ HIPAA Compliance Dashboard ═════════════════════════════════════
+    if (path.includes('/hipaa-compliance') && method === 'GET') {
+      const [baaR, breachR, accessR, auditR] = await Promise.all([
+        pool.query('SELECT COUNT(*) AS total, SUM(CASE WHEN baa_status = $2 THEN 1 ELSE 0 END) AS active FROM baa_tracking WHERE org_id = $1', [effectiveOrgId, 'active']),
+        pool.query('SELECT COUNT(*) AS total, SUM(CASE WHEN investigation_status = $2 THEN 1 ELSE 0 END) AS open FROM breach_incidents WHERE org_id = $1', [effectiveOrgId, 'open']),
+        pool.query('SELECT COUNT(*) AS total, SUM(CASE WHEN status = $2 THEN 1 ELSE 0 END) AS pending FROM patient_access_requests WHERE org_id = $1', [effectiveOrgId, 'received']),
+        pool.query("SELECT COUNT(*) AS total FROM audit_log WHERE org_id = $1 AND created_at > NOW() - INTERVAL '24 hours'", [effectiveOrgId]),
+      ]);
+      return respond(200, {
+        baa: { total: parseInt(baaR.rows[0].total), active: parseInt(baaR.rows[0].active) || 0 },
+        breaches: { total: parseInt(breachR.rows[0].total), open: parseInt(breachR.rows[0].open) || 0 },
+        access_requests: { total: parseInt(accessR.rows[0].total), pending: parseInt(accessR.rows[0].pending) || 0 },
+        audit_events_24h: parseInt(auditR.rows[0].total),
+        session_timeout_minutes: 15,
+        retention_policy: { medical_records_years: 10, billing_records_years: 7, audit_log_years: 7 },
+      });
     }
 
     // ════ Underpayments ════════════════════════════════════════════════════

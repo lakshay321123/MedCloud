@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useCallback, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
+import SessionTimeout from '../shared/SessionTimeout'
 import { Menu, X, LogOut } from 'lucide-react'
 import { useHasMounted } from '@/lib/hooks/useHasMounted'
 import { useApp } from '@/lib/context'
@@ -132,6 +133,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           )}
         </main>
       </div>
+      <SessionTimeout />
     </div>
   )
 }
