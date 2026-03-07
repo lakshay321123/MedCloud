@@ -975,8 +975,8 @@ async function enrichedClaims(orgId, clientId) {
     const claimIds = rows.map(r => r.id);
     const phList = claimIds.map((_, i) => `$${i + 1}`).join(',');
     const [linesR, dxR] = await Promise.all([
-      pool.query(`SELECT claim_id, cpt_code, charges FROM claim_lines WHERE claim_id IN (${phList})`, claimIds),
-      pool.query(`SELECT claim_id, icd_code FROM claim_diagnoses WHERE claim_id IN (${phList})`, claimIds),
+      orgQuery(orgId, `SELECT claim_id, cpt_code, charges FROM claim_lines WHERE claim_id IN (${phList})`, claimIds),
+      orgQuery(orgId, `SELECT claim_id, icd_code FROM claim_diagnoses WHERE claim_id IN (${phList})`, claimIds),
     ]);
     const cptMap = {}; const icdMap = {};
     for (const l of linesR.rows) { (cptMap[l.claim_id] = cptMap[l.claim_id] || []).push(l.cpt_code); }
