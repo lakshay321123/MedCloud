@@ -722,8 +722,9 @@ export function useDocuments() {
 export function useClaimDocuments(claimId: string | null) {
   const { orgId } = useApp()
   return useApi<{ data: ApiDocument[]; meta: { total: number } }>(
-    claimId ? `/documents?claim_id=${claimId}` : null,
-    { org_id: orgId }
+    `/documents?claim_id=${claimId ?? ''}`,
+    { org_id: orgId },
+    { skip: !claimId }
   )
 }
 
