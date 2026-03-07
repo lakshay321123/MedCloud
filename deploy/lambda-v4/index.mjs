@@ -361,7 +361,7 @@ async function runSchemaMigration() {
     "ALTER TABLE soap_notes ALTER COLUMN encounter_id DROP NOT NULL",
   ];
   for (const sql of colFixes) {
-    try { await pool.query(sql); } catch (_) { /* column exists or constraint already dropped */ }
+    try { await pool.query(sql); } catch (e) { if (e.code !== '42701' && e.code !== '42704') safeLog('warn', `colFix: ${e.message}`); }
   }
   safeLog('info', `Column fixes applied (${colFixes.length} statements)`);
 }
@@ -6017,13 +6017,21 @@ export const handler = async (event) => {
       if ((method === 'PUT' || method === 'PATCH') && pathParams.id) {
         const existing = await getById('documents', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
-        const updated = await update('documents', pathParams.id, body, effectiveOrgId);
+        // Whitelist allowed fields — prevent mass assignment (s3_key, org_id manipulation)
+        const allowed = ['patient_id','status','doc_type','document_type','notes','client_id','patient_name'];
+        const safeBody = {};
+        for (const k of allowed) { if (body[k] !== undefined) safeBody[k] = body[k]; }
+        const updated = await update('documents', pathParams.id, safeBody, effectiveOrgId);
         return respond(200, updated);
       }
       if (method === 'DELETE' && pathParams.id) {
         const existing = await getById('documents', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
-        await pool.query('DELETE FROM documents WHERE id = $1', [pathParams.id]);
+        if (existing.s3_key && s3Client) {
+          try { const { DeleteObjectCommand } = await import('@aws-sdk/client-s3'); await s3Client.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: existing.s3_key })); }
+          catch (s3Err) { safeLog('error', 'S3 delete failed:', s3Err.message); }
+        }
+        await orgQuery(effectiveOrgId, 'DELETE FROM documents WHERE id = $1', [pathParams.id]);
         await auditLog(effectiveOrgId, userId, 'delete', 'documents', pathParams.id, { file_name: existing.file_name });
         return respond(200, { deleted: true });
       }
