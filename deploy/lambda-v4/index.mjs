@@ -5935,9 +5935,16 @@ export const handler = async (event) => {
       return respond(200, result);
     }
 
+    // Map document_type → doc_type for compatibility (frontend sends both, DB column is doc_type)
+    if (path.includes('/documents') && body && body.document_type && !body.doc_type) {
+      body.doc_type = body.document_type;
+    }
+
     if (path.includes('/documents') && !path.includes('/upload-url') && !path.includes('/textract') && !path.includes('/classify') && !path.includes('/extract-rates')) {
       if (method === 'GET' && !pathParams.id) {
-        return respond(200, await list('documents', effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
+        let extra = 'ORDER BY created_at DESC';
+        if (qs.patient_id) extra = `AND patient_id = '${qs.patient_id.replace(/'/g, "''")}' ` + extra;
+        return respond(200, await list('documents', effectiveOrgId, clientId, extra));
       }
       // ── Document download — presigned GET URL ─────────────────────────────
       if (method === 'GET' && pathParams.id && path.includes('/download')) {
@@ -5946,15 +5953,19 @@ export const handler = async (event) => {
         if (!doc.s3_key) return respond(400, { error: 'No file attached to this document' });
         if (!/^[\w/.\-]+$/.test(doc.s3_key)) return respond(400, { error: 'Invalid file key' });
         const safeFileName = (doc.file_name || 'document').replace(/["\\r\\n]/g, '');
+        const mode = qs.mode || 'attachment';
+        const disposition = mode === 'inline' ? `inline; filename="${safeFileName}"` : `attachment; filename="${safeFileName}"`;
+        const contentType = doc.content_type || 'application/octet-stream';
         if (s3Client && getSignedUrl && GetObjectCommand) {
           const cmd = new GetObjectCommand({
             Bucket: S3_BUCKET,
             Key: doc.s3_key,
-            ResponseContentDisposition: `attachment; filename="${safeFileName}"`,
+            ResponseContentDisposition: disposition,
+            ResponseContentType: contentType,
           });
           const url = await getSignedUrl(s3Client, cmd, { expiresIn: 300 });
           await auditLog(effectiveOrgId, userId, 'download', 'documents', doc.id, { file_name: safeFileName });
-          return respond(200, { download_url: url, file_name: safeFileName, expires_in: 300 });
+          return respond(200, { download_url: url, file_name: safeFileName, content_type: contentType, expires_in: 300 });
         }
         return respond(200, { download_url: `https://${S3_BUCKET}.s3.amazonaws.com/${doc.s3_key}`, file_name: safeFileName, expires_in: 300 });
       }
@@ -5967,6 +5978,19 @@ export const handler = async (event) => {
         const doc = await create('documents', body, effectiveOrgId);
         await auditLog(effectiveOrgId, userId, 'upload', 'documents', doc.id, { file_name: body.file_name });
         return respond(201, doc);
+      }
+      if ((method === 'PUT' || method === 'PATCH') && pathParams.id) {
+        const existing = await getById('documents', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
+        const updated = await update('documents', pathParams.id, body, effectiveOrgId);
+        return respond(200, updated);
+      }
+      if (method === 'DELETE' && pathParams.id) {
+        const existing = await getById('documents', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
+        await pool.query('DELETE FROM documents WHERE id = $1', [pathParams.id]);
+        await auditLog(effectiveOrgId, userId, 'delete', 'documents', pathParams.id, { file_name: existing.file_name });
+        return respond(200, { deleted: true });
       }
     }
 

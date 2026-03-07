@@ -11,17 +11,6 @@ import { api } from '@/lib/api-client'
 import { useApp } from '@/lib/context'
 import { UAE_CLIENT_NAMES, US_CLIENT_NAMES } from '@/lib/utils/region'
 
-const initialTasks = [
-  { id: 'TSK-001', type: 'Missing Docs', entity: 'John Smith — visit Feb 25', client: 'Irvine Family Practice', priority: 'medium' as const, status: 'open' as const, assigned: 'Sarah K.', due: '2026-03-03', sla: 'green' },
-  { id: 'TSK-002', type: 'Denial Review', entity: 'CLM-4504 — Sarah Johnson', client: 'Irvine Family Practice', priority: 'high' as const, status: 'in_progress' as const, assigned: 'Mike R.', due: '2026-03-04', sla: 'green' },
-  { id: 'TSK-003', type: 'ERA Exception', entity: 'UHC ERA — unmatched $340', client: 'Patel Cardiology', priority: 'medium' as const, status: 'open' as const, assigned: 'Lisa T.', due: '2026-03-03', sla: 'yellow' },
-  { id: 'TSK-004', type: 'Coding Query', entity: 'Robert Chen — Dr. Patel', client: 'Patel Cardiology', priority: 'high' as const, status: 'blocked' as const, assigned: 'Amy C.', due: '2026-03-02', sla: 'red' },
-  { id: 'TSK-005', type: 'Credentialing', entity: 'Dr. Martinez — license renewal', client: 'Irvine Family Practice', priority: 'urgent' as const, status: 'in_progress' as const, assigned: 'Tom B.', due: '2026-03-10', sla: 'green' },
-  { id: 'TSK-006', type: 'A/R Follow-up', entity: 'Emily Williams — $890 balance', client: 'Patel Cardiology', priority: 'urgent' as const, status: 'open' as const, assigned: 'Mike R.', due: '2026-03-02', sla: 'red' },
-  { id: 'TSK-007', type: 'Appeal Deadline', entity: 'CLM-4511 — Khalid Ibrahim', client: 'Dubai Wellness Clinic', priority: 'high' as const, status: 'open' as const, assigned: 'Sarah K.', due: '2026-03-05', sla: 'yellow' },
-  { id: 'TSK-008', type: 'Patient Contact', entity: 'Robert Chen — payment plan follow-up', client: 'Patel Cardiology', priority: 'low' as const, status: 'completed' as const, assigned: 'Voice AI', due: '2026-03-01', sla: 'green' },
-]
-
 type Task = {
   id: string
   type: string
@@ -33,6 +22,8 @@ type Task = {
   due: string
   sla: string
 }
+
+const initialTasks: Task[] = []  // Tasks come from API — no hardcoded fallback
 
 function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t: Task) => void }) {
   const { toast } = useToast()

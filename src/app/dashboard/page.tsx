@@ -146,11 +146,7 @@ function ExecutiveDashboard() {
             {(recentClaimsActivity && recentClaimsActivity.length > 0
               ? recentClaimsActivity
               : [
-                  { t: 'Claim #CLM-4501 paid — $250', c: 'text-emerald-600 dark:text-emerald-400', ago: '2h', href: '/claims' },
-                  { t: 'ERA posted — 23 claims from UHC', c: 'text-brand', ago: '3h', href: '/payment-posting' },
-                  { t: 'Denial pattern alert: Aetna no-auth', c: 'text-amber-600 dark:text-amber-400', ago: '5h', href: '/denials' },
-                  { t: 'Voice AI completed 12 calls', c: 'text-brand', ago: '6h', href: '/voice-ai' },
-                  { t: 'New provider credentialing started', c: 'text-blue-600 dark:text-blue-400', ago: '8h', href: '/credentialing' },
+                  // Activity items will populate from real audit_log data
                 ]
             ).map((a, i) => (
               <button key={i} onClick={() => router.push(a.href)}

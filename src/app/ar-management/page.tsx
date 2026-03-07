@@ -886,7 +886,7 @@ export default function ARManagementPage() {
                   payer: cb.payer_name || cb.payer_id || 'N/A',
                   reason: cb.source || 'Overpayment',
                   apiId: cb.id,
-                })) : [{claim:'CLM-8821',patient:'R. Martinez',amt:'$1,240',payer:'Aetna',reason:'Duplicate payment',id:null,apiId:null},{claim:'CLM-9102',patient:'K. Williams',amt:'$890',payer:'BCBS',reason:'Overpayment',id:null,apiId:null},{claim:'CLM-7455',patient:'J. Park',amt:'$2,100',payer:'United',reason:'COB adjustment',id:null,apiId:null}]).map(cr=>(
+                })) : []).map(cr=>(
                   <CreditBalanceRow key={cr.claim} cr={cr} onResolved={() => refetchCredits()} />
                 ))}
               </tbody>
