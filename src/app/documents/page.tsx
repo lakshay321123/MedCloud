@@ -60,7 +60,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
     if (!doc.id || doc.id.startsWith('D-')) return
     let cancelled = false
     setPreviewLoading(true)
-    api.get<{ download_url: string }>(`/documents/${doc.id}/download`)
+    api.get<{ download_url: string }>(`/documents/${doc.id}/download`, { mode: 'inline' })
       .then(res => { if (!cancelled && res.download_url) setPreviewUrl(res.download_url) })
       .catch(() => {})
       .finally(() => { if (!cancelled) setPreviewLoading(false) })
