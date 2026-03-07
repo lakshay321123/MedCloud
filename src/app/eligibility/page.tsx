@@ -171,6 +171,7 @@ function SingleCheckTab() {
 
   async function handleVerify() {
     if (!patientId) { toast.warning('Select a patient first'); return }
+    if (!payerId) { toast.warning('Select a payer first'); return }
     setChecking(true); setResult(null)
     try {
       const res = await api.post<ApiEligibilityCheck>('/eligibility/check', {
@@ -232,7 +233,7 @@ function SingleCheckTab() {
               className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary" />
           </div>
           <div className="flex items-end">
-            <button onClick={handleVerify} disabled={checking || !patientId}
+            <button onClick={handleVerify} disabled={checking || !patientId || !payerId}
               className="w-full bg-brand text-white rounded-lg px-4 py-2 text-xs font-medium disabled:opacity-50 hover:bg-brand-deep transition-colors flex items-center justify-center gap-2">
               {checking ? <><RefreshCw size={12} className="animate-spin" /> Checking…</> : <><ShieldCheck size={14} /> Verify</>}
             </button>

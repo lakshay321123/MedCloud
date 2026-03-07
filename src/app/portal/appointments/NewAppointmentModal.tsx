@@ -76,6 +76,7 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
       appointment_time: apptTime,
       visit_type: visitType,
       provider_name: currentUser.role === 'provider' ? currentUser.name : undefined,
+      provider_id: currentUser.role === 'provider' ? currentUser.id : undefined,
       status: 'scheduled' as const,
       notes: notes || undefined,
     })
