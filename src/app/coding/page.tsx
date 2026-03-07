@@ -285,73 +285,41 @@ export default function CodingPage() {
   async function generateAICodes(soapAssessment: string, soapPlan: string, specialty: string) {
     if (!item) return
     setAiCoding(true)
-    const isUAE = UAE_ORG_IDS.includes(item.clientId)
-    const codeSystem = isUAE ? 'ICD-10-AM (Australian modification, used in UAE/DHA)' : 'ICD-10-CM and CPT'
     try {
-      // Sanitize all user-controlled input before prompt interpolation (prompt injection defence)
-      const safeAssessment = sanitizeForPrompt(soapAssessment, 600)
-      const safePlan       = sanitizeForPrompt(soapPlan, 400)
-      const safeSpecialty  = sanitizeForPrompt(specialty || item.providerSpecialty, 100)
-      const safePatient    = sanitizeForPrompt(item.patientName, 100)
+      // Primary: call Lambda /coding/:id/ai-suggest (persists to ai_coding_suggestions table)
+      const result = await api.post<{
+        suggested_cpt?: Array<{ code: string; description: string; confidence: number; modifier?: string; modifier_reason?: string; ncci_note?: string }>
+        suggested_icd?: Array<{ code: string; description: string; confidence: number; is_primary?: boolean; is_hcc?: boolean; specificity_note?: string }>
+        suggested_em?: string; em_confidence?: number; reasoning?: string
+        mock?: boolean; suggestion_id?: string; processing_ms?: number; confidence?: number
+        documentation_gaps?: string[]; audit_flags?: string[]; hcc_diagnoses?: string[]
+      }>(`/coding/${item.id}/ai-suggest`, {})
 
-      const prompt = [
-        `You are an expert medical coder. Generate diagnosis and procedure codes for the following clinical encounter.`,
-        `Code system: ${codeSystem}`,
-        `Patient: ${safePatient}`,
-        `Provider specialty: ${safeSpecialty || 'General Medicine'}`,
-        `Date of Service: ${item.dos}`,
-        ``,
-        `Assessment: ${safeAssessment}`,
-        `Plan: ${safePlan}`,
-        ``,
-        `Return ONLY valid JSON in this exact format, no markdown, no explanation:`,
-        `{`,
-        `  "icd": [{"code":"X00.0","desc":"Description","confidence":95,"reasoning":"Why this code"}],`,
-        `  "cpt": [{"code":"99213","desc":"Description","confidence":90,"modifiers":[],"reasoning":"Why this code"}]`,
-        `}`,
-        ``,
-        `Rules:`,
-        `- ICD: 2-5 codes max, most specific codes available, ordered by clinical relevance`,
-        `- CPT: 1-4 codes max, include E&M code + any procedures`,
-        `- confidence: 0-100 integer`,
-        `- reasoning: 1 sentence explaining the code choice`,
-        `- Only include codes you are confident are correct for this encounter`,
-      ].join('\n')
-
-      const res = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'auto_code',
-          patient: safePatient,
-          specialty: safeSpecialty,
-          dos: item.dos,
-          assessment: safeAssessment,
-          plan: safePlan,
-          codeSystem,
-        }),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
-
-      // Strip any markdown fences
-      const cleaned = (data.text || '').replace(/```json|```/g, '').trim()
-      const parsed = JSON.parse(cleaned)
-      const icd = (parsed.icd || []).map((c: { code: string; desc: string; confidence: number; reasoning?: string }) => ({
-        code: c.code, desc: c.desc, confidence: c.confidence, reasoning: c.reasoning,
+      // Map Lambda response format → frontend format
+      const icd: AISuggestedCode[] = (result.suggested_icd || []).map(c => ({
+        code: c.code, desc: c.description, confidence: c.confidence,
+        reasoning: c.specificity_note || (c.is_hcc ? 'HCC diagnosis' : undefined),
       }))
-      const cpt = (parsed.cpt || []).map((c: { code: string; desc: string; confidence: number; modifiers?: string[]; reasoning?: string }) => ({
-        code: c.code, desc: c.desc, confidence: c.confidence, modifiers: c.modifiers || [], reasoning: c.reasoning,
+      const cpt: AISuggestedCode[] = (result.suggested_cpt || []).map(c => ({
+        code: c.code, desc: c.description, confidence: c.confidence,
+        modifiers: c.modifier ? [c.modifier] : [],
+        reasoning: c.modifier_reason || c.ncci_note || undefined,
       }))
+
       setAiCodeCache(prev => ({ ...prev, [item.id]: { icd, cpt } }))
       // Auto-select all generated codes
       const newSelected: Record<string, boolean> = {}
-      icd.forEach((c: { code: string }) => { newSelected[`icd-${c.code}`] = true })
-      cpt.forEach((c: { code: string }) => { newSelected[`cpt-${c.code}`] = true })
+      icd.forEach(c => { newSelected[`icd-${c.code}`] = true })
+      cpt.forEach(c => { newSelected[`cpt-${c.code}`] = true })
       setSelectedCodes(prev => ({ ...prev, ...newSelected }))
       setShowQuickSoap(false)
-      toast.success(`AI generated ${icd.length} diagnosis + ${cpt.length} procedure codes`)
+
+      const mockLabel = result.mock ? ' (mock — Bedrock unavailable)' : ''
+      if (result.documentation_gaps?.length) {
+        toast.warning(`AI generated ${icd.length} ICD + ${cpt.length} CPT codes${mockLabel}. ${result.documentation_gaps.length} documentation gap(s) flagged.`)
+      } else {
+        toast.success(`AI generated ${icd.length} ICD + ${cpt.length} CPT codes${mockLabel}`)
+      }
     } catch (e) {
       console.error('AI coding error:', e)
       setAiUnavailable(true)
@@ -360,6 +328,9 @@ export default function CodingPage() {
       setAiCoding(false)
     }
   }
+
+  // Auto-trigger moved below 'item' definition
+  const autoTriggeredRef = React.useRef<Set<string>>(new Set())
 
   async function generateCDIQuery() {
     if (!item) return
@@ -416,6 +387,17 @@ export default function CodingPage() {
 
   const item = queue.find(q => q.id === selected)
   const cachedCodes = item ? aiCodeCache[item.id] : null
+
+  // Auto-trigger AI coding when selecting an item with SOAP content
+  React.useEffect(() => {
+    if (!item || !item.id) return
+    if (aiCodeCache[item.id]) return
+    if (autoTriggeredRef.current.has(item.id)) return
+    if (!item.visitNote?.assessment) return
+    if (aiCoding) return
+    autoTriggeredRef.current.add(item.id)
+    generateAICodes(item.visitNote.assessment, item.visitNote.plan, item.providerSpecialty || '')
+  }, [item?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const activeCodes = cachedCodes ?? { icd: item?.aiSuggestedIcd ?? [], cpt: item?.aiSuggestedCpt ?? [] }
   const hasRealCodes = activeCodes.icd.length > 0 || activeCodes.cpt.length > 0
 
@@ -926,7 +908,7 @@ export default function CodingPage() {
 
                 {!aiUnavailable && (
                   <>
-                    {/* ── AI Generate panel (shown when no codes yet) ── */}
+                    {/* ── AI Generate panel ── */}
                     {!hasRealCodes && !aiCoding && (
                       <div className="mb-4 rounded-xl border border-purple-500/30 bg-purple-500/5 p-4">
                         <div className="flex items-center gap-2 mb-2">
@@ -937,7 +919,7 @@ export default function CodingPage() {
                           <>
                             <p className="text-[12px] text-content-secondary mb-3">
                               {item?.visitNote?.assessment
-                                ? 'Visit note available — generate ICD-10 + CPT codes instantly.'
+                                ? 'Visit note available — auto-coding will run momentarily.'
                                 : 'No visit note attached. Enter assessment & plan to generate codes.'}
                             </p>
                             {item?.visitNote?.assessment ? (
@@ -1011,7 +993,13 @@ export default function CodingPage() {
                     {/* Regenerate button when codes exist */}
                     {hasRealCodes && !aiCoding && (
                       <button
-                        onClick={() => { setAiCodeCache(p => { const n = {...p}; if (item) delete n[item.id]; return n }); setShowQuickSoap(!item?.visitNote?.assessment) }}
+                        onClick={() => {
+                          if (item) {
+                            setAiCodeCache(p => { const n = {...p}; delete n[item.id]; return n })
+                            autoTriggeredRef.current.delete(item.id)
+                            generateAICodes(item.visitNote.assessment, item.visitNote.plan, item.providerSpecialty || '')
+                          }
+                        }}
                         className="text-[10px] text-purple-500 hover:text-purple-600 flex items-center gap-1 mb-2 ml-auto">
                         ✦ Regenerate codes
                       </button>
