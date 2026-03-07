@@ -307,19 +307,19 @@ function InlineDocPreview({ patientId, label }: { patientId?: string; label?: st
 
   return (
     <div className={fullscreen ? 'fixed inset-0 z-50 bg-surface-default p-4 flex flex-col' : 'flex flex-col h-full'}>
-      <div className="flex items-center justify-between mb-2">
-        {label && <p className="text-[10px] uppercase tracking-widest text-brand font-bold">{label}</p>}
-        <div className="flex items-center gap-2 ml-auto">
+      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+        {label && <p className="text-[10px] uppercase tracking-widest text-brand font-bold shrink-0">{label}</p>}
+        <div className="flex items-center gap-2 ml-auto shrink-0">
           {docs.length > 1 && (
             <select value={selectedDocId || ''} onChange={e => setSelectedDocId(e.target.value)}
-              className="bg-surface-elevated border border-separator rounded px-2 py-1 text-[11px] text-content-primary">
-              {docs.map(d => <option key={d.id} value={d.id}>{d.file_name} ({d.doc_type || 'Other'})</option>)}
+              className="bg-surface-elevated border border-separator rounded px-2 py-1 text-[11px] text-content-primary max-w-[180px]">
+              {docs.map(d => <option key={d.id} value={d.id}>{d.file_name}</option>)}
             </select>
           )}
-          {docs.length === 1 && <span className="text-[10px] text-content-tertiary">{docs[0].file_name}</span>}
+          {docs.length === 1 && <span className="text-[10px] text-content-tertiary truncate max-w-[140px]">{docs[0].file_name}</span>}
           <button onClick={() => setFullscreen(!fullscreen)}
-            className="text-[10px] px-2 py-1 rounded border border-separator text-content-secondary hover:text-content-primary hover:border-brand/40 transition-colors">
-            {fullscreen ? '✕ Exit Fullscreen' : '⛶ Fullscreen'}
+            className="text-[10px] px-2 py-1 rounded border border-separator text-content-secondary hover:text-content-primary hover:border-brand/40 transition-colors whitespace-nowrap">
+            {fullscreen ? '✕ Exit' : '⛶ Fullscreen'}
           </button>
         </div>
       </div>

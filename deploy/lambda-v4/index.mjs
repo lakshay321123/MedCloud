@@ -1949,20 +1949,73 @@ Respond ONLY with valid JSON (no markdown, no backticks):
     }
   }
 
-  // Fallback mock if Bedrock unavailable or failed
+  // Fallback mock if Bedrock unavailable — keyword-based matching from clinical text
   if (!suggestion) {
+    const text = (clinicalText || '').toLowerCase();
+    const matchedIcd = [];
+    const matchedCpt = [{ code: '99214', description: 'Office visit, established, moderate', confidence: 85, modifier: '' }];
+    
+    // ICD keyword matching — check clinical text for common conditions
+    const icdMap = [
+      { keywords: ['knee pain', 'knee oa', 'osteoarthritis.*knee', 'right knee'], code: 'M17.11', desc: 'Primary osteoarthritis, right knee', confidence: 88 },
+      { keywords: ['left knee', 'osteoarthritis.*left'], code: 'M17.12', desc: 'Primary osteoarthritis, left knee', confidence: 88 },
+      { keywords: ['knee', 'pain.*knee'], code: 'M25.561', desc: 'Pain in right knee', confidence: 80 },
+      { keywords: ['low back pain', 'lbp', 'lumbar', 'back pain'], code: 'M54.5', desc: 'Low back pain', confidence: 90 },
+      { keywords: ['radiculopathy', 'sciatica', 'disc herniation'], code: 'M54.16', desc: 'Radiculopathy, lumbar region', confidence: 85 },
+      { keywords: ['diabetes', 'dm2', 'type 2', 'a1c', 'hyperglycemia'], code: 'E11.65', desc: 'Type 2 DM with hyperglycemia', confidence: 88 },
+      { keywords: ['hypertension', 'htn', 'high blood pressure', 'bp \\d+/\\d+'], code: 'I10', desc: 'Essential hypertension', confidence: 85 },
+      { keywords: ['upper respiratory', 'uri', 'cold', 'pharyngitis', 'sore throat'], code: 'J06.9', desc: 'Acute upper respiratory infection', confidence: 90 },
+      { keywords: ['cough'], code: 'R05.9', desc: 'Cough, unspecified', confidence: 82 },
+      { keywords: ['fever', 'febrile'], code: 'R50.9', desc: 'Fever, unspecified', confidence: 80 },
+      { keywords: ['headache', 'migraine', 'cephalgia'], code: 'G43.909', desc: 'Migraine, unspecified', confidence: 78 },
+      { keywords: ['anxiety', 'anxious', 'gad'], code: 'F41.1', desc: 'Generalized anxiety disorder', confidence: 82 },
+      { keywords: ['depression', 'depressed', 'mdd'], code: 'F32.1', desc: 'Major depressive disorder, moderate', confidence: 80 },
+      { keywords: ['asthma', 'wheezing', 'bronchospasm'], code: 'J45.20', desc: 'Mild intermittent asthma', confidence: 85 },
+      { keywords: ['copd', 'chronic obstructive'], code: 'J44.1', desc: 'COPD with acute exacerbation', confidence: 85 },
+      { keywords: ['uti', 'urinary tract', 'dysuria'], code: 'N39.0', desc: 'Urinary tract infection', confidence: 88 },
+      { keywords: ['pneumonia'], code: 'J18.9', desc: 'Pneumonia, unspecified', confidence: 82 },
+      { keywords: ['chest pain', 'angina'], code: 'R07.9', desc: 'Chest pain, unspecified', confidence: 80 },
+      { keywords: ['obesity', 'bmi.*3[5-9]', 'bmi.*4'], code: 'E66.01', desc: 'Morbid obesity', confidence: 78 },
+      { keywords: ['hyperlipidemia', 'cholesterol', 'lipid'], code: 'E78.5', desc: 'Hyperlipidemia, unspecified', confidence: 82 },
+      { keywords: ['hypothyroid', 'thyroid'], code: 'E03.9', desc: 'Hypothyroidism, unspecified', confidence: 80 },
+      { keywords: ['shoulder pain', 'rotator cuff'], code: 'M25.511', desc: 'Pain in right shoulder', confidence: 80 },
+      { keywords: ['hip pain', 'hip oa'], code: 'M16.11', desc: 'Primary osteoarthritis, right hip', confidence: 85 },
+      { keywords: ['abdominal pain', 'stomach pain', 'belly pain'], code: 'R10.9', desc: 'Unspecified abdominal pain', confidence: 78 },
+      { keywords: ['gerd', 'reflux', 'heartburn'], code: 'K21.0', desc: 'GERD with esophagitis', confidence: 82 },
+      { keywords: ['strep', 'streptococcal'], code: 'J02.0', desc: 'Streptococcal pharyngitis', confidence: 90 },
+    ];
+    
+    for (const entry of icdMap) {
+      for (const kw of entry.keywords) {
+        if (new RegExp(kw, 'i').test(text)) {
+          matchedIcd.push({ code: entry.code, description: entry.desc, confidence: entry.confidence, is_primary: matchedIcd.length === 0 });
+          break;
+        }
+      }
+      if (matchedIcd.length >= 4) break;
+    }
+    
+    // CPT keyword matching
+    if (text.includes('injection') || text.includes('inject')) matchedCpt.push({ code: '20610', description: 'Arthrocentesis/injection, major joint', confidence: 80, modifier: '' });
+    if (text.includes('x-ray') || text.includes('xray') || text.includes('radiograph')) matchedCpt.push({ code: '73562', description: 'X-ray knee, 3 views', confidence: 78, modifier: '' });
+    if (text.includes('mri')) matchedCpt.push({ code: '73721', description: 'MRI lower extremity w/o contrast', confidence: 75, modifier: '' });
+    if (text.includes('ekg') || text.includes('ecg') || text.includes('electrocardiogram')) matchedCpt.push({ code: '93000', description: 'Electrocardiogram, routine', confidence: 82, modifier: '' });
+    if (text.includes('lab') || text.includes('a1c') || text.includes('metabolic')) matchedCpt.push({ code: '80053', description: 'Comprehensive metabolic panel', confidence: 75, modifier: '' });
+    if (text.includes('rapid strep') || text.includes('strep test')) matchedCpt.push({ code: '87880', description: 'Rapid strep test', confidence: 88, modifier: '' });
+    if (text.includes('venipuncture') || text.includes('blood draw') || text.includes('blood work')) matchedCpt.push({ code: '36415', description: 'Venipuncture', confidence: 72, modifier: '' });
+    
+    // Default if nothing matched
+    if (matchedIcd.length === 0) {
+      matchedIcd.push({ code: 'R69', description: 'Illness, unspecified', confidence: 50, is_primary: true });
+    }
+    
     suggestion = {
-      suggested_cpt: [
-        { code: '99214', description: 'Office visit, established, moderate', confidence: 85, modifier: '' },
-        { code: '36415', description: 'Venipuncture', confidence: 72, modifier: '' },
-      ],
-      suggested_icd: [
-        { code: 'E11.9', description: 'Type 2 diabetes without complications', confidence: 88, is_primary: true },
-        { code: 'I10', description: 'Essential hypertension', confidence: 80, is_primary: false },
-      ],
+      suggested_cpt: matchedCpt,
+      suggested_icd: matchedIcd,
       suggested_em: '99214',
       em_confidence: 85,
-      reasoning: 'Mock suggestion — Bedrock unavailable. Based on typical primary care encounter.',
+      reasoning: `Keyword-based coding (Bedrock unavailable). Matched from: "${text.slice(0, 100)}..."`,
+      documentation_gaps: ['Full AI coding requires Bedrock — these are keyword-matched suggestions only'],
       mock: true,
     };
   }
