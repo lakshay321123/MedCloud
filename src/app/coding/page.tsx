@@ -264,6 +264,73 @@ function AddCodeRow({ type, onAdd }: { type: 'ICD' | 'CPT'; onAdd: (code: string
 }
 
 // ── Main Page Component ──────────────────────────────────────────────────────
+// Inline Document Preview — fetches presigned URL and renders PDF/image
+function InlineDocPreview({ patientId, label }: { patientId?: string; label?: string }) {
+  const [docs, setDocs] = React.useState<Array<{ id: string; file_name: string; doc_type: string }>>([])
+  const [selectedDocId, setSelectedDocId] = React.useState<string | null>(null)
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+
+  // Fetch patient's documents
+  React.useEffect(() => {
+    if (!patientId) { setLoading(false); return }
+    setLoading(true)
+    api.get<{ data: Array<{ id: string; file_name: string; doc_type: string; s3_key?: string }> }>(`/documents`, { patient_id: patientId })
+      .then(r => {
+        const list = r.data || []
+        setDocs(list)
+        if (list.length > 0) setSelectedDocId(list[0].id)
+        setLoading(false)
+      })
+      .catch(() => { setLoading(false); setError('Failed to load documents') })
+  }, [patientId])
+
+  // Fetch presigned URL for selected document
+  React.useEffect(() => {
+    if (!selectedDocId) return
+    setPreviewUrl(null)
+    api.get<{ download_url: string }>(`/documents/${selectedDocId}/download`, { mode: 'inline' } as any)
+      .then(r => { if (r.download_url) setPreviewUrl(r.download_url) })
+      .catch(() => setError('Failed to load preview'))
+  }, [selectedDocId])
+
+  if (!patientId) return <p className="text-[11px] text-content-tertiary text-center py-4">No patient linked</p>
+  if (loading) return <div className="flex items-center justify-center py-8"><div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" /></div>
+  if (docs.length === 0) return <p className="text-[11px] text-content-tertiary text-center py-4">No documents uploaded for this patient</p>
+
+  const selectedDoc = docs.find(d => d.id === selectedDocId)
+  const fileName = selectedDoc?.file_name || ''
+  const isPdf = fileName.toLowerCase().endsWith('.pdf')
+  const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName)
+
+  return (
+    <div className="flex flex-col h-full">
+      {label && <p className="text-[10px] uppercase tracking-widest text-brand font-bold mb-2">{label}</p>}
+      {docs.length > 1 && (
+        <select value={selectedDocId || ''} onChange={e => setSelectedDocId(e.target.value)}
+          className="mb-2 bg-surface-elevated border border-separator rounded px-2 py-1 text-[11px] text-content-primary">
+          {docs.map(d => <option key={d.id} value={d.id}>{d.file_name} ({d.doc_type || 'Other'})</option>)}
+        </select>
+      )}
+      {error && <p className="text-[11px] text-red-500 text-center py-2">{error}</p>}
+      {previewUrl ? (
+        isPdf ? (
+          <iframe src={previewUrl} className="flex-1 w-full rounded-lg border border-separator min-h-[300px]" title="Document Preview" />
+        ) : isImage ? (
+          <img src={previewUrl} alt={fileName} className="max-w-full rounded-lg border border-separator" />
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-brand underline">Open {fileName}</a>
+          </div>
+        )
+      ) : (
+        <div className="flex-1 flex items-center justify-center"><div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" /></div>
+      )}
+    </div>
+  )
+}
+
 // (e) Payer-specific coding rules engine panel
 function CodingRulesPanel() {
   const [rules, setRules] = React.useState<Array<{ id: string; rule_name: string; payer_name?: string; condition_field: string; condition_operator: string; condition_value: string; action_type: string; action_value: string; is_active: boolean }>>([])
@@ -1022,11 +1089,15 @@ export default function CodingPage() {
                             <div className="flex items-center gap-2 px-3 py-2 bg-surface-elevated border border-separator rounded-lg">
                               <FileText size={13} className="text-content-tertiary shrink-0" />
                               <span className="text-xs text-content-secondary flex-1">Source chart — {item.patientName}</span>
-                              <button onClick={() => router.push(`/documents?doc=${item.id}`)} className="text-xs text-brand underline shrink-0">
-                                View Original
+                              <button onClick={() => setDocOpen('note')} className="text-xs text-brand underline shrink-0">
+                                View Document ↓
                               </button>
                             </div>
                           )}
+                          {/* Inline document preview */}
+                          <div className="mt-3 h-[300px]">
+                            <InlineDocPreview patientId={item.patientId} />
+                          </div>
                           {(['subjective', 'objective', 'assessment', 'plan'] as const).map(section => (
                             <div key={section} className="pb-3 border-b border-separator last:border-0">
                               <p className="text-[10px] uppercase tracking-widest text-content-tertiary font-bold mb-1.5">{section}</p>
@@ -1044,8 +1115,8 @@ export default function CodingPage() {
                             <FileText size={28} className="mx-auto mb-2 text-content-tertiary opacity-40" />
                             <p className="text-sm font-medium text-content-primary mb-0.5">{item.patientName}</p>
                             <p className="text-xs text-content-secondary mb-3">Uploaded superbill</p>
-                            <button onClick={() => router.push('/documents')} className="text-xs text-brand underline">
-                              View PDF
+                            <button onClick={() => setDocOpen('split')} className="text-xs text-brand underline">
+                              View Inline ↓
                             </button>
                           </div>
                           {item.superbillCpt && item.superbillCpt.length > 0 ? (
@@ -1093,14 +1164,9 @@ export default function CodingPage() {
                               </div>
                             ))}
                           </div>
-                          {/* Right: Superbill */}
-                          <div className="overflow-y-auto pl-3 space-y-3">
-                            <p className="text-[10px] uppercase tracking-widest text-brand font-bold">Superbill</p>
-                            <div className="bg-surface-elevated border border-separator rounded-lg p-4 text-center">
-                              <FileText size={24} className="mx-auto mb-2 text-content-tertiary opacity-40" />
-                              <p className="text-xs text-content-secondary mb-2">Uploaded document</p>
-                              <button onClick={() => router.push('/documents')} className="text-xs text-brand underline">View PDF</button>
-                            </div>
+                          {/* Right: Document Preview */}
+                          <div className="overflow-y-auto pl-3 flex flex-col h-full">
+                            <InlineDocPreview patientId={item.patientId} label="Document Preview" />
                             {item.superbillCpt && item.superbillCpt.length > 0 ? (
                               <div className="space-y-1.5">
                                 <p className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold">Superbill Codes</p>
