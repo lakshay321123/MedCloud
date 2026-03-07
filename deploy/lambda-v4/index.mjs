@@ -5968,9 +5968,18 @@ export const handler = async (event) => {
 
     if (path.includes('/documents') && !path.includes('/upload-url') && !path.includes('/textract') && !path.includes('/classify') && !path.includes('/extract-rates')) {
       if (method === 'GET' && !pathParams.id) {
-        let extra = 'ORDER BY created_at DESC';
-        if (qs.patient_id) extra = `AND patient_id = '${qs.patient_id.replace(/'/g, "''")}' ` + extra;
-        return respond(200, await list('documents', effectiveOrgId, clientId, extra));
+        // Enriched document list — JOIN patients for name, filter by patient_id if requested
+        let q = `SELECT d.*, 
+          p.first_name || ' ' || p.last_name AS patient_name
+          FROM documents d
+          LEFT JOIN patients p ON d.patient_id = p.id
+          WHERE d.org_id = $1`;
+        const params = [effectiveOrgId];
+        if (clientId) { params.push(clientId); q += ` AND d.client_id = $${params.length}`; }
+        if (qs.patient_id) { params.push(qs.patient_id); q += ` AND d.patient_id = $${params.length}`; }
+        q += ' ORDER BY d.created_at DESC LIMIT 500';
+        const rows = (await orgQuery(effectiveOrgId, q, params)).rows;
+        return respond(200, { data: rows, meta: { total: rows.length } });
       }
       // ── Document download — presigned GET URL ─────────────────────────────
       if (method === 'GET' && pathParams.id && path.includes('/download')) {
