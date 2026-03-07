@@ -342,6 +342,14 @@ async function runSchemaMigration() {
   const colFixes = [
     "ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS soap_note_id UUID",
     "ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS notes TEXT",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'uploaded'",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS classification VARCHAR(100)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS ai_confidence NUMERIC(5,2)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS patient_name VARCHAR(200)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
+    "ALTER TABLE documents DROP CONSTRAINT IF EXISTS documents_doc_type_check",
+    "ALTER TABLE documents DROP CONSTRAINT IF EXISTS documents_status_check",
+    "ALTER TABLE documents ALTER COLUMN doc_type DROP NOT NULL",
     "ALTER TABLE coding_queue ALTER COLUMN patient_id DROP NOT NULL",
     "ALTER TABLE coding_queue ALTER COLUMN provider_id DROP NOT NULL",
     "ALTER TABLE coding_queue ALTER COLUMN encounter_id DROP NOT NULL",
@@ -349,10 +357,6 @@ async function runSchemaMigration() {
     "ALTER TABLE coding_queue ALTER COLUMN dos DROP NOT NULL",
     "ALTER TABLE coding_queue DROP CONSTRAINT IF EXISTS coding_queue_priority_check",
     "ALTER TABLE coding_queue DROP CONSTRAINT IF EXISTS coding_queue_status_check",
-    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'uploaded'",
-    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS classification VARCHAR(100)",
-    "ALTER TABLE documents DROP CONSTRAINT IF EXISTS documents_doc_type_check",
-    "ALTER TABLE documents ALTER COLUMN doc_type DROP NOT NULL",
     "ALTER TABLE soap_notes ALTER COLUMN patient_id DROP NOT NULL",
     "ALTER TABLE soap_notes ALTER COLUMN provider_id DROP NOT NULL",
     "ALTER TABLE soap_notes ALTER COLUMN encounter_id DROP NOT NULL",
@@ -5961,9 +5965,25 @@ export const handler = async (event) => {
       return respond(200, result);
     }
 
+    // Map document_type → doc_type for compatibility (frontend sends both, DB column is doc_type)
+    if (path.includes('/documents') && body && body.document_type && !body.doc_type) {
+      body.doc_type = body.document_type;
+    }
+
     if (path.includes('/documents') && !path.includes('/upload-url') && !path.includes('/textract') && !path.includes('/classify') && !path.includes('/extract-rates')) {
       if (method === 'GET' && !pathParams.id) {
-        return respond(200, await list('documents', effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
+        // Enriched document list — JOIN patients for name, filter by patient_id if requested
+        let q = `SELECT d.*, 
+          p.first_name || ' ' || p.last_name AS patient_name
+          FROM documents d
+          LEFT JOIN patients p ON d.patient_id = p.id
+          WHERE d.org_id = $1`;
+        const params = [effectiveOrgId];
+        if (clientId) { params.push(clientId); q += ` AND d.client_id = $${params.length}`; }
+        if (qs.patient_id) { params.push(qs.patient_id); q += ` AND d.patient_id = $${params.length}`; }
+        q += ' ORDER BY d.created_at DESC LIMIT 500';
+        const rows = (await orgQuery(effectiveOrgId, q, params)).rows;
+        return respond(200, { data: rows, meta: { total: rows.length } });
       }
       // ── Document download — presigned GET URL ─────────────────────────────
       if (method === 'GET' && pathParams.id && path.includes('/download')) {
@@ -5972,15 +5992,19 @@ export const handler = async (event) => {
         if (!doc.s3_key) return respond(400, { error: 'No file attached to this document' });
         if (!/^[\w/.\-]+$/.test(doc.s3_key)) return respond(400, { error: 'Invalid file key' });
         const safeFileName = (doc.file_name || 'document').replace(/["\\r\\n]/g, '');
+        const mode = qs.mode || 'attachment';
+        const disposition = mode === 'inline' ? `inline; filename="${safeFileName}"` : `attachment; filename="${safeFileName}"`;
+        const contentType = doc.content_type || 'application/octet-stream';
         if (s3Client && getSignedUrl && GetObjectCommand) {
           const cmd = new GetObjectCommand({
             Bucket: S3_BUCKET,
             Key: doc.s3_key,
-            ResponseContentDisposition: `attachment; filename="${safeFileName}"`,
+            ResponseContentDisposition: disposition,
+            ResponseContentType: contentType,
           });
           const url = await getSignedUrl(s3Client, cmd, { expiresIn: 300 });
           await auditLog(effectiveOrgId, userId, 'download', 'documents', doc.id, { file_name: safeFileName });
-          return respond(200, { download_url: url, file_name: safeFileName, expires_in: 300 });
+          return respond(200, { download_url: url, file_name: safeFileName, content_type: contentType, expires_in: 300 });
         }
         return respond(200, { download_url: `https://${S3_BUCKET}.s3.amazonaws.com/${doc.s3_key}`, file_name: safeFileName, expires_in: 300 });
       }
@@ -5993,6 +6017,27 @@ export const handler = async (event) => {
         const doc = await create('documents', body, effectiveOrgId);
         await auditLog(effectiveOrgId, userId, 'upload', 'documents', doc.id, { file_name: body.file_name });
         return respond(201, doc);
+      }
+      if ((method === 'PUT' || method === 'PATCH') && pathParams.id) {
+        const existing = await getById('documents', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
+        // Whitelist allowed fields — prevent mass assignment (s3_key, org_id manipulation)
+        const allowed = ['patient_id','status','doc_type','document_type','notes','client_id','patient_name'];
+        const safeBody = {};
+        for (const k of allowed) { if (body[k] !== undefined) safeBody[k] = body[k]; }
+        const updated = await update('documents', pathParams.id, safeBody, effectiveOrgId);
+        return respond(200, updated);
+      }
+      if (method === 'DELETE' && pathParams.id) {
+        const existing = await getById('documents', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
+        if (existing.s3_key && s3Client) {
+          try { const { DeleteObjectCommand } = await import('@aws-sdk/client-s3'); await s3Client.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: existing.s3_key })); }
+          catch (s3Err) { safeLog('error', 'S3 delete failed:', s3Err.message); }
+        }
+        await orgQuery(effectiveOrgId, 'DELETE FROM documents WHERE id = $1', [pathParams.id]);
+        await auditLog(effectiveOrgId, userId, 'delete', 'documents', pathParams.id, { file_name: existing.file_name });
+        return respond(200, { deleted: true });
       }
     }
 
