@@ -27,9 +27,9 @@ export async function POST(req: NextRequest) {
     
     // Extract ICD codes
     const icdSet = new Set<string>()
-    const icdRegex = /\b([A-TV-Z]\d{2,3}(?:\.\d{1,4})?)\b/g
+    const icdRegex = /\b([A-Z]\d{2,3}(?:\.\d{1,4})?)\b/g
     while ((match = icdRegex.exec(rawText)) !== null) {
-      if (/^[A-TV-Z]\d{2}/.test(match[1])) icdSet.add(match[1])
+      if (/^[A-Z]\d{2}/.test(match[1])) icdSet.add(match[1])
     }
     
     // Extract CPT codes (5-digit) + HCPCS J/G codes

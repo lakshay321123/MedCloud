@@ -2649,7 +2649,7 @@ async function triggerTextract(documentId, orgId, userId) {
     // Date of service
     const dosMatch = text.match(/(?:Date of Service|DOS|Service Date)[:\s]*(\d{1,2}\/\d{1,2}\/\d{4})/);
     // ICD codes
-    const icdCodes = [...text.matchAll(/\b([A-Z]\d{2,3}(?:\.\d{1,4})?)\b/g)].map(m => m[1]).filter(c => /^[A-TV-Z]\d{2}/.test(c));
+    const icdCodes = [...text.matchAll(/\b([A-Z]\d{2,3}(?:\.\d{1,4})?)\b/g)].map(m => m[1]).filter(c => /^[A-Z]\d{2}/.test(c));
     // CPT codes (5 digits starting with 9, 8, 7, 3, 2, 1, 0)
     const cptCodes = [...text.matchAll(/\b(\d{5})\b/g)].map(m => m[1]).filter(c => /^(99|9[0-8]|8[0-9]|7[0-9]|6[0-9]|3[0-9]|2[0-9]|1[0-9]|0[0-9])/.test(c));
     // Charges
