@@ -223,6 +223,7 @@ function AllDocsTab() {
     fileName: d.file_name || 'document',
     type: d.doc_type || d.document_type || 'other',
     patient: (d as any).patient_name || '—', client: (d as any).client_name || '—',
+    patientId: d.patient_id || null,
     clientId: d.client_id || '', uploadDate: d.created_at || '',
     uploadedBy: (d as any).uploaded_by_name || '—', uploadedAt: d.created_at || '',
     source: (d.source as DemoDocRecord['source']) || 'Manual Upload',
@@ -363,9 +364,10 @@ function UnlinkedQueueTab() {
   const apiDocs2: any[] = (Array.isArray(apiDocRaw2) ? apiDocRaw2 : (apiDocRaw2 as any)?.data || []).map((d: ApiDocument) => ({
     id: d.id, name: d.file_name || 'document',
     type: d.doc_type || d.document_type || 'other', patient: (d as any).patient_name || '—',
+    patientId: d.patient_id || null,
     client: (d as any).client_name || '—', status: d.status || 'uploaded',
   })) as any[]
-  const unlinked = apiDocs2.filter((d: any)=>d.status==='Unlinked')
+  const unlinked = apiDocs2.filter((d: any)=>!d.patientId)
   return (
     <div className="space-y-4">
       <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">

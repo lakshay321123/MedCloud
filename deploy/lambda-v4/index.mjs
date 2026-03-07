@@ -338,6 +338,32 @@ async function runSchemaMigration() {
   } catch (e) {
     safeLog('error', 'Schema migration error (non-fatal):', e.message);
   }
+  // Individual column fixes (each runs independently — one failure doesn't block others)
+  const colFixes = [
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'uploaded'",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS classification VARCHAR(100)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS ai_confidence NUMERIC(5,2)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS patient_name VARCHAR(200)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
+    "ALTER TABLE documents DROP CONSTRAINT IF EXISTS documents_doc_type_check",
+    "ALTER TABLE documents DROP CONSTRAINT IF EXISTS documents_status_check",
+    "ALTER TABLE documents ALTER COLUMN doc_type DROP NOT NULL",
+    "ALTER TABLE coding_queue ALTER COLUMN patient_id DROP NOT NULL",
+    "ALTER TABLE coding_queue ALTER COLUMN provider_id DROP NOT NULL",
+    "ALTER TABLE coding_queue ALTER COLUMN encounter_id DROP NOT NULL",
+    "ALTER TABLE coding_queue ALTER COLUMN source DROP NOT NULL",
+    "ALTER TABLE coding_queue ALTER COLUMN dos DROP NOT NULL",
+    "ALTER TABLE coding_queue DROP CONSTRAINT IF EXISTS coding_queue_priority_check",
+    "ALTER TABLE coding_queue DROP CONSTRAINT IF EXISTS coding_queue_status_check",
+    "ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS notes TEXT",
+    "ALTER TABLE soap_notes ALTER COLUMN patient_id DROP NOT NULL",
+    "ALTER TABLE soap_notes ALTER COLUMN provider_id DROP NOT NULL",
+    "ALTER TABLE soap_notes ALTER COLUMN encounter_id DROP NOT NULL",
+  ];
+  for (const sql of colFixes) {
+    try { await pool.query(sql); } catch (_) { /* column exists or constraint already dropped */ }
+  }
+  safeLog('info', `Column fixes applied (${colFixes.length} statements)`);
 }
 
 // ─── Seed Demo Data — fills empty tables once per cold start ────────────────
