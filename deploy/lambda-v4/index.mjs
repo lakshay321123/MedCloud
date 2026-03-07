@@ -2440,7 +2440,7 @@ Respond ONLY with valid JSON (no markdown, no backticks):
     processing_ms: processingMs,
   });
 
-  return { ...suggestion, suggestion_id: saved.id, processing_ms: processingMs, confidence: totalConf };
+  return { ...suggestion, mock: !!suggestion.mock, suggestion_id: saved.id, processing_ms: processingMs, confidence: totalConf };
 }
 
 // ─── OCR Pipeline v2 — 99% Accuracy Architecture ─────────────────────────────
