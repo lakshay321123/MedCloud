@@ -742,77 +742,108 @@ function UploadModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-surface rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold">Upload Documents</h3>
-          <button onClick={onClose}><X size={18} className="text-content-secondary" /></button>
-        </div>
-
-        {/* Document type chips */}
-        <div>
-          <p className="text-xs text-content-secondary mb-2">Select document type:</p>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { key: 'Superbill',      icon: '🧾' },
-              { key: 'Clinical Note',  icon: '📋' },
-              { key: 'Insurance Card', icon: '🏥' },
-              { key: 'EOB',            icon: '💵' },
-              { key: 'Denial Letter',  icon: '❌' },
-              { key: 'Referral',       icon: '📨' },
-              { key: 'License',        icon: '🪪' },
-              { key: 'Contract',       icon: '📄' },
-              { key: 'Credential',     icon: '🔖' },
-              { key: 'Other',          icon: '📁' },
-            ].map(dt => (
-              <button key={dt.key} onClick={() => setDocType(dt.key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all
-                  ${docType === dt.key
-                    ? 'bg-brand text-white border-brand'
-                    : 'bg-surface-elevated text-content-primary border-separator hover:border-brand/40 hover:bg-brand/5'
-                  }`}>
-                <span>{dt.icon}</span> {dt.key}
-              </button>
-            ))}
+    <>
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div className="pointer-events-auto w-full max-w-lg bg-surface-default border border-separator rounded-2xl shadow-2xl overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-separator">
+            <div className="flex items-center gap-2">
+              <Upload size={16} className="text-brand" />
+              <h3 className="text-base font-semibold text-content-primary">Upload Document</h3>
+            </div>
+            <button onClick={onClose} className="text-content-tertiary hover:text-content-primary transition-colors p-1 rounded-lg hover:bg-surface-elevated">
+              <X size={18} />
+            </button>
           </div>
-        </div>
 
-        {/* Drop zone */}
-        <div onDragOver={e => e.preventDefault()} onDrop={handleDrop}
-          className="border-2 border-dashed border-separator rounded-lg p-6 text-center hover:border-brand/40 transition-colors">
-          <Upload size={24} className="mx-auto text-content-tertiary mb-2" />
-          <p className="text-xs text-content-secondary mb-1">Drag files here or click to browse</p>
-          <input type="file" multiple onChange={handleFileSelect} className="hidden" id="doc-upload" />
-          <label htmlFor="doc-upload" className="text-xs text-brand cursor-pointer hover:underline">Browse files</label>
-        </div>
-
-        {/* File list */}
-        {files.length > 0 && (
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            {files.map((f, i) => (
-              <div key={i} className="flex items-center justify-between bg-surface-elevated rounded px-3 py-1.5">
-                <span className="text-xs font-mono truncate">{f.name}</span>
-                <button onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))}>
-                  <X size={12} className="text-content-tertiary hover:text-red-500" />
-                </button>
+          {/* Body */}
+          <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
+            {/* Document type chips */}
+            <div>
+              <p className="text-xs font-medium text-content-secondary mb-3">Document Type</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'Superbill',      icon: '🧾' },
+                  { key: 'Clinical Note',  icon: '📋' },
+                  { key: 'Insurance Card', icon: '🏥' },
+                  { key: 'EOB',            icon: '💵' },
+                  { key: 'Denial Letter',  icon: '❌' },
+                  { key: 'Referral',       icon: '📨' },
+                  { key: 'License',        icon: '🪪' },
+                  { key: 'Contract',       icon: '📄' },
+                  { key: 'Credential',     icon: '🔖' },
+                  { key: 'Other',          icon: '📁' },
+                ].map(dt => (
+                  <button key={dt.key} onClick={() => setDocType(dt.key)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all
+                      ${docType === dt.key
+                        ? 'bg-brand text-white border-brand shadow-sm'
+                        : 'bg-surface-elevated text-content-primary border-separator hover:border-brand/40 hover:bg-brand/5'
+                      }`}>
+                    <span>{dt.icon}</span> {dt.key}
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            </div>
 
-        {/* Progress */}
-        {uploading && (
-          <div className="w-full bg-surface-elevated rounded-full h-2">
-            <div className="bg-brand h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
-          </div>
-        )}
+            {/* Drop zone */}
+            <div onDragOver={e => e.preventDefault()} onDrop={handleDrop}
+              className="border-2 border-dashed border-separator rounded-xl py-10 px-6 text-center hover:border-brand/40 hover:bg-brand/5 transition-all cursor-pointer"
+              onClick={() => document.getElementById('doc-upload')?.click()}>
+              <div className="w-12 h-12 rounded-full bg-brand/10 flex items-center justify-center mx-auto mb-3">
+                <Upload size={20} className="text-brand" />
+              </div>
+              <p className="text-sm font-medium text-content-primary mb-1">Drag files here or click to browse</p>
+              <p className="text-xs text-content-tertiary">PDF, JPG, PNG, HEIC — Max 25MB each</p>
+              <input type="file" multiple onChange={handleFileSelect} className="hidden" id="doc-upload" />
+            </div>
 
-        <button onClick={handleUpload} disabled={uploading || files.length === 0}
-          className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep disabled:opacity-50 transition-colors">
-          {uploading ? `Uploading… ${progress}%` : `Upload ${files.length} file${files.length !== 1 ? 's' : ''}`}
-        </button>
+            {/* File list */}
+            {files.length > 0 && (
+              <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-medium text-content-secondary">{files.length} file{files.length !== 1 ? 's' : ''} selected</p>
+                  <button onClick={() => setFiles([])} className="text-[10px] text-red-500 hover:text-red-600">Clear all</button>
+                </div>
+                {files.map((f, i) => (
+                  <div key={i} className="flex items-center gap-3 bg-surface-elevated rounded-lg px-3 py-2">
+                    <FileText size={14} className="text-brand shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{f.name}</p>
+                      <p className="text-[10px] text-content-tertiary">{(f.size / 1024 / 1024).toFixed(1)} MB</p>
+                    </div>
+                    <button onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))}>
+                      <X size={14} className="text-content-tertiary hover:text-red-500 transition-colors" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Progress */}
+            {uploading && (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs text-content-secondary">Uploading…</span>
+                  <span className="text-xs font-mono text-brand">{progress}%</span>
+                </div>
+                <div className="w-full bg-surface-elevated rounded-full h-2">
+                  <div className="bg-brand h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-separator">
+            <button onClick={handleUpload} disabled={uploading || files.length === 0}
+              className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-brand-deep disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors">
+              {uploading ? `Uploading… ${progress}%` : <><Upload size={14} /> Upload {files.length} file{files.length !== 1 ? 's' : ''}</>}
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
