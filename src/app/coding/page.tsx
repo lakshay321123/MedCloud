@@ -272,6 +272,7 @@ function InlineDocPreview({ patientId, label }: { patientId?: string; label?: st
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [fullscreen, setFullscreen] = React.useState(false)
+  const iframeRef = React.useRef<HTMLIFrameElement>(null)
 
   // Fetch patient's documents
   React.useEffect(() => {
@@ -306,23 +307,45 @@ function InlineDocPreview({ patientId, label }: { patientId?: string; label?: st
   const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName)
 
   return (
-    <div className={fullscreen ? 'fixed inset-0 z-50 bg-surface-default p-4 flex flex-col' : 'flex flex-col h-full'}>
-      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-        {label && <p className="text-[10px] uppercase tracking-widest text-brand font-bold shrink-0">{label}</p>}
-        <div className="flex items-center gap-2 ml-auto shrink-0">
-          {docs.length > 1 && (
-            <select value={selectedDocId || ''} onChange={e => setSelectedDocId(e.target.value)}
-              className="bg-surface-elevated border border-separator rounded px-2 py-1 text-[11px] text-content-primary max-w-[180px]">
-              {docs.map(d => <option key={d.id} value={d.id}>{d.file_name}</option>)}
-            </select>
-          )}
-          {docs.length === 1 && <span className="text-[10px] text-content-tertiary truncate max-w-[140px]">{docs[0].file_name}</span>}
-          <button onClick={() => setFullscreen(!fullscreen)}
-            className="text-[10px] px-2 py-1 rounded border border-separator text-content-secondary hover:text-content-primary hover:border-brand/40 transition-colors whitespace-nowrap">
-            {fullscreen ? '✕ Exit' : '⛶ Fullscreen'}
-          </button>
+    <>
+      {/* Fullscreen overlay — separate from inline to prevent iframe remount */}
+      {fullscreen && previewUrl && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" onClick={e => { if (e.target === e.currentTarget) setFullscreen(false) }}>
+          <div className="flex items-center justify-between p-3 bg-surface-secondary border-b border-separator">
+            {label && <p className="text-xs font-bold text-brand uppercase tracking-wider">{label}</p>}
+            <span className="text-xs text-content-tertiary ml-2">{docs.find(d => d.id === selectedDocId)?.file_name}</span>
+            <button onClick={() => setFullscreen(false)}
+              className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors font-medium">
+              ✕ Exit Fullscreen
+            </button>
+          </div>
+          {isPdf ? (
+            <iframe src={previewUrl} className="flex-1 w-full" title="Document Fullscreen" />
+          ) : isImage ? (
+            <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
+              <img src={previewUrl} alt={fileName} className="max-w-full max-h-full object-contain" />
+            </div>
+          ) : null}
         </div>
-      </div>
+      )}
+      {/* Inline preview — always stable, never remounts */}
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+          {label && <p className="text-[10px] uppercase tracking-widest text-brand font-bold shrink-0">{label}</p>}
+          <div className="flex items-center gap-2 ml-auto shrink-0">
+            {docs.length > 1 && (
+              <select value={selectedDocId || ''} onChange={e => setSelectedDocId(e.target.value)}
+                className="bg-surface-elevated border border-separator rounded px-2 py-1 text-[11px] text-content-primary max-w-[180px]">
+                {docs.map(d => <option key={d.id} value={d.id}>{d.file_name}</option>)}
+              </select>
+            )}
+            {docs.length === 1 && <span className="text-[10px] text-content-tertiary truncate max-w-[140px]">{docs[0].file_name}</span>}
+            <button onClick={() => setFullscreen(true)}
+              className="text-[10px] px-2 py-1 rounded border border-separator text-content-secondary hover:text-content-primary hover:border-brand/40 transition-colors whitespace-nowrap">
+              ⛶ Fullscreen
+            </button>
+          </div>
+        </div>
       {error && <p className="text-[11px] text-red-500 text-center py-2">{error}</p>}
       {previewUrl ? (
         isPdf ? (
@@ -338,6 +361,7 @@ function InlineDocPreview({ patientId, label }: { patientId?: string; label?: st
         <div className="flex-1 flex items-center justify-center"><div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" /></div>
       )}
     </div>
+    </>
   )
 }
 
