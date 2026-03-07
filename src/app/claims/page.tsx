@@ -880,7 +880,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                       <button
                         onClick={async () => {
                           try {
-                            const res = await api.get(`/documents/${doc.id}/download?mode=inline`)
+                            const res = await api.get<{ download_url: string; file_name: string }>(`/documents/${doc.id}/download?mode=inline`)
                             if (res.download_url) window.open(res.download_url, '_blank')
                           } catch { toast.error('Could not open document') }
                         }}
