@@ -467,6 +467,17 @@ async function runSchemaMigration() {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_underpayments_org ON underpayments(org_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_underpayments_claim ON underpayments(claim_id)');
   } catch (e) { if (e.code !== '42P07') safeLog('warn', 'underpayments:', e.message); }
+  // Coding feedback table (AI accuracy improvement)
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS coding_feedback (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      org_id UUID NOT NULL, user_id UUID, coding_item_id UUID,
+      ai_suggestion_id UUID, original_codes JSONB, final_codes JSONB,
+      action VARCHAR(20) DEFAULT 'override',
+      reason TEXT, created_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_coding_feedback_org ON coding_feedback(org_id)');
+  } catch (e) { if (e.code !== '42P07') safeLog('warn', 'coding_feedback:', e.message); }
   // HIPAA: BAA tracking table
   try {
     await pool.query(`CREATE TABLE IF NOT EXISTS baa_tracking (
@@ -672,6 +683,218 @@ async function seedDemoData(orgId) {
 
 // Bedrock model — override via BEDROCK_MODEL env var. Verify model availability in your region.
 const BEDROCK_MODEL = process.env.BEDROCK_MODEL || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
+
+// ═══ VERCEL AI PROXY — calls Anthropic via Vercel when Bedrock unavailable ═══
+const VERCEL_AI_URL = process.env.VERCEL_AI_URL || 'https://med-cloud-cosentus.vercel.app/api/ai-internal';
+const INTERNAL_AI_KEY = process.env.INTERNAL_AI_KEY || 'mcloud-internal-2026';
+
+async function callAI(prompt, { max_tokens = 2000, system = 'You are an expert medical coding and billing AI assistant.', timeoutMs = 15000 } = {}) {
+  // Try Bedrock first
+  if (bedrockClient && InvokeModelCommand) {
+    try {
+      const bedrockBody = JSON.stringify({
+        anthropic_version: 'bedrock-2023-05-31',
+        max_tokens,
+        system,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      const result = await Promise.race([
+        bedrockClient.send(new InvokeModelCommand({ modelId: BEDROCK_MODEL, body: bedrockBody, contentType: 'application/json' })),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Bedrock timeout')), timeoutMs))
+      ]);
+      const parsed = JSON.parse(new TextDecoder().decode(result.body));
+      return parsed.content?.[0]?.text || '';
+    } catch (e) {
+      safeLog('warn', 'Bedrock failed, falling back to Vercel AI proxy:', e.message);
+    }
+  }
+
+  // Fallback: Vercel AI proxy
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const resp = await fetch(VERCEL_AI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-internal-key': INTERNAL_AI_KEY },
+      body: JSON.stringify({ prompt, max_tokens, system }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!resp.ok) throw new Error(`Vercel AI: ${resp.status}`);
+    const data = await resp.json();
+    return data.text || '';
+  } catch (e) {
+    safeLog('warn', 'Vercel AI proxy failed:', e.message);
+    return null; // null = use mock fallback
+  }
+}
+
+
+// ═══ FEW-SHOT CODING EXAMPLES — real-world encounters by specialty ═══
+const CODING_FEW_SHOTS = {
+  family_medicine: `Example 1:
+SOAP: 45yo male, URI symptoms x3 days. Sore throat, nasal congestion, low-grade fever. Exam: mild pharyngeal erythema, no exudate, lungs clear. Plan: supportive care, rest, fluids.
+Codes: ICD: J06.9 (Acute upper respiratory infection, unspecified) | CPT: 99213 (E/M established, low MDM)
+
+Example 2:
+SOAP: 62yo female, diabetes follow-up. A1C 7.8, up from 7.2. Complains of nocturia. Metformin 1000mg BID. Plan: add glipizide 5mg, recheck A1C in 3mo, foot exam done.
+Codes: ICD: E11.65 (Type 2 DM with hyperglycemia) | CPT: 99214 (E/M established, moderate MDM)
+
+Example 3:
+SOAP: 38yo female, annual wellness visit. No complaints. BP 118/76, BMI 24. All screenings up to date. Plan: continue current regimen, mammogram referral.
+Codes: ICD: Z00.00 (Encounter for general adult medical exam without abnormal findings) | CPT: 99395 (Preventive visit, established, 18-39)`,
+
+  cardiology: `Example 1:
+SOAP: 71yo male, CHF follow-up. NYHA Class II. SOB on exertion, improved with Lasix. BNP 340. Echo: EF 35%. Plan: continue Entresto, Lasix, restrict sodium.
+Codes: ICD: I50.22 (Chronic systolic heart failure) | CPT: 99214 (E/M established, moderate MDM)
+
+Example 2:
+SOAP: 58yo female, new onset palpitations. Holter showed paroxysmal AFib. No syncope. CHADS2-VASc 3. Plan: start Eliquis 5mg BID, rate control with metoprolol.
+Codes: ICD: I48.0 (Paroxysmal atrial fibrillation) | CPT: 99204 (E/M new, moderate MDM) + 93224 (Holter interpretation)`,
+
+  orthopedics: `Example 1:
+SOAP: 55yo male, right knee pain x6 months. Worsening with stairs. Exam: crepitus, mild effusion, reduced ROM. XR: medial joint space narrowing. Plan: PT, cortisone injection.
+Codes: ICD: M17.11 (Primary osteoarthritis, right knee) | CPT: 99213 (E/M) + 20610 (Arthrocentesis, major joint)
+
+Example 2:
+SOAP: 32yo female, acute low back pain after lifting. Radiculopathy L5 distribution. Positive SLR right. MRI: L4-5 disc herniation. Plan: NSAIDs, PT, ESI if no improvement.
+Codes: ICD: M51.16 (Intervertebral disc degeneration, lumbar) + M54.41 (Lumbago with sciatica, right side) | CPT: 99214 (E/M moderate MDM)`
+};
+
+
+// ═══ CMS HCC V28 Risk Adjustment Model — key HCC categories ═══
+const HCC_V28 = {
+  // Diabetes
+  'E08': { hcc: 35, desc: 'Diabetes with other DM complication', raf: 0.302 },
+  'E09': { hcc: 35, desc: 'Drug-induced diabetes', raf: 0.302 },
+  'E10.1': { hcc: 37, desc: 'Type 1 DM with ketoacidosis', raf: 0.302 },
+  'E10.2': { hcc: 18, desc: 'Type 1 DM with kidney complication', raf: 0.302 },
+  'E10.3': { hcc: 18, desc: 'Type 1 DM with ophthalmic complication', raf: 0.302 },
+  'E10.5': { hcc: 37, desc: 'Type 1 DM with circulatory complication', raf: 0.302 },
+  'E10.6': { hcc: 37, desc: 'Type 1 DM with other specified complication', raf: 0.302 },
+  'E10.9': { hcc: 37, desc: 'Type 1 DM without complication', raf: 0.302 },
+  'E11.0': { hcc: 37, desc: 'Type 2 DM with hyperosmolarity', raf: 0.302 },
+  'E11.1': { hcc: 37, desc: 'Type 2 DM with ketoacidosis', raf: 0.302 },
+  'E11.2': { hcc: 18, desc: 'Type 2 DM with kidney complication', raf: 0.302 },
+  'E11.3': { hcc: 18, desc: 'Type 2 DM with ophthalmic complication', raf: 0.302 },
+  'E11.4': { hcc: 18, desc: 'Type 2 DM with neurological complication', raf: 0.302 },
+  'E11.5': { hcc: 37, desc: 'Type 2 DM with circulatory complication', raf: 0.302 },
+  'E11.6': { hcc: 37, desc: 'Type 2 DM with other specified complication', raf: 0.302 },
+  'E11.65': { hcc: 37, desc: 'Type 2 DM with hyperglycemia', raf: 0.302 },
+  'E11.9': { hcc: 37, desc: 'Type 2 DM without complication', raf: 0.302 },
+  // Heart failure
+  'I50.1': { hcc: 85, desc: 'Left ventricular failure', raf: 0.368 },
+  'I50.2': { hcc: 85, desc: 'Systolic heart failure', raf: 0.368 },
+  'I50.3': { hcc: 85, desc: 'Diastolic heart failure', raf: 0.368 },
+  'I50.4': { hcc: 85, desc: 'Combined systolic/diastolic HF', raf: 0.368 },
+  'I50.9': { hcc: 85, desc: 'Heart failure, unspecified', raf: 0.368 },
+  // AFib
+  'I48.0': { hcc: 96, desc: 'Paroxysmal atrial fibrillation', raf: 0.273 },
+  'I48.1': { hcc: 96, desc: 'Persistent atrial fibrillation', raf: 0.273 },
+  'I48.2': { hcc: 96, desc: 'Chronic atrial fibrillation', raf: 0.273 },
+  'I48.91': { hcc: 96, desc: 'Unspecified atrial fibrillation', raf: 0.273 },
+  // COPD
+  'J44.0': { hcc: 111, desc: 'COPD with acute lower respiratory infection', raf: 0.335 },
+  'J44.1': { hcc: 111, desc: 'COPD with acute exacerbation', raf: 0.335 },
+  // CKD
+  'N18.3': { hcc: 138, desc: 'CKD stage 3', raf: 0.069 },
+  'N18.4': { hcc: 136, desc: 'CKD stage 4', raf: 0.289 },
+  'N18.5': { hcc: 136, desc: 'CKD stage 5', raf: 0.289 },
+  'N18.6': { hcc: 136, desc: 'ESRD', raf: 0.289 },
+  // Stroke
+  'I63': { hcc: 100, desc: 'Cerebral infarction', raf: 0.268 },
+  'I63.0': { hcc: 100, desc: 'Cerebral infarction due to thrombosis', raf: 0.268 },
+  'I63.3': { hcc: 100, desc: 'Cerebral infarction due to thrombosis of cerebral arteries', raf: 0.268 },
+  'I63.5': { hcc: 100, desc: 'Cerebral infarction due to unspecified occlusion', raf: 0.268 },
+  'I63.9': { hcc: 100, desc: 'Cerebral infarction, unspecified', raf: 0.268 },
+  // Depression
+  'F32.0': { hcc: 155, desc: 'Major depressive disorder, single, mild', raf: 0.309 },
+  'F32.1': { hcc: 155, desc: 'Major depressive disorder, single, moderate', raf: 0.309 },
+  'F32.2': { hcc: 155, desc: 'Major depressive disorder, single, severe', raf: 0.309 },
+  'F33.0': { hcc: 155, desc: 'MDD, recurrent, mild', raf: 0.309 },
+  'F33.1': { hcc: 155, desc: 'MDD, recurrent, moderate', raf: 0.309 },
+  'F33.2': { hcc: 155, desc: 'MDD, recurrent, severe', raf: 0.309 },
+  // Morbid obesity
+  'E66.01': { hcc: 48, desc: 'Morbid obesity due to excess calories', raf: 0.273 },
+  // Vascular disease
+  'I70.0': { hcc: 108, desc: 'Atherosclerosis of aorta', raf: 0.299 },
+  'I70.2': { hcc: 108, desc: 'Atherosclerosis of arteries of extremities', raf: 0.299 },
+  // Cancer
+  'C34': { hcc: 12, desc: 'Malignant neoplasm of bronchus and lung', raf: 0.146 },
+  'C50': { hcc: 12, desc: 'Malignant neoplasm of breast', raf: 0.146 },
+  'C61': { hcc: 12, desc: 'Malignant neoplasm of prostate', raf: 0.146 },
+  'C18': { hcc: 12, desc: 'Malignant neoplasm of colon', raf: 0.146 },
+  // Dementia
+  'F01': { hcc: 51, desc: 'Vascular dementia', raf: 0.368 },
+  'F02': { hcc: 51, desc: 'Dementia in other diseases', raf: 0.368 },
+  'F03': { hcc: 51, desc: 'Unspecified dementia', raf: 0.368 },
+  'G30': { hcc: 51, desc: "Alzheimer's disease", raf: 0.368 },
+  // Transplant status
+  'Z94.0': { hcc: 186, desc: 'Kidney transplant status', raf: 0.859 },
+  'Z94.1': { hcc: 186, desc: 'Heart transplant status', raf: 0.859 },
+  // Pressure ulcers
+  'L89.1': { hcc: 161, desc: 'Pressure ulcer stage 2', raf: 0.515 },
+  'L89.2': { hcc: 161, desc: 'Pressure ulcer stage 3', raf: 0.515 },
+  'L89.3': { hcc: 161, desc: 'Pressure ulcer stage 4', raf: 0.515 },
+  // Rheumatoid arthritis
+  'M05': { hcc: 40, desc: 'Rheumatoid arthritis with rheumatoid factor', raf: 0.421 },
+  'M06': { hcc: 40, desc: 'Other rheumatoid arthritis', raf: 0.421 },
+  // HIV
+  'B20': { hcc: 1, desc: 'HIV disease', raf: 0.288 },
+  // Hepatitis
+  'B18.1': { hcc: 29, desc: 'Chronic viral hepatitis B', raf: 0.146 },
+  'B18.2': { hcc: 29, desc: 'Chronic viral hepatitis C', raf: 0.146 },
+  // Substance use
+  'F10.2': { hcc: 55, desc: 'Alcohol dependence', raf: 0.329 },
+  'F11.2': { hcc: 55, desc: 'Opioid dependence', raf: 0.329 },
+  'F14.2': { hcc: 55, desc: 'Cocaine dependence', raf: 0.329 },
+  // Schizophrenia
+  'F20': { hcc: 57, desc: 'Schizophrenia', raf: 0.562 },
+  'F25': { hcc: 57, desc: 'Schizoaffective disorders', raf: 0.562 },
+  // Bipolar
+  'F31': { hcc: 59, desc: 'Bipolar disorder', raf: 0.309 },
+  // Seizure
+  'G40': { hcc: 79, desc: 'Epilepsy and recurrent seizures', raf: 0.142 },
+  // Paralysis
+  'G81': { hcc: 70, desc: 'Hemiplegia', raf: 0.581 },
+  'G82': { hcc: 70, desc: 'Paraplegia and quadriplegia', raf: 0.581 },
+};
+
+function lookupHCC(icdCode) {
+  if (!icdCode) return null;
+  const code = icdCode.replace(/\./g, '');
+  // Try exact match first, then progressively shorter prefixes
+  for (let len = icdCode.length; len >= 3; len--) {
+    const prefix = icdCode.substring(0, len);
+    if (HCC_V28[prefix]) return { ...HCC_V28[prefix], icd: icdCode };
+  }
+  // Try without dot
+  for (let len = code.length; len >= 3; len--) {
+    const prefix = code.substring(0, len);
+    const dotted = prefix.length > 3 ? prefix.substring(0,3) + '.' + prefix.substring(3) : prefix;
+    if (HCC_V28[dotted]) return { ...HCC_V28[dotted], icd: icdCode };
+  }
+  return null;
+}
+
+
+// ═══ CODING FEEDBACK LOOP — logs when coder overrides AI suggestion ═══
+async function logCodingFeedback(orgId, userId, codingItemId, aiSuggestionId, feedback) {
+  try {
+    await pool.query(
+      `INSERT INTO coding_feedback (id, org_id, user_id, coding_item_id, ai_suggestion_id,
+        original_codes, final_codes, action, reason, created_at)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+      [orgId, userId, codingItemId, aiSuggestionId,
+       JSON.stringify(feedback.original_codes || {}),
+       JSON.stringify(feedback.final_codes || {}),
+       feedback.action || 'override', // override | accept | reject
+       feedback.reason || null]
+    );
+  } catch (e) { safeLog('warn', 'Coding feedback log failed:', e.message); }
+}
+
+
 const BEDROCK_REGION = process.env.AWS_REGION || 'us-east-1';
 
 // ─── PHI Scrubber — strips PHI before any console.log/CloudWatch output ────────
@@ -1806,6 +2029,46 @@ async function scrubClaim(claimId, orgId, userId) {
   const newStatus = errors.length > 0 ? 'scrub_failed' : 'scrubbed';
 
   await update('claims', claimId, { status: newStatus });
+  // AI-powered scrub: send claim summary to LLM for additional checks
+  try {
+    const claimSummary = `Claim: ${claim.claim_number || claimId}
+Patient: ${patient?.first_name} ${patient?.last_name}, DOB: ${patient?.date_of_birth}
+Payer: ${payer?.name || 'Unknown'}
+DOS: ${claim.dos_from}
+CPT codes: ${lines.map(l => l.cpt_code).join(', ')}
+ICD codes: ${dxCodes.map(d => d.code).join(', ')}
+Total charges: $${claim.total_charges}
+POS: ${claim.pos || '11'}`;
+
+    const aiResult = await callAI(
+      `You are an expert medical claim scrubber. Review this claim for potential denial risks.
+
+${claimSummary}
+
+Check for:
+1. Medical necessity — do the ICD codes support the CPT codes?
+2. Modifier issues — any missing or incorrect modifiers?
+3. Payer-specific gotchas for ${payer?.name || 'commercial insurance'}
+4. LCD/NCD compliance risks
+
+Respond ONLY in JSON: {"ai_findings": [{"rule_code": "AI-xxx", "rule_name": "string", "severity": "warning|error", "message": "string"}]}
+Return empty array if no issues found.`,
+      { max_tokens: 500, timeoutMs: 10000 }
+    );
+
+    if (aiResult) {
+      try {
+        const parsed = JSON.parse(aiResult.replace(/\`\`\`json|\`\`\`/g, '').trim());
+        if (parsed.ai_findings?.length > 0) {
+          for (const finding of parsed.ai_findings) {
+            results.push({ rule_code: finding.rule_code, rule_name: `AI: ${finding.rule_name}`, severity: finding.severity || 'warning', passed: false, message: finding.message });
+          }
+          safeLog('info', `AI scrub found ${parsed.ai_findings.length} additional issue(s) for ${claim.claim_number}`);
+        }
+      } catch {}
+    }
+  } catch (e) { safeLog('warn', 'AI scrub enhancement failed:', e.message); }
+
   await auditLog(orgId, userId, 'scrub', 'claims', claimId, { errors: errors.length, warnings: warnings.length, total_rules: results.length });
 
   return { claim_id: claimId, status: newStatus, total_rules: results.length,
@@ -2032,29 +2295,32 @@ Respond ONLY with valid JSON (no markdown, no backticks):
   let suggestion;
   const startMs = Date.now();
 
-  if (bedrockClient && InvokeModelCommand) {
-    try {
-      const cmd = new InvokeModelCommand({
-        modelId: BEDROCK_MODEL,
-        contentType: 'application/json',
-        accept: 'application/json',
-        body: JSON.stringify({
-          anthropic_version: 'bedrock-2023-05-31',
-          max_tokens: 2048,
-          messages: [{ role: 'user', content: prompt }],
-        }),
-      });
-      // 10s timeout — if Bedrock doesn't respond, fall back to mock
-      const bedrockPromise = bedrockClient.send(cmd);
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Bedrock timeout (10s)')), 10000));
-      const response = await Promise.race([bedrockPromise, timeoutPromise]);
-      const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-      const aiText = responseBody.content?.[0]?.text || '{}';
-      suggestion = JSON.parse(aiText.replace(/```json|```/g, '').trim());
-    } catch (e) {
-      safeLog('warn', 'Bedrock unavailable, using mock:', e.message);
-      suggestion = null;
+  // Use callAI() — tries Bedrock first, falls back to Vercel AI proxy
+  try {
+    const aiText = await callAI(prompt, { max_tokens: 2048, timeoutMs: 15000 });
+    if (aiText) {
+      suggestion = JSON.parse(aiText.replace(/\`\`\`json|\`\`\`/g, '').trim());
     }
+  } catch (e) {
+    safeLog('warn', 'AI coding call failed, using smart mock:', e.message);
+    suggestion = null;
+  }
+
+  // Enrich AI results with HCC V28 risk adjustment data
+  if (suggestion?.suggested_icd) {
+    suggestion.suggested_icd = suggestion.suggested_icd.map(icd => {
+      const hcc = lookupHCC(icd.code);
+      if (hcc) {
+        icd.is_hcc = true;
+        icd.hcc_category = hcc.hcc;
+        icd.raf_score = hcc.raf;
+        icd.specificity_note = icd.specificity_note || `HCC ${hcc.hcc} — RAF ${hcc.raf}. ${hcc.desc}`;
+      }
+      return icd;
+    });
+    suggestion.hcc_diagnoses = suggestion.suggested_icd
+      .filter(i => i.is_hcc)
+      .map(i => `${i.code} (HCC ${i.hcc_category}, RAF ${i.raf_score})`);
   }
 
   // Fallback mock if Bedrock unavailable — keyword-based matching from clinical text
@@ -3278,6 +3544,31 @@ Provide SPECIFIC, ACTIONABLE guidance in JSON:
       const aiText = JSON.parse(new TextDecoder().decode(aiResp.body)).content?.[0]?.text || '{}';
       aiAnalysis = extractJSON(aiText);
     } catch (e) { safeLog('error', 'Denial prediction AI analysis error:', e.message); }
+  }
+
+  // AI-enhanced denial prediction
+  if (riskScore > 30) {
+    try {
+      const aiRisk = await callAI(
+        `You are a denial prediction specialist. This claim has a base risk score of ${riskScore}/100.
+Claim: ${claim.claim_number} | Payer: ${claim.payer_name || 'Unknown'}
+CPT: ${linesR.rows.map(l => l.cpt_code).join(', ')} | ICD: ${claim.primary_icd || 'N/A'}
+Risk factors found: ${risks.map(r => r.detail).join('; ')}
+
+Based on your knowledge of payer denial patterns, what is the TOP recommendation to reduce denial risk? Respond in JSON:
+{"adjusted_score": number, "top_recommendation": "string", "specific_action": "string"}`,
+        { max_tokens: 200, timeoutMs: 8000 }
+      );
+      if (aiRisk) {
+        try {
+          const parsed = JSON.parse(aiRisk.replace(/\`\`\`json|\`\`\`/g, '').trim());
+          if (parsed.top_recommendation) {
+            risks.push({ category: 'ai_recommendation', score: 0, detail: parsed.top_recommendation });
+          }
+          if (parsed.adjusted_score) riskScore = Math.min(100, Math.max(riskScore, parsed.adjusted_score));
+        } catch {}
+      }
+    } catch (e) { safeLog('warn', 'AI denial prediction enhancement failed:', e.message); }
   }
 
   await auditLog(orgId, userId, 'denial_prediction', 'claims', claimId, { risk_score: riskScore, risk_level: riskLevel });
@@ -9468,6 +9759,23 @@ export const handler = async (event) => {
         session_timeout_minutes: 15,
         retention_policy: { medical_records_years: 10, billing_records_years: 7, audit_log_years: 7 },
       });
+    }
+
+    // ════ Coding Feedback ═══════════════════════════════════════════════
+    if (path.includes('/coding-feedback') && method === 'POST') {
+      await logCodingFeedback(effectiveOrgId, userId, body.coding_item_id, body.ai_suggestion_id, {
+        original_codes: body.original_codes,
+        final_codes: body.final_codes,
+        action: body.action || 'override',
+        reason: body.reason,
+      });
+      return respond(201, { success: true });
+    }
+    if (path.includes('/coding-feedback') && method === 'GET') {
+      const r = await orgQuery(effectiveOrgId,
+        'SELECT * FROM coding_feedback WHERE org_id = $1 ORDER BY created_at DESC LIMIT 100',
+        [effectiveOrgId]);
+      return respond(200, { data: r.rows, meta: { total: r.rows.length } });
     }
 
     // ════ Underpayments ════════════════════════════════════════════════════
