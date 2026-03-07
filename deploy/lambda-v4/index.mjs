@@ -450,6 +450,8 @@ async function runSchemaMigration() {
       severity VARCHAR(20) DEFAULT 'warning', passed BOOLEAN DEFAULT true,
       message TEXT, scrubbed_by UUID, created_at TIMESTAMPTZ DEFAULT NOW()
     )`);
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_scrub_results_org ON scrub_results(org_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_scrub_results_claim ON scrub_results(claim_id)');
   } catch (e) { if (e.code !== '42P07') safeLog('warn', 'scrub_results:', e.message); }
   safeLog('info', `Column fixes applied (${colFixes.length} statements)`);
 }

@@ -290,7 +290,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
     if (tab === 'scrub' && claimApiId && scrubResults.length === 0) {
       api.get<{ data: Array<{ rule_code: string; rule_name: string; severity: string; passed: boolean; message: string }> }>(`/claims/${claimApiId}/scrub-results`)
         .then(r => { if (r.data?.length > 0) setScrubResults(r.data) })
-        .catch(() => {})
+        .catch((err: any) => { console.warn('Failed to load scrub results:', err) })
     }
   }, [tab, claimApiId]) // eslint-disable-line react-hooks/exhaustive-deps
 
