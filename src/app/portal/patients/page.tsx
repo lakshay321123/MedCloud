@@ -792,7 +792,7 @@ export default function PatientsPage() {
       <div className="card p-4 mt-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold">Patient Statements</h3>
-          <button onClick={async () => { try { await api.post('/reports/batch-statements', {}); toast.success('Batch statements queued — check Documents when ready') } catch { toast.success('Batch statements queued — check Documents when ready') } }} className="text-xs bg-brand/10 text-brand px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors">Generate Batch Statements</button>
+          {['admin', 'manager', 'biller', 'ar_team'].includes(currentUser.role) && <button onClick={async () => { try { await api.post('/reports/batch-statements', {}); toast.success('Batch statements queued — check Documents when ready') } catch { toast.error('Failed to generate statements — try again') } }} className="text-xs bg-brand/10 text-brand px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors">Generate Batch Statements</button>}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
           {[{label:'Outstanding Balances',value:`$${(patients.length * 127).toLocaleString()}`,color:'text-amber-500'},

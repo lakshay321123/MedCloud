@@ -392,7 +392,7 @@ function FaxCenterTab() {
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${statusStyle(f.status)}`}>{f.status}</span></td>
               <td className="px-4 py-3 text-xs text-brand">{f.document??'—'}</td>
               <td className="px-4 py-3 flex gap-1">
-                {f.document&&<button onClick={e=>{e.stopPropagation();window.open(f.document || '#', '_blank'); toast.info('Opening fax...')}} className="text-[10px] text-content-secondary hover:text-content-primary border border-separator px-2 py-1 rounded transition-colors">View</button>}
+                {f.document&&<button onClick={e=>{e.stopPropagation(); if (f.document?.startsWith('http')) { window.open(f.document, '_blank'); toast.info('Opening fax...') } else { toast.error('Invalid document link') }}} className="text-[10px] text-content-secondary hover:text-content-primary border border-separator px-2 py-1 rounded transition-colors">View</button>}
                 {f.direction==='Inbound'&&<button onClick={e=>{e.stopPropagation();toast.info('Open fax in preview drawer to link to a patient')}} className="text-[10px] text-brand hover:underline px-2 py-1">Link</button>}
               </td>
             </tr>
@@ -417,7 +417,7 @@ function FaxCenterTab() {
                   <div key={k}><span className="text-content-tertiary">{k}:</span><span className="ml-2">{v}</span></div>
                 ))}
               </div>
-              <button onClick={() => { if (selectedFax?.document) { window.open(selectedFax.document, '_blank') } else { toast.info('No file attached to this fax') } setSelectedFax(null) }}
+              <button onClick={() => { if (selectedFax?.document?.startsWith('http')) { window.open(selectedFax.document, '_blank') } else { toast.info('No file attached to this fax') } setSelectedFax(null) }}
                 className="w-full mt-4 bg-brand text-white rounded-lg py-2.5 text-sm font-medium">
                 Download Fax
               </button>
@@ -460,7 +460,7 @@ function FaxCenterTab() {
                 await api.post('/fax/send', { to: faxTo, from: faxFrom, subject: faxSubject })
                 toast.success('Fax queued for delivery')
               } catch {
-                toast.success('Fax queued — will be sent shortly')
+                toast.warning('Fax could not be sent — queued for retry')
               }
               setShowSendFax(false); setFaxTo(''); setFaxFrom(''); setFaxSubject('')
             }}
