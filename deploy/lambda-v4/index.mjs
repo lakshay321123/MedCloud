@@ -2051,7 +2051,7 @@ Return empty array if no issues found.`,
           }
           safeLog('info', `AI scrub found ${parsed.ai_findings.length} additional issue(s) for ${claim.claim_number}`);
         }
-      } catch {}
+      } catch (e) { safeLog('warn', 'AI scrub JSON parse failed:', e.message); }
     }
   } catch (e) { safeLog('warn', 'AI scrub enhancement failed:', e.message); }
 
@@ -2997,7 +2997,7 @@ async function triggerTextract(documentId, orgId, userId) {
     // CPT codes (5 digits starting with 9, 8, 7, 3, 2, 1, 0)
     const cptCodes = [...text.matchAll(/\b(\d{5})\b/g)].map(m => m[1]).filter(c => /^(99|9[0-8]|8[0-9]|7[0-9]|6[0-9]|3[0-9]|2[0-9]|1[0-9]|0[0-9])/.test(c));
     // Charges
-    const charges = [...text.matchAll(/$(\d+(?:\.\d{2})?)/g)].map(m => parseFloat(m[1]));
+
     
     mockFields = {
       patient_name:    { value: nameMatch ? nameMatch[1] : 'Unknown', confidence: nameMatch ? 0.85 : 0.30, source: 'mock_extraction' },
@@ -3552,7 +3552,7 @@ Based on your knowledge of payer denial patterns, what is the TOP recommendation
             risks.push({ category: 'ai_recommendation', score: 0, detail: parsed.top_recommendation });
           }
           if (parsed.adjusted_score) riskScore = Math.min(100, Math.max(riskScore, parsed.adjusted_score));
-        } catch {}
+        } catch (e) { safeLog('warn', 'AI denial prediction parse failed:', e.message); }
       }
     } catch (e) { safeLog('warn', 'AI denial prediction enhancement failed:', e.message); }
   }
