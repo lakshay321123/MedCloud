@@ -123,7 +123,13 @@ function ProviderView() {
         provider: a.provider_name || '',
         status: a.status || 'scheduled',
       }))
-    : []
+    : [
+        { id: 'demo-1', patientId: 'p-1', patientName: 'Robert Johnson', time: '9:00 AM', type: 'Follow-up', provider: 'Dr. Martinez', status: 'scheduled' },
+        { id: 'demo-2', patientId: 'p-2', patientName: 'Maria Garcia', time: '10:30 AM', type: 'New Patient', provider: 'Dr. Martinez', status: 'scheduled' },
+        { id: 'demo-3', patientId: 'p-3', patientName: 'James Wilson', time: '2:00 PM', type: 'Annual Exam', provider: 'Dr. Martinez', status: 'scheduled' },
+        { id: 'demo-4', patientId: 'p-4', patientName: 'Sara Johnson', time: '3:15 PM', type: 'Procedure', provider: 'Dr. Martinez', status: 'in_room' },
+        { id: 'demo-5', patientId: 'p-5', patientName: 'David Lee', time: '4:30 PM', type: 'Follow-up', provider: 'Dr. Martinez', status: 'scheduled' },
+      ]
 
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
   const [selectedVisit, setSelectedVisit] = useState<DemoVisit | null>(null)

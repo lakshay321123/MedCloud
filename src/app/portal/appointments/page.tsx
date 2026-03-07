@@ -234,7 +234,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
         <div className="p-4 border-t border-separator flex gap-2 shrink-0">
           {['booked','confirmed'].includes(appt.status) && (
             <button onClick={async () => { 
-              api.put(`/appointments/${appt.id}`, { status: 'checked_in' }).catch(()=>null)
+              api.put(`/appointments/${appt.id}`, { status: 'checked_in' }).catch(()=>toast.error('Failed to check in — try again'))
               toast.success(`${appt.patientName} checked in`)
               onClose() 
             }}
@@ -244,7 +244,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
           )}
           {['booked','confirmed'].includes(appt.status) && (
             <button onClick={async () => {
-              api.put(`/appointments/${appt.id}`, { status: 'no_show' }).catch(()=>null)
+              api.put(`/appointments/${appt.id}`, { status: 'no_show' }).catch(()=>toast.error('Failed to update — try again'))
               toast.warning(`${appt.patientName} marked no-show`)
               onClose()
             }}
@@ -331,13 +331,13 @@ export default function AppointmentsPage() {
   async function checkIn(apptId: string, patientName: string) {
     setStatusOverrides(prev => ({ ...prev, [apptId]: 'checked_in' }))
     toast.success(`${patientName} checked in`)
-    api.put(`/appointments/${apptId}`, { status: 'checked_in' }).catch(() => null)
+    api.put(`/appointments/${apptId}`, { status: 'checked_in' }).catch(() => toast.error('Check-in failed — try again'))
   }
 
   async function markNoShow(apptId: string, patientName: string) {
     setStatusOverrides(prev => ({ ...prev, [apptId]: 'no_show' }))
     toast.warning(`${patientName} marked no-show`)
-    api.put(`/appointments/${apptId}`, { status: 'no_show' }).catch(() => null)
+    api.put(`/appointments/${apptId}`, { status: 'no_show' }).catch(() => toast.error('Update failed — try again'))
   }
 
   return (

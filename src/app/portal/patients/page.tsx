@@ -56,6 +56,7 @@ function SectionHeader({ title, badge, open, onToggle }: { title: string; badge?
 function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: () => void }) {
   const { country, currentUser, selectedClient } = useApp()
   const { toast } = useToast()
+  const router = useRouter()
   const createPatient = useCreatePatient()
   const isUAE = country === 'uae'
   const [sections, setSections] = useState({ address: false, id: false, insurance: false, secondary: false, emergency: false, employment: false, medical: false })
@@ -302,7 +303,7 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
 
           {/* Scan ID + Buttons */}
           <div>
-            <button type="button" onClick={() => { toast.info('Go to Scan & Submit to capture ID'); setTimeout(() => { window.location.href = '/portal/scan-submit' }, 800) }} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2 mb-4">
+            <button type="button" onClick={() => { toast.info('Go to Scan & Submit to capture ID'); setTimeout(() => router.push('/portal/scan-submit'), 800) }} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2 mb-4">
               <Upload size={14} className="text-brand" />
               <span>📷 {isUAE ? 'Scan Emirates ID' : "Scan Driver's License"} to auto-fill demographics</span>
             </button>
@@ -791,7 +792,7 @@ export default function PatientsPage() {
       <div className="card p-4 mt-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold">Patient Statements</h3>
-          <button onClick={async () => { try { await api.post('/reports/batch-statements', {}); toast.success('Batch statements queued — check Documents when ready') } catch { toast.success('Batch statements queued — check Documents when ready') } }} className="text-xs bg-brand/10 text-brand px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors">Generate Batch Statements</button>
+          {['admin', 'manager', 'biller', 'ar_team'].includes(currentUser.role) && <button onClick={async () => { try { await api.post('/reports/batch-statements', {}); toast.success('Batch statements queued — check Documents when ready') } catch { toast.error('Failed to generate statements — try again') } }} className="text-xs bg-brand/10 text-brand px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors">Generate Batch Statements</button>}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
           {[{label:'Outstanding Balances',value:`$${(patients.length * 127).toLocaleString()}`,color:'text-amber-500'},

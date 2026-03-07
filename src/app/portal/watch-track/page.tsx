@@ -33,7 +33,7 @@ export default function WatchTrackPage() {
   const apiClaims = (apiResult?.data || []).map((c: any) => ({
     id: c.claim_number || c.id, patientName: c.patient_name || '', payer: c.payer_name || '',
     billed: Number(c.total_charges || 0), paid: Number(c.paid_amount || 0), status: c.status || '',
-    dos: c.dos_from ? new Date(c.dos_from).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—', age: c.dos_from ? Math.ceil((Date.now() - new Date(c.dos_from).getTime()) / 86400000) : 0,
+    dos: c.dos_from ? new Date(c.dos_from).toLocaleDateString(country === 'uae' ? 'en-AE' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—', age: c.dos_from ? Math.ceil((Date.now() - new Date(c.dos_from).getTime()) / 86400000) : 0,
     cptCodes: [], icdCodes: [], clientId: c.client_id || '',
   }))
 
@@ -93,12 +93,12 @@ export default function WatchTrackPage() {
                         <td className="px-4 py-3 text-xs font-mono text-content-secondary truncate max-w-[160px]">{d.fileName}</td>
                         <td className="px-4 py-3">
                           <span className="bg-brand/10 text-brand text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                            {d.docType === 'Clinical Note' ? '📋' : d.docType === 'Superbill' ? '🧾' : d.docType === 'Insurance Card' ? '🏥' : d.docType === 'Referral' ? '📨' : d.docType === 'License' ? '🪪' : '📁'} {d.docType}
+                            {({'Clinical Note':'📋','Superbill':'🧾','Insurance Card':'🏥','Referral':'📨','License':'🪪','EOB':'💵','Denial Letter':'❌','Contract':'📄','Credential':'🔖'} as Record<string,string>)[d.docType] || '📁'} {d.docType}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-xs">{d.patientName}</td>
                         <td className="px-4 py-3 text-xs text-content-secondary">
-                          {d.uploadedAt ? new Date(d.uploadedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                          {d.uploadedAt ? new Date(d.uploadedAt).toLocaleDateString(country === 'uae' ? 'en-AE' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
