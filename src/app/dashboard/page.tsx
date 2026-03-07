@@ -31,7 +31,11 @@ function formatApptTime(t?: string): string {
  */
 function formatApptDate(d?: string): string {
   if (!d) return ''
-  try { return new Date(`${d}T00:00:00`).toLocaleDateString(APP_LOCALE, { month: 'short', day: 'numeric', year: 'numeric' }) }
+  try {
+    // Handle both YYYY-MM-DD and ISO timestamps (2026-02-13T00:00:00.000Z)
+    const dateOnly = d.includes('T') ? d.split('T')[0] : d
+    return new Date(`${dateOnly}T00:00:00`).toLocaleDateString(APP_LOCALE, { month: 'short', day: 'numeric', year: 'numeric' })
+  }
   catch { return d }
 }
 

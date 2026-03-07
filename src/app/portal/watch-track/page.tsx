@@ -19,18 +19,18 @@ export default function WatchTrackPage() {
   const { data: apiResult } = useClaims({ limit: 200 })
   const { data: docsRaw } = useDocuments()
   const allDocs = (Array.isArray(docsRaw) ? docsRaw : (docsRaw as any)?.data || [])
-    .filter((d: any) => d.source === 'Portal Upload' || d.source === 'portal_upload')
+    .filter((d: any) => d.source === 'Portal Upload' || d.source === 'portal_upload' || d.source === 'Manual Upload')
     .map((d: any) => ({
       id: d.id,
       fileName: d.file_name || 'document',
-      docType: d.document_type || 'Other',
+      docType: d.doc_type || d.document_type || 'Other',
       patientId: d.patient_id || '',
       patientName: d.patient_name || '—',
       status: d.status || 'uploaded',
       uploadedAt: d.created_at || '',
       clientId: d.client_id || '',
     }))
-  const apiClaims = (apiResult?.data || []).map((c: any) => ({
+  const apiClaims = (Array.isArray(apiResult) ? apiResult : apiResult?.data || []).map((c: any) => ({
     id: c.claim_number || c.id, patientName: c.patient_name || '', payer: c.payer_name || '',
     billed: Number(c.total_charges || 0), paid: Number(c.paid_amount || 0), status: c.status || '',
     dos: c.dos_from ? new Date(c.dos_from).toLocaleDateString(country === 'uae' ? 'en-AE' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—', age: c.dos_from ? Math.ceil((Date.now() - new Date(c.dos_from).getTime()) / 86400000) : 0,

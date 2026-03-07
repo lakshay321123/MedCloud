@@ -186,7 +186,7 @@ function AllDocsTab() {
   const apiDocs: DemoDocRecord[] = (Array.isArray(apiDocRaw) ? apiDocRaw : (apiDocRaw as any)?.data || []).map((d: ApiDocument) => ({
     id: d.id, name: d.file_name || 'document',
     fileName: d.file_name || 'document',
-    type: d.document_type || 'other',
+    type: d.doc_type || d.document_type || 'other',
     patient: (d as any).patient_name || '—', client: (d as any).client_name || '—',
     clientId: d.client_id || '', uploadDate: d.created_at || '',
     uploadedBy: (d as any).uploaded_by_name || '—', uploadedAt: d.created_at || '',
@@ -294,7 +294,7 @@ function UnlinkedQueueTab() {
   const { data: apiDocRaw2 } = useDocuments()
   const apiDocs2: any[] = (Array.isArray(apiDocRaw2) ? apiDocRaw2 : (apiDocRaw2 as any)?.data || []).map((d: ApiDocument) => ({
     id: d.id, name: d.file_name || 'document',
-    type: d.document_type || 'other', patient: (d as any).patient_name || '—',
+    type: d.doc_type || d.document_type || 'other', patient: (d as any).patient_name || '—',
     client: (d as any).client_name || '—', status: d.status || 'uploaded',
   })) as any[]
   const unlinked = apiDocs2.filter((d: any)=>d.status==='Unlinked')
