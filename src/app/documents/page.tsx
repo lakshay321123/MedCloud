@@ -234,7 +234,12 @@ function AllDocsTab() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string[]>([])
   const [statusFilter, setStatusFilter] = useState('')
+  const { toast } = useToast()
   const [selectedDoc, setSelectedDoc] = useState<DemoDocRecord | null>(null)
+  const [linkingDocId, setLinkingDocId] = useState<string | null>(null)
+  const [linkSearch, setLinkSearch] = useState('')
+  const { data: linkPtRaw } = usePatients({ limit: 200 })
+  const linkPatients = (Array.isArray(linkPtRaw) ? linkPtRaw : (linkPtRaw as any)?.data || []).map((p: any) => ({ id: p.id, name: `${p.first_name || ''} ${p.last_name || ''}`.trim() }))
 
   const types = ['Superbill','Clinical Note','Insurance Card','EOB','Denial Letter','Contract','Credential','License','Referral','Fax']
   const toggleType = (t: string) => setTypeFilter(p => p.includes(t) ? p.filter(x=>x!==t) : [...p,t])
@@ -303,9 +308,37 @@ function AllDocsTab() {
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${sourceBadge(d.source)}`}>{d.source}</span></td>
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusBadge(d.status)}`}>{d.status}</span></td>
               <td className="px-4 py-3">
-                <button onClick={e=>{e.stopPropagation();setSelectedDoc(d)}} className="p-1.5 rounded hover:bg-surface-elevated text-content-secondary hover:text-content-primary transition-colors">
-                  <Eye size={12}/>
-                </button>
+                <div className="flex items-center gap-1">
+                  {!d.patientId && (
+                    <button onClick={e=>{e.stopPropagation(); setLinkingDocId(d.id === linkingDocId ? null : d.id)}}
+                      className="text-[10px] text-brand hover:underline px-1.5 py-1">Link</button>
+                  )}
+                  {d.patientId && <span className="text-[10px] text-emerald-500 px-1.5">✓</span>}
+                  <button onClick={e=>{e.stopPropagation();setSelectedDoc(d)}} className="p-1.5 rounded hover:bg-surface-elevated text-content-secondary hover:text-content-primary transition-colors">
+                    <Eye size={12}/>
+                  </button>
+                </div>
+                {linkingDocId === d.id && (
+                  <div className="absolute right-4 mt-1 z-30 w-64 bg-surface-default border border-separator rounded-lg shadow-xl p-2" onClick={e=>e.stopPropagation()}>
+                    <input autoFocus value={linkSearch} onChange={e=>setLinkSearch(e.target.value)} placeholder="Search patient..."
+                      className="w-full bg-surface-elevated border border-separator rounded px-2 py-1.5 text-xs mb-1 focus:outline-none focus:border-brand/40" />
+                    <div className="max-h-32 overflow-y-auto">
+                      {linkPatients.filter((p: {id:string;name:string}) => !linkSearch || p.name.toLowerCase().includes(linkSearch.toLowerCase())).slice(0,5).map((p: {id:string;name:string}) => (
+                        <button key={p.id} onClick={async () => {
+                          try {
+                            await api.patch('/documents/' + d.id, { patient_id: p.id, status: 'linked' })
+                            toast.success('Linked to ' + p.name)
+                            setLinkingDocId(null)
+                            setLinkSearch('')
+                          } catch(err) {
+                            toast.error('Link failed: ' + (err instanceof Error ? err.message : 'Unknown error'))
+                          }
+                        }} className="w-full text-left px-2 py-1.5 text-xs hover:bg-brand/10 hover:text-brand rounded transition-colors">{p.name}</button>
+                      ))}
+                      {linkPatients.length === 0 && <p className="text-[10px] text-content-tertiary text-center py-2">No patients found</p>}
+                    </div>
+                  </div>
+                )}
               </td>
             </tr>
           ))}</tbody>
