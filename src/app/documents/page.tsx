@@ -6,7 +6,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
 import type { DemoDocRecord, DemoFax } from '@/lib/demo-data'
-import { useDocuments, usePatients, useTriggerTextract, useClassifyDocument, useRequestUploadUrl, useCreateDocument, useTextractResults, useCreateCoding } from '@/lib/hooks'
+import { useDocuments, usePatients, useRequestUploadUrl, useCreateDocument, useCreateCoding } from '@/lib/hooks'
 import type { ApiDocument } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
@@ -492,35 +492,27 @@ function AIProcessingTab() {
     ? Math.round(textractDocs.reduce((s, d) => s + (d.ai_confidence || 0), 0) / textractDocs.length)
     : 0
 
-  const [triggerDocId, setTriggerDocId] = useState<string | null>(null)
-  const triggerTextract = useTriggerTextract(triggerDocId || '')
-  const [classifyDocId, setClassifyDocId] = useState<string | null>(null)
-  const classifyDoc = useClassifyDocument(classifyDocId || '')
+  const [processing, setProcessing] = useState<Record<string, string>>({})
 
-  useEffect(() => {
-    if (!triggerDocId) return
-    const run = async () => {
-      try {
-        await triggerTextract.mutate({} as Record<string, never>)
-        toast.success('Textract processing started')
-      } catch { toast.error('Failed to start Textract') }
-    }
-    run()
-  }, [triggerDocId, triggerTextract, toast])
+  async function handleClassify(docId: string) {
+    if (processing[docId]) return
+    setProcessing(p => ({ ...p, [docId]: 'classifying' }))
+    try {
+      const result = await api.post(`/documents/${docId}/classify`, {}) as Record<string, unknown>
+      toast.success(`Classified as: ${result?.classification || 'unknown'} (${result?.confidence || 0}% confidence)`)
+    } catch { toast.error('Failed to classify document') }
+    setProcessing(p => { const n = { ...p }; delete n[docId]; return n })
+  }
 
-  useEffect(() => {
-    if (!classifyDocId) return
-    const run = async () => {
-      try {
-        const result = await classifyDoc.mutate({} as Record<string, never>)
-        toast.success(`Classified as: ${result?.classification || 'unknown'} (${result?.confidence || 0}% confidence)`)
-      } catch { toast.error('Failed to classify document') }
-    }
-    run()
-  }, [classifyDocId, classifyDoc, toast])
-
-  function handleTrigger(docId: string) { setTriggerDocId(docId) }
-  function handleClassify(docId: string) { setClassifyDocId(docId) }
+  async function handleTrigger(docId: string) {
+    if (processing[docId]) return
+    setProcessing(p => ({ ...p, [docId]: 'textract' }))
+    try {
+      await api.post(`/documents/${docId}/textract`, {})
+      toast.success('Textract processing started')
+    } catch { toast.error('Failed to start Textract') }
+    setProcessing(p => { const n = { ...p }; delete n[docId]; return n })
+  }
 
   // Show docs that can be processed (have s3_key but no textract result yet)
   const unprocessed = allDocs.filter(d => d.s3_key && !(d as any).textract_status)
@@ -529,7 +521,7 @@ function AIProcessingTab() {
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="card p-4 text-center">
-          <p className="text-2xl font-bold text-brand">{processed || textractDocs.length}</p>
+          <p className="text-2xl font-bold text-brand">{processed}</p>
           <p className="text-[10px] text-content-tertiary mt-1">Documents Processed</p>
         </div>
         <div className="card p-4 text-center">
@@ -553,16 +545,16 @@ function AIProcessingTab() {
               <div key={d.id} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
                 <div>
                   <p className="text-xs font-mono">{d.file_name}</p>
-                  <p className="text-[10px] text-content-tertiary">{d.document_type} · {d.content_type}</p>
+                  <p className="text-[10px] text-content-tertiary">{d.doc_type || d.document_type || 'Other'} · {d.content_type}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleClassify(d.id)}
-                    className="text-[10px] bg-blue-500/10 text-blue-500 px-3 py-1.5 rounded-lg hover:bg-blue-500/20 transition-colors">
-                    AI Classify
+                  <button onClick={() => handleClassify(d.id)} disabled={!!processing[d.id]}
+                    className="text-[10px] bg-blue-500/10 text-blue-500 px-3 py-1.5 rounded-lg hover:bg-blue-500/20 transition-colors disabled:opacity-50">
+                    {processing[d.id] === 'classifying' ? 'Classifying…' : 'AI Classify'}
                   </button>
-                  <button onClick={() => handleTrigger(d.id)}
-                    className="text-[10px] bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-colors">
-                    Run Textract
+                  <button onClick={() => handleTrigger(d.id)} disabled={!!processing[d.id]}
+                    className="text-[10px] bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-colors disabled:opacity-50">
+                    {processing[d.id] === 'textract' ? 'Processing…' : 'Run Textract'}
                   </button>
                 </div>
               </div>
@@ -588,7 +580,7 @@ function AIProcessingTab() {
               {textractDocs.slice(0, 20).map(d => (
                 <tr key={d.id} className="border-b border-separator last:border-0">
                   <td className="py-2 px-3 font-mono">{d.file_name}</td>
-                  <td className="py-2 px-3"><span className="text-[10px] px-2 py-0.5 rounded bg-surface-elevated">{(d as any).classification || d.document_type || '—'}</span></td>
+                  <td className="py-2 px-3"><span className="text-[10px] px-2 py-0.5 rounded bg-surface-elevated">{(d as any).classification || d.doc_type || d.document_type || '—'}</span></td>
                   <td className="py-2 px-3">
                     <span className={`font-medium ${(d.ai_confidence||0)>=90?'text-emerald-500':(d.ai_confidence||0)>=80?'text-amber-500':'text-red-500'}`}>
                       {d.ai_confidence ? `${d.ai_confidence}%` : '—'}
