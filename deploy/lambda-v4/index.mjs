@@ -5768,7 +5768,7 @@ async function getMessages(orgId, userId, qs) {
       await create('messages', s, orgId).catch((err) => console.error('[seed-messages] Failed to seed message:', err));
     }
   }
-  let q = 'SELECT m.*, u.email as sender_email, u.role as sender_role_name FROM messages m LEFT JOIN users u ON m.sender_id = u.id WHERE m.org_id = $1';
+  let q = 'SELECT m.*, u.email as sender_email FROM messages m LEFT JOIN users u ON m.sender_id = u.id WHERE m.org_id = $1';
   const p = [orgId];
   if (qs.entity_type && qs.entity_id) {
     q += ` AND m.entity_type = $${p.length + 1} AND m.entity_id = $${p.length + 2}`;
@@ -5782,15 +5782,19 @@ async function getMessages(orgId, userId, qs) {
   if (qs.is_internal === 'false') { q += ' AND m.is_internal = false'; }
   q += ' ORDER BY m.created_at DESC';
   if (qs.limit) { q += ` LIMIT $${p.length + 1}`; p.push(qs.limit); }
-  const r = await pool.query(q, p);
-  // Count unread in DB for efficiency
-  const unreadP = [...p].slice(0, p.length - (qs.limit ? 1 : 0)); // exclude LIMIT param
-  const unreadQ = q.replace(/SELECT m\.\*, .*? FROM/, 'SELECT COUNT(*) FROM').replace(/ORDER BY.*$/, '') + (userId ? ` AND NOT (m.read_by @> ARRAY[$${unreadP.length + 1}::uuid])` : '');
+  // Count unread using explicit query (avoids fragile regex on getMessages main query)
   let unread = 0;
   if (userId) {
     try {
+      let unreadWhere = 'WHERE m.org_id = $1';
+      const unreadP = [orgId];
+      if (qs.entity_type && qs.entity_id) { unreadWhere += ` AND m.entity_type = $${unreadP.length + 1} AND m.entity_id = $${unreadP.length + 2}`; unreadP.push(qs.entity_type, qs.entity_id); }
+      else if (qs.entity_type) { unreadWhere += ` AND m.entity_type = $${unreadP.length + 1}`; unreadP.push(qs.entity_type); }
+      if (qs.parent_id && qs.parent_id !== 'null') { unreadWhere += ` AND m.parent_id = $${unreadP.length + 1}`; unreadP.push(qs.parent_id); }
+      if (qs.is_internal === 'false') { unreadWhere += ' AND m.is_internal = false'; }
+      unreadWhere += ` AND NOT (m.read_by @> ARRAY[$${unreadP.length + 1}::uuid])`;
       unreadP.push(userId);
-      const unreadR = await pool.query(unreadQ, unreadP);
+      const unreadR = await pool.query(`SELECT COUNT(*) FROM messages m ${unreadWhere}`, unreadP);
       unread = Number(unreadR.rows[0]?.count || 0);
     } catch (_) { unread = r.rows.filter(m => !(m.read_by || []).includes(userId)).length; }
   }
