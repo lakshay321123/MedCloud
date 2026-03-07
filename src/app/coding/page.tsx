@@ -598,6 +598,8 @@ export default function CodingPage() {
     } catch (e) { console.warn('[coding] Doc extraction failed:', e) }
   }
 
+
+
   async function generateAICodes(soapAssessment: string, soapPlan: string, specialty: string, instructions?: string) {
     if (!item) return
     setAiCoding(true)

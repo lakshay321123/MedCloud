@@ -258,6 +258,8 @@ export default function PaymentPostingPage() {
   const [depositDate, setDepositDate] = useState(new Date().toISOString().split('T')[0])
   const [savingDeposit, setSavingDeposit] = useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  // Ref tracks which ERA IDs have already had lines loaded — avoids stale-closure double-load
+  const loadedEraIds = React.useRef<Set<string>>(new Set())
 
   const era = eras.find(e => e.id === selectedEra)
   const eraLines = lineItems.filter((line: LineItem) => line.eraId === selectedEra)
@@ -265,8 +267,9 @@ export default function PaymentPostingPage() {
   useEffect(() => {
     if (!selectedEra) return
     if (!eras.find(e => e.id === selectedEra)) { setSelectedEra(null); return }
-    // Only load if not already loaded for this ERA
-    if (lineItems.filter((l: LineItem) => l.eraId === selectedEra).length > 0) return
+    // Use ref (not stale lineItems closure) to guard against double-loading
+    if (loadedEraIds.current.has(selectedEra)) return
+    loadedEraIds.current.add(selectedEra)
 
     // Fetch raw_content from API and parse the real 835
     setLoadingLines(true)
@@ -277,14 +280,19 @@ export default function PaymentPostingPage() {
           // Real 835 content — parse it client-side
           const parsed = parse835(selectedEra, raw)
           if (parsed.lines.length > 0) {
-            setLineItems((prev: LineItem[]) => [...prev, ...parsed.lines])
+            // De-duplicate against any pre-loaded lines for this era (upload pre-parse)
+            setLineItems((prev: LineItem[]) => {
+              const existingIds = new Set(prev.filter(l => l.eraId === selectedEra).map(l => l.id))
+              const newLines = parsed.lines.filter(l => !existingIds.has(l.id))
+              return newLines.length > 0 ? [...prev, ...newLines] : prev
+            })
           }
         }
         // No raw_content or no parseable lines — empty state handled in render
       })
       .catch((error) => {
         console.error('[payment-posting] Failed to fetch ERA file content:', error)
-        // API error — leave lines empty
+        loadedEraIds.current.delete(selectedEra) // allow retry on error
       })
       .finally(() => setLoadingLines(false))
   }, [selectedEra, eras]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -515,6 +523,8 @@ export default function PaymentPostingPage() {
                           if (preparse.lines.length > 0) {
                             const fixedLines = preparse.lines.map(l => ({ ...l, eraId: result.id }))
                             setLineItems(prev => [...prev, ...fixedLines])
+                            // Mark as loaded in ref so useEffect doesn't double-load
+                            loadedEraIds.current.add(result.id)
                           }
                           toast.success(`"${uploadedFile.name}" uploaded — ${preparse.lines.length} claim line${preparse.lines.length !== 1 ? 's' : ''} parsed`)
                           setShowUploadModal(false)
@@ -570,10 +580,16 @@ export default function PaymentPostingPage() {
           </div>
         </div>
         <div className="flex items-center justify-center py-8 gap-3 text-content-tertiary">
-          <FileText size={24} className="opacity-30" />
+          <FileText size={24} className={eraLines.length > 0 ? 'opacity-60 text-brand' : 'opacity-30'} />
           <div className="text-xs">
             <p className="font-medium text-content-secondary">{era?.file}</p>
-            <p className="text-[11px]">Upload the .835 file to see inline viewer</p>
+            {loadingLines ? (
+              <p className="text-[11px] text-brand">⏳ Parsing file…</p>
+            ) : eraLines.length > 0 ? (
+              <p className="text-[11px] text-[#22c55e]">✓ {eraLines.length} claim line{eraLines.length !== 1 ? 's' : ''} loaded — see table below</p>
+            ) : (
+              <p className="text-[11px]">Upload the .835 file to see inline viewer</p>
+            )}
           </div>
         </div>
       </div>

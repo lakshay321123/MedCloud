@@ -103,7 +103,8 @@ try {
   const bedMod = await import('@aws-sdk/client-bedrock-runtime');
   bedrockClient = new bedMod.BedrockRuntimeClient({ region: process.env.AWS_REGION || 'us-east-1' });
   InvokeModelCommand = bedMod.InvokeModelCommand;
-} catch { console.log('Bedrock SDK not available — AI coding will return mock suggestions'); }
+  console.log('Bedrock SDK loaded successfully — bedrockClient ready');
+} catch (e) { console.log('Bedrock SDK not available:', e.message, '— AI coding will return mock suggestions'); }
 
 const S3_BUCKET = process.env.S3_BUCKET || 'medcloud-documents-us-prod';
 
@@ -467,6 +468,17 @@ async function runSchemaMigration() {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_underpayments_org ON underpayments(org_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_underpayments_claim ON underpayments(claim_id)');
   } catch (e) { if (e.code !== '42P07') safeLog('warn', 'underpayments:', e.message); }
+  // Coding feedback table (AI accuracy improvement)
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS coding_feedback (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      org_id UUID NOT NULL, user_id UUID, coding_item_id UUID,
+      ai_suggestion_id UUID, original_codes JSONB, final_codes JSONB,
+      action VARCHAR(20) DEFAULT 'override',
+      reason TEXT, created_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_coding_feedback_org ON coding_feedback(org_id)');
+  } catch (e) { if (e.code !== '42P07') safeLog('warn', 'coding_feedback:', e.message); }
   // HIPAA: BAA tracking table
   try {
     await pool.query(`CREATE TABLE IF NOT EXISTS baa_tracking (
@@ -672,6 +684,210 @@ async function seedDemoData(orgId) {
 
 // Bedrock model — override via BEDROCK_MODEL env var. Verify model availability in your region.
 const BEDROCK_MODEL = process.env.BEDROCK_MODEL || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
+
+// ═══ Bedrock AI Abstraction — all AI calls routed through AWS Bedrock (HIPAA) ═══
+// PHI never leaves the AWS account. Returns null if Bedrock is unavailable (no fallback).
+
+async function callAI(prompt, { max_tokens = 2000, system = 'You are an expert medical coding and billing AI assistant.', timeoutMs = 25000 } = {}) {
+  // HIPAA: ALL AI calls go through AWS Bedrock ONLY — PHI never leaves AWS account
+  if (!bedrockClient || !InvokeModelCommand) {
+    safeLog('warn', 'Bedrock not available — returning null (mock fallback)');
+    return null;
+  }
+  
+  try {
+    const bedrockBody = JSON.stringify({
+      anthropic_version: 'bedrock-2023-05-31',
+      max_tokens,
+      system,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const result = await Promise.race([
+      bedrockClient.send(new InvokeModelCommand({ modelId: BEDROCK_MODEL, body: bedrockBody, contentType: 'application/json' })),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Bedrock timeout')), timeoutMs))
+    ]);
+    const parsed = JSON.parse(new TextDecoder().decode(result.body));
+    const text = parsed.content?.[0]?.text || '';
+    safeLog('info', `Bedrock AI success: ${text.length} chars`);
+    return text;
+  } catch (e) {
+    safeLog('warn', 'Bedrock call failed:', e.name, e.message, e.code || '', JSON.stringify(e.$metadata || {}).substring(0,200));
+    return null; // null = smart mock fallback
+  }
+}
+
+
+// ═══ FEW-SHOT CODING EXAMPLES — real-world encounters by specialty ═══
+const CODING_FEW_SHOTS = {
+  family_medicine: `Example 1:
+SOAP: 45yo male, URI symptoms x3 days. Sore throat, nasal congestion, low-grade fever. Exam: mild pharyngeal erythema, no exudate, lungs clear. Plan: supportive care, rest, fluids.
+Codes: ICD: J06.9 (Acute upper respiratory infection, unspecified) | CPT: 99213 (E/M established, low MDM)
+
+Example 2:
+SOAP: 62yo female, diabetes follow-up. A1C 7.8, up from 7.2. Complains of nocturia. Metformin 1000mg BID. Plan: add glipizide 5mg, recheck A1C in 3mo, foot exam done.
+Codes: ICD: E11.65 (Type 2 DM with hyperglycemia) | CPT: 99214 (E/M established, moderate MDM)
+
+Example 3:
+SOAP: 38yo female, annual wellness visit. No complaints. BP 118/76, BMI 24. All screenings up to date. Plan: continue current regimen, mammogram referral.
+Codes: ICD: Z00.00 (Encounter for general adult medical exam without abnormal findings) | CPT: 99395 (Preventive visit, established, 18-39)`,
+
+  cardiology: `Example 1:
+SOAP: 71yo male, CHF follow-up. NYHA Class II. SOB on exertion, improved with Lasix. BNP 340. Echo: EF 35%. Plan: continue Entresto, Lasix, restrict sodium.
+Codes: ICD: I50.22 (Chronic systolic heart failure) | CPT: 99214 (E/M established, moderate MDM)
+
+Example 2:
+SOAP: 58yo female, new onset palpitations. Holter showed paroxysmal AFib. No syncope. CHADS2-VASc 3. Plan: start Eliquis 5mg BID, rate control with metoprolol.
+Codes: ICD: I48.0 (Paroxysmal atrial fibrillation) | CPT: 99204 (E/M new, moderate MDM) + 93224 (Holter interpretation)`,
+
+  orthopedics: `Example 1:
+SOAP: 55yo male, right knee pain x6 months. Worsening with stairs. Exam: crepitus, mild effusion, reduced ROM. XR: medial joint space narrowing. Plan: PT, cortisone injection.
+Codes: ICD: M17.11 (Primary osteoarthritis, right knee) | CPT: 99213 (E/M) + 20610 (Arthrocentesis, major joint)
+
+Example 2:
+SOAP: 32yo female, acute low back pain after lifting. Radiculopathy L5 distribution. Positive SLR right. MRI: L4-5 disc herniation. Plan: NSAIDs, PT, ESI if no improvement.
+Codes: ICD: M51.16 (Intervertebral disc degeneration, lumbar) + M54.41 (Lumbago with sciatica, right side) | CPT: 99214 (E/M moderate MDM)`
+};
+
+
+// ═══ CMS HCC V28 Risk Adjustment Model — key HCC categories ═══
+const HCC_V28 = {
+  // Diabetes
+  'E08': { hcc: 35, desc: 'Diabetes with other DM complication', raf: 0.302 },
+  'E09': { hcc: 35, desc: 'Drug-induced diabetes', raf: 0.302 },
+  'E10.1': { hcc: 37, desc: 'Type 1 DM with ketoacidosis', raf: 0.302 },
+  'E10.2': { hcc: 18, desc: 'Type 1 DM with kidney complication', raf: 0.302 },
+  'E10.3': { hcc: 18, desc: 'Type 1 DM with ophthalmic complication', raf: 0.302 },
+  'E10.5': { hcc: 37, desc: 'Type 1 DM with circulatory complication', raf: 0.302 },
+  'E10.6': { hcc: 37, desc: 'Type 1 DM with other specified complication', raf: 0.302 },
+  'E10.9': { hcc: 37, desc: 'Type 1 DM without complication', raf: 0.302 },
+  'E11.0': { hcc: 37, desc: 'Type 2 DM with hyperosmolarity', raf: 0.302 },
+  'E11.1': { hcc: 37, desc: 'Type 2 DM with ketoacidosis', raf: 0.302 },
+  'E11.2': { hcc: 18, desc: 'Type 2 DM with kidney complication', raf: 0.302 },
+  'E11.3': { hcc: 18, desc: 'Type 2 DM with ophthalmic complication', raf: 0.302 },
+  'E11.4': { hcc: 18, desc: 'Type 2 DM with neurological complication', raf: 0.302 },
+  'E11.5': { hcc: 37, desc: 'Type 2 DM with circulatory complication', raf: 0.302 },
+  'E11.6': { hcc: 37, desc: 'Type 2 DM with other specified complication', raf: 0.302 },
+  'E11.65': { hcc: 37, desc: 'Type 2 DM with hyperglycemia', raf: 0.302 },
+  'E11.9': { hcc: 37, desc: 'Type 2 DM without complication', raf: 0.302 },
+  // Heart failure
+  'I50.1': { hcc: 85, desc: 'Left ventricular failure', raf: 0.368 },
+  'I50.2': { hcc: 85, desc: 'Systolic heart failure', raf: 0.368 },
+  'I50.3': { hcc: 85, desc: 'Diastolic heart failure', raf: 0.368 },
+  'I50.4': { hcc: 85, desc: 'Combined systolic/diastolic HF', raf: 0.368 },
+  'I50.9': { hcc: 85, desc: 'Heart failure, unspecified', raf: 0.368 },
+  // AFib
+  'I48.0': { hcc: 96, desc: 'Paroxysmal atrial fibrillation', raf: 0.273 },
+  'I48.1': { hcc: 96, desc: 'Persistent atrial fibrillation', raf: 0.273 },
+  'I48.2': { hcc: 96, desc: 'Chronic atrial fibrillation', raf: 0.273 },
+  'I48.91': { hcc: 96, desc: 'Unspecified atrial fibrillation', raf: 0.273 },
+  // COPD
+  'J44.0': { hcc: 111, desc: 'COPD with acute lower respiratory infection', raf: 0.335 },
+  'J44.1': { hcc: 111, desc: 'COPD with acute exacerbation', raf: 0.335 },
+  // CKD
+  'N18.3': { hcc: 138, desc: 'CKD stage 3', raf: 0.069 },
+  'N18.4': { hcc: 136, desc: 'CKD stage 4', raf: 0.289 },
+  'N18.5': { hcc: 136, desc: 'CKD stage 5', raf: 0.289 },
+  'N18.6': { hcc: 136, desc: 'ESRD', raf: 0.289 },
+  // Stroke
+  'I63': { hcc: 100, desc: 'Cerebral infarction', raf: 0.268 },
+  'I63.0': { hcc: 100, desc: 'Cerebral infarction due to thrombosis', raf: 0.268 },
+  'I63.3': { hcc: 100, desc: 'Cerebral infarction due to thrombosis of cerebral arteries', raf: 0.268 },
+  'I63.5': { hcc: 100, desc: 'Cerebral infarction due to unspecified occlusion', raf: 0.268 },
+  'I63.9': { hcc: 100, desc: 'Cerebral infarction, unspecified', raf: 0.268 },
+  // Depression
+  'F32.0': { hcc: 155, desc: 'Major depressive disorder, single, mild', raf: 0.309 },
+  'F32.1': { hcc: 155, desc: 'Major depressive disorder, single, moderate', raf: 0.309 },
+  'F32.2': { hcc: 155, desc: 'Major depressive disorder, single, severe', raf: 0.309 },
+  'F33.0': { hcc: 155, desc: 'MDD, recurrent, mild', raf: 0.309 },
+  'F33.1': { hcc: 155, desc: 'MDD, recurrent, moderate', raf: 0.309 },
+  'F33.2': { hcc: 155, desc: 'MDD, recurrent, severe', raf: 0.309 },
+  // Morbid obesity
+  'E66.01': { hcc: 48, desc: 'Morbid obesity due to excess calories', raf: 0.273 },
+  // Vascular disease
+  'I70.0': { hcc: 108, desc: 'Atherosclerosis of aorta', raf: 0.299 },
+  'I70.2': { hcc: 108, desc: 'Atherosclerosis of arteries of extremities', raf: 0.299 },
+  // Cancer
+  'C34': { hcc: 12, desc: 'Malignant neoplasm of bronchus and lung', raf: 0.146 },
+  'C50': { hcc: 12, desc: 'Malignant neoplasm of breast', raf: 0.146 },
+  'C61': { hcc: 12, desc: 'Malignant neoplasm of prostate', raf: 0.146 },
+  'C18': { hcc: 12, desc: 'Malignant neoplasm of colon', raf: 0.146 },
+  // Dementia
+  'F01': { hcc: 51, desc: 'Vascular dementia', raf: 0.368 },
+  'F02': { hcc: 51, desc: 'Dementia in other diseases', raf: 0.368 },
+  'F03': { hcc: 51, desc: 'Unspecified dementia', raf: 0.368 },
+  'G30': { hcc: 51, desc: "Alzheimer's disease", raf: 0.368 },
+  // Transplant status
+  'Z94.0': { hcc: 186, desc: 'Kidney transplant status', raf: 0.859 },
+  'Z94.1': { hcc: 186, desc: 'Heart transplant status', raf: 0.859 },
+  // Pressure ulcers
+  'L89.1': { hcc: 161, desc: 'Pressure ulcer stage 2', raf: 0.515 },
+  'L89.2': { hcc: 161, desc: 'Pressure ulcer stage 3', raf: 0.515 },
+  'L89.3': { hcc: 161, desc: 'Pressure ulcer stage 4', raf: 0.515 },
+  // Rheumatoid arthritis
+  'M05': { hcc: 40, desc: 'Rheumatoid arthritis with rheumatoid factor', raf: 0.421 },
+  'M06': { hcc: 40, desc: 'Other rheumatoid arthritis', raf: 0.421 },
+  // HIV
+  'B20': { hcc: 1, desc: 'HIV disease', raf: 0.288 },
+  // Hepatitis
+  'B18.1': { hcc: 29, desc: 'Chronic viral hepatitis B', raf: 0.146 },
+  'B18.2': { hcc: 29, desc: 'Chronic viral hepatitis C', raf: 0.146 },
+  // Substance use
+  'F10.2': { hcc: 55, desc: 'Alcohol dependence', raf: 0.329 },
+  'F11.2': { hcc: 55, desc: 'Opioid dependence', raf: 0.329 },
+  'F14.2': { hcc: 55, desc: 'Cocaine dependence', raf: 0.329 },
+  // Schizophrenia
+  'F20': { hcc: 57, desc: 'Schizophrenia', raf: 0.562 },
+  'F25': { hcc: 57, desc: 'Schizoaffective disorders', raf: 0.562 },
+  // Bipolar
+  'F31': { hcc: 59, desc: 'Bipolar disorder', raf: 0.309 },
+  // Seizure
+  'G40': { hcc: 79, desc: 'Epilepsy and recurrent seizures', raf: 0.142 },
+  // Paralysis
+  'G81': { hcc: 70, desc: 'Hemiplegia', raf: 0.581 },
+  'G82': { hcc: 70, desc: 'Paraplegia and quadriplegia', raf: 0.581 },
+};
+
+function lookupHCC(icdCode) {
+  if (!icdCode) return null;
+
+  // First pass: try matching prefixes of the code as-is.
+  // Handles correctly formatted dotted codes (e.g. 'E11.65') and short codes (e.g. 'I63').
+  for (let len = icdCode.length; len >= 3; len--) {
+    const prefix = icdCode.substring(0, len);
+    if (HCC_V28[prefix]) return { ...HCC_V28[prefix], icd: icdCode };
+  }
+
+  // Second pass: if the input has no dot (e.g. 'E1165' instead of 'E11.65'),
+  // insert the standard ICD-10 dot after position 3 and try again.
+  if (!icdCode.includes('.')) {
+    for (let len = icdCode.length; len >= 4; len--) {
+      const prefix = icdCode.substring(0, len);
+      const dottedPrefix = `${prefix.substring(0, 3)}.${prefix.substring(3)}`;
+      if (HCC_V28[dottedPrefix]) return { ...HCC_V28[dottedPrefix], icd: icdCode };
+    }
+  }
+
+  return null;
+}
+
+
+// ═══ CODING FEEDBACK LOOP — logs when coder overrides AI suggestion ═══
+async function logCodingFeedback(orgId, userId, codingItemId, aiSuggestionId, feedback) {
+  try {
+    await pool.query(
+      `INSERT INTO coding_feedback (id, org_id, user_id, coding_item_id, ai_suggestion_id,
+        original_codes, final_codes, action, reason, created_at)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+      [orgId, userId, codingItemId, aiSuggestionId,
+       JSON.stringify(feedback.original_codes || {}),
+       JSON.stringify(feedback.final_codes || {}),
+       feedback.action || 'override', // override | accept | reject
+       feedback.reason || null]
+    );
+  } catch (e) { safeLog('warn', 'Coding feedback log failed:', e.message); }
+}
+
+
 const BEDROCK_REGION = process.env.AWS_REGION || 'us-east-1';
 
 // ─── PHI Scrubber — strips PHI before any console.log/CloudWatch output ────────
@@ -1806,6 +2022,54 @@ async function scrubClaim(claimId, orgId, userId) {
   const newStatus = errors.length > 0 ? 'scrub_failed' : 'scrubbed';
 
   await update('claims', claimId, { status: newStatus });
+  // AI-powered scrub: send claim summary to LLM for additional checks
+  try {
+    // Sanitize all untrusted data before interpolation — prevents prompt injection (patient/payer names)
+    const safeClaimNum  = sanitizeForPrompt(claim.claim_number || claimId, 30);
+    const safePatient   = `${sanitizeForPrompt(patient?.first_name, 30)} ${sanitizeForPrompt(patient?.last_name, 30)}`.trim();
+    const safePayerType = payer?.payer_type ? sanitizeForPrompt(payer.payer_type, 30) : 'commercial insurance';
+    const safeCpts      = lines.map(l => sanitizeForPrompt(l.cpt_code, 10)).filter(Boolean).join(', ');
+    const safeIcds      = dxCodes.map(d => sanitizeForPrompt(d.code, 10)).filter(Boolean).join(', ');
+    const claimSummary  = [
+      `Claim: ${safeClaimNum}`,
+      `Patient: ${safePatient}, DOB: ${patient?.date_of_birth || 'N/A'}`,
+      `Payer: Payer on file`,
+      `DOS: ${claim.dos_from || 'N/A'}`,
+      `CPT codes: ${safeCpts || 'None'}`,
+      `ICD codes: ${safeIcds || 'None'}`,
+      `Total charges: $${claim.total_charges || 0}`,
+      `POS: ${claim.pos || '11'}`,
+    ].join('\n');
+
+    const aiResult = await callAI(
+      `You are an expert medical claim scrubber. Review this claim for potential denial risks.
+
+${claimSummary}
+
+Check for:
+1. Medical necessity — do the ICD codes support the CPT codes?
+2. Modifier issues — any missing or incorrect modifiers?
+3. Payer-specific gotchas for ${safePayerType}
+4. LCD/NCD compliance risks
+
+Respond ONLY in JSON: {"ai_findings": [{"rule_code": "AI-xxx", "rule_name": "string", "severity": "warning|error", "message": "string"}]}
+Return empty array if no issues found.`,
+      { max_tokens: 500, timeoutMs: 20000 }
+    );
+
+    if (aiResult) {
+      try {
+        const parsed = JSON.parse(aiResult.replace(/```json|```/g, '').trim());
+        if (parsed.ai_findings?.length > 0) {
+          for (const finding of parsed.ai_findings) {
+            results.push({ rule_code: finding.rule_code, rule_name: `AI: ${finding.rule_name}`, severity: finding.severity || 'warning', passed: false, message: finding.message });
+          }
+          safeLog('info', `AI scrub found ${parsed.ai_findings.length} additional issue(s) for ${claim.claim_number}`);
+        }
+      } catch (e) { safeLog('warn', 'AI scrub JSON parse failed:', e.message); }
+    }
+  } catch (e) { safeLog('warn', 'AI scrub enhancement failed:', e.message); }
+
   await auditLog(orgId, userId, 'scrub', 'claims', claimId, { errors: errors.length, warnings: warnings.length, total_rules: results.length });
 
   return { claim_id: claimId, status: newStatus, total_rules: results.length,
@@ -2032,29 +2296,32 @@ Respond ONLY with valid JSON (no markdown, no backticks):
   let suggestion;
   const startMs = Date.now();
 
-  if (bedrockClient && InvokeModelCommand) {
-    try {
-      const cmd = new InvokeModelCommand({
-        modelId: BEDROCK_MODEL,
-        contentType: 'application/json',
-        accept: 'application/json',
-        body: JSON.stringify({
-          anthropic_version: 'bedrock-2023-05-31',
-          max_tokens: 2048,
-          messages: [{ role: 'user', content: prompt }],
-        }),
-      });
-      // 10s timeout — if Bedrock doesn't respond, fall back to mock
-      const bedrockPromise = bedrockClient.send(cmd);
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Bedrock timeout (10s)')), 10000));
-      const response = await Promise.race([bedrockPromise, timeoutPromise]);
-      const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-      const aiText = responseBody.content?.[0]?.text || '{}';
+  // Use callAI() — calls Bedrock for AI suggestions; returns null on failure (no external fallback)
+  try {
+    const aiText = await callAI(prompt, { max_tokens: 2048, timeoutMs: 25000 });
+    if (aiText) {
       suggestion = JSON.parse(aiText.replace(/```json|```/g, '').trim());
-    } catch (e) {
-      safeLog('warn', 'Bedrock unavailable, using mock:', e.message);
-      suggestion = null;
     }
+  } catch (e) {
+    safeLog('warn', 'AI coding call failed, using smart mock:', e.message);
+    suggestion = null;
+  }
+
+  // Enrich AI results with HCC V28 risk adjustment data
+  if (suggestion?.suggested_icd) {
+    suggestion.suggested_icd = suggestion.suggested_icd.map(icd => {
+      const hcc = lookupHCC(icd.code);
+      if (hcc) {
+        icd.is_hcc = true;
+        icd.hcc_category = hcc.hcc;
+        icd.raf_score = hcc.raf;
+        icd.specificity_note = icd.specificity_note || `HCC ${hcc.hcc} — RAF ${hcc.raf}. ${hcc.desc}`;
+      }
+      return icd;
+    });
+    suggestion.hcc_diagnoses = suggestion.suggested_icd
+      .filter(i => i.is_hcc)
+      .map(i => `${i.code} (HCC ${i.hcc_category}, RAF ${i.raf_score})`);
   }
 
   // Fallback mock if Bedrock unavailable — keyword-based matching from clinical text
@@ -2188,7 +2455,7 @@ Respond ONLY with valid JSON (no markdown, no backticks):
     processing_ms: processingMs,
   });
 
-  return { ...suggestion, suggestion_id: saved.id, processing_ms: processingMs, confidence: totalConf };
+  return { ...suggestion, mock: !!suggestion.mock, suggestion_id: saved.id, processing_ms: processingMs, confidence: totalConf };
 }
 
 // ─── OCR Pipeline v2 — 99% Accuracy Architecture ─────────────────────────────
@@ -2744,9 +3011,8 @@ async function triggerTextract(documentId, orgId, userId) {
     const icdCodes = [...text.matchAll(/\b([A-Z]\d{2,3}(?:\.\d{1,4})?)\b/g)].map(m => m[1]).filter(c => /^[A-Z]\d{2}/.test(c));
     // CPT codes (5 digits starting with 9, 8, 7, 3, 2, 1, 0)
     const cptCodes = [...text.matchAll(/\b(\d{5})\b/g)].map(m => m[1]).filter(c => /^(99|9[0-8]|8[0-9]|7[0-9]|6[0-9]|3[0-9]|2[0-9]|1[0-9]|0[0-9])/.test(c));
-    // Charges
+    // Charges — extract dollar amounts from text
     const charges = [...text.matchAll(/\$(\d+(?:\.\d{2})?)/g)].map(m => parseFloat(m[1]));
-    
     mockFields = {
       patient_name:    { value: nameMatch ? nameMatch[1] : 'Unknown', confidence: nameMatch ? 0.85 : 0.30, source: 'mock_extraction' },
       date_of_service: { value: dosMatch ? dosMatch[1] : '', confidence: dosMatch ? 0.90 : 0.30, source: 'mock_extraction' },
@@ -3280,6 +3546,36 @@ Provide SPECIFIC, ACTIONABLE guidance in JSON:
     } catch (e) { safeLog('error', 'Denial prediction AI analysis error:', e.message); }
   }
 
+  // AI-enhanced denial prediction
+  if (riskScore > 30) {
+    try {
+      // Sanitize untrusted claim data before prompt interpolation (prompt injection prevention)
+      const safeClaimRef   = sanitizeForPrompt(claim.claim_number || 'N/A', 30);
+      const safeCptList    = linesR.rows.map(l => sanitizeForPrompt(l.cpt_code, 10)).filter(Boolean).join(', ');
+      const safeIcd        = sanitizeForPrompt(claim.primary_icd || 'N/A', 10);
+      const safeRiskDetail = risks.map(r => sanitizeForPrompt(r.detail, 100)).join('; ');
+      const aiRisk = await callAI(
+        `You are a denial prediction specialist. This claim has a base risk score of ${riskScore}/100.
+Claim: ${safeClaimRef} | Payer: Payer on file
+CPT: ${safeCptList || 'None'} | ICD: ${safeIcd}
+Risk factors found: ${safeRiskDetail || 'None'}
+
+Based on your knowledge of payer denial patterns, what is the TOP recommendation to reduce denial risk? Respond in JSON:
+{"adjusted_score": number, "top_recommendation": "string", "specific_action": "string"}`,
+        { max_tokens: 200, timeoutMs: 15000 }
+      );
+      if (aiRisk) {
+        try {
+          const parsed = JSON.parse(aiRisk.replace(/```json|```/g, '').trim());
+          if (parsed.top_recommendation) {
+            risks.push({ category: 'ai_recommendation', score: 0, detail: parsed.top_recommendation });
+          }
+          if (parsed.adjusted_score) riskScore = Math.min(100, Math.max(riskScore, parsed.adjusted_score));
+        } catch (e) { safeLog('warn', 'AI denial prediction parse failed:', e.message); }
+      }
+    } catch (e) { safeLog('warn', 'AI denial prediction enhancement failed:', e.message); }
+  }
+
   await auditLog(orgId, userId, 'denial_prediction', 'claims', claimId, { risk_score: riskScore, risk_level: riskLevel });
   return {
     claim_id: claimId,
@@ -3721,8 +4017,8 @@ async function chargeCapture(encounterId, orgId, userId) {
 
   const prompt = `You are a medical charge capture specialist and Certified Professional Coder (CPC) with expertise in maximizing compliant revenue capture. Identify every billable service documented while flagging anything that could be denied.
 
-REGION: \${isUAE ? 'UAE — ICD-10-AM + DRG/ACHI codes, DHA Abu Dhabi guidelines' : 'US — ICD-10-CM + CPT codes, CMS guidelines'}
-PATIENT: \${sanitizeForPrompt(encounter.patient_name) || 'Unknown'}, DOS: \${encounter.encounter_date || 'Unknown'}
+REGION: ${isUAE ? 'UAE — ICD-10-AM + DRG/ACHI codes, DHA Abu Dhabi guidelines' : 'US — ICD-10-CM + CPT codes, CMS guidelines'}
+PATIENT: ${sanitizeForPrompt(encounter.patient_name) || 'Unknown'}, DOS: ${encounter.encounter_date || 'Unknown'}
 
 CHARGE CAPTURE RULES:
 1. CAPTURE EVERYTHING: E/M visits, procedures, injections, in-office labs drawn, supplies for procedures, imaging (if technical component billable)
@@ -3733,7 +4029,7 @@ CHARGE CAPTURE RULES:
 6. MISSED CHARGES: Flag services hinted at but not fully documented
 
 CLINICAL DOCUMENTATION:
-\${sanitizeForPrompt(clinicalText)}
+${sanitizeForPrompt(clinicalText)}
 
 Return ONLY valid JSON:
 {
@@ -5472,7 +5768,7 @@ async function getMessages(orgId, userId, qs) {
       await create('messages', s, orgId).catch((err) => console.error('[seed-messages] Failed to seed message:', err));
     }
   }
-  let q = 'SELECT m.*, u.email as sender_email, u.role as sender_role_name FROM messages m LEFT JOIN users u ON m.sender_id = u.id WHERE m.org_id = $1';
+  let q = 'SELECT m.*, u.email as sender_email FROM messages m LEFT JOIN users u ON m.sender_id = u.id WHERE m.org_id = $1';
   const p = [orgId];
   if (qs.entity_type && qs.entity_id) {
     q += ` AND m.entity_type = $${p.length + 1} AND m.entity_id = $${p.length + 2}`;
@@ -5486,15 +5782,19 @@ async function getMessages(orgId, userId, qs) {
   if (qs.is_internal === 'false') { q += ' AND m.is_internal = false'; }
   q += ' ORDER BY m.created_at DESC';
   if (qs.limit) { q += ` LIMIT $${p.length + 1}`; p.push(qs.limit); }
-  const r = await pool.query(q, p);
-  // Count unread in DB for efficiency
-  const unreadP = [...p].slice(0, p.length - (qs.limit ? 1 : 0)); // exclude LIMIT param
-  const unreadQ = q.replace(/SELECT m\.\*, .*? FROM/, 'SELECT COUNT(*) FROM').replace(/ORDER BY.*$/, '') + (userId ? ` AND NOT (m.read_by @> ARRAY[$${unreadP.length + 1}::uuid])` : '');
+  // Count unread using explicit query (avoids fragile regex on getMessages main query)
   let unread = 0;
   if (userId) {
     try {
+      let unreadWhere = 'WHERE m.org_id = $1';
+      const unreadP = [orgId];
+      if (qs.entity_type && qs.entity_id) { unreadWhere += ` AND m.entity_type = $${unreadP.length + 1} AND m.entity_id = $${unreadP.length + 2}`; unreadP.push(qs.entity_type, qs.entity_id); }
+      else if (qs.entity_type) { unreadWhere += ` AND m.entity_type = $${unreadP.length + 1}`; unreadP.push(qs.entity_type); }
+      if (qs.parent_id && qs.parent_id !== 'null') { unreadWhere += ` AND m.parent_id = $${unreadP.length + 1}`; unreadP.push(qs.parent_id); }
+      if (qs.is_internal === 'false') { unreadWhere += ' AND m.is_internal = false'; }
+      unreadWhere += ` AND NOT (m.read_by @> ARRAY[$${unreadP.length + 1}::uuid])`;
       unreadP.push(userId);
-      const unreadR = await pool.query(unreadQ, unreadP);
+      const unreadR = await pool.query(`SELECT COUNT(*) FROM messages m ${unreadWhere}`, unreadP);
       unread = Number(unreadR.rows[0]?.count || 0);
     } catch (_) { unread = r.rows.filter(m => !(m.read_by || []).includes(userId)).length; }
   }
@@ -9468,6 +9768,33 @@ export const handler = async (event) => {
         session_timeout_minutes: 15,
         retention_policy: { medical_records_years: 10, billing_records_years: 7, audit_log_years: 7 },
       });
+    }
+
+    // ════ Coding Feedback ═══════════════════════════════════════════════
+    if (path.includes('/coding-feedback') && method === 'POST') {
+      // Security: verify coding_item_id belongs to this org before accepting feedback
+      if (body.coding_item_id) {
+        const ownerCheck = await pool.query(
+          'SELECT id FROM coding_queue WHERE id = $1 AND org_id = $2 LIMIT 1',
+          [body.coding_item_id, effectiveOrgId]
+        ).catch(() => ({ rows: [] }));
+        if (ownerCheck.rows.length === 0) {
+          return respond(403, { error: 'coding_item_id not found in your organization' });
+        }
+      }
+      await logCodingFeedback(effectiveOrgId, userId, body.coding_item_id, body.ai_suggestion_id, {
+        original_codes: body.original_codes,
+        final_codes: body.final_codes,
+        action: body.action || 'override',
+        reason: body.reason,
+      });
+      return respond(201, { success: true });
+    }
+    if (path.includes('/coding-feedback') && method === 'GET') {
+      const r = await orgQuery(effectiveOrgId,
+        'SELECT * FROM coding_feedback WHERE org_id = $1 ORDER BY created_at DESC LIMIT 100',
+        [effectiveOrgId]);
+      return respond(200, { data: r.rows, meta: { total: r.rows.length } });
     }
 
     // ════ Underpayments ════════════════════════════════════════════════════
