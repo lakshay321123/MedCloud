@@ -2830,8 +2830,8 @@ async function autoPostPayments(eraFileId, orgId, userId) {
       if (pmt.cpt_code) {
         try {
           const feeR = await pool.query(
-            'SELECT contracted_rate, medicare_rate FROM fee_schedules WHERE cpt_code = $1 AND org_id = $2 LIMIT 1',
-            [pmt.cpt_code, orgId]
+            'SELECT contracted_rate, medicare_rate FROM fee_schedules WHERE cpt_code = $1 AND org_id = $2 AND ($3::uuid IS NULL OR payer_id = $3) LIMIT 1',
+            [pmt.cpt_code, orgId, pmt.payer_id || null]
           );
           if (feeR.rows.length > 0) {
             const expected = Number(feeR.rows[0].contracted_rate) || 0;
@@ -2844,7 +2844,7 @@ async function autoPostPayments(eraFileId, orgId, userId) {
                  VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, NOW())
                  ON CONFLICT (org_id, claim_id, cpt_code) DO NOTHING`,
                 [orgId, pmt.claim_id, pmt.id, pmt.cpt_code, expected, paid, expected - paid, pmt.payer_id || null]
-              ).catch((err) => safeLog('warn', 'Underpayment insert failed:', err.message));
+              ).catch((err) => safeLog('error', 'Underpayment insert failed:', err.message));
             }
           }
         } catch (err) { safeLog('warn', 'Underpayment check failed:', err.message); }
