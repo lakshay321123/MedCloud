@@ -685,7 +685,8 @@ async function seedDemoData(orgId) {
 // Bedrock model — override via BEDROCK_MODEL env var. Verify model availability in your region.
 const BEDROCK_MODEL = process.env.BEDROCK_MODEL || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
 
-// ═══ VERCEL AI PROXY — calls Anthropic via Vercel when Bedrock unavailable ═══
+// ═══ Bedrock AI Abstraction — all AI calls routed through AWS Bedrock (HIPAA) ═══
+// PHI never leaves the AWS account. Returns null if Bedrock is unavailable (no fallback).
 
 async function callAI(prompt, { max_tokens = 2000, system = 'You are an expert medical coding and billing AI assistant.', timeoutMs = 25000 } = {}) {
   // HIPAA: ALL AI calls go through AWS Bedrock ONLY — PHI never leaves AWS account
@@ -848,18 +849,24 @@ const HCC_V28 = {
 
 function lookupHCC(icdCode) {
   if (!icdCode) return null;
-  const code = icdCode.replace(/\./g, '');
-  // Try exact match first, then progressively shorter prefixes
+
+  // First pass: try matching prefixes of the code as-is.
+  // Handles correctly formatted dotted codes (e.g. 'E11.65') and short codes (e.g. 'I63').
   for (let len = icdCode.length; len >= 3; len--) {
     const prefix = icdCode.substring(0, len);
     if (HCC_V28[prefix]) return { ...HCC_V28[prefix], icd: icdCode };
   }
-  // Try without dot
-  for (let len = code.length; len >= 3; len--) {
-    const prefix = code.substring(0, len);
-    const dotted = prefix.length > 3 ? prefix.substring(0,3) + '.' + prefix.substring(3) : prefix;
-    if (HCC_V28[dotted]) return { ...HCC_V28[dotted], icd: icdCode };
+
+  // Second pass: if the input has no dot (e.g. 'E1165' instead of 'E11.65'),
+  // insert the standard ICD-10 dot after position 3 and try again.
+  if (!icdCode.includes('.')) {
+    for (let len = icdCode.length; len >= 4; len--) {
+      const prefix = icdCode.substring(0, len);
+      const dottedPrefix = `${prefix.substring(0, 3)}.${prefix.substring(3)}`;
+      if (HCC_V28[dottedPrefix]) return { ...HCC_V28[dottedPrefix], icd: icdCode };
+    }
   }
+
   return null;
 }
 
@@ -2017,14 +2024,22 @@ async function scrubClaim(claimId, orgId, userId) {
   await update('claims', claimId, { status: newStatus });
   // AI-powered scrub: send claim summary to LLM for additional checks
   try {
-    const claimSummary = `Claim: ${claim.claim_number || claimId}
-Patient: ${patient?.first_name} ${patient?.last_name}, DOB: ${patient?.date_of_birth}
-Payer: ${payer?.name || 'Unknown'}
-DOS: ${claim.dos_from}
-CPT codes: ${lines.map(l => l.cpt_code).join(', ')}
-ICD codes: ${dxCodes.map(d => d.code).join(', ')}
-Total charges: $${claim.total_charges}
-POS: ${claim.pos || '11'}`;
+    // Sanitize all untrusted data before interpolation — prevents prompt injection (patient/payer names)
+    const safeClaimNum  = sanitizeForPrompt(claim.claim_number || claimId, 30);
+    const safePatient   = `${sanitizeForPrompt(patient?.first_name, 30)} ${sanitizeForPrompt(patient?.last_name, 30)}`.trim();
+    const safePayerType = payer?.payer_type ? sanitizeForPrompt(payer.payer_type, 30) : 'commercial insurance';
+    const safeCpts      = lines.map(l => sanitizeForPrompt(l.cpt_code, 10)).filter(Boolean).join(', ');
+    const safeIcds      = dxCodes.map(d => sanitizeForPrompt(d.code, 10)).filter(Boolean).join(', ');
+    const claimSummary  = [
+      `Claim: ${safeClaimNum}`,
+      `Patient: ${safePatient}, DOB: ${patient?.date_of_birth || 'N/A'}`,
+      `Payer: Payer on file`,
+      `DOS: ${claim.dos_from || 'N/A'}`,
+      `CPT codes: ${safeCpts || 'None'}`,
+      `ICD codes: ${safeIcds || 'None'}`,
+      `Total charges: $${claim.total_charges || 0}`,
+      `POS: ${claim.pos || '11'}`,
+    ].join('\n');
 
     const aiResult = await callAI(
       `You are an expert medical claim scrubber. Review this claim for potential denial risks.
@@ -2034,7 +2049,7 @@ ${claimSummary}
 Check for:
 1. Medical necessity — do the ICD codes support the CPT codes?
 2. Modifier issues — any missing or incorrect modifiers?
-3. Payer-specific gotchas for ${payer?.name || 'commercial insurance'}
+3. Payer-specific gotchas for ${safePayerType}
 4. LCD/NCD compliance risks
 
 Respond ONLY in JSON: {"ai_findings": [{"rule_code": "AI-xxx", "rule_name": "string", "severity": "warning|error", "message": "string"}]}
@@ -2281,7 +2296,7 @@ Respond ONLY with valid JSON (no markdown, no backticks):
   let suggestion;
   const startMs = Date.now();
 
-  // Use callAI() — tries Bedrock first, falls back to Vercel AI proxy
+  // Use callAI() — calls Bedrock for AI suggestions; returns null on failure (no external fallback)
   try {
     const aiText = await callAI(prompt, { max_tokens: 2048, timeoutMs: 25000 });
     if (aiText) {
@@ -2996,9 +3011,8 @@ async function triggerTextract(documentId, orgId, userId) {
     const icdCodes = [...text.matchAll(/\b([A-Z]\d{2,3}(?:\.\d{1,4})?)\b/g)].map(m => m[1]).filter(c => /^[A-Z]\d{2}/.test(c));
     // CPT codes (5 digits starting with 9, 8, 7, 3, 2, 1, 0)
     const cptCodes = [...text.matchAll(/\b(\d{5})\b/g)].map(m => m[1]).filter(c => /^(99|9[0-8]|8[0-9]|7[0-9]|6[0-9]|3[0-9]|2[0-9]|1[0-9]|0[0-9])/.test(c));
-    // Charges
-
-    
+    // Charges — extract dollar amounts from text
+    const charges = [...text.matchAll(/\$(\d+(?:\.\d{2})?)/g)].map(m => parseFloat(m[1]));
     mockFields = {
       patient_name:    { value: nameMatch ? nameMatch[1] : 'Unknown', confidence: nameMatch ? 0.85 : 0.30, source: 'mock_extraction' },
       date_of_service: { value: dosMatch ? dosMatch[1] : '', confidence: dosMatch ? 0.90 : 0.30, source: 'mock_extraction' },
@@ -3535,11 +3549,16 @@ Provide SPECIFIC, ACTIONABLE guidance in JSON:
   // AI-enhanced denial prediction
   if (riskScore > 30) {
     try {
+      // Sanitize untrusted claim data before prompt interpolation (prompt injection prevention)
+      const safeClaimRef   = sanitizeForPrompt(claim.claim_number || 'N/A', 30);
+      const safeCptList    = linesR.rows.map(l => sanitizeForPrompt(l.cpt_code, 10)).filter(Boolean).join(', ');
+      const safeIcd        = sanitizeForPrompt(claim.primary_icd || 'N/A', 10);
+      const safeRiskDetail = risks.map(r => sanitizeForPrompt(r.detail, 100)).join('; ');
       const aiRisk = await callAI(
         `You are a denial prediction specialist. This claim has a base risk score of ${riskScore}/100.
-Claim: ${claim.claim_number} | Payer: ${claim.payer_name || 'Unknown'}
-CPT: ${linesR.rows.map(l => l.cpt_code).join(', ')} | ICD: ${claim.primary_icd || 'N/A'}
-Risk factors found: ${risks.map(r => r.detail).join('; ')}
+Claim: ${safeClaimRef} | Payer: Payer on file
+CPT: ${safeCptList || 'None'} | ICD: ${safeIcd}
+Risk factors found: ${safeRiskDetail || 'None'}
 
 Based on your knowledge of payer denial patterns, what is the TOP recommendation to reduce denial risk? Respond in JSON:
 {"adjusted_score": number, "top_recommendation": "string", "specific_action": "string"}`,
@@ -9749,6 +9768,16 @@ export const handler = async (event) => {
 
     // ════ Coding Feedback ═══════════════════════════════════════════════
     if (path.includes('/coding-feedback') && method === 'POST') {
+      // Security: verify coding_item_id belongs to this org before accepting feedback
+      if (body.coding_item_id) {
+        const ownerCheck = await pool.query(
+          'SELECT id FROM coding_queue WHERE id = $1 AND org_id = $2 LIMIT 1',
+          [body.coding_item_id, effectiveOrgId]
+        ).catch(() => ({ rows: [] }));
+        if (ownerCheck.rows.length === 0) {
+          return respond(403, { error: 'coding_item_id not found in your organization' });
+        }
+      }
       await logCodingFeedback(effectiveOrgId, userId, body.coding_item_id, body.ai_suggestion_id, {
         original_codes: body.original_codes,
         final_codes: body.final_codes,
