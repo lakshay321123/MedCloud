@@ -681,6 +681,7 @@ export interface ApiDocument {
   client_id?: string
   patient_id?: string
   encounter_id?: string
+  doc_type?: string
   document_type: string
   file_name: string
   s3_key: string
@@ -724,6 +725,7 @@ export function useCreateDocument() {
     client_id?: string
     patient_id?: string
     encounter_id?: string
+    doc_type?: string
     document_type: string
     file_name: string
     s3_key: string

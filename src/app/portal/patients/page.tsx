@@ -1,6 +1,6 @@
 'use client'
 import { useT } from '@/lib/i18n'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context'
 import { api } from '@/lib/api-client'
@@ -8,7 +8,7 @@ import type { DemoPatient } from '@/lib/demo-data'
 import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
-import { Plus, Search, X, Upload, ChevronDown, Pencil, Check, Users } from 'lucide-react'
+import { Plus, Search, X, Upload, ChevronDown, Pencil, Check, Users, FileText } from 'lucide-react'
 import { usePatients, useCreatePatient, useUpdatePatient, usePatientStatements, useGenerateStatement, useUpdateStatement, useFlagHCCCodes, useMessages, useSendMessage } from '@/lib/hooks'
 import type { ApiPatient } from '@/lib/hooks'
 import { ErrorBanner } from '@/components/shared/ApiStates'
@@ -704,7 +704,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
             </div>
           )}
 
-          {tab === 'documents' && <div className="text-center py-8 text-xs text-content-secondary">No documents linked yet.</div>}
+          {tab === 'documents' && <PatientDocumentsTab patientId={localPatient.id} patientName={`${localPatient.firstName} ${localPatient.lastName}`} />}
           {tab === 'visits' && <div className="text-center py-8 text-xs text-content-secondary">No visit history yet.</div>}
           {tab === 'messages' && (
             <PatientMessagesTab patientId={localPatient.id} clientId={localPatient.clientId} patientName={`${localPatient.firstName} ${localPatient.lastName}`} />
@@ -712,6 +712,48 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
         </div>
       </div>
     </>
+  )
+}
+
+function PatientDocumentsTab({ patientId, patientName }: { patientId: string; patientName: string }) {
+  const [docs, setDocs] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    let cancelled = false
+    api.get('/documents', { patient_id: patientId, limit: 50 })
+      .then((res: any) => { if (!cancelled) setDocs(Array.isArray(res) ? res : res?.data || []) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [patientId])
+
+  if (loading) return <div className="text-center py-8 text-xs text-content-secondary">Loading documents…</div>
+  if (docs.length === 0) return (
+    <div className="text-center py-8">
+      <p className="text-xs text-content-secondary mb-2">No documents linked to {patientName} yet.</p>
+      <button onClick={() => window.location.href = '/portal/scan-submit'} className="text-xs text-brand hover:underline">Upload via Scan & Submit →</button>
+    </div>
+  )
+  return (
+    <div className="space-y-2">
+      {docs.map((d: any) => (
+        <div key={d.id} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2.5">
+          <div className="flex items-center gap-3 min-w-0">
+            <FileText size={14} className="text-brand shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-medium truncate">{d.file_name || 'document'}</p>
+              <p className="text-[10px] text-content-tertiary">{d.doc_type || d.document_type || 'Other'} · {d.created_at ? new Date(d.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</p>
+            </div>
+          </div>
+          <button onClick={async () => {
+            try {
+              const res = await api.get<{ download_url: string }>(`/documents/${d.id}/download`)
+              window.open(res.download_url, '_blank', 'noopener')
+            } catch {}
+          }} className="text-[10px] text-brand hover:underline shrink-0">Download</button>
+        </div>
+      ))}
+    </div>
   )
 }
 

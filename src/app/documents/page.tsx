@@ -6,7 +6,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
 import type { DemoDocRecord, DemoFax } from '@/lib/demo-data'
-import { useDocuments, usePatients, useTriggerTextract, useClassifyDocument, useRequestUploadUrl, useCreateDocument, useTextractResults, useCreateCoding } from '@/lib/hooks'
+import { useDocuments, usePatients, useRequestUploadUrl, useCreateDocument, useCreateCoding } from '@/lib/hooks'
 import type { ApiDocument } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
@@ -50,8 +50,23 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
   const [patientSearch, setPatientSearch] = useState('')
   const [selectedLinkPatientId, setSelectedLinkPatientId] = useState<string | null>(doc.patientId || null)
   const { data: apiPtResult } = usePatients({ limit: 200 })
-  const apiPatients = ((apiPtResult as any)?.data || []).map((p: any) => ({ id: p.id, name: `${p.first_name || ''} ${p.last_name || ''}`.trim() }))
+  const apiPatients = (Array.isArray(apiPtResult) ? apiPtResult : (apiPtResult as any)?.data || []).map((p: any) => ({ id: p.id, name: `${p.first_name || ''} ${p.last_name || ''}`.trim() }))
   const [downloading, setDownloading] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
+
+  // Auto-fetch presigned URL for preview when drawer opens
+  useEffect(() => {
+    if (!doc.id || doc.id.startsWith('D-')) return
+    let cancelled = false
+    setPreviewLoading(true)
+    api.get<{ download_url: string }>(`/documents/${doc.id}/download`, { mode: 'inline' })
+      .then(res => { if (!cancelled && res.download_url) setPreviewUrl(res.download_url) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setPreviewLoading(false) })
+    return () => { cancelled = true }
+  }, [doc.id])
 
   async function handleDownload() {
     // Demo docs (ids like D-001) have no real S3 key — skip real call
@@ -80,15 +95,35 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
             <span className="text-sm font-semibold text-content-primary">{doc.type}</span>
           </div>
           <p className="text-xs text-content-secondary font-mono">{doc.name}</p>
-          <p className="text-[10px] text-content-tertiary mt-0.5">Uploaded {doc.uploadDate} · {doc.source}</p>
+          <p className="text-[10px] text-content-tertiary mt-0.5">Uploaded {doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'} · {doc.source}</p>
         </div>
         <button onClick={onClose} className="p-1 hover:bg-surface-elevated rounded-btn"><X size={16} className="text-content-secondary"/></button>
       </div>
       <div className="flex-1 overflow-y-auto">
         {/* Preview area */}
-        <div className="m-4 bg-surface-elevated rounded-lg overflow-hidden border border-separator" style={{ minHeight: '60vh', height: '60vh' }}>
-          {(doc as any).url ? (
-            <embed src={(doc as any).url} type="application/pdf" className="w-full" style={{ height: '60vh' }} />
+        <div className={`relative bg-surface-elevated overflow-hidden border border-separator ${fullscreen ? 'fixed inset-0 z-50 rounded-none m-0' : 'm-4 rounded-lg'}`} style={fullscreen ? {} : { height: 'calc(100vh - 240px)', minHeight: '400px' }}>
+          {previewUrl && <button onClick={() => setFullscreen(f => !f)} className="absolute top-2 right-2 z-10 bg-black/60 text-white rounded-lg px-2.5 py-1.5 text-[10px] hover:bg-black/80 transition-colors backdrop-blur-sm">{fullscreen ? '✕ Exit Fullscreen' : '⛶ Fullscreen'}</button>}
+          {previewLoading ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3">
+              <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs text-content-tertiary">Loading preview…</p>
+            </div>
+          ) : previewUrl && doc.name?.toLowerCase().endsWith('.pdf') ? (
+            <iframe src={previewUrl} className="w-full h-full border-0" title="Document preview" />
+          ) : previewUrl && /\.(jpe?g|png|gif|webp|heic)$/i.test(doc.name || '') ? (
+            <div className="flex items-center justify-center h-full p-4">
+              <img src={previewUrl} alt={doc.name} className="max-w-full max-h-full object-contain rounded" />
+            </div>
+          ) : previewUrl ? (
+            <div className="flex flex-col items-center justify-center h-full py-16 gap-3">
+              <FileText size={40} className="opacity-30" />
+              <p className="text-sm font-mono text-content-secondary">{doc.name}</p>
+              <p className="text-xs text-content-tertiary">This file type cannot be previewed inline</p>
+              <button onClick={() => window.open(previewUrl, '_blank', 'noopener')}
+                className="text-xs bg-brand/10 text-brand px-4 py-2 rounded-lg hover:bg-brand/20 transition-colors mt-2">
+                Open in New Tab
+              </button>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full py-16 gap-3">
               <FileText size={40} className="opacity-30" />
@@ -128,7 +163,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
           </div>
         )}
         {/* Link to patient section */}
-        {doc.status === 'Unlinked' && (
+        {!doc.patientId && (
           <div className="mx-4 mb-4 card p-4">
             <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Link to Patient</h4>
             {doc.aiConfidence && (
@@ -183,10 +218,10 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
 function AllDocsTab() {
   const { selectedClient, country } = useApp()
   const { data: apiDocRaw } = useDocuments()
-  const apiDocs: DemoDocRecord[] = (Array.isArray(apiDocRaw) ? apiDocRaw : []).map((d: ApiDocument) => ({
+  const apiDocs: DemoDocRecord[] = (Array.isArray(apiDocRaw) ? apiDocRaw : (apiDocRaw as any)?.data || []).map((d: ApiDocument) => ({
     id: d.id, name: d.file_name || 'document',
     fileName: d.file_name || 'document',
-    type: d.document_type || 'other',
+    type: d.doc_type || d.document_type || 'other',
     patient: (d as any).patient_name || '—', client: (d as any).client_name || '—',
     clientId: d.client_id || '', uploadDate: d.created_at || '',
     uploadedBy: (d as any).uploaded_by_name || '—', uploadedAt: d.created_at || '',
@@ -264,7 +299,7 @@ function AllDocsTab() {
               <td className="px-4 py-3 text-xs">{d.type}</td>
               <td className="px-4 py-3 text-xs text-content-secondary">{d.client}</td>
               <td className="px-4 py-3 text-xs">{d.patient}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{d.uploadDate}</td>
+              <td className="px-4 py-3 text-xs text-content-secondary">{d.uploadDate ? new Date(d.uploadDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${sourceBadge(d.source)}`}>{d.source}</span></td>
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusBadge(d.status)}`}>{d.status}</span></td>
               <td className="px-4 py-3">
@@ -290,11 +325,11 @@ function UnlinkedQueueTab() {
   const [selectedPatientIds, setSelectedPatientIds] = useState<Record<string,string>>({})
   const [linking, setLinking] = useState<string|null>(null)
   const { data: apiPtRaw } = usePatients({ limit: 200 })
-  const ptList = ((apiPtRaw as any)?.data || []).map((p: any) => ({ id: p.id, name: `${p.first_name || ''} ${p.last_name || ''}`.trim() }))
+  const ptList = (Array.isArray(apiPtRaw) ? apiPtRaw : (apiPtRaw as any)?.data || []).map((p: any) => ({ id: p.id, name: `${p.first_name || ''} ${p.last_name || ''}`.trim() }))
   const { data: apiDocRaw2 } = useDocuments()
-  const apiDocs2: any[] = (Array.isArray(apiDocRaw2) ? apiDocRaw2 : []).map((d: ApiDocument) => ({
+  const apiDocs2: any[] = (Array.isArray(apiDocRaw2) ? apiDocRaw2 : (apiDocRaw2 as any)?.data || []).map((d: ApiDocument) => ({
     id: d.id, name: d.file_name || 'document',
-    type: d.document_type || 'other', patient: (d as any).patient_name || '—',
+    type: d.doc_type || d.document_type || 'other', patient: (d as any).patient_name || '—',
     client: (d as any).client_name || '—', status: d.status || 'uploaded',
   })) as any[]
   const unlinked = apiDocs2.filter((d: any)=>d.status==='Unlinked')
@@ -313,7 +348,7 @@ function UnlinkedQueueTab() {
                 <div className="flex items-center gap-2 mt-1">
                   <span className={`text-[10px] px-2 py-0.5 rounded-full ${sourceBadge(d.source)}`}>{d.source}</span>
                   {d.aiConfidence&&<span className="text-[10px] text-brand">AI: {d.type} · {d.aiConfidence}% conf</span>}
-                  <span className="text-[10px] text-content-tertiary">Arrived: {d.uploadDate}</span>
+                  <span className="text-[10px] text-content-tertiary">Arrived: {d.uploadDate ? new Date(d.uploadDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</span>
                 </div>
               </div>
             </div>
@@ -479,7 +514,7 @@ function AIProcessingTab() {
   const { toast } = useToast()
   const { data: apiDocRaw } = useDocuments()
   const allDocs = useMemo(() => {
-    return (Array.isArray(apiDocRaw) ? apiDocRaw : []) as ApiDocument[]
+    return (Array.isArray(apiDocRaw) ? apiDocRaw : (apiDocRaw as any)?.data || []) as ApiDocument[]
   }, [apiDocRaw])
 
   const textractDocs = useMemo(() =>
@@ -492,35 +527,27 @@ function AIProcessingTab() {
     ? Math.round(textractDocs.reduce((s, d) => s + (d.ai_confidence || 0), 0) / textractDocs.length)
     : 0
 
-  const [triggerDocId, setTriggerDocId] = useState<string | null>(null)
-  const triggerTextract = useTriggerTextract(triggerDocId || '')
-  const [classifyDocId, setClassifyDocId] = useState<string | null>(null)
-  const classifyDoc = useClassifyDocument(classifyDocId || '')
+  const [processing, setProcessing] = useState<Record<string, string>>({})
 
-  useEffect(() => {
-    if (!triggerDocId) return
-    const run = async () => {
-      try {
-        await triggerTextract.mutate({} as Record<string, never>)
-        toast.success('Textract processing started')
-      } catch { toast.error('Failed to start Textract') }
-    }
-    run()
-  }, [triggerDocId, triggerTextract, toast])
+  async function handleClassify(docId: string) {
+    if (processing[docId]) return
+    setProcessing(p => ({ ...p, [docId]: 'classifying' }))
+    try {
+      const result = await api.post(`/documents/${docId}/classify`, {}) as Record<string, unknown>
+      toast.success(`Classified as: ${result?.classification || 'unknown'} (${result?.confidence || 0}% confidence)`)
+    } catch { toast.error('Failed to classify document') }
+    setProcessing(p => { const n = { ...p }; delete n[docId]; return n })
+  }
 
-  useEffect(() => {
-    if (!classifyDocId) return
-    const run = async () => {
-      try {
-        const result = await classifyDoc.mutate({} as Record<string, never>)
-        toast.success(`Classified as: ${result?.classification || 'unknown'} (${result?.confidence || 0}% confidence)`)
-      } catch { toast.error('Failed to classify document') }
-    }
-    run()
-  }, [classifyDocId, classifyDoc, toast])
-
-  function handleTrigger(docId: string) { setTriggerDocId(docId) }
-  function handleClassify(docId: string) { setClassifyDocId(docId) }
+  async function handleTrigger(docId: string) {
+    if (processing[docId]) return
+    setProcessing(p => ({ ...p, [docId]: 'textract' }))
+    try {
+      await api.post(`/documents/${docId}/textract`, {})
+      toast.success('Textract processing started')
+    } catch { toast.error('Failed to start Textract') }
+    setProcessing(p => { const n = { ...p }; delete n[docId]; return n })
+  }
 
   // Show docs that can be processed (have s3_key but no textract result yet)
   const unprocessed = allDocs.filter(d => d.s3_key && !(d as any).textract_status)
@@ -529,7 +556,7 @@ function AIProcessingTab() {
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="card p-4 text-center">
-          <p className="text-2xl font-bold text-brand">{processed || textractDocs.length}</p>
+          <p className="text-2xl font-bold text-brand">{processed}</p>
           <p className="text-[10px] text-content-tertiary mt-1">Documents Processed</p>
         </div>
         <div className="card p-4 text-center">
@@ -553,16 +580,16 @@ function AIProcessingTab() {
               <div key={d.id} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
                 <div>
                   <p className="text-xs font-mono">{d.file_name}</p>
-                  <p className="text-[10px] text-content-tertiary">{d.document_type} · {d.content_type}</p>
+                  <p className="text-[10px] text-content-tertiary">{d.doc_type || d.document_type || 'Other'} · {d.content_type}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleClassify(d.id)}
-                    className="text-[10px] bg-blue-500/10 text-blue-500 px-3 py-1.5 rounded-lg hover:bg-blue-500/20 transition-colors">
-                    AI Classify
+                  <button onClick={() => handleClassify(d.id)} disabled={!!processing[d.id]}
+                    className="text-[10px] bg-blue-500/10 text-blue-500 px-3 py-1.5 rounded-lg hover:bg-blue-500/20 transition-colors disabled:opacity-50">
+                    {processing[d.id] === 'classifying' ? 'Classifying…' : 'AI Classify'}
                   </button>
-                  <button onClick={() => handleTrigger(d.id)}
-                    className="text-[10px] bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-colors">
-                    Run Textract
+                  <button onClick={() => handleTrigger(d.id)} disabled={!!processing[d.id]}
+                    className="text-[10px] bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-colors disabled:opacity-50">
+                    {processing[d.id] === 'textract' ? 'Processing…' : 'Run Textract'}
                   </button>
                 </div>
               </div>
@@ -588,7 +615,7 @@ function AIProcessingTab() {
               {textractDocs.slice(0, 20).map(d => (
                 <tr key={d.id} className="border-b border-separator last:border-0">
                   <td className="py-2 px-3 font-mono">{d.file_name}</td>
-                  <td className="py-2 px-3"><span className="text-[10px] px-2 py-0.5 rounded bg-surface-elevated">{(d as any).classification || d.document_type || '—'}</span></td>
+                  <td className="py-2 px-3"><span className="text-[10px] px-2 py-0.5 rounded bg-surface-elevated">{(d as any).classification || d.doc_type || d.document_type || '—'}</span></td>
                   <td className="py-2 px-3">
                     <span className={`font-medium ${(d.ai_confidence||0)>=90?'text-emerald-500':(d.ai_confidence||0)>=80?'text-amber-500':'text-red-500'}`}>
                       {d.ai_confidence ? `${d.ai_confidence}%` : '—'}
@@ -668,6 +695,20 @@ export default function DocumentsPage() {
   )
 }
 
+
+const DOCUMENT_TYPES = [
+  { key: 'Superbill',      icon: '🧾' },
+  { key: 'Clinical Note',  icon: '📋' },
+  { key: 'Insurance Card', icon: '🏥' },
+  { key: 'EOB',            icon: '💵' },
+  { key: 'Denial Letter',  icon: '❌' },
+  { key: 'Referral',       icon: '📨' },
+  { key: 'License',        icon: '🪪' },
+  { key: 'Contract',       icon: '📄' },
+  { key: 'Credential',     icon: '🔖' },
+  { key: 'Other',          icon: '📁' },
+] as const
+
 function UploadModal({ onClose }: { onClose: () => void }) {
   const { toast } = useToast()
   const { selectedClient } = useApp()
@@ -679,6 +720,11 @@ function UploadModal({ onClose }: { onClose: () => void }) {
   const [progress, setProgress] = useState(0)
   const mounted = useRef(true)
   useEffect(() => { return () => { mounted.current = false } }, [])
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
@@ -715,6 +761,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
         if (!s3Res.ok) throw new Error(`S3 upload failed (${s3Res.status})`)
         // Step 3: Create document record
         await createDoc({
+          doc_type: docType,
           document_type: docType,
           file_name: file.name,
           s3_key: urlResult.s3_key,
@@ -742,77 +789,99 @@ function UploadModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-surface rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold">Upload Documents</h3>
-          <button onClick={onClose}><X size={18} className="text-content-secondary" /></button>
-        </div>
-
-        {/* Document type chips */}
-        <div>
-          <p className="text-xs text-content-secondary mb-2">Select document type:</p>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { key: 'Superbill',      icon: '🧾' },
-              { key: 'Clinical Note',  icon: '📋' },
-              { key: 'Insurance Card', icon: '🏥' },
-              { key: 'EOB',            icon: '💵' },
-              { key: 'Denial Letter',  icon: '❌' },
-              { key: 'Referral',       icon: '📨' },
-              { key: 'License',        icon: '🪪' },
-              { key: 'Contract',       icon: '📄' },
-              { key: 'Credential',     icon: '🔖' },
-              { key: 'Other',          icon: '📁' },
-            ].map(dt => (
-              <button key={dt.key} onClick={() => setDocType(dt.key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all
-                  ${docType === dt.key
-                    ? 'bg-brand text-white border-brand'
-                    : 'bg-surface-elevated text-content-primary border-separator hover:border-brand/40 hover:bg-brand/5'
-                  }`}>
-                <span>{dt.icon}</span> {dt.key}
-              </button>
-            ))}
+    <>
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div className="pointer-events-auto w-full max-w-lg bg-surface-default border border-separator rounded-2xl shadow-2xl overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-separator">
+            <div className="flex items-center gap-2">
+              <Upload size={16} className="text-brand" />
+              <h3 className="text-base font-semibold text-content-primary">Upload Document</h3>
+            </div>
+            <button onClick={onClose} className="text-content-tertiary hover:text-content-primary transition-colors p-1 rounded-lg hover:bg-surface-elevated">
+              <X size={18} />
+            </button>
           </div>
-        </div>
 
-        {/* Drop zone */}
-        <div onDragOver={e => e.preventDefault()} onDrop={handleDrop}
-          className="border-2 border-dashed border-separator rounded-lg p-6 text-center hover:border-brand/40 transition-colors">
-          <Upload size={24} className="mx-auto text-content-tertiary mb-2" />
-          <p className="text-xs text-content-secondary mb-1">Drag files here or click to browse</p>
-          <input type="file" multiple onChange={handleFileSelect} className="hidden" id="doc-upload" />
-          <label htmlFor="doc-upload" className="text-xs text-brand cursor-pointer hover:underline">Browse files</label>
-        </div>
-
-        {/* File list */}
-        {files.length > 0 && (
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            {files.map((f, i) => (
-              <div key={i} className="flex items-center justify-between bg-surface-elevated rounded px-3 py-1.5">
-                <span className="text-xs font-mono truncate">{f.name}</span>
-                <button onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))}>
-                  <X size={12} className="text-content-tertiary hover:text-red-500" />
-                </button>
+          {/* Body */}
+          <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
+            {/* Document type chips */}
+            <div>
+              <p className="text-xs font-medium text-content-secondary mb-3">Document Type</p>
+              <div className="flex flex-wrap gap-2">
+                {DOCUMENT_TYPES.map(dt => (
+                  <button key={dt.key} onClick={() => setDocType(dt.key)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all
+                      ${docType === dt.key
+                        ? 'bg-brand text-white border-brand shadow-sm'
+                        : 'bg-surface-elevated text-content-primary border-separator hover:border-brand/40 hover:bg-brand/5'
+                      }`}>
+                    <span>{dt.icon}</span> {dt.key}
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            </div>
 
-        {/* Progress */}
-        {uploading && (
-          <div className="w-full bg-surface-elevated rounded-full h-2">
-            <div className="bg-brand h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
-          </div>
-        )}
+            {/* Drop zone */}
+            <div onDragOver={e => e.preventDefault()} onDrop={handleDrop}
+              role="button" tabIndex={0}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('doc-upload')?.click() } }}
+              className="border-2 border-dashed border-separator rounded-xl py-10 px-6 text-center hover:border-brand/40 hover:bg-brand/5 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand/40"
+              onClick={() => document.getElementById('doc-upload')?.click()}>
+              <div className="w-12 h-12 rounded-full bg-brand/10 flex items-center justify-center mx-auto mb-3">
+                <Upload size={20} className="text-brand" />
+              </div>
+              <p className="text-sm font-medium text-content-primary mb-1">Drag files here or click to browse</p>
+              <p className="text-xs text-content-tertiary">PDF, JPG, PNG, HEIC — Max 25MB each</p>
+              <input type="file" multiple onChange={handleFileSelect} className="hidden" id="doc-upload" />
+            </div>
 
-        <button onClick={handleUpload} disabled={uploading || files.length === 0}
-          className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep disabled:opacity-50 transition-colors">
-          {uploading ? `Uploading… ${progress}%` : `Upload ${files.length} file${files.length !== 1 ? 's' : ''}`}
-        </button>
+            {/* File list */}
+            {files.length > 0 && (
+              <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-medium text-content-secondary">{files.length} file{files.length !== 1 ? 's' : ''} selected</p>
+                  <button onClick={() => setFiles([])} className="text-[10px] text-red-500 hover:text-red-600">Clear all</button>
+                </div>
+                {files.map((f, i) => (
+                  <div key={`${f.name}-${f.lastModified}`} className="flex items-center gap-3 bg-surface-elevated rounded-lg px-3 py-2">
+                    <FileText size={14} className="text-brand shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{f.name}</p>
+                      <p className="text-[10px] text-content-tertiary">{(f.size / 1024 / 1024).toFixed(1)} MB</p>
+                    </div>
+                    <button onClick={() => setFiles(prev => prev.filter(file => file !== f))}>
+                      <X size={14} className="text-content-tertiary hover:text-red-500 transition-colors" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Progress */}
+            {uploading && (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs text-content-secondary">Uploading…</span>
+                  <span className="text-xs font-mono text-brand">{progress}%</span>
+                </div>
+                <div className="w-full bg-surface-elevated rounded-full h-2">
+                  <div className="bg-brand h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-separator">
+            <button onClick={handleUpload} disabled={uploading || files.length === 0}
+              className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-brand-deep disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors">
+              {uploading ? `Uploading… ${progress}%` : <><Upload size={14} /> Upload {files.length} file{files.length !== 1 ? 's' : ''}</>}
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
