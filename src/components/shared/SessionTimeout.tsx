@@ -2,9 +2,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
-const IDLE_TIMEOUT_MS = 15 * 60 * 1000 // 15 minutes — HIPAA requirement
-const WARNING_BEFORE_MS = 2 * 60 * 1000 // Show warning 2 min before timeout
-const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000 // Ping server every 5 min
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000
+const WARNING_BEFORE_MS = 2 * 60 * 1000
+const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000
 
 export default function SessionTimeout() {
   const router = useRouter()
@@ -17,7 +17,6 @@ export default function SessionTimeout() {
     setShowWarning(false)
   }, [])
 
-  // Track user activity
   useEffect(() => {
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove']
     const handler = () => { lastActivityRef.current = Date.now() }
@@ -25,28 +24,28 @@ export default function SessionTimeout() {
     return () => events.forEach(e => window.removeEventListener(e, handler))
   }, [])
 
-  // Check idle every 10 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
+    const check = () => {
       const idle = Date.now() - lastActivityRef.current
       if (idle >= IDLE_TIMEOUT_MS) {
-        // Session expired — log out
         sessionStorage.clear()
         router.push('/login?reason=timeout')
-      } else if (idle >= IDLE_TIMEOUT_MS - WARNING_BEFORE_MS) {
-        setShowWarning(true)
-        setSecondsLeft(Math.ceil((IDLE_TIMEOUT_MS - idle) / 1000))
-      } else {
-        setShowWarning(false)
+        return
       }
-    }, 10000)
+      const isWarningPeriod = idle >= IDLE_TIMEOUT_MS - WARNING_BEFORE_MS
+      setShowWarning(isWarningPeriod)
+      if (isWarningPeriod) {
+        setSecondsLeft(Math.ceil((IDLE_TIMEOUT_MS - idle) / 1000))
+      }
+    }
+    const interval = setInterval(check, showWarning ? 1000 : 10000)
+    check()
     return () => clearInterval(interval)
-  }, [router])
+  }, [router, showWarning])
 
-  // Server heartbeat
   useEffect(() => {
     const interval = setInterval(() => {
-      fetch('/api/v1/session/heartbeat', { method: 'POST' }).catch(() => {})
+      fetch('/api/v1/session/heartbeat', { method: 'POST' }).catch(err => console.warn('[session] Heartbeat failed:', err))
     }, HEARTBEAT_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [])

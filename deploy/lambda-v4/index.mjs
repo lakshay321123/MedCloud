@@ -527,7 +527,8 @@ async function runSchemaMigration() {
       delivery_method VARCHAR(50) DEFAULT 'portal',
       notes TEXT,
       processed_by UUID,
-      created_at TIMESTAMPTZ DEFAULT NOW()
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
     )`);
   } catch (e) { if (e.code !== '42P07') safeLog('warn', 'patient_access_requests:', e.message); }
   safeLog('info', `Column fixes applied (${colFixes.length} statements)`);
@@ -9400,6 +9401,7 @@ export const handler = async (event) => {
         const existing = await getById('baa_tracking', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'BAA not found' });
         const updated = await update('baa_tracking', pathParams.id, body, effectiveOrgId);
+        await auditLog(effectiveOrgId, userId, 'update', 'baa_tracking', pathParams.id, { vendor: body.vendor_name || existing.vendor_name, status: body.baa_status });
         return respond(200, updated);
       }
     }
@@ -9453,10 +9455,10 @@ export const handler = async (event) => {
     // ════ HIPAA Compliance Dashboard ═════════════════════════════════════
     if (path.includes('/hipaa-compliance') && method === 'GET') {
       const [baaR, breachR, accessR, auditR] = await Promise.all([
-        pool.query('SELECT COUNT(*) AS total, SUM(CASE WHEN baa_status = $2 THEN 1 ELSE 0 END) AS active FROM baa_tracking WHERE org_id = $1', [effectiveOrgId, 'active']),
-        pool.query('SELECT COUNT(*) AS total, SUM(CASE WHEN investigation_status = $2 THEN 1 ELSE 0 END) AS open FROM breach_incidents WHERE org_id = $1', [effectiveOrgId, 'open']),
-        pool.query('SELECT COUNT(*) AS total, SUM(CASE WHEN status = $2 THEN 1 ELSE 0 END) AS pending FROM patient_access_requests WHERE org_id = $1', [effectiveOrgId, 'received']),
-        pool.query("SELECT COUNT(*) AS total FROM audit_log WHERE org_id = $1 AND created_at > NOW() - INTERVAL '24 hours'", [effectiveOrgId]),
+        orgQuery(effectiveOrgId, 'SELECT COUNT(*) AS total, SUM(CASE WHEN baa_status = $2 THEN 1 ELSE 0 END) AS active FROM baa_tracking WHERE org_id = $1', [effectiveOrgId, 'active']),
+        orgQuery(effectiveOrgId, 'SELECT COUNT(*) AS total, SUM(CASE WHEN investigation_status = $2 THEN 1 ELSE 0 END) AS open FROM breach_incidents WHERE org_id = $1', [effectiveOrgId, 'open']),
+        orgQuery(effectiveOrgId, 'SELECT COUNT(*) AS total, SUM(CASE WHEN status = $2 THEN 1 ELSE 0 END) AS pending FROM patient_access_requests WHERE org_id = $1', [effectiveOrgId, 'received']),
+        orgQuery(effectiveOrgId, "SELECT COUNT(*) AS total FROM audit_log WHERE org_id = $1 AND created_at > NOW() - INTERVAL '24 hours'", [effectiveOrgId]),
       ]);
       return respond(200, {
         baa: { total: parseInt(baaR.rows[0].total), active: parseInt(baaR.rows[0].active) || 0 },
