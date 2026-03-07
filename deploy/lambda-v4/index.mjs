@@ -1100,12 +1100,16 @@ async function enrichedCoding(orgId, clientId) {
            pr.first_name || ' ' || pr.last_name AS provider_name,
            cl.name AS client_name,
            sn.subjective, sn.objective, sn.assessment, sn.plan AS soap_plan,
-           sn.transcript AS soap_transcript, sn.ai_suggestions AS soap_ai_suggestions
+           sn.transcript AS soap_transcript, sn.ai_suggestions AS soap_ai_suggestions,
+           acs.suggested_cpt AS ai_cpt, acs.suggested_icd AS ai_icd, acs.suggested_em AS ai_em,
+           acs.em_confidence AS ai_em_confidence, acs.total_confidence AS ai_confidence,
+           acs.model_id AS ai_model
            FROM coding_queue cq
            LEFT JOIN patients p ON cq.patient_id = p.id
            LEFT JOIN providers pr ON cq.provider_id = pr.id
            LEFT JOIN clients cl ON cq.client_id = cl.id
            LEFT JOIN soap_notes sn ON cq.soap_note_id = sn.id
+           LEFT JOIN ai_coding_suggestions acs ON cq.ai_suggestion_id = acs.id
            WHERE cq.org_id = $1`;
   const params = [orgId];
   if (clientId) { params.push(clientId); q += ` AND cq.client_id = $${params.length}`; }

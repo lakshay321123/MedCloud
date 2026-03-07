@@ -10,6 +10,7 @@ export const modules: ModuleConfig[] = [
   { id: 'claims', label: 'Claims Center', icon: 'FileText', path: '/claims', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
   { id: 'edi', label: 'EDI Transactions', icon: 'ArrowLeftRight', path: '/edi', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
   { id: 'coding', label: 'AI Coding', icon: 'BrainCircuit', path: '/coding', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'coder'] },
+  { id: 'coding-rules', label: 'Coding Rules', icon: 'Zap', path: '/coding-rules', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'coder'] },
   { id: 'eligibility', label: 'Eligibility', icon: 'ShieldCheck', path: '/eligibility', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
   { id: 'denials', label: 'Denials & Appeals', icon: 'ShieldAlert', path: '/denials', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller', 'ar_team'] },
   { id: 'ar', label: 'A/R Management', icon: 'TrendingUp', path: '/ar-management', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'ar_team'] },

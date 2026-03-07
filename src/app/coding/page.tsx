@@ -389,8 +389,9 @@ export default function CodingPage() {
       assessment: c.assessment || '',
       plan: c.soap_plan || '',
     },
-    aiSuggestedIcd: [] as AISuggestedCode[],
-    aiSuggestedCpt: [] as AISuggestedCode[],
+    aiSuggestedIcd: ((c as any).ai_icd ? (typeof (c as any).ai_icd === 'string' ? JSON.parse((c as any).ai_icd) : (c as any).ai_icd) : []).map((d: any) => ({ code: d.code, desc: d.description || d.desc || '', confidence: d.confidence || 0, reasoning: d.specificity_note || d.reasoning })) as AISuggestedCode[],
+    aiSuggestedCpt: ((c as any).ai_cpt ? (typeof (c as any).ai_cpt === 'string' ? JSON.parse((c as any).ai_cpt) : (c as any).ai_cpt) : []).map((d: any) => ({ code: d.code, desc: d.description || d.desc || '', confidence: d.confidence || 0, modifiers: d.modifier ? [d.modifier] : d.modifiers || [], reasoning: d.modifier_reason || d.reasoning })) as AISuggestedCode[],
+    aiAlreadyCoded: !!(c as any).ai_suggestion_id,
     hasSuperbill: false,
     superbillCpt: undefined as string[] | undefined,
     priorAuthStatus: 'not_required' as string,
@@ -558,11 +559,12 @@ export default function CodingPage() {
   const item = queue.find(q => q.id === selected)
   const cachedCodes = item ? aiCodeCache[item.id] : null
 
-  // Auto-trigger AI coding when selecting an item with SOAP content
+  // Auto-trigger AI coding when selecting an item with SOAP content (only if not already coded)
   React.useEffect(() => {
     if (!item || !item.id) return
     if (aiCodeCache[item.id]) return
     if (autoTriggeredRef.current.has(item.id)) return
+    if ((item as any).aiAlreadyCoded) return // Already coded by backend — use saved results
     if (!item.visitNote?.assessment) return
     if (aiCoding) return
     autoTriggeredRef.current.add(item.id)
@@ -570,6 +572,19 @@ export default function CodingPage() {
   }, [item?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const activeCodes = cachedCodes ?? { icd: item?.aiSuggestedIcd ?? [], cpt: item?.aiSuggestedCpt ?? [] }
   const hasRealCodes = activeCodes.icd.length > 0 || activeCodes.cpt.length > 0
+
+  // Auto-select saved AI codes from backend when switching items
+  const autoSelectedRef = React.useRef<Set<string>>(new Set())
+  React.useEffect(() => {
+    if (!item || autoSelectedRef.current.has(item.id)) return
+    if (item.aiSuggestedIcd.length > 0 || item.aiSuggestedCpt.length > 0) {
+      autoSelectedRef.current.add(item.id)
+      const newSel: Record<string, boolean> = {}
+      item.aiSuggestedIcd.forEach(c => { newSel[`icd-${c.code}`] = true })
+      item.aiSuggestedCpt.forEach(c => { newSel[`cpt-${c.code}`] = true })
+      setSelectedCodes(prev => ({ ...prev, ...newSel }))
+    }
+  }, [item?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const aiCptCodes = item?.aiSuggestedCpt.map(c => c.code) ?? []
   const superbillOnly = item?.superbillCpt?.filter(c => !aiCptCodes.includes(c)) ?? []
@@ -901,12 +916,8 @@ export default function CodingPage() {
                       QA Audit
                     </button>
                     <button
-                      onClick={() => setTab(tab === 'rules' ? 'note' : 'rules')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border transition-colors ${
-                        tab === 'rules'
-                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-600'
-                          : 'border-separator text-content-secondary hover:border-amber-500/40 hover:text-content-primary'
-                      }`}
+                      onClick={() => router.push('/coding-rules')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border border-separator text-content-secondary hover:border-amber-500/40 hover:text-amber-600 transition-colors"
                     >
                       ⚙ Coding Rules
                     </button>
@@ -964,7 +975,6 @@ export default function CodingPage() {
                       </div>
                     </div>
                   )}
-                  {tab === 'rules' && <CodingRulesPanel />}
                 </div>
                 {/* ── Doc Viewer Overlay ── */}
                 {docOpen && item && (
