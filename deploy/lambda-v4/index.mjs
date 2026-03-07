@@ -364,11 +364,11 @@ async function runSchemaMigration() {
     "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS claim_id UUID",
     "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS line_number INT",
     "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS cpt_code VARCHAR(10)",
-    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS modifier VARCHAR(10)",
-    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS charge NUMERIC(10,2) DEFAULT 0",
+    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS modifiers JSONB DEFAULT '[]'::jsonb",
+    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS charges NUMERIC(10,2) DEFAULT 0",
     "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS units INT DEFAULT 1",
     "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS dos DATE",
-    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS description TEXT",
+    "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS cpt_description TEXT",
     "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()",
     "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
     "ALTER TABLE claim_diagnoses ADD COLUMN IF NOT EXISTS org_id UUID",
@@ -376,11 +376,9 @@ async function runSchemaMigration() {
     "ALTER TABLE claim_diagnoses ADD COLUMN IF NOT EXISTS claim_id UUID",
     "ALTER TABLE claim_diagnoses ADD COLUMN IF NOT EXISTS icd_code VARCHAR(10)",
     "ALTER TABLE claim_diagnoses ADD COLUMN IF NOT EXISTS sequence INT",
-    "ALTER TABLE claim_diagnoses ADD COLUMN IF NOT EXISTS description TEXT",
+    "ALTER TABLE claim_diagnoses ADD COLUMN IF NOT EXISTS icd_description TEXT",
     "ALTER TABLE claim_diagnoses ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()",
     "ALTER TABLE claim_diagnoses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
-    "ALTER TABLE claims ALTER COLUMN patient_id DROP NOT NULL",
-    "ALTER TABLE claims ALTER COLUMN provider_id DROP NOT NULL",
     "ALTER TABLE soap_notes ALTER COLUMN patient_id DROP NOT NULL",
     "ALTER TABLE soap_notes ALTER COLUMN provider_id DROP NOT NULL",
     "ALTER TABLE soap_notes ALTER COLUMN encounter_id DROP NOT NULL",
@@ -3081,6 +3079,12 @@ async function approveCoding(codingQueueId, body, orgId, userId) {
 
   // Resolve provider_id: body → coding_queue → SOAP note → null
   let providerId = body.provider_id || item.provider_id || null;
+  if (body.provider_id) {
+    try {
+      const prov = await getById('providers', body.provider_id);
+      if (!prov || prov.org_id !== orgId) { providerId = item.provider_id || null; safeLog('warn', 'provider_id rejected — not in org'); }
+    } catch { providerId = item.provider_id || null; }
+  }
   if (!providerId && item.soap_note_id) {
     const note = await getById('soap_notes', item.soap_note_id);
     if (note?.provider_id) providerId = note.provider_id;
@@ -3089,7 +3093,7 @@ async function approveCoding(codingQueueId, body, orgId, userId) {
   // Look up fee schedule rates for CPT codes with charge=0 or missing
   const feeCache = {};
   for (const cpt of cptCodes) {
-    if (!cpt.charge || Number(cpt.charge) === 0) {
+    { // Always look up fee schedule rate
       if (!feeCache[cpt.code]) {
         try {
           const feeRow = await pool.query(
@@ -3097,7 +3101,7 @@ async function approveCoding(codingQueueId, body, orgId, userId) {
             [orgId, cpt.code]
           );
           feeCache[cpt.code] = feeRow.rows[0]?.contracted_rate ? Number(feeRow.rows[0].contracted_rate) : 0;
-        } catch { feeCache[cpt.code] = 0; }
+        } catch (e) { safeLog('error', `Fee schedule lookup failed for CPT ${cpt.code}:`, e.message); feeCache[cpt.code] = 0; }
       }
       cpt.charge = feeCache[cpt.code];
     }
