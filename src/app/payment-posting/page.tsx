@@ -33,12 +33,13 @@ interface LineItem {
   notes: string
 }
 
-// ─── Client-side 835 parser ─────────────────────────────────────────────────
+// ─── Universal EOB Parser — handles 835 EDI, TXT, and PDF ───────────────────
 const ADJ_REASON: Record<string, string> = {
   '1': 'Deductible', '2': 'Coinsurance', '3': 'Co-payment', '4': 'Deductible',
   '45': 'Contractual adj.', '97': 'Service not covered', '96': 'Non-covered charge',
   '50': 'Non-covered service', '16': 'Missing info', '18': 'Duplicate claim',
   'B7': 'Not authorized', '57': 'Prior auth required', 'CO-45': 'Contractual adj.',
+  '29': 'Timely filing exceeded', '119': 'Max benefit reached', '23': 'Other carrier paid',
 }
 function getAdjReason(group: string, code: string): string {
   return ADJ_REASON[code] || ADJ_REASON[`${group}-${code}`] || `${group}-${code}`
@@ -50,7 +51,157 @@ function formatDOS(raw: string): string {
 interface ParsedERA {
   payerName: string; checkNumber: string; totalPaid: number; paymentDate: string
   lines: LineItem[]
+  formatDetected?: 'edi_835' | 'txt' | 'pdf'
 }
+
+// ── Format detector ──────────────────────────────────────────────────────────
+type EOBFormat = 'edi_835' | 'txt' | 'pdf'
+function detectEOBFormat(raw: string, fileName?: string): EOBFormat {
+  const ext = (fileName || '').split('.').pop()?.toLowerCase()
+  if (ext === 'pdf') return 'pdf'
+  // 835 EDI always starts with ISA segment or has ~ delimiters with X12 identifiers
+  if (/^ISA\*/i.test(raw.trim()) || /\bST\*835\b/.test(raw) || (raw.includes('~') && raw.includes('BPR*'))) return 'edi_835'
+  // GS*HP = 835 functional group header
+  if (/GS\*HP\*/.test(raw)) return 'edi_835'
+  return 'txt'
+}
+
+// ── TXT EOB parser ───────────────────────────────────────────────────────────
+function parseTxtEOB(eraId: string, raw: string): ParsedERA {
+  const lines = raw.split(/\r?\n/)
+  const result: ParsedERA = { payerName: '', checkNumber: '', totalPaid: 0, paymentDate: '', lines: [], formatDetected: 'txt' }
+
+  // Header scan
+  for (const line of lines) {
+    const l = line.trim()
+    if (!result.payerName) {
+      const m = l.match(/(?:payer|insurance\s*company|insurer|carrier)[:\s]+([A-Za-z][^\n\r]{3,50})/i)
+      if (m) result.payerName = m[1].trim()
+    }
+    if (!result.checkNumber) {
+      const m = l.match(/(?:check\s*(?:number|#|no)|eft\s*(?:number|#)|trace\s*(?:number|#)|reference\s*(?:no|number|#))[:\s#]+([A-Z0-9\-]{4,20})/i)
+      if (m) result.checkNumber = m[1].trim()
+    }
+    if (!result.paymentDate) {
+      const m = l.match(/(?:payment\s*date|check\s*date|issue\s*date|paid\s*date)[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i)
+      if (m) result.paymentDate = m[1].trim()
+    }
+    if (!result.totalPaid) {
+      const m = l.match(/(?:total\s*(?:payment|paid|amount)|net\s*payment)[:\s]+\$?([\d,]+\.?\d*)/i)
+      if (m) result.totalPaid = parseFloat(m[1].replace(/,/g, '')) || 0
+    }
+  }
+
+  // Find claim blocks
+  let claimIdx = 0
+  const claimPositions: { number: string; lineIdx: number }[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const m1 = lines[i].match(/(?:claim\s*(?:number|no|#|id)[:\s#]+)([A-Z0-9\-]{4,20})/i)
+    if (m1) { claimPositions.push({ number: m1[1], lineIdx: i }); continue }
+    const m2 = lines[i].match(/\b(CLM[-]?[A-Z0-9]{4,15})\b/i)
+    if (m2) claimPositions.push({ number: m2[1], lineIdx: i })
+  }
+
+  for (const cp of claimPositions) {
+    claimIdx++
+    const start = Math.max(0, cp.lineIdx - 2)
+    const end = Math.min(lines.length, cp.lineIdx + 15)
+    const block = lines.slice(start, end).join('\n')
+
+    let claimPatient = ''
+    let claimDOS = ''
+    let claimBilled = 0
+    let claimPaid = 0
+    let claimPatResp = 0
+
+    const patM = block.match(/(?:patient|member|subscriber)[:\s]+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){1,3})/i)
+    if (patM) claimPatient = patM[1].trim()
+    const dosM = block.match(/(?:date\s*of\s*service|dos|service\s*date)[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i)
+    if (dosM) claimDOS = dosM[1].trim()
+    const billedM = block.match(/(?:billed|charged|submitted)[:\s]+\$?([\d,]+\.?\d*)/i)
+    if (billedM) claimBilled = parseFloat(billedM[1].replace(/,/g, '')) || 0
+    const paidM = block.match(/(?:paid|payment|amount\s*paid)[:\s]+\$?([\d,]+\.?\d*)/i)
+    if (paidM) claimPaid = parseFloat(paidM[1].replace(/,/g, '')) || 0
+    const prM = block.match(/(?:patient\s*(?:responsibility|balance)|deductible|copay)[:\s]+\$?([\d,]+\.?\d*)/i)
+    if (prM) claimPatResp = parseFloat(prM[1].replace(/,/g, '')) || 0
+
+    // CPT line extraction
+    const cptPat = /\b(\d{5})\b[\s|,\t]+\$?([\d,]+\.?\d*)[\s|,\t]+(?:\$?([\d,]+\.?\d*)[\s|,\t]+)?(?:\$?([\d,]+\.?\d*))?/g
+    let cptM: RegExpExecArray | null
+    while ((cptM = cptPat.exec(block)) !== null) {
+      const num = parseInt(cptM[1])
+      if (num >= 100 && num <= 99499) {
+        const b = parseFloat((cptM[2] || '0').replace(/,/g, '')) || 0
+        const a = parseFloat((cptM[3] || '0').replace(/,/g, '')) || 0
+        const p = parseFloat((cptM[4] || '0').replace(/,/g, '')) || 0
+        if (b > 0 || p > 0) {
+          const ctx = block.slice(Math.max(0, cptM.index - 50), Math.min(block.length, cptM.index + 100))
+          const carcM = ctx.match(/\b(CO|PR|OA|PI|CR)[-\s]?(\d{1,3})\b/i)
+          const adjCode = carcM ? `${carcM[1].toUpperCase()}-${carcM[2]}` : ''
+          result.lines.push({
+            id: `txt-${eraId}-${claimIdx}-${result.lines.length}`, eraId,
+            claimId: cp.number, patientName: claimPatient || `Patient ${claimIdx}`,
+            cpt: cptM[1], cptDesc: '', dos: claimDOS || result.paymentDate,
+            billed: b, allowed: a || b, paid: p, denied: b - p > 0 ? b - p : 0,
+            patBalance: claimPatResp,
+            adjCode, adjReason: adjCode ? getAdjReason(carcM![1], carcM![2]) : '',
+            action: p === 0 ? 'review' : 'post', notes: ''
+          })
+        }
+      }
+    }
+
+    // Claim-level fallback if no CPT lines
+    if (result.lines.filter(l => l.claimId === cp.number).length === 0 && (claimBilled > 0 || claimPaid > 0)) {
+      result.lines.push({
+        id: `txt-${eraId}-${claimIdx}-0`, eraId, claimId: cp.number,
+        patientName: claimPatient || `Patient ${claimIdx}`,
+        cpt: '', cptDesc: 'See EOB', dos: claimDOS || result.paymentDate,
+        billed: claimBilled, allowed: claimBilled, paid: claimPaid,
+        denied: claimBilled - claimPaid > 0 ? claimBilled - claimPaid : 0,
+        patBalance: claimPatResp, adjCode: '', adjReason: '',
+        action: claimPaid === 0 ? 'review' : 'post', notes: ''
+      })
+    }
+  }
+
+  // Global fallback if no claim markers found
+  if (result.lines.length === 0) {
+    const cptGlobal = /\b(\d{5})\b[\s|,\t]+\$?([\d,]+\.?\d*)[\s|,\t]+\$?([\d,]+\.?\d*)[\s|,\t]+\$?([\d,]+\.?\d*)/g
+    let gm: RegExpExecArray | null
+    let idx = 0
+    while ((gm = cptGlobal.exec(raw)) !== null) {
+      const num = parseInt(gm[1])
+      if (num >= 100 && num <= 99499) {
+        const b = parseFloat(gm[2].replace(/,/g, '')) || 0
+        const a = parseFloat(gm[3].replace(/,/g, '')) || 0
+        const p = parseFloat(gm[4].replace(/,/g, '')) || 0
+        result.lines.push({
+          id: `txt-${eraId}-g-${idx++}`, eraId, claimId: 'EOB-001',
+          patientName: '', cpt: gm[1], cptDesc: '', dos: result.paymentDate,
+          billed: b, allowed: a, paid: p, denied: b - p > 0 ? b - p : 0,
+          patBalance: 0, adjCode: '', adjReason: '',
+          action: p === 0 ? 'review' : 'post', notes: ''
+        })
+      }
+    }
+  }
+
+  return result
+}
+
+// ── Main entry point: routes to correct parser ────────────────────────────────
+function parseEOB(eraId: string, raw: string, fileName?: string): ParsedERA {
+  const fmt = detectEOBFormat(raw, fileName)
+  if (fmt === 'edi_835') {
+    const r = parse835(eraId, raw)
+    return { ...r, formatDetected: 'edi_835' }
+  }
+  if (fmt === 'txt') return parseTxtEOB(eraId, raw)
+  // PDF returns empty shell — actual parsing happens async via /api/parse-eob
+  return { payerName: '', checkNumber: '', totalPaid: 0, paymentDate: '', lines: [], formatDetected: 'pdf' }
+}
+
 function parse835(eraId: string, raw: string): ParsedERA {
   const segs = raw.split('~').map(s => s.trim()).filter(Boolean)
   const result: ParsedERA = { payerName: '', checkNumber: '', totalPaid: 0, paymentDate: '', lines: [] }
@@ -238,6 +389,7 @@ export default function PaymentPostingPage() {
     status: (e.status as 'new' | 'processing' | 'posted') || 'new',
     exceptions: 0,
     receivedAt: e.created_at || '',
+    fileType: (e.file_type || 'txt') as string,
   })) || []
   const eras = filterPayersByCountry(allEras, country)
 
@@ -268,23 +420,65 @@ export default function PaymentPostingPage() {
     // Only load if not already loaded for this ERA
     if (lineItems.filter((l: LineItem) => l.eraId === selectedEra).length > 0) return
 
-    // Fetch raw_content from API and parse the real 835
+    // Fetch raw_content from API and parse using universal EOB parser
     setLoadingLines(true)
-    api.get<{ raw_content?: string; file_name?: string }>(`/era-files/${selectedEra}`)
-      .then(rec => {
+    api.get<{ raw_content?: string; file_name?: string; file_type?: string }>(`/era-files/${selectedEra}`)
+      .then(async rec => {
         const raw = rec.raw_content || ''
-        if (raw.includes('ISA') || raw.includes('BPR') || raw.includes('CLP')) {
-          // Real 835 content — parse it client-side
-          const parsed = parse835(selectedEra, raw)
-          if (parsed.lines.length > 0) {
-            setLineItems((prev: LineItem[]) => [...prev, ...parsed.lines])
+        const fileName = rec.file_name || ''
+        const fileType = rec.file_type || ''
+
+        if (!raw) return // No content — leave empty
+
+        // PDF stored as base64 data URI — send to /api/parse-eob
+        if (fileType === 'pdf' || raw.startsWith('data:application/pdf')) {
+          try {
+            const parseResp = await fetch('/api/parse-eob', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ raw_content: raw, file_name: fileName }),
+            })
+            if (parseResp.ok) {
+              const parsed = await parseResp.json()
+              const lines: LineItem[] = []
+              for (const claim of (parsed.claims || [])) {
+                for (const svc of (claim.lines || [])) {
+                  lines.push({
+                    id: `pdf-${selectedEra}-${lines.length}`,
+                    eraId: selectedEra,
+                    claimId: claim.claim_number || 'EOB-001',
+                    patientName: claim.patient_name || '',
+                    cpt: svc.cpt || '',
+                    cptDesc: '',
+                    dos: claim.date_of_service || parsed.payment_date || '',
+                    billed: svc.billed || 0,
+                    allowed: svc.allowed || svc.billed || 0,
+                    paid: svc.paid || 0,
+                    denied: (svc.billed || 0) - (svc.paid || 0) > 0 ? (svc.billed || 0) - (svc.paid || 0) : 0,
+                    patBalance: claim.patient_responsibility || 0,
+                    adjCode: svc.adjustment_code || '',
+                    adjReason: svc.adjustment_reason || '',
+                    action: (svc.paid || 0) === 0 ? 'review' : 'post',
+                    notes: '',
+                  })
+                }
+              }
+              if (lines.length > 0) setLineItems((prev: LineItem[]) => [...prev, ...lines])
+            }
+          } catch (err) {
+            console.error('[payment-posting] PDF parse-eob failed:', err)
           }
+          return
         }
-        // No raw_content or no parseable lines — empty state handled in render
+
+        // 835 EDI or TXT — parse client-side
+        const parsed = parseEOB(selectedEra, raw, fileName)
+        if (parsed.lines.length > 0) {
+          setLineItems((prev: LineItem[]) => [...prev, ...parsed.lines])
+        }
       })
       .catch((error) => {
         console.error('[payment-posting] Failed to fetch ERA file content:', error)
-        // API error — leave lines empty
       })
       .finally(() => setLoadingLines(false))
   }, [selectedEra, eras]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -381,7 +575,18 @@ export default function PaymentPostingPage() {
               const sla = r.receivedAt ? getSLAStatus(r.receivedAt) : null
               return (
                 <tr key={r.id} onClick={() => setSelectedEra(r.id)} className="table-row cursor-pointer border-b border-separator last:border-0">
-                  <td className="px-4 py-3 font-mono">{r.file}</td>
+                  <td className="px-4 py-3 font-mono">
+                    <div className="flex items-center gap-2">
+                      <span>{r.file}</span>
+                      {(() => {
+                        const ft = (r.fileType || '').toLowerCase()
+                        if (ft === 'pdf') return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 border border-amber-500/20">PDF</span>
+                        if (ft === '835' || ft === 'edi') return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand/15 text-brand border border-brand/20">835</span>
+                        if (ft === 'txt') return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-green-500/15 text-green-600 border border-green-500/20">TXT</span>
+                        return null
+                      })()}
+                    </div>
+                  </td>
                   <td className="px-4 py-3">{r.payer}</td>
                   <td className="px-4 py-3 text-content-secondary">{r.client}</td>
                   <td className="px-4 py-3 text-right font-mono">{r.claims}</td>
@@ -453,17 +658,31 @@ export default function PaymentPostingPage() {
           </div>
         </div>
 
-        {/* Upload ERA Modal — portal to escape overflow:hidden AppShell */}
+        {/* Upload ERA/EOB Modal — accepts 835, EDI, TXT, PDF */}
         {showUploadModal && typeof document !== 'undefined' && createPortal(
           <>
             <div className="fixed inset-0 bg-black/50 z-[200]" onClick={() => { setUploadedFile(null); setShowUploadModal(false) }} />
             <div className="fixed inset-0 flex items-center justify-center z-[200] p-4">
               <div className="bg-surface-secondary rounded-xl shadow-2xl w-full max-w-md border border-separator">
                 <div className="flex items-center justify-between px-5 py-4 border-b border-separator">
-                  <h3 className="font-semibold text-content-primary">Upload ERA File</h3>
+                  <h3 className="font-semibold text-content-primary">Upload EOB / ERA</h3>
                   <button onClick={() => { setUploadedFile(null); setShowUploadModal(false) }}><X size={16} className="text-content-secondary" /></button>
                 </div>
                 <div className="p-5 space-y-4">
+                  {/* Format legend */}
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    {[
+                      { label: '835 EDI', desc: 'Electronic remittance', color: 'text-brand bg-brand/10 border-brand/20' },
+                      { label: 'TXT', desc: 'Payer portal export', color: 'text-green-600 bg-green-500/10 border-green-500/20' },
+                      { label: 'PDF', desc: 'Paper / fax EOB', color: 'text-amber-600 bg-amber-500/10 border-amber-500/20' },
+                    ].map(f => (
+                      <div key={f.label} className={`rounded-lg border px-2 py-1.5 ${f.color}`}>
+                        <div className="text-[12px] font-semibold">{f.label}</div>
+                        <div className="text-[10px] opacity-70">{f.desc}</div>
+                      </div>
+                    ))}
+                  </div>
+
                   <div
                     onClick={() => fileInputRef.current?.click()}
                     onDragOver={e => e.preventDefault()}
@@ -475,16 +694,37 @@ export default function PaymentPostingPage() {
                     className="border-2 border-dashed border-separator rounded-xl p-8 text-center cursor-pointer hover:border-brand/50 transition-colors group">
                     <Upload size={24} className="mx-auto mb-2 text-content-tertiary group-hover:text-brand transition-colors" />
                     {uploadedFile ? (
-                      <p className="text-[13px] font-medium text-content-primary">{uploadedFile.name}</p>
+                      <div>
+                        <p className="text-[13px] font-medium text-content-primary">{uploadedFile.name}</p>
+                        {/* Format badge */}
+                        {(() => {
+                          const ext = uploadedFile.name.split('.').pop()?.toLowerCase()
+                          const fmt = ext === 'pdf' ? 'PDF' : ext === '835' || ext === 'edi' ? '835 EDI' : 'TXT'
+                          const color = fmt === 'PDF' ? 'text-amber-600 bg-amber-500/10' : fmt === '835 EDI' ? 'text-brand bg-brand/10' : 'text-green-600 bg-green-500/10'
+                          return (
+                            <span className={`inline-block mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full ${color}`}>
+                              {fmt} — {fmt === 'PDF' ? 'AI Vision parser' : fmt === '835 EDI' ? 'EDI X12 parser' : 'Text parser'}
+                            </span>
+                          )
+                        })()}
+                        <p className="text-[11px] text-content-tertiary mt-1">{(uploadedFile.size / 1024).toFixed(1)} KB</p>
+                      </div>
                     ) : (
                       <>
-                        <p className="text-[13px] text-content-secondary">Drop 835 file here or <span className="text-brand">browse</span></p>
-                        <p className="text-[11px] text-content-tertiary mt-1">Accepts .835, .txt, .edi files</p>
+                        <p className="text-[13px] text-content-secondary">Drop EOB/ERA file here or <span className="text-brand">browse</span></p>
+                        <p className="text-[11px] text-content-tertiary mt-1">Accepts .835  .edi  .txt  .pdf</p>
                       </>
                     )}
-                    <input ref={fileInputRef} type="file" accept=".835,.txt,.edi" className="hidden"
+                    <input ref={fileInputRef} type="file" accept=".835,.txt,.edi,.pdf" className="hidden"
                       onChange={e => { if (e.target.files?.[0]) setUploadedFile(e.target.files[0]) }} />
                   </div>
+
+                  {uploadedFile && uploadedFile.name.split('.').pop()?.toLowerCase() === 'pdf' && (
+                    <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                      <AlertTriangle size={13} className="text-amber-600 mt-0.5 shrink-0" />
+                      <p className="text-[12px] text-amber-700 dark:text-amber-400">PDF EOBs are processed via AI Vision — parsing takes ~10–15 seconds. Data will be available after upload completes.</p>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2 px-5 pb-5">
                   <button
@@ -494,36 +734,114 @@ export default function PaymentPostingPage() {
                       setUploading(true)
                       try {
                         const ext = uploadedFile.name.split('.').pop()?.toLowerCase() || 'txt'
-                        // Read the file content — store it in raw_content so download works
-                        const raw_content = await uploadedFile.text()
-                        // Parse 835 now so we have metadata + lines immediately
-                        const preparse = parse835('tmp', raw_content)
+                        const isPDF = ext === 'pdf'
+
+                        // For non-PDF: read as text and parse immediately
+                        if (!isPDF) {
+                          const raw_content = await uploadedFile.text()
+                          const preparse = parseEOB('tmp', raw_content, uploadedFile.name)
+                          const result = await createERAFile({
+                            file_name: uploadedFile.name,
+                            file_type: ext === '835' ? '835' : ext === 'edi' ? 'edi' : 'txt',
+                            s3_key: `era/${uploadedFile.name}`,
+                            s3_bucket: 'medcloud-documents-us-prod',
+                            raw_content,
+                            payer_name: preparse.payerName || '',
+                            check_number: preparse.checkNumber || '',
+                            total_amount: preparse.totalPaid || 0,
+                            claim_count: preparse.lines.length,
+                            status: preparse.lines.length > 0 ? 'new' : 'new',
+                          })
+                          if (result?.id) {
+                            if (preparse.lines.length > 0) {
+                              const fixedLines = preparse.lines.map(l => ({ ...l, eraId: result.id }))
+                              setLineItems(prev => [...prev, ...fixedLines])
+                            }
+                            const fmtLabel = preparse.formatDetected === 'edi_835' ? '835 EDI' : 'TXT'
+                            toast.success(`"${uploadedFile.name}" uploaded [${fmtLabel}] — ${preparse.lines.length} line${preparse.lines.length !== 1 ? 's' : ''} parsed`)
+                            setShowUploadModal(false)
+                            setUploadedFile(null)
+                            await refetchERAs()
+                            setSelectedEra(result.id)
+                          } else {
+                            toast.error('Upload failed — server did not confirm the new ERA')
+                          }
+                          return
+                        }
+
+                        // PDF path — store file as base64, send to /api/parse-eob for AI Vision
+                        const base64 = await new Promise<string>((res, rej) => {
+                          const reader = new FileReader()
+                          reader.onload = () => res((reader.result as string).split(',')[1] || '')
+                          reader.onerror = () => rej(new Error('FileReader failed'))
+                          reader.readAsDataURL(uploadedFile)
+                        })
+                        const raw_content = `data:application/pdf;base64,${base64}`
+
+                        // Create ERA file record first
                         const result = await createERAFile({
                           file_name: uploadedFile.name,
-                          file_type: ext === '835' ? '835' : ext === 'edi' ? 'edi' : 'txt',
+                          file_type: 'pdf',
                           s3_key: `era/${uploadedFile.name}`,
-                          s3_bucket: process.env.NEXT_PUBLIC_S3_BUCKET || 'medcloud-documents-us-prod',
+                          s3_bucket: 'medcloud-documents-us-prod',
                           raw_content,
-                          payer_name: preparse.payerName || '',
-                          check_number: preparse.checkNumber || '',
-                          total_amount: preparse.totalPaid || 0,
-                          claim_count: preparse.lines.length,
-                          status: 'new',
+                          payer_name: '',
+                          check_number: '',
+                          total_amount: 0,
+                          claim_count: 0,
+                          status: 'processing',
                         })
-                        if (result?.id) {
-                          // Pre-load parsed lines so detail view is instant
-                          if (preparse.lines.length > 0) {
-                            const fixedLines = preparse.lines.map(l => ({ ...l, eraId: result.id }))
-                            setLineItems(prev => [...prev, ...fixedLines])
+
+                        if (!result?.id) { toast.error('Upload failed — server did not confirm the new ERA'); return }
+
+                        toast.success(`"${uploadedFile.name}" uploaded [PDF] — AI Vision parsing in progress…`)
+                        setShowUploadModal(false)
+                        setUploadedFile(null)
+                        await refetchERAs()
+                        setSelectedEra(result.id)
+
+                        // Call /api/parse-eob to run AI Vision on the PDF content
+                        try {
+                          const parseResp = await fetch('/api/parse-eob', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ raw_content, file_name: uploadedFile.name }),
+                          })
+                          if (parseResp.ok) {
+                            const parsed = await parseResp.json()
+                            // Convert to line items
+                            const lines: LineItem[] = []
+                            for (const claim of (parsed.claims || [])) {
+                              for (const svc of (claim.lines || [])) {
+                                lines.push({
+                                  id: `pdf-${result.id}-${lines.length}`,
+                                  eraId: result.id,
+                                  claimId: claim.claim_number || 'EOB-001',
+                                  patientName: claim.patient_name || '',
+                                  cpt: svc.cpt || '',
+                                  cptDesc: '',
+                                  dos: claim.date_of_service || parsed.payment_date || '',
+                                  billed: svc.billed || 0,
+                                  allowed: svc.allowed || svc.billed || 0,
+                                  paid: svc.paid || 0,
+                                  denied: (svc.billed || 0) - (svc.paid || 0) > 0 ? (svc.billed || 0) - (svc.paid || 0) : 0,
+                                  patBalance: claim.patient_responsibility || 0,
+                                  adjCode: svc.adjustment_code || '',
+                                  adjReason: svc.adjustment_reason || '',
+                                  action: (svc.paid || 0) === 0 ? 'review' : 'post',
+                                  notes: '',
+                                })
+                              }
+                            }
+                            setLineItems(prev => [...prev, ...lines])
+                            toast.success(`PDF parsed — ${lines.length} line${lines.length !== 1 ? 's' : ''} extracted by AI Vision`)
+                          } else {
+                            toast.error('AI Vision parsing failed — check the file format')
                           }
-                          toast.success(`"${uploadedFile.name}" uploaded — ${preparse.lines.length} claim line${preparse.lines.length !== 1 ? 's' : ''} parsed`)
-                          setShowUploadModal(false)
-                          setUploadedFile(null)
-                          await refetchERAs()
-                          setSelectedEra(result.id)
-                        } else {
-                          toast.error('Upload failed — server did not confirm the new ERA')
+                        } catch {
+                          toast.error('AI Vision parsing error — please retry')
                         }
+
                       } catch {
                         toast.error('Upload failed — please try again')
                       } finally {
@@ -531,7 +849,7 @@ export default function PaymentPostingPage() {
                       }
                     }}
                     className={`flex-1 rounded-btn py-2.5 text-[13px] font-medium transition-colors ${uploadedFile && !uploading ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-surface-elevated text-content-tertiary cursor-not-allowed border border-separator'}`}>
-                    {uploading ? 'Uploading…' : 'Upload & Process'}
+                    {uploading ? (uploadedFile?.name.endsWith('.pdf') ? 'Processing PDF…' : 'Parsing…') : 'Upload & Process'}
                   </button>
                   <button onClick={() => { setUploadedFile(null); setShowUploadModal(false) }}
                     className="px-4 py-2.5 bg-surface-elevated border border-separator rounded-btn text-[13px] text-content-secondary">

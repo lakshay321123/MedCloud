@@ -1230,6 +1230,106 @@ async function enrichedPatients(orgId, clientId) {
 // SPRINT 2 BUSINESS LOGIC
 // ════════════════════════════════════════════════════════════════════════════════
 
+// ─── EOB Format Detection ───────────────────────────────────────────────────────
+function detectEOBFormat(raw, fileName) {
+  if (!raw || typeof raw !== 'string') return 'unknown';
+  const ext = (fileName || '').split('.').pop()?.toLowerCase();
+  if (ext === 'pdf' || raw.startsWith('data:application/pdf')) return 'pdf';
+  if (/^ISA\*/i.test(raw.trim()) || /\bST\*835\b/.test(raw) || (raw.includes('~') && raw.includes('BPR*'))) return 'edi_835';
+  if (/GS\*HP\*/.test(raw)) return 'edi_835';
+  return 'txt';
+}
+
+// ─── TXT EOB Parser (Lambda server-side) ───────────────────────────────────────
+function parseTxtEOBContent(raw) {
+  const lines = raw.split(/\r?\n/);
+  const result = { check_number: '', payer_name: '', payment_date: '', total_paid: 0, claims: [] };
+
+  for (const line of lines) {
+    const l = line.trim();
+    if (!result.payer_name) {
+      const m = l.match(/(?:payer|insurance\s*company|insurer|carrier)[:\s]+([A-Za-z][^\n\r]{3,50})/i);
+      if (m) result.payer_name = m[1].trim();
+    }
+    if (!result.check_number) {
+      const m = l.match(/(?:check\s*(?:number|#|no)|eft\s*(?:number|#)|trace\s*(?:number|#))[:\s#]+([A-Z0-9\-]{4,20})/i);
+      if (m) result.check_number = m[1].trim();
+    }
+    if (!result.payment_date) {
+      const m = l.match(/(?:payment\s*date|check\s*date)[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i);
+      if (m) result.payment_date = m[1].trim();
+    }
+    if (!result.total_paid) {
+      const m = l.match(/(?:total\s*(?:payment|paid|amount))[:\s]+\$?([\d,]+\.?\d*)/i);
+      if (m) result.total_paid = parseFloat(m[1].replace(/,/g, '')) || 0;
+    }
+  }
+
+  // Claim block extraction
+  const claimPositions = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m1 = lines[i].match(/(?:claim\s*(?:number|no|#|id)[:\s#]+)([A-Z0-9\-]{4,20})/i);
+    if (m1) { claimPositions.push({ number: m1[1], lineIdx: i }); continue; }
+    const m2 = lines[i].match(/\b(CLM[-]?[A-Z0-9]{4,15})\b/i);
+    if (m2) claimPositions.push({ number: m2[1], lineIdx: i });
+  }
+
+  for (const cp of claimPositions) {
+    const start = Math.max(0, cp.lineIdx - 2);
+    const end = Math.min(lines.length, cp.lineIdx + 15);
+    const block = lines.slice(start, end).join('\n');
+
+    const claim = {
+      patient_account: cp.number,
+      status_code: '1',
+      total_charge: 0,
+      total_paid: 0,
+      patient_responsibility: 0,
+      claim_type: 'txt',
+      payer_claim_number: cp.number,
+      lines: [],
+      adjustments: [],
+    };
+
+    const billedM = block.match(/(?:billed|charged|submitted)[:\s]+\$?([\d,]+\.?\d*)/i);
+    if (billedM) claim.total_charge = parseFloat(billedM[1].replace(/,/g, '')) || 0;
+    const paidM = block.match(/(?:paid|payment|amount\s*paid)[:\s]+\$?([\d,]+\.?\d*)/i);
+    if (paidM) claim.total_paid = parseFloat(paidM[1].replace(/,/g, '')) || 0;
+    const prM = block.match(/(?:patient\s*(?:responsibility|balance)|deductible|copay)[:\s]+\$?([\d,]+\.?\d*)/i);
+    if (prM) claim.patient_responsibility = parseFloat(prM[1].replace(/,/g, '')) || 0;
+
+    // CPT lines
+    const cptPat = /\b(\d{5})\b[\s|,\t]+\$?([\d,]+\.?\d*)[\s|,\t]+(?:\$?([\d,]+\.?\d*)[\s|,\t]+)?(?:\$?([\d,]+\.?\d*))?/g;
+    let cptM;
+    while ((cptM = cptPat.exec(block)) !== null) {
+      const num = parseInt(cptM[1]);
+      if (num >= 100 && num <= 99499) {
+        const b = parseFloat((cptM[2] || '0').replace(/,/g, '')) || 0;
+        const a = parseFloat((cptM[3] || '0').replace(/,/g, '')) || 0;
+        const p = parseFloat((cptM[4] || '0').replace(/,/g, '')) || 0;
+        if (b > 0 || p > 0) {
+          const ctx = block.slice(Math.max(0, cptM.index - 50), Math.min(block.length, cptM.index + 100));
+          const carcM = ctx.match(/\b(CO|PR|OA|PI|CR)[-\s]?(\d{1,3})\b/i);
+          claim.lines.push({
+            procedure_code: cptM[1],
+            modifier: '',
+            billed: b, paid: p, revenue_code: '', units: 1,
+            adjustments: carcM ? [{ group_code: carcM[1].toUpperCase(), reason_code: carcM[2], amount: b - p }] : [],
+          });
+        }
+      }
+    }
+
+    if (claim.lines.length === 0 && (claim.total_charge > 0 || claim.total_paid > 0)) {
+      claim.lines.push({ procedure_code: '', modifier: '', billed: claim.total_charge, paid: claim.total_paid, revenue_code: '', units: 1, adjustments: [] });
+    }
+
+    result.claims.push(claim);
+  }
+
+  return result;
+}
+
 // ─── 835 ERA Parser ────────────────────────────────────────────────────────────
 // Parses X12 835 EDI content into structured payment records
 function parse835Content(ediContent) {
@@ -1337,8 +1437,9 @@ function parse835Content(ediContent) {
   };
 }
 
-async function ingest835(eraFileId, ediContent, orgId, clientId, userId) {
-  const parsed = parse835Content(ediContent);
+async function ingest835(eraFileId, ediContent, orgId, clientId, userId, preParsed) {
+  // Use pre-parsed data (TXT format) or parse EDI content
+  const parsed = preParsed || parse835Content(ediContent);
   const results = { era_file_id: eraFileId, claims_found: parsed.claims.length, payments_created: 0, matched: 0, unmatched: 0 };
 
   // Update ERA file with parsed metadata
@@ -7030,10 +7131,32 @@ export const handler = async (event) => {
     }
 
     if (path.includes('/era-files') && path.includes('/parse-835') && method === 'POST') {
-      const { edi_content } = body;
-      if (!edi_content) return respond(400, { error: 'edi_content required' });
-      const result = await ingest835(pathParams.id, edi_content, effectiveOrgId, clientId, userId);
-      return respond(200, result);
+      const { edi_content, raw_content, file_name } = body;
+      const content = edi_content || raw_content;
+      if (!content) return respond(400, { error: 'edi_content or raw_content required' });
+
+      const fmt = detectEOBFormat(content, file_name);
+
+      // PDF — cannot be parsed server-side here, direct client to use /api/parse-eob
+      if (fmt === 'pdf') {
+        return respond(200, {
+          era_file_id: pathParams.id,
+          format: 'pdf',
+          claims_found: 0, payments_created: 0, matched: 0, unmatched: 0,
+          message: 'PDF EOB — use /api/parse-eob on the frontend for AI Vision parsing',
+        });
+      }
+
+      // TXT — use TXT parser then ingest
+      if (fmt === 'txt') {
+        const parsed = parseTxtEOBContent(content);
+        const result = await ingest835(pathParams.id, null, effectiveOrgId, clientId, userId, parsed);
+        return respond(200, { ...result, format: 'txt' });
+      }
+
+      // 835 EDI — existing parser
+      const result = await ingest835(pathParams.id, content, effectiveOrgId, clientId, userId);
+      return respond(200, { ...result, format: 'edi_835' });
     }
 
     if (path.includes('/era-files') && !path.includes('/parse-835') && !path.includes('/reconcile') && !path.includes('/download')) {
