@@ -271,6 +271,7 @@ function InlineDocPreview({ patientId, label }: { patientId?: string; label?: st
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [fullscreen, setFullscreen] = React.useState(false)
 
   // Fetch patient's documents
   React.useEffect(() => {
@@ -305,14 +306,23 @@ function InlineDocPreview({ patientId, label }: { patientId?: string; label?: st
   const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName)
 
   return (
-    <div className="flex flex-col h-full">
-      {label && <p className="text-[10px] uppercase tracking-widest text-brand font-bold mb-2">{label}</p>}
-      {docs.length > 1 && (
-        <select value={selectedDocId || ''} onChange={e => setSelectedDocId(e.target.value)}
-          className="mb-2 bg-surface-elevated border border-separator rounded px-2 py-1 text-[11px] text-content-primary">
-          {docs.map(d => <option key={d.id} value={d.id}>{d.file_name} ({d.doc_type || 'Other'})</option>)}
-        </select>
-      )}
+    <div className={fullscreen ? 'fixed inset-0 z-50 bg-surface-default p-4 flex flex-col' : 'flex flex-col h-full'}>
+      <div className="flex items-center justify-between mb-2">
+        {label && <p className="text-[10px] uppercase tracking-widest text-brand font-bold">{label}</p>}
+        <div className="flex items-center gap-2 ml-auto">
+          {docs.length > 1 && (
+            <select value={selectedDocId || ''} onChange={e => setSelectedDocId(e.target.value)}
+              className="bg-surface-elevated border border-separator rounded px-2 py-1 text-[11px] text-content-primary">
+              {docs.map(d => <option key={d.id} value={d.id}>{d.file_name} ({d.doc_type || 'Other'})</option>)}
+            </select>
+          )}
+          {docs.length === 1 && <span className="text-[10px] text-content-tertiary">{docs[0].file_name}</span>}
+          <button onClick={() => setFullscreen(!fullscreen)}
+            className="text-[10px] px-2 py-1 rounded border border-separator text-content-secondary hover:text-content-primary hover:border-brand/40 transition-colors">
+            {fullscreen ? '✕ Exit Fullscreen' : '⛶ Fullscreen'}
+          </button>
+        </div>
+      </div>
       {error && <p className="text-[11px] text-red-500 text-center py-2">{error}</p>}
       {previewUrl ? (
         isPdf ? (
@@ -1089,15 +1099,11 @@ export default function CodingPage() {
                             <div className="flex items-center gap-2 px-3 py-2 bg-surface-elevated border border-separator rounded-lg">
                               <FileText size={13} className="text-content-tertiary shrink-0" />
                               <span className="text-xs text-content-secondary flex-1">Source chart — {item.patientName}</span>
-                              <button onClick={() => setDocOpen('note')} className="text-xs text-brand underline shrink-0">
-                                View Document ↓
+                              <button onClick={() => setDocOpen('superbill')} className="text-xs text-brand underline shrink-0">
+                                View Superbill →
                               </button>
                             </div>
                           )}
-                          {/* Inline document preview */}
-                          <div className="mt-3 h-[300px]">
-                            <InlineDocPreview patientId={item.patientId} />
-                          </div>
                           {(['subjective', 'objective', 'assessment', 'plan'] as const).map(section => (
                             <div key={section} className="pb-3 border-b border-separator last:border-0">
                               <p className="text-[10px] uppercase tracking-widest text-content-tertiary font-bold mb-1.5">{section}</p>
@@ -1110,17 +1116,10 @@ export default function CodingPage() {
                       )}
 
                       {docOpen === 'superbill' && (
-                        <div className="space-y-4">
-                          <div className="bg-surface-elevated border border-separator rounded-lg p-6 text-center">
-                            <FileText size={28} className="mx-auto mb-2 text-content-tertiary opacity-40" />
-                            <p className="text-sm font-medium text-content-primary mb-0.5">{item.patientName}</p>
-                            <p className="text-xs text-content-secondary mb-3">Uploaded superbill</p>
-                            <button onClick={() => setDocOpen('split')} className="text-xs text-brand underline">
-                              View Inline ↓
-                            </button>
-                          </div>
-                          {item.superbillCpt && item.superbillCpt.length > 0 ? (
-                            <div className="space-y-2">
+                        <div className="flex flex-col h-full">
+                          <InlineDocPreview patientId={item.patientId} label="Superbill / Uploaded Document" />
+                          {item.superbillCpt && item.superbillCpt.length > 0 && (
+                            <div className="space-y-2 mt-3 border-t border-separator pt-3">
                               <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold">Codes on Superbill</p>
                               {item.superbillCpt.map(code => (
                                 <div key={code} className="flex items-center justify-between px-3 py-2 bg-surface-elevated rounded-lg border border-separator">
@@ -1131,20 +1130,7 @@ export default function CodingPage() {
                                   }
                                 </div>
                               ))}
-                              {aiOnly.length > 0 && (
-                                <div className="mt-3 space-y-1">
-                                  <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold">AI Also Suggests</p>
-                                  {aiOnly.map(code => (
-                                    <div key={code} className="flex items-center gap-2 px-3 py-2 bg-blue-500/5 border border-blue-500/20 rounded-lg">
-                                      <span className="font-mono text-xs text-content-primary">{code}</span>
-                                      <span className="text-[11px] text-blue-500">Not on superbill</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
                             </div>
-                          ) : (
-                            <p className="text-xs text-content-tertiary text-center py-4">No superbill codes available</p>
                           )}
                         </div>
                       )}
