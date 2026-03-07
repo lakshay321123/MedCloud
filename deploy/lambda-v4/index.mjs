@@ -453,6 +453,19 @@ async function runSchemaMigration() {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_scrub_results_org ON scrub_results(org_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_scrub_results_claim ON scrub_results(claim_id)');
   } catch (e) { if (e.code !== '42P07') safeLog('warn', 'scrub_results:', e.message); }
+  // Create underpayments table
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS underpayments (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      org_id UUID NOT NULL, claim_id UUID, payment_id UUID,
+      cpt_code VARCHAR(10), expected_amount NUMERIC(12,2), paid_amount NUMERIC(12,2),
+      variance NUMERIC(12,2), payer_id UUID, status VARCHAR(30) DEFAULT 'open',
+      resolved_at TIMESTAMPTZ, resolved_by UUID, notes TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_underpayments_org ON underpayments(org_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_underpayments_claim ON underpayments(claim_id)');
+  } catch (e) { if (e.code !== '42P07') safeLog('warn', 'underpayments:', e.message); }
   safeLog('info', `Column fixes applied (${colFixes.length} statements)`);
 }
 
@@ -2808,8 +2821,32 @@ async function autoPostPayments(eraFileId, orgId, userId) {
           await update('claims', pmt.claim_id, { status: bal > 0 ? 'partial_pay' : 'paid' });
         }
       }
+      // Contract rate comparison — check for underpayment
+      let underpaymentFlag = null;
+      if (pmt.cpt_code) {
+        try {
+          const feeR = await pool.query(
+            'SELECT contracted_rate, medicare_rate FROM fee_schedules WHERE cpt_code = $1 AND org_id = $2 LIMIT 1',
+            [pmt.cpt_code, orgId]
+          );
+          if (feeR.rows.length > 0) {
+            const expected = Number(feeR.rows[0].contracted_rate) || 0;
+            const medicare = Number(feeR.rows[0].medicare_rate) || 0;
+            if (expected > 0 && paid < expected * 0.95) {
+              underpaymentFlag = { expected, paid, variance: expected - paid, pct: Math.round((1 - paid/expected) * 100) };
+              // Create underpayment record
+              await pool.query(
+                `INSERT INTO underpayments (id, org_id, claim_id, payment_id, cpt_code, expected_amount, paid_amount, variance, payer_id, created_at)
+                 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, NOW())
+                 ON CONFLICT DO NOTHING`,
+                [orgId, pmt.claim_id, pmt.id, pmt.cpt_code, expected, paid, expected - paid, pmt.payer_id || null]
+              ).catch(() => {});
+            }
+          }
+        } catch {}
+      }
       results.auto_posted++;
-      results.details.push({ payment_id: pmt.id, action: 'posted', reason: 'Auto-post criteria met' });
+      results.details.push({ payment_id: pmt.id, action: 'posted', reason: 'Auto-post criteria met', underpayment: underpaymentFlag });
     } else {
       await update('payments', pmt.id, { action: 'review' });
       const reasons = [];
@@ -6500,6 +6537,14 @@ export const handler = async (event) => {
       await auditLog(effectiveOrgId, userId, 'transition', 'claims', pathParams.id, {
         from: claim.status, to: newStatus,
       });
+      // Auto-trigger denial prediction when claim submitted
+      if (newStatus === 'submitted') {
+        predictDenial(pathParams.id, effectiveOrgId, userId).then(pred => {
+          if (pred && pred.risk_score > 70) {
+            safeLog('info', `High denial risk (${pred.risk_score}%) for ${pathParams.id}: ${pred.top_risk}`);
+          }
+        }).catch(() => {});
+      }
       return respond(200, c);
     }
 
@@ -9270,6 +9315,28 @@ export const handler = async (event) => {
         return respond(200, { ok: true });
       } catch(e) {
         return respond(500, { error: e.message });
+      }
+    }
+
+    // ════ Underpayments ════════════════════════════════════════════════════
+    if (path.includes('/underpayments') && !path.includes('/claims')) {
+      if (method === 'GET' && !pathParams.id) {
+        const r = await orgQuery(effectiveOrgId, 
+          `SELECT u.*, c.claim_number, p.first_name || ' ' || p.last_name AS patient_name, py.name AS payer_name
+           FROM underpayments u
+           LEFT JOIN claims c ON u.claim_id = c.id
+           LEFT JOIN patients pt ON c.patient_id = pt.id
+           LEFT JOIN payers py ON u.payer_id = py.id
+           LEFT JOIN patients p ON c.patient_id = p.id
+           WHERE u.org_id = $1 ORDER BY u.created_at DESC LIMIT 100`,
+          [effectiveOrgId]);
+        return respond(200, { data: r.rows, meta: { total: r.rows.length } });
+      }
+      if (method === 'PATCH' && pathParams.id) {
+        const existing = await getById('underpayments', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        const updated = await update('underpayments', pathParams.id, { status: body.status, notes: body.notes, resolved_at: body.status === 'resolved' ? new Date().toISOString() : null, resolved_by: userId });
+        return respond(200, updated);
       }
     }
 

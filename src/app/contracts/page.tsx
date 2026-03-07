@@ -5,6 +5,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import { useFeeSchedules, usePayerConfigs, useUnderpaymentCheck, useExtractContractRates, useCreateFeeSchedule, useUpdateFeeSchedule } from '@/lib/hooks'
+import { api } from '@/lib/api-client'
 import { useApp } from '@/lib/context'
 import { UAE_ORG_IDS, US_ORG_IDS, filterPayersByCountry } from '@/lib/utils/region'
 import { Scale, Search, AlertTriangle, Edit2, Plus } from 'lucide-react'
@@ -42,6 +43,10 @@ export default function ContractsPage() {
   const { t } = useT()
   const [search, setSearch] = useState('')
   const [tab, setTab] = useState<'fee' | 'underpayments' | 'terms' | 'extract'>('fee')
+  const [apiUnderpayments, setApiUnderpayments] = useState<any[]>([])
+  React.useEffect(() => {
+    api.get<{ data: any[] }>('/underpayments').then(r => setApiUnderpayments(r.data || [])).catch(() => {})
+  }, [])
   const [editingRow, setEditingRow] = useState<string | null>(null)
   const [addingCpt, setAddingCpt] = useState(false)
   const [newCpt, setNewCpt] = useState({ cpt: '', description: '', contractedRate: '' })
@@ -97,7 +102,7 @@ export default function ContractsPage() {
 
   const activeCount = allContracts.filter(c => c.status === 'active').length
   const expiringSoon = allContracts.filter(c => (c.status as string) === 'expiring_soon').length
-  const totalUnderpayments = allContracts.reduce((s, c) => s + c.underpayments.length, 0)
+  const totalUnderpayments = apiUnderpayments.length
 
   const TABS = [
     { id: 'fee', label: 'Fee Schedule' },
@@ -261,36 +266,46 @@ export default function ContractsPage() {
 
                 {tab === 'underpayments' && (
                   <div>
-                    {selected.underpayments.length > 0 && (
+                    {apiUnderpayments.length > 0 && (
                       <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 mb-4 text-[12px] text-amber-400">
-                        {selected.underpayments.length} underpayment{selected.underpayments.length !== 1 ? 's' : ''} this month
-                        &nbsp;—&nbsp;${(selected.underpayments as any[]).reduce((s, u) => s + Math.abs(u.variance ?? 0), 0)} total at risk
+                        {apiUnderpayments.length} underpayment{apiUnderpayments.length !== 1 ? 's' : ''} detected
+                        &nbsp;—&nbsp;${apiUnderpayments.reduce((s: number, u: any) => s + Math.abs(Number(u.variance) || 0), 0).toFixed(2)} total at risk
                       </div>
                     )}
-                    {selected.underpayments.length === 0 ? (
-                      <p className="text-[13px] text-content-tertiary text-center py-12">No underpayments detected for this contract</p>
+                    {apiUnderpayments.length === 0 ? (
+                      <p className="text-[13px] text-content-tertiary text-center py-12">No underpayments detected — auto-posting compares paid vs contracted rates</p>
                     ) : (
                       <table className="w-full text-[12px]">
                         <thead><tr className="border-b border-separator text-[11px] text-content-tertiary uppercase tracking-wider">
-                          {['Claim ID','Patient','DOS','CPT','Contracted','Paid','Variance','Action'].map(h => (
+                          {['Claim','Patient','CPT','Expected','Paid','Variance','Status','Action'].map(h => (
                             <th key={h} className="text-left py-2 pr-3">{h}</th>
                           ))}
                         </tr></thead>
                         <tbody>
-                          {(selected.underpayments as any[]).map(u => (
-                            <tr key={u.claimId} className="border-b border-separator last:border-0 hover:bg-surface-elevated">
-                              <td className="py-2.5 pr-3 font-mono text-content-primary">{u.claimId}</td>
-                              <td className="py-2.5 pr-3 text-content-secondary">{u.patientName}</td>
-                              <td className="py-2.5 pr-3 font-mono text-content-tertiary">{u.dos}</td>
-                              <td className="py-2.5 pr-3 font-mono">{u.cpt}</td>
-                              <td className="py-2.5 pr-3 text-content-primary">${u.contracted}</td>
-                              <td className="py-2.5 pr-3 text-content-primary">${u.paid}</td>
-                              <td className="py-2.5 pr-3 text-red-400 font-medium">−${Math.abs(u.variance ?? 0)}</td>
+                          {apiUnderpayments.map((u: any) => (
+                            <tr key={u.id} className="border-b border-separator last:border-0 hover:bg-surface-elevated">
+                              <td className="py-2.5 pr-3 font-mono text-content-primary">{u.claim_number || u.claim_id?.slice(0,8)}</td>
+                              <td className="py-2.5 pr-3 text-content-secondary">{u.patient_name || '—'}</td>
+                              <td className="py-2.5 pr-3 font-mono">{u.cpt_code}</td>
+                              <td className="py-2.5 pr-3 text-content-primary">${Number(u.expected_amount || 0).toFixed(2)}</td>
+                              <td className="py-2.5 pr-3 text-content-primary">${Number(u.paid_amount || 0).toFixed(2)}</td>
+                              <td className="py-2.5 pr-3 text-red-400 font-medium">−${Math.abs(Number(u.variance) || 0).toFixed(2)}</td>
+                              <td className="py-2.5 pr-3">
+                                <span className={`text-[11px] px-1.5 py-0.5 rounded ${u.status === 'resolved' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>{u.status || 'open'}</span>
+                              </td>
                               <td className="py-2.5">
-                                <button onClick={() => toast.success(`Task created — dispute with ${selected.payer}`)}
-                                  className="text-[11px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded hover:bg-amber-500/20 transition-colors">
-                                  Dispute
-                                </button>
+                                {u.status !== 'resolved' && (
+                                  <button onClick={async () => {
+                                    try {
+                                      await api.patch(`/underpayments/${u.id}`, { status: 'disputed', notes: 'Dispute initiated' })
+                                      toast.success('Dispute initiated')
+                                      setApiUnderpayments(prev => prev.map(x => x.id === u.id ? {...x, status: 'disputed'} : x))
+                                    } catch { toast.error('Failed to dispute') }
+                                  }}
+                                    className="text-[11px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded hover:bg-amber-500/20 transition-colors">
+                                    Dispute
+                                  </button>
+                                )}
                               </td>
                             </tr>
                           ))}
