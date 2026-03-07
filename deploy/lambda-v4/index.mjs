@@ -356,6 +356,13 @@ async function runSchemaMigration() {
     "ALTER TABLE documents DROP CONSTRAINT IF EXISTS documents_doc_type_check",
     "ALTER TABLE documents DROP CONSTRAINT IF EXISTS documents_status_check",
     "ALTER TABLE documents ALTER COLUMN doc_type DROP NOT NULL",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS textract_status VARCHAR(30) DEFAULT 'pending'",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS textract_result JSONB",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS textract_confidence INT",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS textract_job_id VARCHAR(200)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS textract_doc_type VARCHAR(50)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS page_count INT",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS s3_bucket VARCHAR(200)",
     "ALTER TABLE coding_queue ALTER COLUMN patient_id DROP NOT NULL",
     "ALTER TABLE coding_queue ALTER COLUMN provider_id DROP NOT NULL",
     "ALTER TABLE coding_queue ALTER COLUMN encounter_id DROP NOT NULL",
@@ -1767,6 +1774,15 @@ async function aiAutoCode(codingQueueId, orgId, userId, coderInstructions = '') 
         const tr = typeof doc.textract_result === 'string' ? JSON.parse(doc.textract_result) : doc.textract_result;
         superbillText = tr.raw_text || tr.text || '';
         if (superbillText) clinicalText += `\n\nSUPERBILL/DOCUMENT TEXT:\n${superbillText.slice(0, 2000)}`;
+        // If Textract extracted structured fields, add them explicitly
+        if (tr.fields) {
+          const f = tr.fields;
+          if (f.cpt_codes?.parsed?.length > 0) clinicalText += `\nEXTRACTED CPT CODES: ${f.cpt_codes.parsed.join(', ')}`;
+          if (f.diagnoses?.parsed?.length > 0) clinicalText += `\nEXTRACTED ICD CODES: ${f.diagnoses.parsed.join(', ')}`;
+          if (f.patient_name?.value) clinicalText += `\nSUPERBILL PATIENT: ${f.patient_name.value}`;
+          if (f.date_of_service?.value) clinicalText += `\nSUPERBILL DOS: ${f.date_of_service.value}`;
+          if (f.billed_amount?.value && f.billed_amount.value !== '0') clinicalText += `\nSUPERBILL TOTAL: $${f.billed_amount.value}`;
+        }
       }
     } catch (e) { safeLog('warn', `AI: doc text error: ${e.message}`); }
   }
@@ -1953,7 +1969,34 @@ Respond ONLY with valid JSON (no markdown, no backticks):
   if (!suggestion) {
     const text = (clinicalText || '').toLowerCase();
     const matchedIcd = [];
-    const matchedCpt = [{ code: '99214', description: 'Office visit, established, moderate', confidence: 85, modifier: '' }];
+    const matchedCpt = [];
+    
+    // Check for pre-extracted codes from Textract (highest priority — already OCR'd from document)
+    const extractedCptMatch = text.match(/extracted cpt codes:\s*([\d, ]+)/);
+    const extractedIcdMatch = text.match(/extracted icd codes:\s*([\w., ]+)/);
+    
+    if (extractedCptMatch) {
+      const codes = extractedCptMatch[1].split(',').map(c => c.trim()).filter(c => /^(\d{5}|[A-Z]\d{4})$/.test(c));
+      const cptDescs = { '99211':'Office visit, minimal', '99212':'Office visit, straightforward', '99213':'Office visit, low MDM', '99214':'Office visit, moderate MDM', '99215':'Office visit, high MDM',
+        '99202':'New patient, straightforward', '99203':'New patient, low MDM', '99204':'New patient, moderate MDM', '99205':'New patient, high MDM',
+        '93000':'ECG, routine', '36415':'Venipuncture', '87880':'Rapid strep test', '87804':'Influenza assay', '81001':'Urinalysis', '80053':'Comprehensive metabolic panel',
+        '96372':'Therapeutic injection', '90471':'Immunization admin', '71046':'Chest X-ray 2 views', '73562':'X-ray knee 3 views' };
+      for (const code of codes) {
+        matchedCpt.push({ code, description: cptDescs[code] || `CPT ${code}`, confidence: 92, modifier: '' });
+      }
+    }
+    if (extractedIcdMatch) {
+      const codes = extractedIcdMatch[1].split(',').map(c => c.trim()).filter(c => /^[A-Z]\d{2}/.test(c));
+      const icdDescs = { 'J06.9':'Acute upper respiratory infection', 'R05.9':'Cough, unspecified', 'R50.9':'Fever, unspecified',
+        'E11.9':'Type 2 DM without complications', 'E11.65':'Type 2 DM with hyperglycemia', 'I10':'Essential hypertension',
+        'M54.5':'Low back pain', 'M17.11':'Primary OA right knee', 'N39.0':'UTI', 'J18.9':'Pneumonia' };
+      for (const code of codes) {
+        matchedIcd.push({ code, description: icdDescs[code] || `ICD ${code}`, confidence: 92, is_primary: matchedIcd.length === 0 });
+      }
+    }
+    
+    // If Textract already found codes, don't add default E/M
+    if (matchedCpt.length === 0) matchedCpt.push({ code: '99214', description: 'Office visit, established, moderate', confidence: 85, modifier: '' });
     
     // ICD keyword matching — check clinical text for common conditions
     const icdMap = [
@@ -2480,7 +2523,10 @@ async function triggerTextract(documentId, orgId, userId) {
   const docType = doc.document_type || 'default';
   const queries = TEXTRACT_QUERIES[docType] || TEXTRACT_QUERIES.default;
 
-  if (textractClient && StartDocumentAnalysisCommand && AnalyzeDocumentCommand) {
+  // Textract SDK: skip if no IAM permissions configured (will timeout)
+  // When Textract IAM is ready, set TEXTRACT_ENABLED=true env var
+  const TEXTRACT_ENABLED = process.env.TEXTRACT_ENABLED === 'true';
+  if (TEXTRACT_ENABLED && textractClient && StartDocumentAnalysisCommand && AnalyzeDocumentCommand) {
     try {
       const isMultiPage = doc.page_count > 1 || doc.file_name?.toLowerCase().endsWith('.pdf');
 
@@ -2565,25 +2611,78 @@ async function triggerTextract(documentId, orgId, userId) {
     }
   }
 
-  // ── Mock for local dev (SDK unavailable) ──────────────────────────────────
+  // ── Smart Mock: Try to extract text from S3 file, then use keyword matching ──
+  let rawText = '';
+  let mockFields = {};
+  
+  // Try reading actual file via presigned URL (proven to work)
+  if (s3Client && getSignedUrl && GetObjectCommand) {
+    try {
+      const cmd = new GetObjectCommand({ Bucket: doc.s3_bucket || S3_BUCKET, Key: doc.s3_key });
+      const url = await getSignedUrl(s3Client, cmd, { expiresIn: 60 });
+      const fetchResp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      if (fetchResp.ok) {
+        const fileBytes = Buffer.from(await fetchResp.arrayBuffer());
+      // For text-based PDFs, try to extract raw strings
+      const fileStr = fileBytes.toString('utf-8', 0, Math.min(fileBytes.length, 50000));
+      // Extract readable text fragments from PDF (text between parentheses in PDF content streams)
+      const textFragments = [];
+      const pdfTextRegex = /\(([^)]{2,100})\)/g;
+      let match;
+      while ((match = pdfTextRegex.exec(fileStr)) !== null) {
+        const t = match[1].replace(/\\[()\\]/g, '').trim();
+        if (t.length > 1 && !/^[\x00-\x1f]+$/.test(t)) textFragments.push(t);
+      }
+      if (textFragments.length > 5) {
+        rawText = textFragments.join(' ');
+        safeLog('info', `Textract mock: extracted ${textFragments.length} text fragments from PDF`);
+      }
+      } // end if fetchResp.ok
+    } catch (e) { safeLog('warn', `Textract mock file read failed: ${e.message}`); }
+  }
+  
+  // Smart field extraction from raw text using keyword matching
+  if (rawText) {
+    const text = rawText;
+    // Patient name
+    const nameMatch = text.match(/(?:Patient|Name)[:\s]*([A-Z][a-z]+\s+[A-Z][a-z]+)/);
+    // Date of service
+    const dosMatch = text.match(/(?:Date of Service|DOS|Service Date)[:\s]*(\d{1,2}\/\d{1,2}\/\d{4})/);
+    // ICD codes
+    const icdCodes = [...text.matchAll(/\b([A-Z]\d{2,3}(?:\.\d{1,4})?)\b/g)].map(m => m[1]).filter(c => /^[A-TV-Z]\d{2}/.test(c));
+    // CPT codes (5 digits starting with 9, 8, 7, 3, 2, 1, 0)
+    const cptCodes = [...text.matchAll(/\b(\d{5})\b/g)].map(m => m[1]).filter(c => /^(99|9[0-8]|8[0-9]|7[0-9]|6[0-9]|3[0-9]|2[0-9]|1[0-9]|0[0-9])/.test(c));
+    // Charges
+    const charges = [...text.matchAll(/\$(\d+(?:\.\d{2})?)/g)].map(m => parseFloat(m[1]));
+    
+    mockFields = {
+      patient_name:    { value: nameMatch ? nameMatch[1] : 'Unknown', confidence: nameMatch ? 0.85 : 0.30, source: 'mock_extraction' },
+      date_of_service: { value: dosMatch ? dosMatch[1] : '', confidence: dosMatch ? 0.90 : 0.30, source: 'mock_extraction' },
+      cpt_codes:       { value: [...new Set(cptCodes)].join(' '), confidence: cptCodes.length > 0 ? 0.80 : 0.30, source: 'mock_extraction', parsed: [...new Set(cptCodes)] },
+      diagnoses:       { value: [...new Set(icdCodes)].join(' '), confidence: icdCodes.length > 0 ? 0.80 : 0.30, source: 'mock_extraction', parsed: [...new Set(icdCodes)] },
+      billed_amount:   { value: charges.length > 0 ? String(Math.max(...charges)) : '0', confidence: charges.length > 0 ? 0.85 : 0.30, source: 'mock_extraction', parsed: charges.length > 0 ? Math.max(...charges) : 0 },
+    };
+  } else {
+    mockFields = {
+      patient_name:    { value: 'Unknown', confidence: 0.30, source: 'mock_generic' },
+      date_of_service: { value: '', confidence: 0.30, source: 'mock_generic' },
+      cpt_codes:       { value: '', confidence: 0.30, source: 'mock_generic', parsed: [] },
+      diagnoses:       { value: '', confidence: 0.30, source: 'mock_generic', parsed: [] },
+      billed_amount:   { value: '0', confidence: 0.30, source: 'mock_generic', parsed: 0 },
+    };
+  }
+  
   const mockResult = {
-    fields: {
-      patient_name:    { value: 'John Smith',   confidence: 0.98, source: 'query' },
-      date_of_service: { value: '2026-03-01',   confidence: 0.97, source: 'query', parsed: '2026-03-01' },
-      cpt_codes:       { value: '99214 36415',  confidence: 0.95, source: 'query', parsed: ['99214', '36415'] },
-      diagnoses:       { value: 'E11.9 I10',    confidence: 0.94, source: 'query', parsed: ['E11.9', 'I10'] },
-      billed_amount:   { value: '285.00',       confidence: 0.99, source: 'query', parsed: 285.00 },
-      provider_name:   { value: 'Dr. Jane Doe', confidence: 0.96, source: 'form' },
-    },
-    raw_text: 'Mock Textract result — SDK not available in local dev',
+    fields: mockFields,
+    raw_text: rawText || 'Textract SDK unavailable — no text extracted',
     tables: [],
-    overall_confidence: 0.965,
-    validation_flags: [],
+    overall_confidence: rawText ? 0.80 : 0.30,
+    validation_flags: rawText ? [] : [{ field: 'all', message: 'No text extracted — Textract SDK not configured' }],
     bedrock_corrections: [],
-    needs_human_review: false,
+    needs_human_review: !rawText,
     doc_type: docType,
     processed_at: new Date().toISOString(),
-    mode: 'mock',
+    mode: rawText ? 'mock_smart' : 'mock_generic',
   };
   await update('documents', documentId, {
     textract_status: 'completed',
@@ -6235,13 +6334,19 @@ export const handler = async (event) => {
       if (method === 'POST') {
         const doc = await create('documents', body, effectiveOrgId);
         await auditLog(effectiveOrgId, userId, 'upload', 'documents', doc.id, { file_name: body.file_name });
+        // Auto-trigger Textract if document has S3 key (fire & forget)
+        if (doc.s3_key) {
+          triggerTextract(doc.id, effectiveOrgId, userId).then(r => {
+            safeLog('info', `Auto-Textract ${doc.id}: status=${r.status}, mock=${r.mock || false}`);
+          }).catch(e => safeLog('warn', `Auto-Textract failed for ${doc.id}: ${e.message}`));
+        }
         return respond(201, doc);
       }
       if ((method === 'PUT' || method === 'PATCH') && pathParams.id) {
         const existing = await getById('documents', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
         // Whitelist allowed fields — prevent mass assignment (s3_key, org_id manipulation)
-        const allowed = ['patient_id','status','doc_type','document_type','notes','client_id','patient_name'];
+        const allowed = ['patient_id','status','doc_type','document_type','notes','client_id','patient_name','textract_result','textract_status','textract_confidence'];
         const safeBody = {};
         for (const k of allowed) { if (body[k] !== undefined) safeBody[k] = body[k]; }
         const updated = await update('documents', pathParams.id, safeBody, effectiveOrgId);
