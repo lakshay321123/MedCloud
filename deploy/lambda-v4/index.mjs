@@ -342,6 +342,12 @@ async function runSchemaMigration() {
   const colFixes = [
     "ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS soap_note_id UUID",
     "ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS notes TEXT",
+    "ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS ai_suggestion_id UUID",
+    "ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS coding_method VARCHAR(30) DEFAULT 'manual'",
+    "ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS document_id UUID",
+    "ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS hold_reason TEXT",
+    "ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS assigned_to UUID",
+    "ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ",
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'uploaded'",
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS classification VARCHAR(100)",
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS ai_confidence NUMERIC(5,2)",
@@ -407,6 +413,28 @@ async function runSchemaMigration() {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )`);
   } catch (e) { if (e.code !== '42P07') safeLog('warn', `coding_rules table: ${e.message}`); }
+  // Create ai_coding_suggestions table
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS ai_coding_suggestions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      org_id UUID NOT NULL,
+      coding_queue_id UUID,
+      encounter_id UUID,
+      soap_note_id UUID,
+      suggested_cpt JSONB DEFAULT '[]',
+      suggested_icd JSONB DEFAULT '[]',
+      suggested_em VARCHAR(10),
+      em_confidence NUMERIC(5,2),
+      model_id VARCHAR(100),
+      prompt_version VARCHAR(20),
+      total_confidence NUMERIC(5,2),
+      processing_ms INT,
+      accepted BOOLEAN DEFAULT false,
+      overrides JSONB,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
+  } catch (e) { if (e.code !== '42P07') safeLog('warn', 'ai_coding_suggestions table:', e.message); }
   safeLog('info', `Column fixes applied (${colFixes.length} statements)`);
 }
 
@@ -1904,12 +1932,15 @@ Respond ONLY with valid JSON (no markdown, no backticks):
           messages: [{ role: 'user', content: prompt }],
         }),
       });
-      const response = await bedrockClient.send(cmd);
+      // 10s timeout — if Bedrock doesn't respond, fall back to mock
+      const bedrockPromise = bedrockClient.send(cmd);
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Bedrock timeout (10s)')), 10000));
+      const response = await Promise.race([bedrockPromise, timeoutPromise]);
       const responseBody = JSON.parse(new TextDecoder().decode(response.body));
       const aiText = responseBody.content?.[0]?.text || '{}';
       suggestion = JSON.parse(aiText.replace(/```json|```/g, '').trim());
     } catch (e) {
-      console.error('Bedrock error:', e.message);
+      safeLog('warn', 'Bedrock unavailable, using mock:', e.message);
       suggestion = null;
     }
   }
