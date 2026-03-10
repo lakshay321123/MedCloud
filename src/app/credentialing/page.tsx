@@ -93,7 +93,7 @@ export default function CredentialingPage() {
               <td className="px-4 py-3 text-xs">{p.malpractice}</td>
               <td className="px-4 py-3 text-xs text-content-secondary">{p.caqh}</td>
               <td className="px-4 py-3 text-right">{p.payers}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${p.status==='active'?'bg-brand/10 text-brand-dark dark:text-brand-dark border-brand/20':p.status==='expiring'?'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep border-brand-light/20':'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'}`}>{p.status}</span></td>
+              <td className="px-4 py-3"><span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${p.status==='active'?'bg-brand/10 text-brand-dark dark:text-brand-dark border-brand/20':p.status==='expiring'?'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep border-brand-light/20':'bg-brand/10 text-brand-dark border-brand/20'}`}>{p.status}</span></td>
             </tr>
           ))}</tbody>
         </table>
@@ -178,7 +178,7 @@ export default function CredentialingPage() {
       <div className="card p-4 mt-4">
         <h3 className="text-sm font-semibold mb-3">Payer Enrollment Pipeline</h3>
         <div className="grid grid-cols-5 gap-2 mb-4">
-          {[{stage:'Submitted',count:4,color:'bg-blue-500'},{stage:'In Review',count:7,color:'bg-brand-pale'},{stage:'Approved',count:23,color:'bg-brand'},{stage:'Denied',count:1,color:'bg-red-500'},{stage:'Re-credentialing',count:3,color:'bg-brand-dark'}].map(s=>(
+          {[{stage:'Submitted',count:4,color:'bg-brand/60'},{stage:'In Review',count:7,color:'bg-brand-light'},{stage:'Approved',count:23,color:'bg-brand'},{stage:'Denied',count:1,color:'bg-red-500'},{stage:'Re-credentialing',count:3,color:'bg-brand-dark'}].map(s=>(
             <div key={s.stage} className="text-center">
               <div className={`${s.color} text-white rounded-lg py-3 mb-1`}>
                 <span className="text-lg font-bold">{s.count}</span>

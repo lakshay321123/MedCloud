@@ -340,7 +340,7 @@ export default function AnalyticsPage() {
       <div className="flex border-b border-separator mb-6">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`px-5 py-2.5 text-[13px] font-medium transition-colors ${tab === t.id ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>
+            className={`px-4 py-2 text-[13px] font-medium rounded-[10px] transition-all ${tab === t.id ? 'bg-brand text-white shadow-sm' : 'text-content-secondary hover:text-content-primary hover:bg-surface-elevated'}`}>
             {t.label}
           </button>
         ))}

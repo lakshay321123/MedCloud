@@ -300,8 +300,8 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
           { key: 'cindy', label: `Cindy (${cindyCount})` },
         ].map(t => (
           <button key={t.key} onClick={() => setAgentFilter(t.key as typeof agentFilter)}
-            className={`px-4 py-2 text-xs font-medium border-b-2 -mb-px transition-colors ${
-              agentFilter === t.key ? 'border-brand text-brand' : 'border-transparent text-content-secondary hover:text-content-primary'
+            className={`px-4 py-2 text-xs font-medium rounded-[10px] transition-all ${
+              agentFilter === t.key ? 'bg-brand text-white shadow-sm' : 'text-content-secondary hover:text-content-primary hover:bg-surface-elevated'
             }`}>{t.label}</button>
         ))}
         <div className="ml-auto flex items-center gap-2 pb-2">

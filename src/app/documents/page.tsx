@@ -20,7 +20,7 @@ const typeIcon: Record<string, React.ReactNode> = {
   'Clinical Note': <Stethoscope size={14} className="text-brand"/>,
   'Insurance Card': <CreditCard size={14} className="text-brand-dark"/>,
   'EOB': <DollarSign size={14} className="text-brand-dark"/>,
-  'Denial Letter': <XCircle size={14} className="text-red-500"/>,
+  'Denial Letter': <XCircle size={14} className="text-content-tertiary"/>,
   'Contract': <FileText size={14} className="text-brand"/>,
   'Credential': <File size={14} className="text-content-tertiary"/>,
   'License':    <File size={14} className="text-brand"/>,
@@ -267,7 +267,7 @@ function AllDocsTab() {
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         {types.map(t=>(
           <button key={t} onClick={()=>toggleType(t)}
-            className={`text-[11px] px-3 py-1 rounded-full border transition-all ${typeFilter.includes(t)?'bg-brand/10 text-brand border-brand/30':'border-separator text-content-secondary hover:text-content-primary'}`}>
+            className={`text-[11px] px-3 py-1 rounded-full border transition-all ${typeFilter.includes(t)?'bg-brand text-white border-brand shadow-sm':'border-separator text-content-secondary hover:border-brand/40 hover:text-brand'}`}>
             {t}
           </button>
         ))}

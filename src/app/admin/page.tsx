@@ -552,10 +552,10 @@ export default function AdminPage() {
           Admin connected — audit log + user management live
         </div>
       </div>
-      <div className="flex gap-1 mb-5 border-b border-separator">
+      <div className="flex gap-1 mb-5 flex-wrap">
         {tabs.map(t=>{const Icon=t.icon;return(
           <button key={t.id} onClick={()=>setTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${tab===t.id?'border-brand text-brand':'border-transparent text-content-secondary hover:text-content-primary'}`}>
+            className={`flex items-center gap-2 px-4 py-2 text-[13px] font-medium rounded-[10px] transition-all ${tab===t.id?'bg-brand text-white shadow-sm':'text-content-secondary hover:text-content-primary hover:bg-surface-elevated'}`}>
             <Icon size={14}/>{t.label}
           </button>
         )})}

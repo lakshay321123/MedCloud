@@ -183,7 +183,7 @@ interface AISuggestedCode {
   is_hcc?: boolean
 }
 const priorityColor: Record<'urgent' | 'high' | 'medium' | 'low', string> = {
-  urgent: 'bg-red-500',
+  urgent: 'bg-brand-pale',
   high: 'bg-brand-pale',
   medium: 'bg-brand',
   low: 'bg-gray-400',
@@ -316,7 +316,7 @@ function InlineDocPreview({ patientId, label }: { patientId?: string; label?: st
             {label && <p className="text-xs font-bold text-brand uppercase tracking-wider">{label}</p>}
             <span className="text-xs text-content-tertiary ml-2">{docs.find(d => d.id === selectedDocId)?.file_name}</span>
             <button onClick={() => setFullscreen(false)}
-              className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500/30 transition-colors font-medium">
+              className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-surface-elevated text-content-secondary hover:bg-brand/10 hover:text-brand border border-separator transition-colors font-medium">
               ✕ Exit Fullscreen
             </button>
           </div>
@@ -910,7 +910,7 @@ export default function CodingPage() {
                 }}
                 className="text-[10px] px-2 py-1 rounded bg-brand/10 text-brand hover:bg-brand/20 font-medium transition-colors"
               >
-                Accept All
+                Approve for Billing
               </button>
             )}
           </div>
