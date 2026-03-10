@@ -110,28 +110,17 @@ export default function Topbar() {
       {/* ── Blue topbar ── */}
       <header className="h-16 bg-brand border-b border-brand-mid flex items-center px-5 gap-3 shrink-0">
 
-        {/* ── LEFT: Role switcher (facility) OR Client selector (staff) ── */}
-        <div className="flex items-center shrink-0">
-          {isStaff ? (
-            <div className="[&_button]:!bg-white/20 [&_button]:!text-white [&_button]:hover:!bg-white/30 [&_button]:border-0 [&_button]:font-semibold [&_svg]:text-white">
-              <Dropdown
-                value={selectedClient?.id || ''}
-                options={clientOptions}
-                onChange={v => setSelectedClient(clients.find(c => c.id === v) || null)}
-                buttonClassName="bg-white/20 text-white hover:bg-white/30 font-semibold"
-              />
-            </div>
-          ) : (
-            <div className="[&_button]:!bg-white/20 [&_button]:!text-white [&_button]:hover:!bg-white/30 [&_button]:border-0 [&_button]:font-semibold [&_svg]:text-white">
-              <Dropdown
-                value={currentUser.role}
-                options={roleOptions}
-                onChange={v => setRole(v as UserRole)}
-                buttonClassName="bg-white/20 text-white hover:bg-white/30 font-semibold"
-              />
-            </div>
-          )}
-        </div>
+        {/* ── LEFT: Client selector (staff only) ── */}
+        {isStaff && (
+          <div className="shrink-0 [&_button]:!bg-white/20 [&_button]:!text-white [&_button]:hover:!bg-white/30 [&_button]:border-0 [&_button]:font-semibold">
+            <Dropdown
+              value={selectedClient?.id || ''}
+              options={clientOptions}
+              onChange={v => setSelectedClient(clients.find(c => c.id === v) || null)}
+              buttonClassName="bg-white/20 text-white hover:bg-white/30 font-semibold"
+            />
+          </div>
+        )}
 
         {/* ── CENTER: Search + Notifications ── */}
         <div className="flex-1 flex items-center gap-2 max-w-xl">
@@ -256,6 +245,24 @@ export default function Topbar() {
                 <div className="px-4 py-3 border-b border-separator">
                   <p className="text-[13px] font-bold text-black">{currentUser.name}</p>
                   <p className="text-[11px] text-gray-400 mt-0.5 capitalize">{roleLabel}</p>
+                </div>
+
+                {/* Role switcher */}
+                <div className="px-4 py-3 border-b border-separator">
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Switch Role</p>
+                  <div className="flex flex-col gap-1">
+                    {availableRoles.map(r => (
+                      <button
+                        key={r}
+                        onClick={() => { setRole(r as UserRole); setUserMenuOpen(false) }}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-btn text-[12px] font-semibold transition-colors text-left ${
+                          currentUser.role === r ? 'bg-brand text-white' : 'text-black hover:bg-brand/10'
+                        }`}
+                      >
+                        {roleDisplayLabels[r]}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Country toggle */}
