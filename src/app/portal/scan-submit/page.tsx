@@ -256,10 +256,10 @@ export default function ScanSubmitPage() {
     <ModuleShell title={t("scan","title")} subtitle="Upload documents to Cosentus for processing">
       <div className="max-w-lg mx-auto">
         <div className="card p-10 text-center mb-6">
-          <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 size={36} className="text-emerald-500" />
+          <div className="w-16 h-16 bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 size={36} className="text-brand-dark" />
           </div>
-          <h2 className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">Submitted Successfully!</h2>
+          <h2 className="text-xl font-bold text-brand-dark dark:text-brand-dark mb-2">Submitted Successfully!</h2>
           <p className="text-sm text-content-secondary mb-1">Tracking ID: <span className="font-mono font-bold text-content-primary">{trackingId}</span></p>
           <p className="text-sm text-content-secondary mt-2">
             <span className="font-medium text-content-primary">{successCount} document{successCount !== 1 ? 's' : ''}</span> uploaded and linked to{' '}
@@ -280,7 +280,7 @@ export default function ScanSubmitPage() {
 
   return (
     <ModuleShell title={t("scan","title")} subtitle="Upload documents to Cosentus for processing">
-      <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
+      <div className="mb-4 bg-brand-pale0/10 border border-brand-light/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-brand-deep dark:text-brand-deep">
         <span className="text-lg shrink-0">📄</span>
         Scan & Submit connected — live document upload
       </div>
@@ -291,8 +291,8 @@ export default function ScanSubmitPage() {
           {([1, 2, 3] as Step[]).map(s => (
             <React.Fragment key={s}>
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap
-                ${step === s ? 'bg-brand text-white' : step > s ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-surface-elevated text-content-tertiary'}`}>
-                {step > s ? <CheckCircle2 size={12} /> : <span className="w-4 h-4 rounded-full border-2 border-current flex items-center justify-center text-[10px]">{s}</span>}
+                ${step === s ? 'bg-brand text-white' : step > s ? 'bg-brand/10 text-brand-dark dark:text-brand-dark' : 'bg-surface-elevated text-content-tertiary'}`}>
+                {step > s ? <CheckCircle2 size={12} /> : <span className="w-4 h-4 rounded-full border-2 border-current flex items-center justify-center text-[11px]">{s}</span>}
                 {s === 1 ? 'Select Patient' : s === 2 ? 'Upload Files' : 'Review & Confirm'}
               </div>
               {s < 3 && <div className="flex-1 h-px bg-separator" />}
@@ -310,7 +310,7 @@ export default function ScanSubmitPage() {
                 <>
                   <input value={patientSearch} onChange={e => setPatientSearch(e.target.value)}
                     placeholder="Search patient by name…"
-                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2.5 text-sm text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40" />
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2.5 text-sm text-content-secondary placeholder:text-content-tertiary outline-none focus:border-brand/40" />
                   {patientSearch && (
                     <div className="border border-separator rounded-lg overflow-hidden">
                       {(filteredPatients as any[]).slice(0, 6).map((p: any) => (
@@ -327,10 +327,10 @@ export default function ScanSubmitPage() {
                     <div className="bg-brand/5 border border-brand/20 rounded-lg p-3 flex items-center justify-between">
                       <div>
                         <p className="text-sm font-semibold">{(selectedPatient as any).name}</p>
-                        <p className="text-[10px] text-content-secondary">{(selectedPatient as any).dob}</p>
+                        <p className="text-[11px] text-content-secondary">{(selectedPatient as any).dob}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">✓ Selected</span>
+                        <span className="text-[11px] bg-brand/10 text-brand-dark dark:text-brand-dark px-2 py-0.5 rounded-full">✓ Selected</span>
                         <button onClick={() => setPatientId('')} className="text-content-tertiary hover:text-red-500"><X size={14} /></button>
                       </div>
                     </div>
@@ -343,10 +343,10 @@ export default function ScanSubmitPage() {
               ) : (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className="text-xs text-content-secondary block mb-1">First Name *</label><input value={newPatient.firstName} onChange={e => setNewPatient(p => ({ ...p, firstName: e.target.value }))} placeholder="John" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" /></div>
-                    <div><label className="text-xs text-content-secondary block mb-1">Last Name *</label><input value={newPatient.lastName} onChange={e => setNewPatient(p => ({ ...p, lastName: e.target.value }))} placeholder="Smith" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" /></div>
-                    <div><label className="text-xs text-content-secondary block mb-1">Date of Birth</label><input type="date" value={newPatient.dob} onChange={e => setNewPatient(p => ({ ...p, dob: e.target.value }))} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" /></div>
-                    <div><label className="text-xs text-content-secondary block mb-1">Phone</label><input value={newPatient.phone} onChange={e => setNewPatient(p => ({ ...p, phone: e.target.value }))} placeholder="(949) 555-0100" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" /></div>
+                    <div><label className="text-xs text-content-secondary block mb-1">First Name *</label><input value={newPatient.firstName} onChange={e => setNewPatient(p => ({ ...p, firstName: e.target.value }))} placeholder="John" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary" /></div>
+                    <div><label className="text-xs text-content-secondary block mb-1">Last Name *</label><input value={newPatient.lastName} onChange={e => setNewPatient(p => ({ ...p, lastName: e.target.value }))} placeholder="Smith" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary" /></div>
+                    <div><label className="text-xs text-content-secondary block mb-1">Date of Birth</label><input type="date" value={newPatient.dob} onChange={e => setNewPatient(p => ({ ...p, dob: e.target.value }))} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary" /></div>
+                    <div><label className="text-xs text-content-secondary block mb-1">Phone</label><input value={newPatient.phone} onChange={e => setNewPatient(p => ({ ...p, phone: e.target.value }))} placeholder="(949) 555-0100" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary" /></div>
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => { setPatientId('NEW'); setShowNewPatient(false) }} className="flex-1 bg-brand text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-deep transition-colors">Use New Patient</button>
@@ -379,7 +379,7 @@ export default function ScanSubmitPage() {
                 <p className="text-sm font-semibold text-content-primary">{dragging ? 'Drop files here' : 'Drag & drop all documents here'}</p>
                 <p className="text-xs text-content-secondary mt-1">Superbills · Visit Notes · Insurance Cards · Referrals · Licenses</p>
                 <p className="text-[11px] text-content-tertiary mt-1">PDF, JPG, PNG, HEIC · Up to {MAX_FILES} files · Max 25MB each</p>
-                <p className="text-[10px] text-brand mt-2">Or click to browse files</p>
+                <p className="text-[11px] text-brand mt-2">Or click to browse files</p>
                 <input ref={fileInputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.heic" className="hidden"
                   onChange={e => { if (e.target.files) { addFiles(Array.from(e.target.files)); e.target.value = '' } }} />
               </div>
@@ -394,7 +394,7 @@ export default function ScanSubmitPage() {
                       <FileText size={15} className="text-brand shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm truncate font-medium">{f.name}</p>
-                        <p className="text-[10px] text-content-tertiary">{f.sizeMB}</p>
+                        <p className="text-[11px] text-content-tertiary">{f.sizeMB}</p>
                       </div>
                       <button onClick={() => setFiles(p => p.filter(x => x.id !== f.id))} className="text-content-tertiary hover:text-red-500"><X size={14} /></button>
                     </div>
@@ -402,7 +402,7 @@ export default function ScanSubmitPage() {
                 </div>
               )}
               <div className="flex gap-3">
-                <button onClick={() => setStep(1)} className="px-4 py-2.5 border border-separator text-content-secondary rounded-lg text-sm hover:text-content-primary transition-colors">← Back</button>
+                <button onClick={() => setStep(1)} className="px-4 py-2.5 border border-separator text-content-secondary rounded-lg text-sm hover:text-content-secondary transition-colors">← Back</button>
                 <button onClick={uploadAndClassifyAll} disabled={files.length === 0}
                   className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-brand-deep disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors">
                   <Upload size={14} /> Upload & AI Tag ({files.length} file{files.length !== 1 ? 's' : ''}) →
@@ -443,7 +443,7 @@ export default function ScanSubmitPage() {
                 <>
                   <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
                     placeholder="Optional notes for the billing team…"
-                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary resize-none outline-none focus:border-brand/40" />
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary placeholder:text-content-tertiary resize-none outline-none focus:border-brand/40" />
 
                   <div className="bg-surface-elevated rounded-lg p-3 space-y-1.5 text-sm">
                     <div className="flex justify-between"><span className="text-content-secondary">Patient</span><span className="font-medium">{(selectedPatient as any)?.name || 'New Walk-in'}</span></div>
@@ -452,7 +452,7 @@ export default function ScanSubmitPage() {
                   </div>
 
                   <button onClick={handleFinalSubmit} disabled={submitting || successCount === 0}
-                    className="w-full bg-emerald-500 text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors">
+                    className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-brand disabled:opacity-50 flex items-center justify-center gap-2 transition-colors">
                     {submitting
                       ? <><Loader2 size={14} className="animate-spin" /> Confirming…</>
                       : <><CheckCircle2 size={14} /> Confirm & Submit to Cosentus</>}
@@ -492,15 +492,15 @@ function FileReviewRow({ entry, onTypeChange }: { entry: FileEntry; onTypeChange
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{entry.name}</p>
           <div className="flex items-center gap-2 mt-0.5">
-            {entry.status === 'uploading' && <span className="flex items-center gap-1 text-[10px] text-blue-500"><Loader2 size={10} className="animate-spin" />Uploading…</span>}
-            {entry.status === 'classifying' && <span className="flex items-center gap-1 text-[10px] text-brand"><Loader2 size={10} className="animate-spin" />AI reading…</span>}
+            {entry.status === 'uploading' && <span className="flex items-center gap-1 text-[11px] text-blue-500"><Loader2 size={10} className="animate-spin" />Uploading…</span>}
+            {entry.status === 'classifying' && <span className="flex items-center gap-1 text-[11px] text-brand"><Loader2 size={10} className="animate-spin" />AI reading…</span>}
             {entry.status === 'done' && (
-              <span className={`text-[10px] font-medium ${(entry.aiConfidence || 0) >= 80 ? 'text-emerald-500' : (entry.aiConfidence || 0) >= 50 ? 'text-amber-500' : 'text-red-400'}`}>
+              <span className={`text-[11px] font-medium ${(entry.aiConfidence || 0) >= 80 ? 'text-brand-dark' : (entry.aiConfidence || 0) >= 50 ? 'text-brand-deep' : 'text-red-400'}`}>
                 {(entry.aiConfidence || 0) > 0 ? `AI: ${entry.aiConfidence}% confident` : '⚠ Review needed'}
               </span>
             )}
-            {entry.status === 'error' && <span className="text-[10px] text-red-500">{entry.error || 'Upload failed'}</span>}
-            <span className="text-[10px] text-content-tertiary">{entry.sizeMB}</span>
+            {entry.status === 'error' && <span className="text-[11px] text-red-500">{entry.error || 'Upload failed'}</span>}
+            <span className="text-[11px] text-content-tertiary">{entry.sizeMB}</span>
           </div>
         </div>
 
@@ -516,7 +516,7 @@ function FileReviewRow({ entry, onTypeChange }: { entry: FileEntry; onTypeChange
               <ChevronDown size={10} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
             {open && (
-              <div className="absolute right-0 top-full mt-1 z-50 bg-surface-secondary border border-separator rounded-xl shadow-2xl py-1.5 min-w-[170px] overflow-hidden">
+              <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-[rgba(0,0,0,0.09)] rounded-[12px] shadow-[0_4px_24px_rgba(0,0,0,0.10),0_1px_4px_rgba(0,0,0,0.06)] py-1.5 min-w-[170px] overflow-hidden">
                 {Object.entries(DOC_TYPE_META).map(([type, m]) => (
                   <button
                     key={type}

@@ -22,18 +22,18 @@ import {
 /* ── status helpers ──────────────────────────────────────────────────────── */
 
 const ELIG_STATUS: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  active:   { label: 'Active',   color: 'text-emerald-600 dark:text-emerald-400', icon: <CheckCircle2 size={12} /> },
+  active:   { label: 'Active',   color: 'text-brand-dark dark:text-brand-dark', icon: <CheckCircle2 size={12} /> },
   inactive: { label: 'Inactive', color: 'text-red-600 dark:text-red-400',         icon: <AlertTriangle size={12} /> },
-  pending:  { label: 'Pending',  color: 'text-amber-600 dark:text-amber-400',     icon: <Clock size={12} /> },
+  pending:  { label: 'Pending',  color: 'text-brand-deep dark:text-brand-deep',     icon: <Clock size={12} /> },
   unknown:  { label: 'Unknown',  color: 'text-content-secondary',                 icon: <Clock size={12} /> },
 }
 
 const PA_STATUS: Record<string, { label: string; cls: string }> = {
-  pending:   { label: 'Pending',   cls: 'bg-amber-500/10 text-amber-500' },
-  submitted: { label: 'Submitted', cls: 'bg-blue-500/10 text-blue-500' },
-  approved:  { label: 'Approved',  cls: 'bg-emerald-500/10 text-emerald-500' },
+  pending:   { label: 'Pending',   cls: 'bg-brand-pale0/10 text-brand-deep' },
+  submitted: { label: 'Submitted', cls: 'bg-brand/10 text-brand' },
+  approved:  { label: 'Approved',  cls: 'bg-brand/10 text-brand-dark' },
   denied:    { label: 'Denied',    cls: 'bg-red-500/10 text-red-500' },
-  cancelled: { label: 'Cancelled', cls: 'bg-gray-500/10 text-gray-500' },
+  cancelled: { label: 'Cancelled', cls: 'bg-gray-500/10 text-content-tertiary' },
 }
 
 type TabKey = 'single' | 'batch' | 'history' | 'priorauth'
@@ -108,8 +108,8 @@ function EligibilityContent() {
           <button key={tb.key} onClick={() => setTab(tb.key)}
             className={`px-4 py-2 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
               tab === tb.key
-                ? 'bg-brand/10 text-brand border border-brand/30'
-                : 'text-content-secondary border border-transparent hover:text-content-primary hover:bg-surface-elevated'
+                ? 'bg-brand text-white shadow-sm'
+                : 'text-content-tertiary border border-transparent hover:text-content-primary hover:bg-surface-elevated'
             }`}>
             {tb.label}
             {tb.count != null && <span className="ml-1 opacity-60">({tb.count})</span>}
@@ -200,9 +200,9 @@ function SingleCheckTab() {
             options={[{ value: '', label: 'All clients' }, ...clients.map(c => ({ value: c.id, label: c.name }))]} />
 
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Patient *</label>
+            <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">Patient *</label>
             <select value={patientId} onChange={e => { setPatientId(e.target.value); setResult(null) }}
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary">
               <option value="">Select patient</option>
               {patients.map(p => (
                 <option key={p.id} value={p.id}>
@@ -218,23 +218,23 @@ function SingleCheckTab() {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Date of Service</label>
+            <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">Date of Service</label>
             <input type="date" value={dos} onChange={e => setDos(e.target.value)}
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary" />
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary" />
           </div>
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Member ID</label>
+            <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">Member ID</label>
             <input value={memberId} onChange={e => setMemberId(e.target.value)} placeholder="Auto-filled from patient"
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary" />
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary placeholder:text-content-tertiary" />
           </div>
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Group Number</label>
+            <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">Group Number</label>
             <input value={groupNumber} onChange={e => setGroupNumber(e.target.value)} placeholder="Optional"
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary" />
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary placeholder:text-content-tertiary" />
           </div>
           <div className="flex items-end">
             <button onClick={handleVerify} disabled={checking || !patientId || !payerId}
-              className="w-full bg-brand text-white rounded-lg px-4 py-2 text-xs font-medium disabled:opacity-50 hover:bg-brand-deep transition-colors flex items-center justify-center gap-2">
+              className="w-full bg-brand text-white rounded-lg px-4 py-2 text-[13px] font-medium disabled:opacity-50 hover:bg-brand-deep transition-colors flex items-center justify-center gap-2">
               {checking ? <><RefreshCw size={12} className="animate-spin" /> Checking…</> : <><ShieldCheck size={14} /> Verify</>}
             </button>
           </div>
@@ -262,13 +262,13 @@ function EligibilityResultCard({ result, patient }: { result: ApiEligibilityChec
     <div className={`card p-5 border-l-4 ${isActive ? 'border-l-emerald-500' : 'border-l-red-500'}`}>
       <div className="flex items-center gap-3 mb-4">
         {isActive
-          ? <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center"><CheckCircle2 size={20} className="text-emerald-500" /></div>
+          ? <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center"><CheckCircle2 size={20} className="text-brand-dark" /></div>
           : <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center"><AlertTriangle size={20} className="text-red-500" /></div>}
         <div>
           <p className="text-sm font-semibold text-content-primary">
             {patient ? `${patient.first_name} ${patient.last_name}` : result.patient_name || 'Patient'}
           </p>
-          <p className={`text-xs font-medium ${isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+          <p className={`text-[13px] font-medium ${isActive ? 'text-brand-dark dark:text-brand-dark' : 'text-red-600 dark:text-red-400'}`}>
             Coverage {result.status === 'active' ? 'Active' : result.status || 'Unknown'}
             {result.network_status && ` · ${result.network_status}`}
           </p>
@@ -279,7 +279,7 @@ function EligibilityResultCard({ result, patient }: { result: ApiEligibilityChec
         <BenefitField label="Deductible Remaining" value={result.deductible != null ? `$${result.deductible}` : 'N/A'} icon={<CreditCard size={12} />} />
         <BenefitField label="Coinsurance" value={String(rd.coinsurance || rd.coinsurance_pct || 'N/A')} icon={<Activity size={12} />} />
         <BenefitField label="Prior Auth Required" value={result.prior_auth_required ? 'Yes' : 'No'}
-          icon={result.prior_auth_required ? <AlertTriangle size={12} className="text-amber-500" /> : <CheckCircle2 size={12} className="text-emerald-500" />} />
+          icon={result.prior_auth_required ? <AlertTriangle size={12} className="text-brand-deep" /> : <CheckCircle2 size={12} className="text-brand-dark" />} />
       </div>
       {(Boolean(rd.out_of_pocket_max) || Boolean(rd.plan_name)) && (
         <div className="mt-3 pt-3 border-t border-separator grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -296,7 +296,7 @@ function EligibilityResultCard({ result, patient }: { result: ApiEligibilityChec
 function BenefitField({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-0.5 flex items-center gap-1">{icon}{label}</p>
+      <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-0.5 flex items-center gap-1">{icon}{label}</p>
       <p className="text-sm font-medium text-content-primary">{value}</p>
     </div>
   )
@@ -331,17 +331,17 @@ function BatchCheckTab() {
         <h3 className="text-sm font-semibold text-content-primary mb-3 flex items-center gap-2">
           <Calendar size={16} className="text-brand" /> Batch Eligibility — All Appointments for Date
         </h3>
-        <p className="text-xs text-content-secondary mb-4">
+        <p className="text-[13px] text-content-secondary mb-4">
           Automatically verify eligibility for every patient with an appointment on the selected date. Results saved to each patient record.
         </p>
         <div className="flex items-end gap-3">
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Appointment Date</label>
+            <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">Appointment Date</label>
             <input type="date" value={batchDate} onChange={e => setBatchDate(e.target.value)}
-              className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary" />
+              className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary" />
           </div>
           <button onClick={handleBatch} disabled={running}
-            className="bg-brand text-white rounded-lg px-5 py-2 text-xs font-medium disabled:opacity-50 hover:bg-brand-deep transition-colors flex items-center gap-2">
+            className="bg-brand text-white rounded-lg px-5 py-2 text-[13px] font-medium disabled:opacity-50 hover:bg-brand-deep transition-colors flex items-center gap-2">
             {running ? <><RefreshCw size={12} className="animate-spin" /> Running…</> : <><Activity size={14} /> Run Batch</>}
           </button>
         </div>
@@ -350,11 +350,11 @@ function BatchCheckTab() {
       {results && results.length > 0 && (
         <div className="card overflow-hidden">
           <div className="px-4 py-3 border-b border-separator flex items-center justify-between">
-            <p className="text-xs font-medium text-content-primary">{results.length} patients checked</p>
+            <p className="text-[13px] font-medium text-content-primary">{results.length} patients checked</p>
             <div className="flex items-center gap-3 text-[11px]">
-              <span className="text-emerald-500">{results.filter(r => r.status === 'active').length} active</span>
+              <span className="text-brand-dark">{results.filter(r => r.status === 'active').length} active</span>
               <span className="text-red-500">{results.filter(r => r.status !== 'active').length} issues</span>
-              <span className="text-amber-500">{results.filter(r => r.prior_auth_required).length} need auth</span>
+              <span className="text-brand-deep">{results.filter(r => r.prior_auth_required).length} need auth</span>
               <button
                 onClick={() => {
                   const win = window.open('', '_blank')
@@ -393,13 +393,13 @@ function BatchCheckTab() {
                   win.focus()
                   setTimeout(() => { win.print(); win.close() }, 400)
                 }}
-                className="flex items-center gap-1 border border-separator text-content-secondary hover:text-content-primary rounded px-2.5 py-1 transition-colors">
+                className="flex items-center gap-1 border border-separator text-content-secondary hover:text-content-secondary rounded px-2.5 py-1 transition-colors">
                 <FileText size={11} /> Export PDF
               </button>
             </div>
           </div>
           <table className="w-full text-xs">
-            <thead><tr className="border-b border-separator text-[10px] text-content-secondary uppercase tracking-wider">
+            <thead><tr className="border-b border-separator text-[11px] text-content-secondary uppercase tracking-wider">
               <th className="text-left px-4 py-2">Patient</th><th className="text-left px-4 py-2">Status</th>
               <th className="text-left px-4 py-2">Network</th><th className="text-left px-4 py-2">Copay</th>
               <th className="text-left px-4 py-2">Deductible</th><th className="text-left px-4 py-2">Prior Auth</th>
@@ -411,7 +411,7 @@ function BatchCheckTab() {
                 <td className="px-4 py-2.5 text-content-secondary">{r.network_status || '—'}</td>
                 <td className="px-4 py-2.5">{r.copay != null ? `$${r.copay}` : '—'}</td>
                 <td className="px-4 py-2.5">{r.deductible != null ? `$${r.deductible}` : '—'}</td>
-                <td className={`px-4 py-2.5 ${r.prior_auth_required ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-content-secondary'}`}>
+                <td className={`px-4 py-2.5 ${r.prior_auth_required ? 'text-brand-deep dark:text-brand-deep font-medium' : 'text-content-secondary'}`}>
                   {r.prior_auth_required ? 'Required' : 'No'}</td>
               </tr>))}</tbody>
           </table>
@@ -452,10 +452,10 @@ function CheckHistoryTab({ checks, loading }: { checks: ApiEligibilityCheck[]; l
         <div className="relative flex-1 max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search patient name…"
-            className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
+            className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-[13px] text-content-secondary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
         </div>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary">
           <option value="">All statuses</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
@@ -469,7 +469,7 @@ function CheckHistoryTab({ checks, loading }: { checks: ApiEligibilityCheck[]; l
           <EmptyState icon={<ShieldCheck size={20} />} title="No eligibility checks" subtitle="Run a single or batch check to see history here." />
         ) : (
           <table className="w-full text-xs">
-            <thead><tr className="border-b border-separator text-[10px] text-content-secondary uppercase tracking-wider">
+            <thead><tr className="border-b border-separator text-[11px] text-content-secondary uppercase tracking-wider">
               <th className="text-left px-4 py-2.5">Patient</th><th className="text-left px-4 py-2.5">DOS</th>
               <th className="text-left px-4 py-2.5">Status</th><th className="text-left px-4 py-2.5">Network</th>
               <th className="text-left px-4 py-2.5">Copay</th><th className="text-left px-4 py-2.5">Deductible</th>
@@ -487,7 +487,7 @@ function CheckHistoryTab({ checks, loading }: { checks: ApiEligibilityCheck[]; l
                     <td className="px-4 py-2.5 text-content-secondary">{c.network_status || '—'}</td>
                     <td className="px-4 py-2.5">{c.copay != null ? `$${c.copay}` : '—'}</td>
                     <td className="px-4 py-2.5">{c.deductible != null ? `$${c.deductible}` : '—'}</td>
-                    <td className={`px-4 py-2.5 ${c.prior_auth_required ? 'text-amber-500 font-medium' : 'text-content-secondary'}`}>
+                    <td className={`px-4 py-2.5 ${c.prior_auth_required ? 'text-brand-deep font-medium' : 'text-content-secondary'}`}>
                       {c.prior_auth_required ? 'Yes' : 'No'}</td>
                     <td className="px-4 py-2.5 text-content-tertiary">
                       {c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</td>
@@ -515,14 +515,14 @@ function EligibilityDetailRow({ check }: { check: ApiEligibilityCheck }) {
   const rd = typeof check.result === 'object' && check.result !== null ? check.result as Record<string, unknown> : {}
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-      <div><span className="text-content-tertiary block text-[10px]">Patient ID</span><span className="font-mono text-content-secondary">{check.patient_id?.slice(0, 8) || '—'}…</span></div>
-      <div><span className="text-content-tertiary block text-[10px]">Payer ID</span><span className="font-mono text-content-secondary">{check.payer_id?.slice(0, 8) || '—'}…</span></div>
-      {Boolean(rd.plan_name) && <div><span className="text-content-tertiary block text-[10px]">Plan Name</span><span className="text-content-primary">{String(rd.plan_name)}</span></div>}
-      {Boolean(rd.group_number) && <div><span className="text-content-tertiary block text-[10px]">Group Number</span><span className="text-content-primary">{String(rd.group_number)}</span></div>}
-      {Boolean(rd.coinsurance_pct) && <div><span className="text-content-tertiary block text-[10px]">Coinsurance</span><span className="text-content-primary">{String(rd.coinsurance_pct)}%</span></div>}
-      {Boolean(rd.out_of_pocket_max) && <div><span className="text-content-tertiary block text-[10px]">OOP Maximum</span><span className="text-content-primary">${String(rd.out_of_pocket_max)}</span></div>}
-      <div><span className="text-content-tertiary block text-[10px]">Check ID</span><span className="font-mono text-content-secondary">{check.id.slice(0, 12)}…</span></div>
-      <div><span className="text-content-tertiary block text-[10px]">Checked At</span><span className="text-content-secondary">{check.created_at ? new Date(check.created_at).toLocaleString() : '—'}</span></div>
+      <div><span className="text-content-tertiary block text-[11px]">Patient ID</span><span className="font-mono text-content-secondary">{check.patient_id?.slice(0, 8) || '—'}…</span></div>
+      <div><span className="text-content-tertiary block text-[11px]">Payer ID</span><span className="font-mono text-content-secondary">{check.payer_id?.slice(0, 8) || '—'}…</span></div>
+      {Boolean(rd.plan_name) && <div><span className="text-content-tertiary block text-[11px]">Plan Name</span><span className="text-content-primary">{String(rd.plan_name)}</span></div>}
+      {Boolean(rd.group_number) && <div><span className="text-content-tertiary block text-[11px]">Group Number</span><span className="text-content-primary">{String(rd.group_number)}</span></div>}
+      {Boolean(rd.coinsurance_pct) && <div><span className="text-content-tertiary block text-[11px]">Coinsurance</span><span className="text-content-primary">{String(rd.coinsurance_pct)}%</span></div>}
+      {Boolean(rd.out_of_pocket_max) && <div><span className="text-content-tertiary block text-[11px]">OOP Maximum</span><span className="text-content-primary">${String(rd.out_of_pocket_max)}</span></div>}
+      <div><span className="text-content-tertiary block text-[11px]">Check ID</span><span className="font-mono text-content-secondary">{check.id.slice(0, 12)}…</span></div>
+      <div><span className="text-content-tertiary block text-[11px]">Checked At</span><span className="text-content-secondary">{check.created_at ? new Date(check.created_at).toLocaleString() : '—'}</span></div>
     </div>
   )
 }
@@ -566,14 +566,14 @@ function PriorAuthTab({ auths, loading, onRefresh }: { auths: ApiPriorAuth[]; lo
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: 'Pending', value: kpis.pending, color: 'text-amber-500' },
-          { label: 'Approved', value: kpis.approved, color: 'text-emerald-500' },
+          { label: 'Pending', value: kpis.pending, color: 'text-brand-deep' },
+          { label: 'Approved', value: kpis.approved, color: 'text-brand-dark' },
           { label: 'Denied', value: kpis.denied, color: 'text-red-500' },
           { label: 'Avg Age of Approved', value: `${kpis.avgDays}d`, color: 'text-brand' },
         ].map(k => (
           <div key={k.label} className="card p-4 text-center">
             <p className={`text-xl font-bold ${k.color}`}>{k.value}</p>
-            <p className="text-[10px] text-content-tertiary mt-1">{k.label}</p>
+            <p className="text-[11px] text-content-tertiary mt-1">{k.label}</p>
           </div>
         ))}
       </div>
@@ -582,16 +582,16 @@ function PriorAuthTab({ auths, loading, onRefresh }: { auths: ApiPriorAuth[]; lo
         <div className="relative flex-1 max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search auth #, patient, payer, CPT…"
-            className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
+            className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-[13px] text-content-secondary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
         </div>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary">
           <option value="">All statuses</option>
           <option value="pending">Pending</option><option value="submitted">Submitted</option>
           <option value="approved">Approved</option><option value="denied">Denied</option>
         </select>
         <button onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 bg-brand text-white rounded-lg px-4 py-2 text-xs font-medium hover:bg-brand-deep transition-colors">
+          className="flex items-center gap-1.5 bg-brand text-white rounded-lg px-4 py-2 text-[13px] font-medium hover:bg-brand-deep transition-colors">
           <Plus size={14} /> New Prior Auth
         </button>
       </div>
@@ -603,14 +603,14 @@ function PriorAuthTab({ auths, loading, onRefresh }: { auths: ApiPriorAuth[]; lo
           <EmptyState icon={<FileText size={20} />} title="No prior authorizations" subtitle="Create a new prior auth request to get started." />
         ) : (
           <table className="w-full text-xs">
-            <thead><tr className="border-b border-separator text-[10px] text-content-secondary uppercase tracking-wider">
+            <thead><tr className="border-b border-separator text-[11px] text-content-secondary uppercase tracking-wider">
               <th className="text-left px-4 py-2.5">Auth #</th><th className="text-left px-4 py-2.5">Patient</th>
               <th className="text-left px-4 py-2.5">Payer</th><th className="text-left px-4 py-2.5">CPT Codes</th>
               <th className="text-left px-4 py-2.5">Urgency</th><th className="text-left px-4 py-2.5">DOS</th>
               <th className="text-left px-4 py-2.5">Status</th><th className="text-left px-4 py-2.5">Created</th><th className="w-8"></th>
             </tr></thead>
             <tbody>{filtered.slice(0, 100).map(pa => {
-              const st = PA_STATUS[pa.status] || { label: pa.status, cls: 'bg-gray-500/10 text-gray-500' }
+              const st = PA_STATUS[pa.status] || { label: pa.status, cls: 'bg-gray-500/10 text-content-tertiary' }
               return (
                 <tr key={pa.id} onClick={() => setSelectedPA(pa)}
                   className="border-b border-separator/50 hover:bg-surface-elevated/50 cursor-pointer transition-colors">
@@ -620,18 +620,18 @@ function PriorAuthTab({ auths, loading, onRefresh }: { auths: ApiPriorAuth[]; lo
                   <td className="px-4 py-2.5">
                     <div className="flex flex-wrap gap-1">
                       {(pa.cpt_codes || []).slice(0, 3).map(c => (
-                        <span key={c} className="bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded text-[10px] font-mono">{c}</span>
+                        <span key={c} className="bg-brand/10 text-brand-dark dark:text-brand px-1.5 py-0.5 rounded text-[11px] font-mono">{c}</span>
                       ))}
-                      {(pa.cpt_codes || []).length > 3 && <span className="text-[10px] text-content-tertiary">+{pa.cpt_codes!.length - 3}</span>}
+                      {(pa.cpt_codes || []).length > 3 && <span className="text-[11px] text-content-tertiary">+{pa.cpt_codes!.length - 3}</span>}
                     </div>
                   </td>
                   <td className="px-4 py-2.5">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${pa.urgency === 'urgent' ? 'bg-red-500/10 text-red-500' : 'bg-gray-500/10 text-content-secondary'}`}>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${pa.urgency === 'urgent' ? 'bg-red-500/10 text-red-500' : 'bg-gray-500/10 text-content-secondary'}`}>
                       {pa.urgency || 'routine'}
                     </span>
                   </td>
                   <td className="px-4 py-2.5 text-content-secondary text-[11px]">{pa.dos_from || '—'}{pa.dos_to ? ` → ${pa.dos_to}` : ''}</td>
-                  <td className="px-4 py-2.5"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${st.cls}`}>{st.label}</span></td>
+                  <td className="px-4 py-2.5"><span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${st.cls}`}>{st.label}</span></td>
                   <td className="px-4 py-2.5 text-content-tertiary text-[11px]">
                     {pa.created_at ? new Date(pa.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</td>
                   <td className="px-4 py-2.5"><Eye size={12} className="text-content-tertiary" /></td>
@@ -701,7 +701,7 @@ function CreatePriorAuthModal({ onClose, onCreated }: { onClose: () => void; onC
             <LabeledSelect label="Client" value={clientId} onChange={v => { setClientId(v); setPatientId('') }}
               options={[{ value: '', label: 'All' }, ...clients.map(c => ({ value: c.id, label: c.name }))]} />
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Patient *</label>
+              <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">Patient *</label>
               <select value={patientId} onChange={e => setPatientId(e.target.value)}
                 className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs">
                 <option value="">Select patient</option>
@@ -721,27 +721,27 @@ function CreatePriorAuthModal({ onClose, onCreated }: { onClose: () => void; onC
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">DOS From</label>
+              <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">DOS From</label>
               <input type="date" value={dosFrom} onChange={e => setDosFrom(e.target.value)}
                 className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs" />
             </div>
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">DOS To</label>
+              <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">DOS To</label>
               <input type="date" value={dosTo} onChange={e => setDosTo(e.target.value)}
                 className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs" />
             </div>
           </div>
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Clinical Rationale</label>
+            <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">Clinical Rationale</label>
             <textarea value={rationale} onChange={e => setRationale(e.target.value)} rows={3}
               placeholder="Clinical justification for authorization request…"
               className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs placeholder:text-content-tertiary resize-none" />
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-separator">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-xs text-content-secondary hover:bg-surface-elevated transition-colors">Cancel</button>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-[13px] text-content-secondary hover:bg-surface-elevated transition-colors">Cancel</button>
           <button onClick={handleSubmit} disabled={submitting || !patientId || !payerId}
-            className="bg-brand text-white rounded-lg px-5 py-2 text-xs font-medium disabled:opacity-50 hover:bg-brand-deep transition-colors flex items-center gap-2">
+            className="bg-brand text-white rounded-lg px-5 py-2 text-[13px] font-medium disabled:opacity-50 hover:bg-brand-deep transition-colors flex items-center gap-2">
             {submitting ? <><RefreshCw size={12} className="animate-spin" /> Creating…</> : <><Save size={14} /> Create Request</>}
           </button>
         </div>
@@ -755,7 +755,7 @@ function CreatePriorAuthModal({ onClose, onCreated }: { onClose: () => void; onC
 function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose: () => void; onUpdate: () => void }) {
   const { toast } = useToast()
   const { mutate: createTask } = useCreateTask()
-  const st = PA_STATUS[pa.status] || { label: pa.status, cls: 'bg-gray-500/10 text-gray-500' }
+  const st = PA_STATUS[pa.status] || { label: pa.status, cls: 'bg-gray-500/10 text-content-tertiary' }
 
   async function handleStatusUpdate(newStatus: string) {
     try {
@@ -773,7 +773,7 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
           <div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-content-primary">{pa.auth_number || pa.id.slice(0, 12)}</span>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${st.cls}`}>{st.label}</span>
+              <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${st.cls}`}>{st.label}</span>
             </div>
             <p className="text-[11px] text-content-tertiary mt-0.5">Prior Authorization Request</p>
           </div>
@@ -788,17 +788,17 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
               icon={pa.urgency === 'urgent' ? <AlertTriangle size={12} className="text-red-500" /> : <Clock size={12} />} />
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-2">Procedure Codes</p>
+            <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-2">Procedure Codes</p>
             <div className="flex flex-wrap gap-1.5">
-              {(pa.cpt_codes || []).map(c => <span key={c} className="bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-1 rounded text-[11px] font-mono">{c}</span>)}
+              {(pa.cpt_codes || []).map(c => <span key={c} className="bg-brand/10 text-brand-dark dark:text-brand px-2 py-1 rounded text-[11px] font-mono">{c}</span>)}
               {(!pa.cpt_codes || pa.cpt_codes.length === 0) && <span className="text-xs text-content-tertiary">No CPT codes</span>}
             </div>
           </div>
           {pa.icd_codes && pa.icd_codes.length > 0 && (
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-2">Diagnosis Codes</p>
+              <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-2">Diagnosis Codes</p>
               <div className="flex flex-wrap gap-1.5">
-                {pa.icd_codes.map(c => <span key={c} className="bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2 py-1 rounded text-[11px] font-mono">{c}</span>)}
+                {pa.icd_codes.map(c => <span key={c} className="bg-brand/10 text-brand-dark dark:text-brand-dark px-2 py-1 rounded text-[11px] font-mono">{c}</span>)}
               </div>
             </div>
           )}
@@ -810,29 +810,29 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
           )}
           {pa.approved_units && <DrawerField label="Approved Units" value={String(pa.approved_units)} icon={<Activity size={12} />} />}
           {pa.auth_number_payer && (
-            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3">
-              <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">Payer Auth Number</p>
-              <p className="text-sm font-mono font-semibold text-emerald-600 dark:text-emerald-400">{pa.auth_number_payer}</p>
+            <div className="bg-brand/5 border border-brand/20 rounded-lg p-3">
+              <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1">Payer Auth Number</p>
+              <p className="text-sm font-mono font-semibold text-brand-dark dark:text-brand-dark">{pa.auth_number_payer}</p>
             </div>
           )}
           {pa.clinical_rationale && (
             <div className="bg-surface-elevated rounded-lg p-3">
-              <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">Clinical Rationale</p>
-              <p className="text-xs text-content-primary whitespace-pre-wrap">{pa.clinical_rationale}</p>
+              <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1">Clinical Rationale</p>
+              <p className="text-[13px] text-content-primary whitespace-pre-wrap">{pa.clinical_rationale}</p>
             </div>
           )}
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-2">Timeline</p>
+            <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-2">Timeline</p>
             <div className="space-y-2">
               {pa.created_at && <TimelineItem label="Created" time={pa.created_at} icon={<Clock size={12} />} />}
             </div>
           </div>
           <div className="pt-3 border-t border-separator">
-            <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-2">Actions</p>
+            <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-2">Actions</p>
             <div className="flex flex-wrap gap-2">
               {(pa.status === 'pending' || pa.status === 'submitted') && (
                 <>
-                  <button onClick={() => handleStatusUpdate('approved')} className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition-colors">Mark Approved</button>
+                  <button onClick={() => handleStatusUpdate('approved')} className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-brand/10 text-brand-dark hover:bg-brand/20 transition-colors">Mark Approved</button>
                   <button onClick={() => handleStatusUpdate('denied')} className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-colors">Mark Denied</button>
                 </>
               )}
@@ -849,7 +849,7 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
                 </button>
               )}
               {pa.status === 'pending' && (
-                <button onClick={() => handleStatusUpdate('submitted')} className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors">Mark Submitted</button>
+                <button onClick={() => handleStatusUpdate('submitted')} className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-brand/10 text-brand-dark hover:bg-brand/20 transition-colors">Mark Submitted</button>
               )}
             </div>
           </div>
@@ -871,8 +871,8 @@ function EligStatusBadge({ status }: { status: string }) {
 function DrawerField({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-0.5 flex items-center gap-1">{icon}{label}</p>
-      <p className="text-xs font-medium text-content-primary">{value}</p>
+      <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-0.5 flex items-center gap-1">{icon}{label}</p>
+      <p className="text-[13px] font-medium text-content-primary">{value}</p>
     </div>
   )
 }
@@ -881,7 +881,7 @@ function TimelineItem({ label, time, icon }: { label: string; time: string; icon
   return (
     <div className="flex items-center gap-2">
       <div className="w-6 h-6 rounded-full bg-surface-elevated flex items-center justify-center text-content-secondary">{icon}</div>
-      <div><p className="text-xs text-content-primary">{label}</p><p className="text-[10px] text-content-tertiary">{new Date(time).toLocaleString()}</p></div>
+      <div><p className="text-[13px] text-content-primary">{label}</p><p className="text-[11px] text-content-tertiary">{new Date(time).toLocaleString()}</p></div>
     </div>
   )
 }
@@ -891,7 +891,7 @@ function EmptyState({ icon, title, subtitle }: { icon: React.ReactNode; title: s
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <div className="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center mb-3 text-content-tertiary">{icon}</div>
       <p className="text-sm font-medium text-content-primary mb-1">{title}</p>
-      <p className="text-xs text-content-secondary">{subtitle}</p>
+      <p className="text-[13px] text-content-secondary">{subtitle}</p>
     </div>
   )
 }
@@ -899,9 +899,9 @@ function EmptyState({ icon, title, subtitle }: { icon: React.ReactNode; title: s
 function LabeledSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
   return (
     <div>
-      <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">{label}</label>
+      <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">{label}</label>
       <select value={value} onChange={e => onChange(e.target.value)}
-        className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
+        className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary">
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </div>
@@ -911,9 +911,9 @@ function LabeledSelect({ label, value, onChange, options }: { label: string; val
 function LabeledInput({ label, value, onChange, placeholder, mono }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; mono?: boolean }) {
   return (
     <div>
-      <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">{label}</label>
+      <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">{label}</label>
       <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className={`w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary ${mono ? 'font-mono' : ''}`} />
+        className={`w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-primary placeholder:text-content-tertiary ${mono ? 'font-mono' : ''}`} />
     </div>
   )
 }

@@ -17,10 +17,10 @@ export interface DocViewerProps {
 }
 
 const typeConfig: Record<DocViewerDocument['type'], { icon: React.ReactNode; color: string; label: string }> = {
-  superbill: { icon: <FileText size={14} />, color: 'text-amber-500', label: 'Superbill' },
+  superbill: { icon: <FileText size={14} />, color: 'text-brand-deep', label: 'Superbill' },
   clinical_note: { icon: <Stethoscope size={14} />, color: 'text-blue-500', label: 'Clinical Note' },
-  insurance_card: { icon: <CreditCard size={14} />, color: 'text-emerald-500', label: 'Insurance Card' },
-  eob: { icon: <DollarSign size={14} />, color: 'text-purple-500', label: 'Explanation of Benefits' },
+  insurance_card: { icon: <CreditCard size={14} />, color: 'text-brand-dark', label: 'Insurance Card' },
+  eob: { icon: <DollarSign size={14} />, color: 'text-blue-700', label: 'Explanation of Benefits' },
   denial_letter: { icon: <XCircle size={14} />, color: 'text-red-500', label: 'Denial Letter' },
   prior_auth: { icon: <Shield size={14} />, color: 'text-teal-500', label: 'Prior Authorization' },
 }

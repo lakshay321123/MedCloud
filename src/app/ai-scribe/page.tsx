@@ -44,7 +44,7 @@ function Waveform({ active }: { active: boolean }) {
   return (
     <div className="flex items-center justify-center gap-1 h-12">
       {[0.4, 0.7, 1.0, 0.8, 0.5, 0.9, 0.6, 1.0, 0.75, 0.45, 0.85, 0.65].map((h, i) => (
-        <div key={i} className="w-1.5 bg-emerald-500 rounded-full transition-all"
+        <div key={i} className="w-1.5 bg-brand rounded-full transition-all"
           style={{
             height: active ? `${h * 100}%` : '15%',
             animation: active ? `wave ${0.8 + i * 0.1}s ease-in-out infinite alternate` : 'none',
@@ -440,7 +440,7 @@ function ProviderView() {
             {priorVisits.slice(0, 2).map(v => (
               <div key={v.id} className="py-1.5 border-b border-separator last:border-0">
                 <div className="text-xs font-medium">{v.dos} · {v.encounterType}</div>
-                <div className="text-[10px] text-content-tertiary line-clamp-1">{v.soap.a || 'No assessment'}</div>
+                <div className="text-[11px] text-content-tertiary line-clamp-1">{v.soap.a || 'No assessment'}</div>
               </div>
             ))}
           </div>
@@ -454,7 +454,7 @@ function ProviderView() {
         </select>
       </div>
       <button onClick={() => { setUiState('recording'); setTimeout(startRecording, 300) }}
-        className="w-full bg-emerald-500 text-white rounded-lg py-3 text-sm font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2 transition-colors">
+        className="w-full bg-brand text-white rounded-lg py-3 text-sm font-semibold hover:bg-brand flex items-center justify-center gap-2 transition-colors">
         <Mic size={16} /> Start Recording — {selectedPatient.firstName}
       </button>
     </div>
@@ -471,7 +471,7 @@ function ProviderView() {
           </div>
           <div>
             <div className="font-semibold text-sm">{selectedPatient ? [selectedPatient.firstName, selectedPatient.lastName].filter(Boolean).join(' ') || 'Patient' : 'No patient'}</div>
-            <div className="text-content-tertiary text-[10px]">{(selectedAppt as any)?.type}</div>
+            <div className="text-content-tertiary text-[11px]">{(selectedAppt as any)?.type}</div>
           </div>
         </div>
         {selectedPatient && <>
@@ -479,20 +479,20 @@ function ProviderView() {
           <div><span className="text-red-400">Allergies: </span><span className="text-red-500">{selectedPatient.allergies?.join(', ') || 'NKDA'}</span></div>
           <div className="text-content-tertiary">Meds: <span className="text-content-secondary">{selectedPatient.medications?.join(', ') || '—'}</span></div>
         </>}
-        {aiError && <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded text-red-500 text-[10px]"><AlertTriangle size={10} className="inline mr-1" />{aiError}</div>}
+        {aiError && <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded text-red-500 text-[11px]"><AlertTriangle size={10} className="inline mr-1" />{aiError}</div>}
 
         {/* Voice macros toggle */}
         <div className="pt-2 border-t border-separator">
           <button onClick={() => setShowMacros(!showMacros)}
             className="w-full flex items-center justify-between text-[11px] text-content-secondary hover:text-content-primary py-1">
-            <span className="flex items-center gap-1.5"><Zap size={11} className="text-amber-500" /> Voice Macros</span>
-            <span className="text-[10px] text-content-tertiary">{showMacros ? '▲' : '▼'}</span>
+            <span className="flex items-center gap-1.5"><Zap size={11} className="text-brand-deep" /> Voice Macros</span>
+            <span className="text-[11px] text-content-tertiary">{showMacros ? '▲' : '▼'}</span>
           </button>
           {showMacros && (
             <div className="mt-1.5 space-y-2">
               {macroCategories.map(cat => (
                 <div key={cat}>
-                  <div className="text-[10px] text-content-tertiary uppercase tracking-wider mb-1">{cat}</div>
+                  <div className="text-[11px] text-content-tertiary uppercase tracking-wider mb-1">{cat}</div>
                   {VOICE_MACROS.filter(m => m.category === cat).map(m => (
                     <button key={m.label} onClick={() => insertMacro(m.text)}
                       className="w-full text-left text-[11px] bg-surface-elevated hover:bg-brand/5 border border-separator hover:border-brand/20 rounded px-2 py-1.5 mb-1 transition-colors">
@@ -509,7 +509,7 @@ function ProviderView() {
           <button onClick={processNote} className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-deep transition-colors">
             <Sparkles size={13} /> Process Note
           </button>
-          <button onClick={() => { stopRecording(); setUiState('review_patient') }} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-separator text-content-secondary hover:text-content-primary text-xs transition-colors">
+          <button onClick={() => { stopRecording(); setUiState('review_patient') }} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-separator text-content-secondary hover:text-content-secondary text-xs transition-colors">
             <Square size={12} /> Stop
           </button>
         </div>
@@ -518,9 +518,9 @@ function ProviderView() {
       {/* Right: live transcript */}
       <div className="col-span-2 card p-4 flex flex-col">
         <div className="flex items-center gap-2 mb-3">
-          {isListening ? <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" /> : <span className="w-2 h-2 bg-amber-500 rounded-full" />}
+          {isListening ? <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" /> : <span className="w-2 h-2 bg-brand-pale rounded-full" />}
           <span className="text-xs font-semibold text-red-500">{isListening ? 'RECORDING — Speak clearly' : 'Mic starting…'}</span>
-          <span className="ml-auto flex items-center gap-2 text-[10px] text-content-tertiary">
+          <span className="ml-auto flex items-center gap-2 text-[11px] text-content-tertiary">
             <span className="bg-brand/10 text-brand px-1.5 py-0.5 rounded">{selectedSpecialty}</span>
             <button onClick={() => setIsTranscriptEditable(p => !p)} className="hover:text-content-primary flex items-center gap-0.5">
               <Pencil size={9} /> {isTranscriptEditable ? 'Lock' : 'Edit'}
@@ -542,8 +542,8 @@ function ProviderView() {
         </div>
         {transcript && (
           <div className="mt-2 pt-2 border-t border-separator flex items-center justify-between">
-            <span className="text-[10px] text-content-tertiary">{transcript.split(' ').filter(Boolean).length} words</span>
-            <button onClick={() => { setTranscript(''); transcriptRef.current = '' }} className="text-[10px] text-content-tertiary hover:text-red-500">Clear</button>
+            <span className="text-[11px] text-content-tertiary">{transcript.split(' ').filter(Boolean).length} words</span>
+            <button onClick={() => { setTranscript(''); transcriptRef.current = '' }} className="text-[11px] text-content-tertiary hover:text-red-500">Clear</button>
           </div>
         )}
       </div>
@@ -556,7 +556,7 @@ function ProviderView() {
       <div className="w-16 h-16 rounded-full bg-brand/10 flex items-center justify-center mx-auto">
         <Loader2 size={32} className="text-brand animate-spin" />
       </div>
-      <p className="text-base font-semibold">Processing Note…</p>
+      <p className="text-base font-semibold flex items-center gap-2"><span className="ai-dot" /> Processing Note…</p>
       <p className="text-sm text-content-secondary">Generating SOAP · ICD-10 codes · CPT codes · AVS</p>
       <div className="flex items-center justify-center gap-2 text-xs text-content-tertiary">
         <BrainCircuit size={13} className="text-brand" /> Claude on AWS Bedrock
@@ -597,7 +597,7 @@ function ProviderView() {
           {/* Left panel — transcript OR prior visits */}
           <div className="col-span-2 card flex flex-col overflow-hidden min-h-[300px] md:min-h-0">
             {/* Tab switcher */}
-            <div className="flex border-b border-separator">
+            <div className="flex gap-2 border-b border-separator pb-1">
               <button onClick={() => setNoteLeftTab('transcript')}
                 className={`flex-1 py-2.5 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors ${noteLeftTab === 'transcript' ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>
                 <FileText size={11} /> Transcript
@@ -616,7 +616,7 @@ function ProviderView() {
                 </div>
                 {aiResult?.avs_summary && (
                   <div className="p-3 border-t border-separator bg-brand/5">
-                    <div className="text-[10px] font-semibold text-brand uppercase tracking-wider mb-1"><Clipboard size={10} className="inline mr-1" />After-Visit Summary</div>
+                    <div className="text-[11px] font-semibold text-brand uppercase tracking-wider mb-1"><Clipboard size={10} className="inline mr-1" />After-Visit Summary</div>
                     <p className="text-xs text-content-secondary leading-relaxed">{aiResult.avs_summary}</p>
                   </div>
                 )}
@@ -634,7 +634,7 @@ function ProviderView() {
                       <span className="text-xs font-semibold">{v.dos}</span>
                       <StatusBadge status={v.status === 'signed' ? 'completed' : 'in_progress'} small />
                     </div>
-                    <div className="text-[10px] text-content-tertiary mb-2">{v.encounterType} · {v.provider}</div>
+                    <div className="text-[11px] text-content-tertiary mb-2">{v.encounterType} · {v.provider}</div>
                     {v.soap.a && (
                       <div className="bg-surface-elevated rounded p-2 mb-1.5">
                         <div className="text-[9px] font-bold text-content-secondary uppercase tracking-wider mb-0.5">Assessment</div>
@@ -650,7 +650,7 @@ function ProviderView() {
                     {v.suggestedCodes.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2">
                         {v.suggestedCodes.slice(0, 4).map((c, i) => (
-                          <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded border ${c.cpt ? 'bg-brand/5 text-brand border-brand/15' : 'bg-cyan-500/5 text-cyan-500 border-cyan-500/15'}`}>
+                          <span key={i} className={`text-[11px] px-1.5 py-0.5 rounded border ${c.cpt ? 'bg-brand/5 text-brand border-brand/15' : 'bg-cyan-500/5 text-cyan-500 border-cyan-500/15'}`}>
                             {c.cpt ? `CPT ${c.cpt}` : `ICD ${c.icd}`}
                           </span>
                         ))}
@@ -667,12 +667,12 @@ function ProviderView() {
             <div className="px-4 py-3 border-b border-separator flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold">{selectedVisit.patientName}</h3>
-                <p className="text-[10px] text-content-secondary">{selectedVisit.provider} · {selectedVisit.dos} · {selectedVisit.encounterType}</p>
+                <p className="text-[11px] text-content-secondary">{selectedVisit.provider} · {selectedVisit.dos} · {selectedVisit.encounterType}</p>
               </div>
               <div className="flex items-center gap-3">
                 {aiResult?.em_level && (
                   <div className="text-right">
-                    <div className="text-[10px] text-content-tertiary">E/M Level</div>
+                    <div className="text-[11px] text-content-tertiary">E/M Level</div>
                     <div className="text-sm font-bold text-brand">{aiResult.em_level}</div>
                   </div>
                 )}
@@ -683,7 +683,7 @@ function ProviderView() {
                     <Send size={11} /> Referral
                   </button>
                 )}
-                <button onClick={() => setUiState('queue')} className="text-[10px] text-content-secondary hover:text-content-primary flex items-center gap-1"><ChevronLeft size={12} /> Back</button>
+                <button onClick={() => setUiState('queue')} className="text-[11px] text-content-secondary hover:text-content-primary flex items-center gap-1"><ChevronLeft size={12} /> Back</button>
               </div>
             </div>
 
@@ -692,11 +692,11 @@ function ProviderView() {
               {(['s', 'o', 'a', 'p'] as const).map(k => (
                 <div key={k}>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[10px] font-bold text-content-secondary uppercase tracking-wider">
+                    <label className="text-[11px] font-bold text-content-secondary uppercase tracking-wider">
                       {k === 's' ? 'S — Subjective' : k === 'o' ? 'O — Objective' : k === 'a' ? 'A — Assessment' : 'P — Plan'}
                     </label>
                     <button onClick={() => refineSection(k)} disabled={refiningSections[k]}
-                      className="flex items-center gap-1 text-[10px] text-content-tertiary hover:text-brand disabled:opacity-50 transition-colors">
+                      className="flex items-center gap-1 text-[11px] text-content-tertiary hover:text-brand disabled:opacity-50 transition-colors">
                       {refiningSections[k]
                         ? <><RefreshCw size={10} className="animate-spin" /> Refining…</>
                         : <><Sparkles size={10} /> Refine</>}
@@ -712,7 +712,7 @@ function ProviderView() {
                 <div className="flex items-center gap-2 mb-2">
                   <BrainCircuit size={14} className="text-brand" />
                   <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider">AI Generated Codes</h4>
-                  {aiResult?.em_rationale && <span className="ml-auto text-[10px] text-content-tertiary">{aiResult.em_rationale}</span>}
+                  {aiResult?.em_rationale && <span className="ml-auto text-[11px] text-content-tertiary">{aiResult.em_rationale}</span>}
                 </div>
                 {allCodes.map((code, i) => (
                   <div key={`${code.code}-${i}`} className={`card p-3 mb-2 transition-opacity ${keptCodes[code.code] === false ? 'opacity-40' : ''}`}>
@@ -722,17 +722,17 @@ function ProviderView() {
                           <span className={`text-[11px] font-bold ${code.type === 'cpt' ? 'text-brand' : 'text-cyan-500'}`}>
                             {code.type === 'cpt' ? `CPT ${code.code}` : `ICD ${code.code}`}
                           </span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${code.confidence >= 90 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : code.confidence >= 75 ? 'bg-amber-500/10 text-amber-600' : 'bg-gray-500/10 text-gray-400'}`}>{code.confidence}%</span>
-                          {code.is_primary && <span className="text-[10px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-full">Primary</span>}
-                          {manualCodes.some(m => m.code === code.code) && <span className="text-[10px] bg-purple-500/10 text-purple-500 px-1.5 py-0.5 rounded-full">Manual</span>}
-                          {code.modifiers?.map((m: string) => <span key={m} className="text-[10px] bg-purple-500/10 text-purple-500 px-1.5 py-0.5 rounded">-{m}</span>)}
+                          <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${code.confidence >= 90 ? 'bg-brand/10 text-brand-dark dark:text-brand-dark' : code.confidence >= 75 ? 'bg-brand-pale0/10 text-brand-deep' : 'bg-gray-500/10 text-gray-400'}`}>{code.confidence}%</span>
+                          {code.is_primary && <span className="text-[11px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-full">Primary</span>}
+                          {manualCodes.some(m => m.code === code.code) && <span className="text-[11px] bg-brand/10 text-brand-dark px-1.5 py-0.5 rounded-full">Manual</span>}
+                          {code.modifiers?.map((m: string) => <span key={m} className="text-[11px] bg-brand/10 text-brand-dark px-1.5 py-0.5 rounded">-{m}</span>)}
                         </div>
                         <p className="text-xs">{code.desc}</p>
-                        {code.reasoning && <p className="text-[10px] text-content-tertiary mt-0.5">↳ {code.reasoning}</p>}
+                        {code.reasoning && <p className="text-[11px] text-content-tertiary mt-0.5">↳ {code.reasoning}</p>}
                       </div>
                       <div className="flex gap-1 shrink-0">
-                        <button onClick={() => setKeptCodes(p => ({ ...p, [code.code]: true }))} className={`text-[10px] px-2 py-1 rounded border transition-colors ${keptCodes[code.code] !== false ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'border-separator text-content-secondary'}`}>Keep</button>
-                        <button onClick={() => setKeptCodes(p => ({ ...p, [code.code]: false }))} className={`text-[10px] px-2 py-1 rounded border transition-colors ${keptCodes[code.code] === false ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'border-separator text-content-secondary'}`}>Remove</button>
+                        <button onClick={() => setKeptCodes(p => ({ ...p, [code.code]: true }))} className={`text-[11px] px-2 py-1 rounded border transition-colors ${keptCodes[code.code] !== false ? 'bg-brand/10 text-brand-dark dark:text-brand-dark border-brand/20' : 'border-separator text-content-secondary'}`}>Keep</button>
+                        <button onClick={() => setKeptCodes(p => ({ ...p, [code.code]: false }))} className={`text-[11px] px-2 py-1 rounded border transition-colors ${keptCodes[code.code] === false ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'border-separator text-content-secondary'}`}>Remove</button>
                       </div>
                     </div>
                   </div>
@@ -763,7 +763,7 @@ function ProviderView() {
                     setManualCodes(p => [...p, { code, desc: 'Manually added', type: manualCodeType, confidence: 100, is_primary: false, modifiers: [], reasoning: '' }])
                     setKeptCodes(p => ({ ...p, [code]: true }))
                     setManualCode('')
-                  }} className="flex items-center gap-1 text-[11px] bg-brand/10 text-brand border border-brand/20 rounded px-2 py-1.5 hover:bg-brand/20 transition-colors">
+                  }} className="flex items-center gap-1 text-[11px] bg-brand text-white border border-brand/20 rounded px-2 py-1.5 hover:bg-brand/20 transition-colors">
                     <Plus size={10} /> Add
                   </button>
                 </div>
@@ -832,7 +832,7 @@ function ProviderView() {
                   } catch {
                     toast.warning('Draft saved locally')
                   }
-                }} className="px-4 py-2.5 rounded-lg border border-separator text-content-secondary text-sm transition-colors hover:border-brand/30 hover:text-content-primary">Save Draft</button>
+                }} className="px-4 py-2.5 rounded-lg border border-separator text-content-secondary text-sm transition-colors hover:border-brand/30 hover:text-content-secondary">Save Draft</button>
               </div>
             )}
           </div>
@@ -842,7 +842,7 @@ function ProviderView() {
         {showReferral && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-surface-default border border-separator rounded-xl shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-separator">
+              <div className="flex gap-2 items-center justify-between px-5 py-4 border-b border-separator pb-1">
                 <div className="flex items-center gap-2">
                   <BookOpen size={16} className="text-brand" />
                   <h3 className="text-sm font-semibold">Generate Referral Letter</h3>
@@ -880,7 +880,7 @@ function ProviderView() {
                     <textarea value={referralLetter} onChange={e => setReferralLetter(e.target.value)} rows={14}
                       className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs font-mono resize-none outline-none focus:border-brand/40 leading-relaxed" />
                     <button onClick={() => { navigator.clipboard.writeText(referralLetter); toast.success('Copied to clipboard') }}
-                      className="mt-2 w-full border border-separator rounded-lg py-2 text-xs text-content-secondary hover:text-content-primary transition-colors">
+                      className="mt-2 w-full border border-separator rounded-lg py-2 text-xs text-content-secondary hover:text-content-secondary transition-colors">
                       Copy to Clipboard
                     </button>
                   </div>
@@ -905,14 +905,14 @@ function ProviderView() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
         <div className="col-span-1 space-y-3">
           <button onClick={() => setUiState('select_patient')}
-            className="w-full bg-emerald-500 text-white rounded-lg py-3 text-sm font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2 transition-colors">
+            className="w-full bg-brand text-white rounded-lg py-3 text-sm font-semibold hover:bg-brand flex items-center justify-center gap-2 transition-colors">
             <Mic size={16} /> Start New Recording
           </button>
           {pending.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Pending Sign-off</h3>
-                <span className="text-[10px] bg-amber-500/15 text-amber-500 px-2 py-0.5 rounded-full">{pending.length}</span>
+                <span className="text-[11px] bg-brand-pale0/15 text-brand-deep px-2 py-0.5 rounded-full">{pending.length}</span>
               </div>
               {pending.map(v => (
                 <button key={v.id} onClick={() => openVisit(v)} className="w-full text-left card p-3 mb-2 hover:border-brand/30 transition-all">
@@ -920,7 +920,7 @@ function ProviderView() {
                     <span className="text-sm font-medium">{v.patientName}</span>
                     <StatusBadge status="pending_signoff" small />
                   </div>
-                  <p className="text-[10px] text-content-secondary">{v.dos} · {v.encounterType}</p>
+                  <p className="text-[11px] text-content-secondary">{v.dos} · {v.encounterType}</p>
                 </button>
               ))}
             </div>
@@ -934,7 +934,7 @@ function ProviderView() {
                     <span className="text-sm font-medium">{v.patientName}</span>
                     <StatusBadge status="completed" small />
                   </div>
-                  <p className="text-[10px] text-content-secondary">{v.dos} · {v.encounterType}</p>
+                  <p className="text-[11px] text-content-secondary">{v.dos} · {v.encounterType}</p>
                 </button>
               ))}
             </div>
@@ -942,8 +942,8 @@ function ProviderView() {
         </div>
         <div className="col-span-2 card flex items-center justify-center text-center p-12">
           <div className="max-w-xs">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
-              <Stethoscope size={32} className="text-emerald-500 opacity-60" />
+            <div className="w-16 h-16 rounded-full bg-brand/10 flex items-center justify-center mx-auto mb-4">
+              <Stethoscope size={32} className="text-brand-dark opacity-60" />
             </div>
             <p className="text-sm font-medium text-content-secondary mb-1">Real ambient AI documentation</p>
             <p className="text-xs text-content-tertiary">Live mic → transcript → Claude generates SOAP + ICD/CPT codes</p>
@@ -984,7 +984,7 @@ function CoderView() {
               <span className="text-sm font-medium">{v.patientName}</span>
               <StatusBadge status={v.status === 'signed' ? 'completed' : 'in_progress'} small />
             </div>
-            <div className="text-[10px] text-content-secondary">{v.provider} · {v.dos}</div>
+            <div className="text-[11px] text-content-secondary">{v.provider} · {v.dos}</div>
           </button>
         ))}
       </div>
@@ -993,18 +993,18 @@ function CoderView() {
           <div className="flex-1 flex items-center justify-center text-content-secondary text-sm">Select a note to view</div>
         ) : (<>
         {selectedVisit.status === 'signed' && (
-          <div className="px-4 py-2.5 bg-emerald-500/10 border-b border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+          <div className="px-4 py-2.5 bg-brand/10 border-b border-brand/20 text-xs text-brand-dark dark:text-brand-dark flex items-center gap-2">
             <Check size={13} /> Signed by {selectedVisit.provider} on {selectedVisit.dos}
           </div>
         )}
         <div className="px-4 py-3 border-b border-separator">
           <h3 className="text-sm font-semibold">{selectedVisit.patientName}</h3>
-          <p className="text-[10px] text-content-secondary">{selectedVisit.provider} · {selectedVisit.dos}</p>
+          <p className="text-[11px] text-content-secondary">{selectedVisit.provider} · {selectedVisit.dos}</p>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {(['s', 'o', 'a', 'p'] as const).map(k => (
             <div key={k}>
-              <div className="text-[10px] font-bold text-content-secondary uppercase tracking-wider mb-1">
+              <div className="text-[11px] font-bold text-content-secondary uppercase tracking-wider mb-1">
                 {k === 's' ? 'S — Subjective' : k === 'o' ? 'O — Objective' : k === 'a' ? 'A — Assessment' : 'P — Plan'}
               </div>
               <div className="text-sm bg-surface-elevated rounded-lg p-3 leading-relaxed">{selectedVisit.soap[k]}</div>
@@ -1042,7 +1042,7 @@ export default function AIScribePage() {
   const { t } = useT()
   return (
     <ModuleShell title={t('scribe', 'title')} subtitle={isProvider ? t('scribe', 'subtitleProvider') : t('scribe', 'subtitleCoder')}>
-      <div className="mb-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-emerald-700 dark:text-emerald-400">
+      <div className="mb-4 bg-brand/10 border border-brand/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-brand-dark dark:text-brand-dark">
         <Mic size={15} className="shrink-0" />
         <div>
           <span className="font-semibold">Real AI Scribe</span> — Browser mic → live transcript → Claude generates SOAP + ICD/CPT codes instantly.

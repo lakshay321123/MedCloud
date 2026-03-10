@@ -96,7 +96,7 @@ function getDirection(lang: Language): 'ltr' | 'rtl' {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('dark')
+  const [theme, setThemeState] = useState<Theme>('light')
   const [language, setLanguageState] = useState<Language>('en')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [currentUser, setCurrentUser] = useState<User>(SERVER_DEFAULT_USER)
@@ -118,14 +118,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (region) setCountryState(region)
     const portal = localStorage.getItem('cosentus_portal_type') as PortalType | null
     if (portal) setPortalTypeState(portal)
-    const theme = localStorage.getItem('cosentus_theme') as Theme | null
-    if (theme) {
-      setThemeState(theme)
-      document.documentElement.classList.remove('dark', 'light')
-      document.documentElement.classList.add(theme)
-    } else {
-      document.documentElement.classList.add('dark')
-    }
+    // Force light mode — dark mode removed
+    document.documentElement.classList.remove('dark', 'light')
+    document.documentElement.classList.add('light')
+    localStorage.setItem('cosentus_theme', 'light')
     // Auto-select client for provider/client facility portal roles.
     // These users belong to exactly one practice — pre-select it so
     // useClientParams sends the right client_id on every API call.

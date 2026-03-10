@@ -9,30 +9,30 @@ import { Users, Building2, Activity, Shield, X, Search, Plus, Receipt, Clipboard
 
 const roleColors: Record<string,string> = {
   admin: 'bg-red-500/10 text-red-500',
-  director: 'bg-purple-500/10 text-purple-500',
-  supervisor: 'bg-blue-500/10 text-blue-500',
+  director: 'bg-brand/10 text-brand-dark',
+  supervisor: 'bg-brand/10 text-brand',
   manager: 'bg-brand/10 text-brand',
-  coder: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  biller: 'bg-amber-500/10 text-amber-500',
+  coder: 'bg-brand/10 text-brand-dark dark:text-brand-dark',
+  biller: 'bg-brand-pale0/10 text-brand-deep',
   ar_team: 'bg-cyan-500/10 text-cyan-500',
   posting_team: 'bg-orange-500/10 text-orange-500',
-  provider: 'bg-indigo-500/10 text-indigo-500',
+  provider: 'bg-brand/10 text-brand-dark',
   client: 'bg-gray-500/10 text-gray-400',
 }
 
 const pricingColors: Record<string,string> = {
-  '% Revenue': 'bg-blue-500/10 text-blue-500',
-  'Per-Claim': 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  'Flat Fee': 'bg-amber-500/10 text-amber-500',
-  'Hybrid': 'bg-purple-500/10 text-purple-500',
+  '% Revenue': 'bg-brand/10 text-brand',
+  'Per-Claim': 'bg-brand/10 text-brand-dark dark:text-brand-dark',
+  'Flat Fee': 'bg-brand-pale0/10 text-brand-deep',
+  'Hybrid': 'bg-brand/10 text-brand-dark',
 }
 
 const actionColors: Record<string,string> = {
   VIEW: 'bg-gray-500/10 text-gray-400',
-  CREATE: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  UPDATE: 'bg-amber-500/10 text-amber-500',
+  CREATE: 'bg-brand/10 text-brand-dark dark:text-brand-dark',
+  UPDATE: 'bg-brand-pale0/10 text-brand-deep',
   DELETE: 'bg-red-500/10 text-red-500',
-  EXPORT: 'bg-blue-500/10 text-blue-500',
+  EXPORT: 'bg-brand/10 text-brand',
 }
 
 const users = [
@@ -110,7 +110,7 @@ function UsersTab() {
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary"/>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search users..."
-            className="bg-surface-elevated border border-separator rounded-lg pl-8 pr-3 py-1.5 text-xs text-content-primary w-60"/>
+            className="bg-surface-elevated border border-separator rounded-lg pl-8 pr-3 py-1.5 text-[13px] text-content-secondary w-60"/>
         </div>
         <button onClick={()=>setShowAdd(true)} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors">
           <Plus size={14}/> Add User
@@ -118,7 +118,7 @@ function UsersTab() {
       </div>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
             <th className="text-left px-4 py-3">Name</th><th className="text-left px-4 py-3">Email</th>
             <th className="text-left px-4 py-3">Role</th><th className="text-left px-4 py-3">Clients</th>
             <th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3">Last Login</th>
@@ -127,15 +127,15 @@ function UsersTab() {
           <tbody>{filtered.map(u=>(
             <tr key={u.email} className="border-b border-separator last:border-0 table-row">
               <td className="px-4 py-3 font-medium">{u.name}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{u.email}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${roleColors[u.role]??'bg-surface-elevated text-content-secondary'}`}>{u.role}</span></td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{u.clients}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${u.active?'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400':'bg-gray-500/10 text-gray-400'}`}>{u.active?'Active':'Disabled'}</span></td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{u.lastLogin}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{u.email}</td>
+              <td className="px-4 py-3"><span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${roleColors[u.role]??'bg-surface-elevated text-content-secondary'}`}>{u.role}</span></td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{u.clients}</td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full ${u.active?'bg-brand/10 text-brand-dark dark:text-brand-dark':'bg-gray-500/10 text-gray-400'}`}>{u.active?'Active':'Disabled'}</span></td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{u.lastLogin}</td>
               <td className="px-4 py-3 flex gap-1">
-                <button onClick={()=>setEditingUser(u)} className="text-[10px] text-brand hover:underline">Edit</button>
+                <button onClick={()=>setEditingUser(u)} className="text-[11px] text-brand hover:underline">Edit</button>
                 <span className="text-content-tertiary">·</span>
-                <button onClick={()=>handleToggleActive(u.email, u.active)} className={`text-[10px] hover:underline ${u.active ? 'text-red-500' : 'text-emerald-500'}`}>{u.active ? 'Disable' : 'Enable'}</button>
+                <button onClick={()=>handleToggleActive(u.email, u.active)} className={`text-[11px] hover:underline ${u.active ? 'text-content-secondary hover:text-brand' : 'text-brand-dark'}`}>{u.active ? 'Disable' : 'Enable'}</button>
               </td>
             </tr>
           ))}</tbody>
@@ -151,22 +151,22 @@ function UsersTab() {
                 <button onClick={()=>setShowAdd(false)}><X size={16} className="text-content-secondary"/></button>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Full Name *</label>
-                <input value={newUser.name} onChange={e=>setNewUser(p=>({...p,name:e.target.value}))} placeholder="Jane Smith" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40"/>
+                <label className="text-[13px] text-content-secondary block mb-1">Full Name *</label>
+                <input value={newUser.name} onChange={e=>setNewUser(p=>({...p,name:e.target.value}))} placeholder="Jane Smith" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Email *</label>
-                <input value={newUser.email} onChange={e=>setNewUser(p=>({...p,email:e.target.value}))} placeholder="jane@cosentus.ai" type="email" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40"/>
+                <label className="text-[13px] text-content-secondary block mb-1">Email *</label>
+                <input value={newUser.email} onChange={e=>setNewUser(p=>({...p,email:e.target.value}))} placeholder="jane@cosentus.ai" type="email" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Role</label>
-                <select value={newUser.role} onChange={e=>setNewUser(p=>({...p,role:e.target.value}))} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40">
+                <label className="text-[13px] text-content-secondary block mb-1">Role</label>
+                <select value={newUser.role} onChange={e=>setNewUser(p=>({...p,role:e.target.value}))} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40">
                   {Object.keys(roleColors).map(r=><option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Assign to Clients</label>
-                <input value={newUser.clients} onChange={e=>setNewUser(p=>({...p,clients:e.target.value}))} placeholder="IFP, GMC (or leave blank for All)" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40"/>
+                <label className="text-[13px] text-content-secondary block mb-1">Assign to Clients</label>
+                <input value={newUser.clients} onChange={e=>setNewUser(p=>({...p,clients:e.target.value}))} placeholder="IFP, GMC (or leave blank for All)" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <button onClick={handleCreateUser} disabled={creating}
                 className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors disabled:opacity-50">{creating ? 'Creating…' : 'Create User & Send Invite'}</button>
@@ -184,22 +184,22 @@ function UsersTab() {
                 <button onClick={()=>setEditingUser(null)}><X size={16} className="text-content-secondary"/></button>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Full Name</label>
-                <input value={editingUser.name} onChange={e=>setEditingUser(u=>u?{...u,name:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40"/>
+                <label className="text-[13px] text-content-secondary block mb-1">Full Name</label>
+                <input value={editingUser.name} onChange={e=>setEditingUser(u=>u?{...u,name:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Email</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Email</label>
                 <input value={editingUser.email} readOnly className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-tertiary cursor-not-allowed focus:outline-none"/>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Role</label>
-                <select value={editingUser.role} onChange={e=>setEditingUser(u=>u?{...u,role:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40">
+                <label className="text-[13px] text-content-secondary block mb-1">Role</label>
+                <select value={editingUser.role} onChange={e=>setEditingUser(u=>u?{...u,role:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40">
                   {Object.keys(roleColors).map(r=><option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Assigned Clients</label>
-                <input value={editingUser.clients} onChange={e=>setEditingUser(u=>u?{...u,clients:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40"/>
+                <label className="text-[13px] text-content-secondary block mb-1">Assigned Clients</label>
+                <input value={editingUser.clients} onChange={e=>setEditingUser(u=>u?{...u,clients:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <button onClick={async ()=>{
                 // NOTE: MedCloud user management is via Cognito — role/group changes
@@ -233,7 +233,7 @@ function OrgsTab() {
       </div>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
             <th className="text-left px-4 py-3">Name</th><th className="text-left px-4 py-3">Region</th>
             <th className="text-left px-4 py-3">EHR Mode</th><th className="text-left px-4 py-3">Pricing</th>
             <th className="text-left px-4 py-3">Active Since</th><th className="text-left px-4 py-3">Status</th>
@@ -242,10 +242,10 @@ function OrgsTab() {
             <tr key={o.name} onClick={()=>toast.info(`Opening ${o.name} settings`)} className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
               <td className="px-4 py-3 font-medium">{o.name}</td>
               <td className="px-4 py-3 text-xs">{o.region}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{o.ehr}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${pricingColors[o.pricing]??'bg-surface-elevated text-content-secondary'}`}>{o.pricing}</span></td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{o.since}</td>
-              <td className="px-4 py-3"><span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">Active</span></td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{o.ehr}</td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${pricingColors[o.pricing]??'bg-surface-elevated text-content-secondary'}`}>{o.pricing}</span></td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{o.since}</td>
+              <td className="px-4 py-3"><span className="text-[11px] bg-brand/10 text-brand-dark dark:text-brand-dark px-2 py-0.5 rounded-full">Active</span></td>
             </tr>
           ))}</tbody>
         </table>
@@ -260,48 +260,48 @@ function OrgsTab() {
                 <button onClick={()=>setShowAddOrg(false)}><X size={16} className="text-content-secondary"/></button>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Organization Name</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Organization Name</label>
                 <input
                   placeholder="e.g. City Medical Group"
                   value={orgData.name}
                   onChange={e => setOrgData(p => ({ ...p, name: e.target.value }))}
-                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary"
                 />
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Primary Contact</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Primary Contact</label>
                 <input
                   placeholder="Jane Smith"
                   value={orgData.contact}
                   onChange={e => setOrgData(p => ({ ...p, contact: e.target.value }))}
-                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary"
                 />
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Contact Email</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Contact Email</label>
                 <input
                   placeholder="jane@org.com"
                   value={orgData.email}
                   onChange={e => setOrgData(p => ({ ...p, email: e.target.value }))}
-                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-content-secondary block mb-1">Region</label>
+                  <label className="text-[13px] text-content-secondary block mb-1">Region</label>
                   <select
                     value={orgData.region}
                     onChange={e => setOrgData(p => ({ ...p, region: e.target.value }))}
-                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary">
                     <option value="us">🇺🇸 US</option><option value="uae">🇦🇪 UAE</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-content-secondary block mb-1">Pricing Model</label>
+                  <label className="text-[13px] text-content-secondary block mb-1">Pricing Model</label>
                   <select
                     value={orgData.pricing}
                     onChange={e => setOrgData(p => ({ ...p, pricing: e.target.value }))}
-                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary">
                     {['% Revenue','Per-Claim','Flat Fee','Hybrid'].map(p=><option key={p}>{p}</option>)}
                   </select>
                 </div>
@@ -333,24 +333,24 @@ function SystemHealthTab() {
           <div key={s.name} className="card p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-content-primary">{s.name}</span>
-              <span className={`w-2.5 h-2.5 rounded-full ${s.status==='operational'?'bg-emerald-500':s.status==='degraded'?'bg-amber-500 animate-pulse':'bg-red-500 animate-pulse'}`}/>
+              <span className={`w-2.5 h-2.5 rounded-full ${s.status==='operational'?'bg-brand':s.status==='degraded'?'bg-brand-pale animate-pulse':'bg-red-500 animate-pulse'}`}/>
             </div>
             <div className="flex items-center justify-between">
-              <span className={`text-[11px] font-medium ${s.status==='operational'?'text-emerald-600 dark:text-emerald-400':s.status==='degraded'?'text-amber-500':'text-red-500'}`}>
+              <span className={`text-[11px] font-medium ${s.status==='operational'?'text-brand-dark dark:text-brand-dark':s.status==='degraded'?'text-brand-deep':'text-red-500'}`}>
                 {s.status==='operational'?'Operational':s.status==='degraded'?'Degraded':'Down'}
               </span>
-              <span className="text-[10px] text-content-tertiary">{s.ms}ms</span>
+              <span className="text-[11px] text-content-tertiary">{s.ms}ms</span>
             </div>
-            <p className="text-[10px] text-content-tertiary mt-1">Last check: {s.lastCheck} ago</p>
+            <p className="text-[11px] text-content-tertiary mt-1">Last check: {s.lastCheck} ago</p>
           </div>
         ))}
       </div>
       <div className="card overflow-hidden">
         <div className="px-4 py-3 border-b border-separator">
-          <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Queue Depths</h3>
+          <h3 className="text-[13px] font-semibold text-content-secondary uppercase tracking-wider">Queue Depths</h3>
         </div>
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
             <th className="text-left px-4 py-3">Queue</th><th className="text-left px-4 py-3">Items</th>
             <th className="text-left px-4 py-3">Processing</th><th className="text-left px-4 py-3">Failed</th>
             <th className="text-left px-4 py-3">Last Flush</th>
@@ -361,7 +361,7 @@ function SystemHealthTab() {
               <td className="px-4 py-3 text-xs font-mono">{q.items}</td>
               <td className="px-4 py-3 text-xs text-brand">{q.processing}</td>
               <td className="px-4 py-3 text-xs"><span className={q.failed>0?'text-red-500':'text-content-secondary'}>{q.failed}</span></td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{q.flush}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{q.flush}</td>
             </tr>
           ))}</tbody>
         </table>
@@ -392,20 +392,20 @@ function AuditLogTab() {
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary"/>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by user..."
-            className="bg-surface-elevated border border-separator rounded-lg pl-8 pr-3 py-1.5 text-xs text-content-primary w-48"/>
+            className="bg-surface-elevated border border-separator rounded-lg pl-8 pr-3 py-1.5 text-[13px] text-content-secondary w-48"/>
         </div>
         <select value={actionFilter} onChange={e=>setActionFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-[13px] text-content-secondary">
           <option value="">All Actions</option>
           {['VIEW','CREATE','UPDATE','DELETE','EXPORT'].map(a=><option key={a}>{a}</option>)}
         </select>
-        <button onClick={()=>toast.info('Audit export queued. You will receive an email.')} className="ml-auto text-xs border border-separator text-content-secondary px-3 py-1.5 rounded-lg hover:text-content-primary transition-colors">
+        <button onClick={()=>toast.info('Audit export queued. You will receive an email.')} className="ml-auto text-[13px] border border-separator text-content-secondary px-3 py-1.5 rounded-lg hover:text-content-secondary transition-colors">
           Export
         </button>
       </div>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
             <th className="text-left px-4 py-3">Timestamp</th><th className="text-left px-4 py-3">User</th>
             <th className="text-left px-4 py-3">Role</th><th className="text-left px-4 py-3">Action</th>
             <th className="text-left px-4 py-3">Entity</th><th className="text-left px-4 py-3">Entity ID</th>
@@ -413,13 +413,13 @@ function AuditLogTab() {
           </tr></thead>
           <tbody>{filtered.map(e=>(
             <tr key={e.id} className="border-b border-separator last:border-0">
-              <td className="px-4 py-3 font-mono text-[10px] text-content-secondary">{e.timestamp}</td>
-              <td className="px-4 py-3 text-xs font-medium">{e.user}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${roleColors[e.role]??'bg-surface-elevated text-content-secondary'}`}>{e.role}</span></td>
-              <td className="px-4 py-3"><span className={`text-[10px] font-bold px-2 py-0.5 rounded ${actionColors[e.action]??'bg-surface-elevated text-content-secondary'}`}>{e.action}</span></td>
+              <td className="px-4 py-3 font-mono text-[11px] text-content-secondary">{e.timestamp}</td>
+              <td className="px-4 py-3 text-[13px] font-medium">{e.user}</td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full ${roleColors[e.role]??'bg-surface-elevated text-content-secondary'}`}>{e.role}</span></td>
+              <td className="px-4 py-3"><span className={`text-[11px] font-bold px-2 py-0.5 rounded ${actionColors[e.action]??'bg-surface-elevated text-content-secondary'}`}>{e.action}</span></td>
               <td className="px-4 py-3 text-xs">{e.entity}</td>
-              <td className="px-4 py-3 font-mono text-[10px] text-brand">{e.entityId}</td>
-              <td className="px-4 py-3 font-mono text-[10px] text-content-tertiary">{e.ip}</td>
+              <td className="px-4 py-3 font-mono text-[11px] text-brand">{e.entityId}</td>
+              <td className="px-4 py-3 font-mono text-[11px] text-content-tertiary">{e.ip}</td>
             </tr>
           ))}</tbody>
         </table>
@@ -454,14 +454,14 @@ function InvoicesTab() {
       </div>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary"><th className="text-left px-4 py-3">Invoice #</th><th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">Period</th><th className="text-left px-4 py-3">Amount</th><th className="text-left px-4 py-3">Status</th></tr></thead>
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary"><th className="text-left px-4 py-3">Invoice #</th><th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">Period</th><th className="text-left px-4 py-3">Amount</th><th className="text-left px-4 py-3">Status</th></tr></thead>
           <tbody>{loading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-content-secondary text-xs">Loading…</td></tr> : items.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-content-tertiary text-xs">No invoices yet — generate one above</td></tr> : items.map((inv) => (
             <tr key={inv.id} className="border-b border-separator last:border-0 table-row">
               <td className="px-4 py-3 font-mono text-xs">{inv.invoice_number || inv.id?.slice(0,8)}</td>
               <td className="px-4 py-3 text-xs">{inv.client_name || '—'}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{inv.period_start?.slice(0,10)} → {inv.period_end?.slice(0,10)}</td>
-              <td className="px-4 py-3 text-xs font-semibold">${Number(inv.total_amount || 0).toLocaleString()}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${({paid:'bg-emerald-500/10 text-emerald-500',sent:'bg-blue-500/10 text-blue-500'} as Record<string,string>)[inv.status ?? ''] || 'bg-amber-500/10 text-amber-500'}`}>{inv.status || 'draft'}</span></td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{inv.period_start?.slice(0,10)} → {inv.period_end?.slice(0,10)}</td>
+              <td className="px-4 py-3 text-[13px] font-semibold">${Number(inv.total_amount || 0).toLocaleString()}</td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full ${({paid:'bg-brand/10 text-brand-dark',sent:'bg-brand/10 text-brand'} as Record<string,string>)[inv.status ?? ''] || 'bg-brand-pale0/10 text-brand-deep'}`}>{inv.status || 'draft'}</span></td>
             </tr>
           ))}</tbody>
         </table>
@@ -485,12 +485,12 @@ function OnboardingTab() {
         <div key={ob.id} className="card p-4 mb-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-semibold">{ob.client_name || ob.client_id?.slice(0,8)}</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full ${ob.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>{ob.status || 'in_progress'}</span>
+            <span className={`text-[11px] px-2 py-0.5 rounded-full ${ob.status === 'completed' ? 'bg-brand/10 text-brand-dark' : 'bg-brand/10 text-brand'}`}>{ob.status || 'in_progress'}</span>
           </div>
           <div className="w-full bg-surface-elevated rounded-full h-2 mb-2">
             <div className="bg-brand h-2 rounded-full transition-all" style={{ width: `${ob.completion_pct || 0}%` }}/>
           </div>
-          <p className="text-[10px] text-content-tertiary">{ob.completion_pct || 0}% complete · {ob.items_completed || 0}/{ob.items_total || 0} items</p>
+          <p className="text-[11px] text-content-tertiary">{ob.completion_pct || 0}% complete · {ob.items_completed || 0}/{ob.items_total || 0} items</p>
         </div>
       ))}
     </div>
@@ -507,15 +507,15 @@ function PatientAccessTab() {
       {loading ? <div className="text-center py-8 text-content-secondary text-xs">Loading…</div> : items.length === 0 ? <div className="card p-8 text-center text-content-tertiary text-xs">No pending patient access requests</div> :
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary"><th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Request Type</th><th className="text-left px-4 py-3">Submitted</th><th className="text-left px-4 py-3">Deadline</th><th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3">Actions</th></tr></thead>
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary"><th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Request Type</th><th className="text-left px-4 py-3">Submitted</th><th className="text-left px-4 py-3">Deadline</th><th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3">Actions</th></tr></thead>
           <tbody>{items.map((r) => (
             <tr key={r.id} className="border-b border-separator last:border-0 table-row">
               <td className="px-4 py-3 text-xs">{r.patient_name || '—'}</td>
               <td className="px-4 py-3 text-xs">{r.request_type || 'records'}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{r.created_at?.slice(0,10)}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{r.deadline?.slice(0,10) || '—'}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${r.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' : r.status === 'overdue' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>{r.status || 'pending'}</span></td>
-              <td className="px-4 py-3"><button onClick={() => toast.success('Marked complete — use patient access API')} className="text-[10px] text-brand hover:underline">Complete</button></td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{r.created_at?.slice(0,10)}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{r.deadline?.slice(0,10) || '—'}</td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full ${r.status === 'completed' ? 'bg-brand/10 text-brand-dark' : r.status === 'overdue' ? 'bg-red-500/10 text-red-500' : 'bg-brand-pale0/10 text-brand-deep'}`}>{r.status || 'pending'}</span></td>
+              <td className="px-4 py-3"><button onClick={() => toast.success('Marked complete — use patient access API')} className="text-[11px] text-brand hover:underline">Complete</button></td>
             </tr>
           ))}</tbody>
         </table>
@@ -546,16 +546,16 @@ export default function AdminPage() {
 
   return (
     <ModuleShell title={t("admin","title")} subtitle={t("admin","subtitle")}>
-      <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
+      <div className="mb-4 bg-brand-pale0/10 border border-brand-light/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-brand-deep dark:text-brand-deep">
         <span className="text-lg shrink-0">⚙️</span>
         <div>
           Admin connected — audit log + user management live
         </div>
       </div>
-      <div className="flex gap-1 mb-5 border-b border-separator">
+      <div className="flex gap-2 mb-5 flex-wrap">
         {tabs.map(t=>{const Icon=t.icon;return(
           <button key={t.id} onClick={()=>setTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${tab===t.id?'border-brand text-brand':'border-transparent text-content-secondary hover:text-content-primary'}`}>
+            className={`flex items-center gap-2 px-4 py-2 text-[13px] font-medium rounded-[10px] transition-all ${tab===t.id?'bg-brand text-white shadow-sm':'text-content-secondary hover:text-content-primary hover:bg-surface-elevated'}`}>
             <Icon size={14}/>{t.label}
           </button>
         )})}

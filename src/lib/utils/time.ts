@@ -1,8 +1,8 @@
 export function getSLAStatus(receivedAt: string): { label: string; color: string; urgent: boolean } {
   const hours = (Date.now() - new Date(receivedAt).getTime()) / 3600000
-  if (hours < 24) return { label: `${Math.round(hours)}h`, color: 'text-emerald-500', urgent: false }
-  if (hours < 48) return { label: `${Math.round(hours)}h ⚠`, color: 'text-amber-500', urgent: false }
-  return { label: `${Math.round(hours)}h 🔴`, color: 'text-red-500', urgent: true }
+  if (hours < 24) return { label: `${Math.round(hours)}h`, color: 'text-brand', urgent: false }
+  if (hours < 48) return { label: `${Math.round(hours)}h ⚠`, color: 'text-brand-dark', urgent: false }
+  return { label: `${Math.round(hours)}h`, color: 'text-content-secondary font-bold', urgent: true }
 }
 
 export function tfDaysRemaining(dos: string, payer: string, tfDeadlines: Record<string, number>): number {

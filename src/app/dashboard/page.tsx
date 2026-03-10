@@ -81,7 +81,7 @@ function ExecutiveDashboard() {
 
   const recentClaimsActivity = metrics?.recent_claims?.slice(0, 5).map(c => ({
     t: `Claim #${c.claim_number} — ${c.first_name} ${c.last_name} ($${Number(c.total_charges || 0).toLocaleString()})`,
-    c: c.status === 'paid' ? 'text-emerald-600 dark:text-emerald-400' : c.status === 'denied' ? 'text-red-500' : 'text-brand',
+    c: c.status === 'paid' ? 'text-brand-dark dark:text-brand-dark' : c.status === 'denied' ? 'text-red-500' : 'text-brand',
     ago: timeAgo(c.dos_from),
     href: '/claims',
   }))
@@ -99,7 +99,7 @@ function ExecutiveDashboard() {
   const maxAgingVal = agingBuckets ? Math.max(...agingBuckets.map(b => b.value), 1) : 1
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 stagger-children">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
         <KPICard label={t("dashboard","totalRevenueMTD")} value={loading ? '…' : `$${(totalCollectionsMtd / 1000000).toFixed(1)}M`} sub="+8.2% vs last month" trend="up" icon={<DollarSign size={20} />} />
         <KPICard label={t("dashboard","claimsSubmitted")} value={loading ? '…' : totalClaims.toLocaleString()} sub="+124 today" trend="up" icon={<FileText size={20} />} />
@@ -122,11 +122,11 @@ function ExecutiveDashboard() {
             {agingBuckets
               ? agingBuckets.map((b, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-                    <span className="text-[10px] font-medium text-content-secondary truncate w-full text-center">{b.value > 0 ? b.value.toLocaleString() : '—'}</span>
+                    <span className="text-[11px] font-medium text-content-secondary truncate w-full text-center">{b.value > 0 ? b.value.toLocaleString() : '—'}</span>
                     <div className="w-full rounded-lg relative overflow-hidden" style={{ height: `${Math.max((b.value / maxAgingVal) * 120, b.value > 0 ? 8 : 2)}px` }}>
                       <div className="absolute inset-0 bg-gradient-to-t from-brand-dark to-brand rounded-lg" />
                     </div>
-                    <span className="text-[10px] text-content-tertiary whitespace-nowrap">{b.label}d</span>
+                    <span className="text-[11px] text-content-tertiary whitespace-nowrap">{b.label}d</span>
                   </div>
                 ))
               : [1.8, 2.0, 2.1, 2.2, 2.3, 2.4].map((v, i) => (
@@ -169,7 +169,7 @@ function AIPerformanceSection() {
   const { t } = useT()
   return (
     <div className="card p-6">
-      <h3 className="text-[15px] font-semibold text-content-primary mb-4">{t('dashboard','aiPerformance')}</h3>
+      <h3 className="text-[15px] font-semibold text-content-primary mb-4 flex items-center gap-2">{t('dashboard','aiPerformance')} <span className="ai-dot" /></h3>
       <div className="grid grid-cols-5 gap-3">
         {[
           {feature:'Auto-Coding',accuracy:'94.2%',volume:342,status:'active'},
@@ -185,8 +185,8 @@ function AIPerformanceSection() {
         ].map(ai=>(
           <div key={ai.feature} className="bg-surface-elevated rounded-lg p-3">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-semibold truncate">{ai.feature}</span>
-              <span className={`text-[8px] px-1.5 py-0.5 rounded-full ${ai.status==='active'?'bg-emerald-500/10 text-emerald-500':'bg-amber-500/10 text-amber-500'}`}>{ai.status}</span>
+              <span className="text-[11px] font-semibold truncate">{ai.feature}</span>
+              <span className={`text-[8px] px-1.5 py-0.5 rounded-full ${ai.status==='active'?'bg-brand/10 text-brand-dark':'bg-brand-pale0/10 text-brand-deep'}`}>{ai.status}</span>
             </div>
             <p className="text-sm font-bold text-brand">{ai.accuracy}</p>
             <p className="text-[9px] text-content-tertiary">{ai.volume.toLocaleString()} processed</p>
@@ -206,7 +206,7 @@ function CoderDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-content-primary">My Coding Queue</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-content-primary">My Coding Queue</h1>
         <p className="text-sm text-content-secondary">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -216,10 +216,10 @@ function CoderDashboard() {
         <KPICard label={t('dashboard','codedToday')} value={4} icon={<CheckCircle2 size={20} />} trend="up" />
       </div>
       {(pastSLA ?? 0) > 0 && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
-          <AlertTriangle size={16} className="text-red-500 mt-0.5 shrink-0" />
+        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-brand-deep mt-0.5 shrink-0" />
           <div>
-            <p className="text-[13px] font-semibold text-red-600">{(pastSLA ?? 0)} chart{(pastSLA ?? 0) > 1 ? 's' : ''} past 24-hour SLA</p>
+            <p className="text-[13px] font-semibold text-brand-deep">{(pastSLA ?? 0)} chart{(pastSLA ?? 0) > 1 ? 's' : ''} past 24-hour SLA</p>
             <p className="text-[12px] text-content-secondary mt-0.5">These charts were received more than 24 hours ago and must be coded immediately.</p>
           </div>
           <Link href="/coding" className="ml-auto text-[12px] text-brand font-medium shrink-0">Go to Queue →</Link>
@@ -245,7 +245,7 @@ function BillerDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-content-primary">Claims Dashboard</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-content-primary">Claims Dashboard</h1>
         <p className="text-sm text-content-secondary">Your daily billing summary</p>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -255,11 +255,11 @@ function BillerDashboard() {
         <KPICard label={t('dashboard','chargeLagAlerts')} value={chargeLagCount} icon={<Clock size={20} />} />
       </div>
       {scrubFailed > 0 && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-start gap-3">
-            <AlertTriangle size={16} className="text-red-500 mt-0.5" />
+            <AlertTriangle size={16} className="text-brand-deep mt-0.5" />
             <div>
-              <p className="text-[13px] font-semibold text-red-600">{scrubFailed} claims need scrub error resolution</p>
+              <p className="text-[13px] font-semibold text-brand-deep">{scrubFailed} claims need scrub error resolution</p>
               <p className="text-[12px] text-content-secondary mt-0.5">Fix scrub errors before these claims can be submitted to the clearinghouse.</p>
             </div>
           </div>
@@ -267,9 +267,9 @@ function BillerDashboard() {
         </div>
       )}
       {chargeLagCount > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
           <div>
-            <p className="text-[13px] font-semibold text-amber-600">{chargeLagCount} appointments completed 48h+ with no claim</p>
+            <p className="text-[13px] font-semibold text-brand-deep">{chargeLagCount} appointments completed 48h+ with no claim</p>
             <p className="text-[12px] text-content-secondary">Mar 1 — Dr. Martinez × 2, Dr. Patel × 1</p>
           </div>
           <Link href="/claims" className="text-[12px] text-brand font-medium shrink-0">Review →</Link>
@@ -294,7 +294,7 @@ function ARDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-content-primary">A/R Dashboard</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-content-primary">A/R Dashboard</h1>
         <p className="text-sm text-content-secondary">Your accounts receivable summary</p>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -304,11 +304,11 @@ function ARDashboard() {
         <KPICard label={t('dashboard','accountsWorked')} value={12} icon={<CheckCircle2 size={20} />} />
       </div>
       {appealsNearDeadline > 0 && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-start gap-3">
-            <AlertTriangle size={16} className="text-red-500 mt-0.5" />
+            <AlertTriangle size={16} className="text-brand-deep mt-0.5" />
             <div>
-              <p className="text-[13px] font-semibold text-red-600">{appealsNearDeadline} appeal response windows closing in &lt; 5 days</p>
+              <p className="text-[13px] font-semibold text-brand-deep">{appealsNearDeadline} appeal response windows closing in &lt; 5 days</p>
               <p className="text-[12px] text-content-secondary">Follow up now or escalate to Level 2 before the window closes.</p>
             </div>
           </div>
@@ -333,7 +333,7 @@ function PostingDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-content-primary">Payment Posting</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-content-primary">Payment Posting</h1>
         <p className="text-sm text-content-secondary">{t('dashboard','todayPostingSummary')}</p>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -343,8 +343,8 @@ function PostingDashboard() {
         <KPICard label={t('dashboard','postedToday')} value={24} icon={<CheckCircle2 size={20} />} />
       </div>
       {pastSLAERAs > 0 && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between">
-          <p className="text-[13px] font-semibold text-red-600">{pastSLAERAs} ERA past 48-hour posting SLA — requires immediate action</p>
+        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
+          <p className="text-[13px] font-semibold text-brand-deep">{pastSLAERAs} ERA past 48-hour posting SLA — requires immediate action</p>
           <Link href="/payment-posting" className="text-[12px] text-brand font-medium">Post Now →</Link>
         </div>
       )}
@@ -364,7 +364,7 @@ function ProviderDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-content-primary">Good morning, Dr.</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-content-primary">Good morning, Dr.</h1>
         <p className="text-sm text-content-secondary">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
@@ -373,8 +373,8 @@ function ProviderDashboard() {
         <KPICard label={t('dashboard','unsignedNotes')} value={unsignedNotes} icon={<Clock size={20} />} />
       </div>
       {(unsignedNotes ?? 0) > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center justify-between">
-          <p className="text-[13px] font-semibold text-amber-600">{(unsignedNotes ?? 0)} note{(unsignedNotes ?? 0) > 1 ? 's' : ''} unsigned for more than 24 hours</p>
+        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
+          <p className="text-[13px] font-semibold text-brand-deep">{(unsignedNotes ?? 0)} note{(unsignedNotes ?? 0) > 1 ? 's' : ''} unsigned for more than 24 hours</p>
           <Link href="/ai-scribe" className="text-[12px] text-brand font-medium">Sign Now →</Link>
         </div>
       )}
@@ -420,16 +420,16 @@ function ClientDashboard() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-content-primary">{selectedClient?.name || 'My Practice'}</h1>
+          <h1 className="text-[26px] font-bold tracking-tight text-content-primary">{selectedClient?.name || 'My Practice'}</h1>
           <p className="text-sm text-content-secondary">Revenue cycle summary · March 2026</p>
         </div>
         {actionNeeded > 0 && (
           <button
             onClick={() => router.push('/tasks')}
-            className="bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 flex items-center gap-2 hover:bg-red-500/20 transition-colors cursor-pointer"
+            className="bg-brand/10 border border-brand/20 rounded-lg px-3 py-2 flex items-center gap-2 hover:bg-brand/15 transition-colors cursor-pointer"
           >
             <AlertTriangle size={14} className="text-red-500" />
-            <span className="text-[13px] text-red-600 font-semibold">{actionNeeded} items need your attention →</span>
+            <span className="text-[13px] text-brand-deep font-semibold">{actionNeeded} items need your attention →</span>
           </button>
         )}
       </div>
@@ -437,7 +437,7 @@ function ClientDashboard() {
         <div className="bg-surface-elevated rounded-xl p-5 border border-separator">
           <p className="text-[12px] text-content-secondary mb-1">MTD Collections</p>
           <p className="text-3xl font-bold text-content-primary">${mtdCollections.toLocaleString()}</p>
-          <p className="text-[12px] text-emerald-500 mt-1">↑ vs last month</p>
+          <p className="text-[12px] text-brand-dark mt-1">↑ vs last month</p>
         </div>
         <KPICard label={t("dashboard","denialRate")} value={`${denialRate}%`} icon={<ShieldAlert size={20} />} />
         <KPICard label={t("dashboard","daysInAR")} value={daysInAR} icon={<TrendingUp size={20} />} />
@@ -462,30 +462,30 @@ function SupervisorDashboard() {
   const exceptions = [
     { count: chartsPastSLA, label: 'Charts past 24h coding SLA', href: '/coding', color: 'red' },
     { count: scrubErrors, label: 'Claims with unresolved scrub errors', href: '/claims', color: 'red' },
-    { count: unassignedDenials, label: 'Denials received — unassigned', href: '/denials', color: 'amber' },
-    { count: unpostedERAs, label: 'ERAs unposted > 36h', href: '/payment-posting', color: 'amber' },
-    { count: 2, label: 'Appeal response windows closing < 5 days', href: '/denials', color: 'amber' },
+    { count: unassignedDenials, label: 'Denials received — unassigned', href: '/denials', color: 'blue' },
+    { count: unpostedERAs, label: 'ERAs unposted > 36h', href: '/payment-posting', color: 'blue' },
+    { count: 2, label: 'Appeal response windows closing < 5 days', href: '/denials', color: 'blue' },
   ].filter(e => (e.count ?? 0) > 0)
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-content-primary">Exception Queue</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-content-primary">Exception Queue</h1>
         <p className="text-sm text-content-secondary">Everything that needs your attention right now</p>
       </div>
       {exceptions.length === 0 ? (
         <div className="text-center py-12 text-content-tertiary">
-          <CheckCircle2 size={32} className="mx-auto mb-3 text-emerald-500" />
+          <CheckCircle2 size={32} className="mx-auto mb-3 text-brand-dark" />
           <p className="text-[15px] font-medium text-content-primary">No exceptions</p>
           <p className="text-[13px]">All queues are within SLA. Operations are running smoothly.</p>
         </div>
       ) : (
         <div className="space-y-3">
           {exceptions.map((exc, i) => (
-            <div key={i} className={`rounded-xl p-4 border flex items-center justify-between ${exc.color === 'red' ? 'bg-red-500/10 border-red-500/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
+            <div key={i} className={`rounded-xl p-4 border flex items-center justify-between ${exc.color === 'red' ? 'bg-red-500/10 border-red-500/30' : 'bg-brand-pale0/10 border-brand-light/30'}`}>
               <div className="flex items-center gap-3">
-                <span className={`text-2xl font-bold ${exc.color === 'red' ? 'text-red-500' : 'text-amber-500'}`}>{exc.count}</span>
-                <p className={`text-[13px] font-medium ${exc.color === 'red' ? 'text-red-600' : 'text-amber-600'}`}>{exc.label}</p>
+                <span className={`text-2xl font-bold ${exc.color === 'red' ? 'text-red-500' : 'text-brand-deep'}`}>{exc.count}</span>
+                <p className={`text-[13px] font-medium ${exc.color === 'red' ? 'text-red-600' : 'text-brand-deep'}`}>{exc.label}</p>
               </div>
               <Link href={exc.href} className="text-[12px] text-brand font-medium shrink-0">Resolve →</Link>
             </div>

@@ -57,17 +57,17 @@ export default function WatchTrackPage() {
 
   return (
     <ModuleShell title="Watch & Track" subtitle="Track your claims and revenue">
-      {!apiClaims.length && <div className='mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2.5 text-xs text-amber-400'>API connecting…</div>}
+      {!apiClaims.length && <div className='mb-4 bg-brand-pale0/10 border border-brand-light/30 rounded-lg px-4 py-2.5 text-xs text-brand-deep'>API connecting…</div>}
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 bg-surface-elevated rounded-xl p-1 w-fit">
+      <div className="flex gap-2 mb-5 bg-surface-elevated rounded-xl p-1 w-fit">
         <button onClick={() => setActiveTab('claims')}
-          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === 'claims' ? 'bg-brand text-white shadow-sm' : 'text-content-secondary hover:text-content-primary'}`}>
+          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === 'claims' ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'}`}>
           Claims
         </button>
         <button onClick={() => setActiveTab('submissions')}
-          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${activeTab === 'submissions' ? 'bg-brand text-white shadow-sm' : 'text-content-secondary hover:text-content-primary'}`}>
+          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${activeTab === 'submissions' ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'}`}>
           My Submissions
-          {allDocs.length > 0 && <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${activeTab === 'submissions' ? 'bg-white/20' : 'bg-brand/20 text-brand'}`}>{allDocs.length}</span>}
+          {allDocs.length > 0 && <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-bold ${activeTab === 'submissions' ? 'bg-white/20' : 'bg-brand/20 text-brand'}`}>{allDocs.length}</span>}
         </button>
       </div>
 
@@ -92,7 +92,7 @@ export default function WatchTrackPage() {
                       <tr key={d.id} className="border-b border-separator last:border-0 hover:bg-surface-elevated transition-colors">
                         <td className="px-4 py-3 text-xs font-mono text-content-secondary truncate max-w-[160px]">{d.fileName}</td>
                         <td className="px-4 py-3">
-                          <span className="bg-brand/10 text-brand text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                          <span className="bg-brand/10 text-brand text-[11px] font-semibold px-2 py-0.5 rounded-full">
                             {({'Clinical Note':'📋','Superbill':'🧾','Insurance Card':'🏥','Referral':'📨','License':'🪪','EOB':'💵','Denial Letter':'❌','Contract':'📄','Credential':'🔖'} as Record<string,string>)[d.docType] || '📁'} {d.docType}
                           </span>
                         </td>
@@ -101,9 +101,9 @@ export default function WatchTrackPage() {
                           {d.uploadedAt ? new Date(d.uploadedAt).toLocaleDateString(country === 'uae' ? 'en-AE' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                            d.status === 'uploaded' ? 'bg-emerald-500/10 text-emerald-500' :
-                            d.status === 'processing' ? 'bg-amber-500/10 text-amber-500' :
+                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                            d.status === 'uploaded' ? 'bg-brand/10 text-brand-dark' :
+                            d.status === 'processing' ? 'bg-brand-pale0/10 text-brand-deep' :
                             'bg-gray-500/10 text-gray-400'}`}>
                             {d.status === 'uploaded' ? '✓ Received' : d.status === 'processing' ? '⏳ Processing' : d.status}
                           </span>
@@ -126,8 +126,8 @@ export default function WatchTrackPage() {
         <KPICard label={t('watch','avgDaysToPay')} value="22" icon={<Clock size={20}/>}/>
       </div>
       <div className="flex gap-2 mb-4">
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t("watch","searchClaims")} className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary max-w-xs"/>
-        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t("watch","searchClaims")} className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary max-w-xs"/>
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary">
           <option value="">All Statuses</option>
           {['submitted','in_process','paid','partial_pay','denied','appealed'].map(s=><option key={s} value={s}>{s.replace(/_/g,' ')}</option>)}
         </select>
@@ -149,7 +149,7 @@ export default function WatchTrackPage() {
                 <td className="px-4 py-3 text-content-secondary text-xs">{c.payer}</td>
                 <td className="px-4 py-3 text-content-secondary text-xs">{c.dos}</td>
                 <td className="px-4 py-3 text-right">${c.billed.toLocaleString()}</td>
-                <td className="px-4 py-3 text-right text-emerald-600 dark:text-emerald-400">{c.paid > 0 ? `$${c.paid.toLocaleString()}` : '—'}</td>
+                <td className="px-4 py-3 text-right text-brand-dark dark:text-brand-dark">{c.paid > 0 ? `$${c.paid.toLocaleString()}` : '—'}</td>
                 <td className="px-4 py-3"><StatusBadge status={c.status} small/></td>
                 <td className="px-4 py-3 text-right text-xs text-content-secondary">{c.age}d</td>
               </tr>
@@ -163,7 +163,7 @@ export default function WatchTrackPage() {
                           <p><span className="text-content-secondary">CPT Codes:</span> <span className="font-mono">{(c.cptCodes??[]).join(', ')||'—'}</span></p>
                           <p><span className="text-content-secondary">ICD Codes:</span> <span className="font-mono">{(c.icdCodes??[]).join(', ')||'—'}</span></p>
                           <p><span className="text-content-secondary">Billed:</span> <span className="font-mono">${c.billed.toLocaleString()}</span></p>
-                          <p><span className="text-content-secondary">Paid:</span> <span className="font-mono text-emerald-600 dark:text-emerald-400">{c.paid>0?`$${c.paid.toLocaleString()}`:'—'}</span></p>
+                          <p><span className="text-content-secondary">Paid:</span> <span className="font-mono text-brand-dark dark:text-brand-dark">{c.paid>0?`$${c.paid.toLocaleString()}`:'—'}</span></p>
                         </div>
                       </div>
                       <div>
@@ -208,15 +208,15 @@ export default function WatchTrackPage() {
           ].map((s,i)=>(
             <div key={i} className="flex items-start gap-3">
               <div className="flex flex-col items-center">
-                <div className={`w-3 h-3 rounded-full border-2 ${s.status==='done'?'bg-emerald-500 border-emerald-500':s.status==='current'?'bg-brand border-brand animate-pulse':'border-separator bg-surface-elevated'}`}/>
-                {i<6&&<div className={`w-0.5 h-8 ${s.status==='done'?'bg-emerald-500/30':'bg-separator'}`}/>}
+                <div className={`w-3 h-3 rounded-full border-2 ${s.status==='done'?'bg-brand border-brand':s.status==='current'?'bg-brand border-brand animate-pulse':'border-separator bg-surface-elevated'}`}/>
+                {i<6&&<div className={`w-0.5 h-8 ${s.status==='done'?'bg-brand/30':'bg-separator'}`}/>}
               </div>
               <div className="flex-1 -mt-0.5">
                 <div className="flex items-center gap-2">
                   <span className={`text-xs font-medium ${s.status==='pending'?'text-content-tertiary':'text-content-primary'}`}>{s.step}</span>
-                  <span className="text-[10px] text-content-tertiary">{s.date}</span>
+                  <span className="text-[11px] text-content-tertiary">{s.date}</span>
                 </div>
-                <p className="text-[10px] text-content-secondary">{s.detail}</p>
+                <p className="text-[11px] text-content-secondary">{s.detail}</p>
               </div>
             </div>
           ))}

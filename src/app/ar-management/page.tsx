@@ -83,9 +83,9 @@ const initialCallHistory: Record<string, CallLogEntry[]> = {
 
 const sourceInfo: Record<string, { color: string; label: string }> = {
   denied_claim: { color: 'bg-red-500/10 text-red-600 dark:text-red-400', label: 'Denied Claim' },
-  underpayment: { color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', label: 'Underpayment' },
-  patient_balance: { color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400', label: 'Patient Balance' },
-  timely_filing_risk: { color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400', label: 'Timely Filing Risk' },
+  underpayment: { color: 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep', label: 'Underpayment' },
+  patient_balance: { color: 'bg-brand/10 text-brand-dark dark:text-brand', label: 'Patient Balance' },
+  timely_filing_risk: { color: 'bg-brand/10 text-brand-dark dark:text-brand-dark', label: 'Timely Filing Risk' },
 }
 
 const CALL_OUTCOMES = ['Got Status', 'Voicemail', 'Payment Promised', 'Denied', 'Resubmit Required', 'Submit Appeal']
@@ -101,8 +101,8 @@ function CreditBalanceRow({ cr, onResolved }: {
     <tr className="border-b border-separator last:border-0 table-row">
       <td className="px-4 py-3 font-mono text-xs">{cr.claim}</td>
       <td className="px-4 py-3 text-xs">{cr.patient}</td>
-      <td className="px-4 py-3 text-xs font-semibold text-amber-500">{cr.amt}</td>
-      <td className="px-4 py-3 text-xs text-content-secondary">{cr.payer}</td>
+      <td className="px-4 py-3 text-[13px] font-semibold text-brand-deep">{cr.amt}</td>
+      <td className="px-4 py-3 text-[13px] text-content-secondary">{cr.payer}</td>
       <td className="px-4 py-3 text-xs">{cr.reason}</td>
       <td className="px-4 py-3 flex gap-2">
         <button disabled={resolving} onClick={async () => {
@@ -116,7 +116,7 @@ function CreditBalanceRow({ cr, onResolved }: {
           } else {
             toast.success(`Refund of ${cr.amt} initiated for ${cr.claim} — ${cr.patient}`)
           }
-        }} className="text-[10px] text-brand hover:underline font-medium disabled:opacity-50">{resolving ? '…' : 'Refund'}</button>
+        }} className="text-[11px] text-brand hover:underline font-medium disabled:opacity-50">{resolving ? '…' : 'Refund'}</button>
         <button disabled={resolving} onClick={async () => {
           if (!window.confirm(`Apply ${cr.amt} credit to open patient balance for ${cr.patient}?\n\nClaim: ${cr.claim}\nThis will reduce their outstanding balance by ${cr.amt}.`)) return
           if (cr.apiId) {
@@ -128,7 +128,7 @@ function CreditBalanceRow({ cr, onResolved }: {
           } else {
             toast.success(`${cr.amt} applied to ${cr.patient}'s open balance`)
           }
-        }} className="text-[10px] text-emerald-500 hover:underline font-medium disabled:opacity-50">{resolving ? '…' : 'Apply'}</button>
+        }} className="text-[11px] text-brand-dark hover:underline font-medium disabled:opacity-50">{resolving ? '…' : 'Apply'}</button>
       </td>
     </tr>
   )
@@ -179,7 +179,7 @@ function LogCallModal({
       <div className="fixed inset-0 bg-black/60 z-50" onClick={onClose} />
       <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
         <div className="bg-surface-secondary rounded-xl shadow-2xl w-full max-w-lg border border-separator">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-separator">
+          <div className="flex gap-2 items-center justify-between px-5 py-4 border-b border-separator pb-1">
             <h3 className="font-semibold text-content-primary">Log Manual Call — {account.payer}</h3>
             <button onClick={onClose}><X size={16} className="text-content-secondary" /></button>
           </div>
@@ -188,7 +188,7 @@ function LogCallModal({
             <div className="bg-brand/5 border border-brand/20 rounded-lg p-3 flex items-start gap-3">
               <Phone size={14} className="text-brand mt-0.5 shrink-0"/>
               <div>
-                <div className="text-xs font-semibold text-brand mb-0.5">Payer Phone</div>
+                <div className="text-[13px] font-semibold text-brand mb-0.5">Payer Phone</div>
                 <div className="text-sm text-content-primary font-mono">{phone}</div>
               </div>
             </div>
@@ -197,7 +197,7 @@ function LogCallModal({
             {ivr.length > 0 && (
               <div className="border border-separator rounded-lg overflow-hidden">
                 <button onClick={() => setShowIVR(p => !p)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-content-secondary hover:bg-surface-elevated transition-colors">
+                  className="w-full flex items-center justify-between px-3 py-2 text-[13px] font-medium text-content-secondary hover:bg-surface-elevated transition-colors">
                   <span>IVR Navigation Steps ({ivr.length} steps)</span>
                   {showIVR ? <ChevronUp size={13}/> : <ChevronDown size={13}/>}
                 </button>
@@ -205,7 +205,7 @@ function LogCallModal({
                   <div className="px-3 pb-3 space-y-1.5 bg-surface-elevated">
                     {ivr.map((step, i) => (
                       <div key={i} className="flex items-start gap-2 text-xs">
-                        <span className="shrink-0 w-5 h-5 rounded-full bg-brand/10 text-brand flex items-center justify-center text-[10px] font-bold">{i+1}</span>
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-brand/10 text-brand flex items-center justify-center text-[11px] font-bold">{i+1}</span>
                         <span className="text-content-primary">{step}</span>
                       </div>
                     ))}
@@ -218,7 +218,7 @@ function LogCallModal({
             <div>
               <label className="text-[11px] text-content-tertiary block mb-1">Call Outcome *</label>
               <select value={outcome} onChange={e => setOutcome(e.target.value)}
-                className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40">
+                className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-secondary focus:outline-none focus:border-brand/40">
                 <option value="">Select outcome…</option>
                 {CALL_OUTCOMES.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
@@ -229,7 +229,7 @@ function LogCallModal({
               <div>
                 <label className="text-[11px] text-content-tertiary block mb-1">Payment Promised Date</label>
                 <input type="date" value={promisedDate} onChange={e => setPromisedDate(e.target.value)}
-                  className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40"/>
+                  className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
             )}
 
@@ -237,26 +237,26 @@ function LogCallModal({
               <div>
                 <label className="text-[11px] text-content-tertiary block mb-1">Reference #</label>
                 <input value={ref} onChange={e => setRef(e.target.value)} placeholder="REF-XXXX"
-                  className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] font-mono text-content-primary focus:outline-none focus:border-brand/40"/>
+                  className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] font-mono text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <div>
                 <label className="text-[11px] text-content-tertiary block mb-1">Rep Name</label>
                 <input value={rep} onChange={e => setRep(e.target.value)} placeholder="Payer rep name"
-                  className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40"/>
+                  className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
             </div>
 
             <div>
               <label className="text-[11px] text-content-tertiary block mb-1">Next Follow-up Date <span className="text-content-tertiary">(auto-suggested: +7 days)</span></label>
               <input type="date" value={followupDate} onChange={e => setFollowupDate(e.target.value)}
-                className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40"/>
+                className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-secondary focus:outline-none focus:border-brand/40"/>
             </div>
 
             <div>
               <label className="text-[11px] text-content-tertiary block mb-1">Notes</label>
               <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
                 placeholder="What did you discuss? Any commitments made?"
-                className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40 resize-none"/>
+                className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-secondary focus:outline-none focus:border-brand/40 resize-none"/>
             </div>
           </div>
           <div className="flex gap-2 px-5 pb-5">
@@ -318,10 +318,10 @@ function ARDrawer({
       <div className="fixed inset-0 bg-black/20 z-30" onClick={onClose} />
       <div className="fixed right-0 top-0 h-full w-[460px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-separator shrink-0">
+        <div className="flex gap-2 items-center justify-between p-4 border-b border-separator pb-1 shrink-0">
           <div>
             <h3 className="font-semibold text-content-primary">{account.patient}</h3>
-            <p className="text-xs text-content-secondary">{account.client} · {account.payer}</p>
+            <p className="text-[13px] text-content-secondary">{account.client} · {account.payer}</p>
             <button onClick={() => router.push(`/claims?id=${account.id}`)}
               className="text-[11px] text-brand hover:underline mt-0.5 block">
               View Claim {account.claimNumber || account.id} →
@@ -333,7 +333,7 @@ function ARDrawer({
         </div>
 
         {/* Tab bar */}
-        <div className="flex border-b border-separator px-3 shrink-0">
+        <div className="flex gap-2 border-b border-separator pb-1 px-3 shrink-0">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setDrawerTab(t.id as typeof drawerTab)}
               className={`px-3 py-2.5 text-[12px] font-medium transition-colors ${drawerTab === t.id ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>
@@ -349,29 +349,29 @@ function ARDrawer({
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-surface-elevated rounded-lg p-3 text-center">
                   <div className="text-lg font-bold text-content-primary">${account.original}</div>
-                  <div className="text-[10px] text-content-secondary">Original</div>
+                  <div className="text-[11px] text-content-secondary">Original</div>
                 </div>
                 <div className="bg-surface-elevated rounded-lg p-3 text-center">
-                  <div className={`text-lg font-bold ${account.balance > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>${account.balance}</div>
-                  <div className="text-[10px] text-content-secondary">Balance</div>
+                  <div className={`text-lg font-bold ${account.balance > 0 ? 'text-brand-deep' : 'text-brand-dark'}`}>${account.balance}</div>
+                  <div className="text-[11px] text-content-secondary">Balance</div>
                 </div>
                 <div className="bg-surface-elevated rounded-lg p-3 text-center">
                   <div className="text-lg font-bold text-content-primary">{account.age}d</div>
-                  <div className="text-[10px] text-content-secondary">Age</div>
+                  <div className="text-[11px] text-content-secondary">Age</div>
                 </div>
               </div>
 
               {account.paymentPromisedDate && (
-                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 text-[12px] text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                <div className="bg-brand/10 border border-brand/20 rounded-lg p-2.5 text-[12px] text-brand-dark dark:text-brand-dark flex items-center gap-2">
                   💰 Payment Promised for {account.paymentPromisedDate}
                 </div>
               )}
 
               {/* Timely filing */}
-              <div className={`flex items-start gap-2 rounded-lg p-3 text-[12px] ${daysUntilDeadline < 30 ? 'bg-red-500/10 border border-red-500/20' : daysUntilDeadline < 60 ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-surface-elevated'}`}>
-                <AlertTriangle size={13} className={`mt-0.5 shrink-0 ${daysUntilDeadline < 30 ? 'text-red-500' : daysUntilDeadline < 60 ? 'text-amber-500' : 'text-content-tertiary'}`} />
+              <div className={`flex items-start gap-2 rounded-lg p-3 text-[12px] ${daysUntilDeadline < 30 ? 'bg-red-500/10 border border-red-500/20' : daysUntilDeadline < 60 ? 'bg-brand-pale0/10 border border-brand-light/20' : 'bg-surface-elevated'}`}>
+                <AlertTriangle size={13} className={`mt-0.5 shrink-0 ${daysUntilDeadline < 30 ? 'text-red-500' : daysUntilDeadline < 60 ? 'text-brand-deep' : 'text-content-tertiary'}`} />
                 <div>
-                  <p className={`font-medium ${daysUntilDeadline < 30 ? 'text-red-500' : daysUntilDeadline < 60 ? 'text-amber-600 dark:text-amber-400' : 'text-content-secondary'}`}>
+                  <p className={`font-medium ${daysUntilDeadline < 30 ? 'text-red-500' : daysUntilDeadline < 60 ? 'text-brand-deep dark:text-brand-deep' : 'text-content-secondary'}`}>
                     Timely Filing: {deadlineDate.toISOString().split('T')[0]}
                   </p>
                   <p className="text-content-tertiary">{daysUntilDeadline > 0 ? `${daysUntilDeadline} days remaining` : 'DEADLINE PASSED'} ({tfDays}d window)</p>
@@ -384,7 +384,7 @@ function ARDrawer({
               </div>
 
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Next Follow-up Date</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Next Follow-up Date</label>
                 <input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)}
                   className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm" />
               </div>
@@ -396,11 +396,11 @@ function ARDrawer({
                   onClose()
                   router.push(`/voice-ai?payer=${encodeURIComponent(account.payer)}&patient=${encodeURIComponent(account.patient)}&claim=${account.id}`)
                 }}
-                  className="bg-brand/10 text-brand rounded-lg py-2.5 text-xs font-medium hover:bg-brand/20 transition-colors flex items-center justify-center gap-2">
+                  className="bg-brand/10 text-brand rounded-lg py-2.5 text-[13px] font-medium hover:bg-brand/20 transition-colors flex items-center justify-center gap-2">
                   <Phone size={13} /> Voice AI
                 </button>
                 <button onClick={() => setShowCallModal(true)}
-                  className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-xs font-medium hover:text-content-primary transition-colors flex items-center justify-center gap-2">
+                  className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-[13px] font-medium hover:text-content-secondary transition-colors flex items-center justify-center gap-2">
                   <PhoneCall size={13} /> Log Manual Call
                 </button>
                 <button onClick={async () => {
@@ -419,7 +419,7 @@ function ARDrawer({
                     toast.success(`Follow-up saved for ${followUpDate}`)
                     onClose()
                   } catch { toast.error('Failed to save follow-up') }
-                }} className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-xs font-medium hover:text-content-primary transition-colors">
+                }} className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-[13px] font-medium hover:text-content-secondary transition-colors">
                   Save Follow-up
                 </button>
                 <button onClick={async () => {
@@ -440,11 +440,11 @@ function ARDrawer({
                     onClose()
                   } catch { toast.error('Failed to route to appeals') }
                 }}
-                  className="bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg py-2.5 text-xs font-medium hover:bg-amber-500/20 transition-colors">
+                  className="bg-brand-pale0/10 text-brand-deep dark:text-brand-deep rounded-lg py-2.5 text-[13px] font-medium hover:bg-brand-pale0/20 transition-colors">
                   Route to Appeals
                 </button>
                 <button onClick={() => setShowWriteoffModal(true)}
-                  className="col-span-2 bg-red-500/10 text-red-500 rounded-lg py-2.5 text-xs font-medium hover:bg-red-500/20 transition-colors">
+                  className="col-span-2 bg-red-500/10 text-red-500 rounded-lg py-2.5 text-[13px] font-medium hover:bg-red-500/20 transition-colors">
                   Request Write-off
                 </button>
                 <button
@@ -457,7 +457,7 @@ function ARDrawer({
                       onClose()
                     } catch { toast.error('Failed to send info request') }
                   }}
-                  className="bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg py-2.5 text-xs font-medium hover:bg-blue-500/20 transition-colors disabled:opacity-50">
+                  className="bg-brand/10 text-brand-dark dark:text-brand rounded-lg py-2.5 text-[13px] font-medium hover:bg-brand/20 transition-colors disabled:opacity-50">
                   {requestingInfo ? 'Requesting…' : 'Request Info'}
                 </button>
                 <button
@@ -470,7 +470,7 @@ function ARDrawer({
                       onClose()
                     } catch { toast.error('Failed to escalate claim') }
                   }}
-                  className="bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-lg py-2.5 text-xs font-medium hover:bg-orange-500/20 transition-colors disabled:opacity-50">
+                  className="bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-lg py-2.5 text-[13px] font-medium hover:bg-orange-500/20 transition-colors disabled:opacity-50">
                   {escalating ? 'Escalating…' : 'Escalate'}
                 </button>
                 <button
@@ -483,7 +483,7 @@ function ARDrawer({
                       onClose()
                     } catch { toast.error('Failed to send statement') }
                   }}
-                  className="col-span-2 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg py-2.5 text-xs font-medium hover:bg-purple-500/20 transition-colors disabled:opacity-50">
+                  className="col-span-2 bg-brand/10 text-brand-dark dark:text-brand-dark rounded-lg py-2.5 text-[13px] font-medium hover:bg-brand/10 transition-colors disabled:opacity-50">
                   {sendingStatement ? 'Sending…' : 'Send Statement'}
                 </button>
               </div>
@@ -503,11 +503,11 @@ function ARDrawer({
                 <div key={c.id} className="bg-surface-elevated rounded-lg p-3 space-y-1.5">
                   <div className="flex items-center gap-2">
                     {c.type === 'ai' ? (
-                      <span className="flex items-center gap-1 text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded-full font-medium">
+                      <span className="flex items-center gap-1 text-[11px] bg-brand/10 text-brand px-2 py-0.5 rounded-full font-medium">
                         <Bot size={10} /> AI Call
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 text-[10px] bg-surface-secondary border border-separator text-content-secondary px-2 py-0.5 rounded-full font-medium">
+                      <span className="flex items-center gap-1 text-[11px] bg-surface-secondary border border-separator text-content-secondary px-2 py-0.5 rounded-full font-medium">
                         <User size={10} /> Manual
                       </span>
                     )}
@@ -520,7 +520,7 @@ function ARDrawer({
                     {c.rep && <span className="text-[11px] text-content-secondary">· {c.rep}</span>}
                   </div>
                   {c.paymentPromisedDate && (
-                    <div className="text-[11px] text-emerald-600 dark:text-emerald-400">💰 Payment promised: {c.paymentPromisedDate}</div>
+                    <div className="text-[11px] text-brand-dark dark:text-brand-dark">💰 Payment promised: {c.paymentPromisedDate}</div>
                   )}
                   <p className="text-[12px] text-content-secondary">{c.note}</p>
                 </div>
@@ -531,7 +531,7 @@ function ARDrawer({
           {drawerTab === 'notes' && (
             <div className="space-y-3">
               <textarea rows={4} placeholder="Add a note…" value={followUpNote} onChange={e => setFollowUpNote(e.target.value)}
-                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-primary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40 resize-none" />
+                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40 resize-none" />
               <button onClick={() => {
                 if (!followUpNote.trim()) return
                 toast.success('Note saved')
@@ -552,7 +552,7 @@ function ARDrawer({
                   <p className="text-[13px] font-medium text-content-primary">CLM-{account.id.replace('AR-', '10')}</p>
                   <p className="text-[11px] text-content-secondary">{account.payer} · DOS {account.dos} · ${account.original}</p>
                 </div>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${sourceInfo[account.source]?.color || 'bg-surface-elevated text-content-secondary'}`}>
+                <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${sourceInfo[account.source]?.color || 'bg-surface-elevated text-content-secondary'}`}>
                   {sourceInfo[account.source]?.label || account.source}
                 </span>
               </div>
@@ -577,19 +577,19 @@ function ARDrawer({
           <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setShowWriteoffModal(false)} />
           <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
             <div className="bg-surface-secondary rounded-xl shadow-2xl w-full max-w-md border border-separator">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-separator">
+              <div className="flex gap-2 items-center justify-between px-5 py-4 border-b border-separator pb-1">
                 <h3 className="font-semibold text-content-primary">Request Write-off</h3>
                 <button onClick={() => setShowWriteoffModal(false)}><X size={16} className="text-content-secondary" /></button>
               </div>
               <div className="p-5 space-y-3">
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-2">
-                  <AlertTriangle size={13} className="text-amber-500 mt-0.5 shrink-0" />
-                  <p className="text-[12px] text-amber-600 dark:text-amber-400">Write-off requests require supervisor approval. Balance: <span className="font-bold">${account.balance}</span></p>
+                <div className="bg-brand-pale0/10 border border-brand-light/20 rounded-lg p-3 flex items-start gap-2">
+                  <AlertTriangle size={13} className="text-brand-deep mt-0.5 shrink-0" />
+                  <p className="text-[12px] text-brand-deep dark:text-brand-deep">Write-off requests require supervisor approval. Balance: <span className="font-bold">${account.balance}</span></p>
                 </div>
                 <div>
                   <label className="text-[11px] text-content-tertiary block mb-1">Reason *</label>
                   <select value={writeoffReason} onChange={e => setWriteoffReason(e.target.value)}
-                    className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40">
+                    className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-secondary focus:outline-none focus:border-brand/40">
                     <option value="">Select a reason…</option>
                     <option value="small_balance">Small balance (under threshold)</option>
                     <option value="timely_filing">Timely filing deadline passed</option>
@@ -603,7 +603,7 @@ function ARDrawer({
                 </div>
               </div>
               <div className="flex gap-2 px-5 pb-5">
-                <button onClick={handleWriteoff} className="flex-1 bg-red-500 text-white rounded-btn py-2.5 text-[13px] font-medium">Submit for Approval</button>
+                <button onClick={handleWriteoff} className="flex-1 bg-brand-deep text-white rounded-btn py-2.5 text-[13px] font-medium">Submit for Approval</button>
                 <button onClick={() => setShowWriteoffModal(false)} className="px-4 py-2.5 bg-surface-elevated border border-separator rounded-btn text-[13px] text-content-secondary">Cancel</button>
               </div>
             </div>
@@ -628,7 +628,7 @@ function InboundCallPanel() {
   return (
     <div className="card p-6 max-w-2xl">
       <h3 className="text-base font-semibold mb-1">Inbound Patient Call</h3>
-      <p className="text-xs text-content-secondary mb-4">Patient calling in — look up account by name or phone.</p>
+      <p className="text-[13px] text-content-secondary mb-4">Patient calling in — look up account by name or phone.</p>
       <div className="flex gap-2 mb-4">
         <input value={phoneSearch} onChange={e => setPhoneSearch(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && lookUp()}
@@ -642,9 +642,9 @@ function InboundCallPanel() {
             <div className="flex justify-between mb-3">
               <div>
                 <p className="font-semibold">{found.patient}</p>
-                <p className="text-xs text-content-secondary">{found.client} · {found.payer}</p>
+                <p className="text-[13px] text-content-secondary">{found.client} · {found.payer}</p>
               </div>
-              <span className={`text-xs font-bold px-2 py-1 rounded ${found.balance > 0 ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600'}`}>
+              <span className={`text-xs font-bold px-2 py-1 rounded ${found.balance > 0 ? 'bg-brand-pale0/10 text-brand-deep' : 'bg-brand/10 text-brand-dark'}`}>
                 {found.balance > 0 ? `$${found.balance} BALANCE` : 'PAID'}
               </span>
             </div>
@@ -657,8 +657,8 @@ function InboundCallPanel() {
           <div className="grid grid-cols-2 gap-2">
             {[
               { label: '💳 Offer Payment Plan', color: 'bg-brand/10 text-brand border-brand/20', taskType: 'payment_plan' as const, msg: 'Payment plan task created' },
-              { label: '✓ Take Payment', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20', taskType: 'payment' as const, msg: 'Payment logged' },
-              { label: '⚠ Log Dispute', color: 'bg-amber-500/10 text-amber-600 border-amber-500/20', taskType: 'dispute' as const, msg: 'Dispute task created' },
+              { label: '✓ Take Payment', color: 'bg-brand/10 text-brand-dark border-brand/20', taskType: 'payment' as const, msg: 'Payment logged' },
+              { label: '⚠ Log Dispute', color: 'bg-brand-pale0/10 text-brand-deep border-brand-light/20', taskType: 'dispute' as const, msg: 'Dispute task created' },
               { label: '📋 Log & Callback', color: 'bg-surface-elevated border-separator text-content-secondary', taskType: 'callback' as const, msg: 'Callback task created' },
             ].map(b => (
               <button key={b.label} onClick={async () => {
@@ -674,7 +674,7 @@ function InboundCallPanel() {
                   toast.success(b.msg)
                 } catch { toast.error('Failed to create task') }
               }}
-                className={`${b.color} rounded-lg py-2.5 text-xs font-medium border hover:opacity-80 transition-opacity`}>
+                className={`${b.color} rounded-lg py-2.5 text-[13px] font-medium border hover:opacity-80 transition-opacity`}>
                 {b.label}
               </button>
             ))}
@@ -832,10 +832,10 @@ export default function ARManagementPage() {
     Math.max(1, accounts.filter(a => a.balance > 0).length)
   )
   const computedBuckets = [
-    { l: '0-30',   v: accounts.filter(a => a.age <= 30).reduce((s,a) => s+a.balance,0),  c: 'bg-emerald-500' },
+    { l: '0-30',   v: accounts.filter(a => a.age <= 30).reduce((s,a) => s+a.balance,0),  c: 'bg-brand' },
     { l: '31-60',  v: accounts.filter(a => a.age>30&&a.age<=60).reduce((s,a) => s+a.balance,0), c: 'bg-cyan-500' },
-    { l: '61-90',  v: accounts.filter(a => a.age>60&&a.age<=90).reduce((s,a) => s+a.balance,0), c: 'bg-amber-500' },
-    { l: '91-120', v: accounts.filter(a => a.age>90&&a.age<=120).reduce((s,a) => s+a.balance,0), c: 'bg-orange-500' },
+    { l: '61-90',  v: accounts.filter(a => a.age>60&&a.age<=90).reduce((s,a) => s+a.balance,0), c: 'bg-brand-pale' },
+    { l: '91-120', v: accounts.filter(a => a.age>90&&a.age<=120).reduce((s,a) => s+a.balance,0), c: 'bg-brand-pale' },
     { l: '120+',   v: accounts.filter(a => a.age>120).reduce((s,a) => s+a.balance,0),  c: 'bg-red-500' },
   ]
   const computedMax = Math.max(...computedBuckets.map(b => b.v), 1)
@@ -845,7 +845,7 @@ export default function ARManagementPage() {
   return (
     <ModuleShell title={t("ar","title")} subtitle={t("ar","subtitle")}>
       {claimsLoading && <div className='mx-4 mb-4 px-4 py-2.5 bg-brand/5 border border-brand/20 rounded-lg flex items-center gap-2 text-xs text-brand'><AlertTriangle size={13} className='shrink-0'/>Loading live AR accounts…</div>}
-      {!claimsLoading && apiAccounts.length === 0 && <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-400'><AlertTriangle size={13} className='shrink-0'/>No claims in AR — showing seed data. Submit claims to populate live accounts.</div>}
+      {!claimsLoading && apiAccounts.length === 0 && <div className='mx-4 mb-4 px-4 py-2.5 bg-brand-pale0/10 border border-brand-light/30 rounded-lg flex items-center gap-2 text-xs text-brand-deep'><AlertTriangle size={13} className='shrink-0'/>No claims in AR — showing seed data. Submit claims to populate live accounts.</div>}
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KPICard label={t("ar","totalAR")} value={`$${(totalAR/1000).toFixed(0)}K`} icon={<TrendingUp size={20} />} />
         <KPICard label={t("ar","workedToday")} value={String(workedToday)} trend="up" />
@@ -854,7 +854,7 @@ export default function ARManagementPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 mb-4 border-b border-separator">
+      <div className="flex gap-2 mb-4 border-b border-separator">
         {[{ id: 'accounts', label: 'AR Accounts' }, { id: 'inbound', label: '📞 Inbound Call' }, { id: 'credits', label: 'Credit Balances' }, { id: 'sla', label: 'SLA Escalations' }].map(t => (
           <button key={t.id} onClick={() => setCallMode(t.id as any)}
             className={`px-4 py-2.5 text-[13px] font-medium transition-colors ${callMode === t.id ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>
@@ -870,13 +870,13 @@ export default function ARManagementPage() {
             <button onClick={() => { refetchCredits(); toast.success('Credit balance scan triggered') }} disabled={identifyingCredits} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors disabled:opacity-50">{identifyingCredits ? 'Scanning…' : 'Identify Credits'}</button>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-amber-500">${creditStats.total}</p><p className="text-[10px] text-content-tertiary mt-1">Total Credits</p></div>
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand">{creditStats.open}</p><p className="text-[10px] text-content-tertiary mt-1">Open Credits</p></div>
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-emerald-500">${creditStats.resolved}</p><p className="text-[10px] text-content-tertiary mt-1">Resolved This Month</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-deep">${creditStats.total}</p><p className="text-[11px] text-content-tertiary mt-1">Total Credits</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand">{creditStats.open}</p><p className="text-[11px] text-content-tertiary mt-1">Open Credits</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-dark">${creditStats.resolved}</p><p className="text-[11px] text-content-tertiary mt-1">Resolved This Month</p></div>
           </div>
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-separator text-xs text-content-secondary"><th className="text-left px-4 py-3">Claim</th><th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Amount</th><th className="text-left px-4 py-3">Payer</th><th className="text-left px-4 py-3">Reason</th><th className="text-left px-4 py-3">Actions</th></tr></thead>
+              <thead><tr className="border-b border-separator text-[13px] text-content-secondary"><th className="text-left px-4 py-3">Claim</th><th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Amount</th><th className="text-left px-4 py-3">Payer</th><th className="text-left px-4 py-3">Reason</th><th className="text-left px-4 py-3">Actions</th></tr></thead>
               <tbody>
                 {(creditBalances.length > 0 ? creditBalances.map(cb => ({
                   id: cb.id,
@@ -897,25 +897,25 @@ export default function ARManagementPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-content-secondary">SLA escalation tracking — accounts approaching or past deadlines</p>
-            <button onClick={handleSlaCheck} disabled={checkingSLA} className="flex items-center gap-2 bg-red-500 text-white rounded-lg px-4 py-2 text-sm hover:bg-red-600 transition-colors disabled:opacity-50">{checkingSLA ? 'Checking…' : 'Run SLA Check'}</button>
+            <button onClick={handleSlaCheck} disabled={checkingSLA} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-dark transition-colors disabled:opacity-50">{checkingSLA ? 'Checking…' : 'Run SLA Check'}</button>
           </div>
           <div className="grid grid-cols-4 gap-3">
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-red-500">7</p><p className="text-[10px] text-content-tertiary mt-1">Past SLA</p></div>
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-amber-500">12</p><p className="text-[10px] text-content-tertiary mt-1">At Risk</p></div>
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-emerald-500">94.2%</p><p className="text-[10px] text-content-tertiary mt-1">SLA Compliance</p></div>
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand">48h</p><p className="text-[10px] text-content-tertiary mt-1">Avg Resolution</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-red-500">7</p><p className="text-[11px] text-content-tertiary mt-1">Past SLA</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-deep">12</p><p className="text-[11px] text-content-tertiary mt-1">At Risk</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-dark">94.2%</p><p className="text-[11px] text-content-tertiary mt-1">SLA Compliance</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand">48h</p><p className="text-[11px] text-content-tertiary mt-1">Avg Resolution</p></div>
           </div>
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-separator text-xs text-content-secondary"><th className="text-left px-4 py-3">Account</th><th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">SLA Target</th><th className="text-left px-4 py-3">Days Elapsed</th><th className="text-left px-4 py-3">Priority</th><th className="text-left px-4 py-3">Assigned To</th></tr></thead>
+              <thead><tr className="border-b border-separator text-[13px] text-content-secondary"><th className="text-left px-4 py-3">Account</th><th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">SLA Target</th><th className="text-left px-4 py-3">Days Elapsed</th><th className="text-left px-4 py-3">Priority</th><th className="text-left px-4 py-3">Assigned To</th></tr></thead>
               <tbody>
                 {[{acct:'AR-3301',client:'Valley Ortho',sla:'30 days',days:34,priority:'critical',assignee:'Team Lead'},{acct:'AR-2987',client:'Metro Health',sla:'45 days',days:42,priority:'high',assignee:'Sarah K.'},{acct:'AR-4102',client:'CityMed',sla:'30 days',days:28,priority:'medium',assignee:'John D.'}].map(s=>(
                   <tr key={s.acct} className="border-b border-separator last:border-0 table-row">
                     <td className="px-4 py-3 font-mono text-xs">{s.acct}</td>
                     <td className="px-4 py-3 text-xs">{s.client}</td>
-                    <td className="px-4 py-3 text-xs text-content-secondary">{s.sla}</td>
-                    <td className="px-4 py-3 text-xs font-semibold">{s.days}d</td>
-                    <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${s.priority==='critical'?'bg-red-500/10 text-red-500':s.priority==='high'?'bg-amber-500/10 text-amber-500':'bg-blue-500/10 text-blue-500'}`}>{s.priority}</span></td>
+                    <td className="px-4 py-3 text-[13px] text-content-secondary">{s.sla}</td>
+                    <td className="px-4 py-3 text-[13px] font-semibold">{s.days}d</td>
+                    <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full ${s.priority==='critical'?'bg-red-500/10 text-red-500':s.priority==='high'?'bg-brand-pale0/10 text-brand-deep':'bg-brand/10 text-brand'}`}>{s.priority}</span></td>
                     <td className="px-4 py-3 text-xs">{s.assignee}</td>
                   </tr>
                 ))}
@@ -926,15 +926,15 @@ export default function ARManagementPage() {
           {slaResult.length > 0 && (
             <div className="mt-4 card p-4">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-xs font-semibold text-content-primary">SLA Check Results — {slaResult.length} Escalation(s)</h4>
-                <button onClick={() => setSlaResult([])} className="text-[10px] text-content-tertiary hover:text-content-secondary">Clear</button>
+                <h4 className="text-[13px] font-semibold text-content-primary">SLA Check Results — {slaResult.length} Escalation(s)</h4>
+                <button onClick={() => setSlaResult([])} className="text-[11px] text-content-tertiary hover:text-content-secondary">Clear</button>
               </div>
               <div className="space-y-2">
                 {slaResult.map(r => (
                   <div key={r.task_id} className="flex items-center justify-between bg-red-500/5 border border-red-500/20 rounded-lg px-3 py-2">
                     <div>
-                      <p className="text-xs font-medium text-content-primary">{r.title}</p>
-                      <p className="text-[10px] text-red-400 mt-0.5">{Math.round(r.hours_overdue)}h overdue · Escalation level {r.escalation_level}</p>
+                      <p className="text-[13px] font-medium text-content-primary">{r.title}</p>
+                      <p className="text-[11px] text-red-400 mt-0.5">{Math.round(r.hours_overdue)}h overdue · Escalation level {r.escalation_level}</p>
                     </div>
                     <button onClick={async () => {
                       try {
@@ -942,7 +942,7 @@ export default function ARManagementPage() {
                         toast.success(`Escalation task created for ${r.task_id}`)
                       } catch { toast.error('Failed to create escalation task') }
                     }}
-                      className="text-[10px] px-2 py-1 bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 transition-colors whitespace-nowrap">
+                      className="text-[11px] px-2 py-1 bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 transition-colors whitespace-nowrap">
                       Send Escalation
                     </button>
                   </div>
@@ -953,18 +953,18 @@ export default function ARManagementPage() {
         </div>
       ) : (<>
       <div className="card p-4 mb-4">
-        <h3 className="text-xs font-semibold text-content-secondary mb-2">AGING BUCKETS</h3>
+        <h3 className="text-[13px] font-semibold text-content-secondary mb-2">AGING BUCKETS</h3>
         <div className="flex items-end gap-4 h-28 px-4">{computedBuckets.map(b => (
           <div key={b.l} className="flex-1 flex flex-col items-center gap-1">
-            <span className="text-[10px] text-content-secondary">${(b.v / 1000).toFixed(0)}K</span>
+            <span className="text-[11px] text-content-secondary">${(b.v / 1000).toFixed(0)}K</span>
             <div className={`w-full ${b.c} rounded-t transition-all`} style={{ height: `${(b.v / computedMax) * 90}px` }} />
-            <span className="text-[10px] text-content-secondary">{b.l} days</span>
+            <span className="text-[11px] text-content-secondary">{b.l} days</span>
           </div>
         ))}</div>
       </div>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
             <th className="text-left px-4 py-3">Patient</th>
             <th className="text-left px-4 py-3">Client</th>
             <th className="text-left px-4 py-3">Payer</th>
@@ -985,25 +985,25 @@ export default function ARManagementPage() {
                 <td className="px-4 py-3 font-medium">
                   <div>{a.patient}</div>
                   {a.paymentPromisedDate && (
-                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">💰 Promised {a.paymentPromisedDate}</div>
+                    <div className="text-[11px] text-brand-dark dark:text-brand-dark font-normal">💰 Promised {a.paymentPromisedDate}</div>
                   )}
                 </td>
-                <td className="px-4 py-3 text-xs text-content-secondary">{a.client}</td>
-                <td className="px-4 py-3 text-xs text-content-secondary">{a.payer}</td>
+                <td className="px-4 py-3 text-[13px] text-content-secondary">{a.client}</td>
+                <td className="px-4 py-3 text-[13px] text-content-secondary">{a.payer}</td>
                 <td className="px-4 py-3">
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${sourceInfo[a.source]?.color || 'bg-surface-elevated text-content-secondary'}`}>
+                  <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full ${sourceInfo[a.source]?.color || 'bg-surface-elevated text-content-secondary'}`}>
                     {sourceInfo[a.source]?.label || a.source}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-right font-mono">{a.balance > 0 ? `$${a.balance}` : <span className="text-emerald-600 dark:text-emerald-400">Paid</span>}</td>
+                <td className="px-4 py-3 text-right font-mono">{a.balance > 0 ? `$${a.balance}` : <span className="text-brand-dark dark:text-brand-dark">Paid</span>}</td>
                 <td className="px-4 py-3 text-right text-xs">{a.age}d</td>
                 <td className="px-4 py-3 text-xs">
-                  <span className={`font-medium ${tf < 0 ? 'text-red-500' : tf < 30 ? 'text-red-500' : tf < 60 ? 'text-amber-500' : 'text-content-secondary'}`}>
+                  <span className={`font-medium ${tf < 0 ? 'text-red-500' : tf < 30 ? 'text-red-500' : tf < 60 ? 'text-brand-deep' : 'text-content-secondary'}`}>
                     {tf < 0 ? 'PASSED' : `${tf}d`}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs text-content-secondary">{a.lastAction}</td>
-                <td className="px-4 py-3 text-xs text-content-secondary">{a.nextFollowup}</td>
+                <td className="px-4 py-3 text-[13px] text-content-secondary">{a.lastAction}</td>
+                <td className="px-4 py-3 text-[13px] text-content-secondary">{a.nextFollowup}</td>
                 <td className="px-4 py-3"><StatusBadge status={a.priority} small /></td>
               </tr>
             )

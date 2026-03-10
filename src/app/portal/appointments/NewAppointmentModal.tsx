@@ -100,7 +100,7 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
           <button
             onClick={() => setMode('existing')}
             className={`flex-1 py-1.5 text-xs font-medium rounded-[10px] transition-all ${
-              mode === 'existing' ? 'bg-surface-secondary text-content-primary shadow-sm' : 'text-content-secondary'
+              mode === 'existing' ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'
             }`}
           >
             Existing Patient
@@ -108,7 +108,7 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
           <button
             onClick={() => setMode('new')}
             className={`flex-1 py-1.5 text-xs font-medium rounded-[10px] transition-all ${
-              mode === 'new' ? 'bg-surface-secondary text-content-primary shadow-sm' : 'text-content-secondary'
+              mode === 'new' ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'
             }`}
           >
             New Patient
@@ -120,13 +120,13 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
           {/* EXISTING PATIENT — searchable input */}
           {mode === 'existing' && (
             <div>
-              <label className="text-xs text-content-secondary block mb-1">Patient <span className="text-red-400">*</span></label>
+              <label className="text-xs text-content-secondary block mb-1">Patient <span className="text-brand">*</span></label>
               <input
                 type="text"
                 placeholder="Type name to search..."
                 value={search}
                 onChange={e => { setSearch(e.target.value); setSelectedPatient('') }}
-                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors"
+                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40 transition-colors"
               />
               {search.length > 0 && !selectedPatient && (
                 <div className="mt-1 bg-surface-elevated border border-separator rounded-lg overflow-hidden max-h-40 overflow-y-auto">
@@ -154,32 +154,32 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-content-secondary block mb-1">First Name <span className="text-red-400">*</span></label>
+                  <label className="text-xs text-content-secondary block mb-1">First Name <span className="text-brand">*</span></label>
                   <input
                     value={newPatient.firstName}
                     onChange={e => setNewPatient(prev => ({ ...prev, firstName: e.target.value }))}
-                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors"
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40 transition-colors"
                     placeholder="First name"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-content-secondary block mb-1">Last Name <span className="text-red-400">*</span></label>
+                  <label className="text-xs text-content-secondary block mb-1">Last Name <span className="text-brand">*</span></label>
                   <input
                     value={newPatient.lastName}
                     onChange={e => setNewPatient(prev => ({ ...prev, lastName: e.target.value }))}
-                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors"
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40 transition-colors"
                     placeholder="Last name"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-content-secondary block mb-1">Phone <span className="text-red-400">*</span></label>
+                  <label className="text-xs text-content-secondary block mb-1">Phone <span className="text-brand">*</span></label>
                   <input
                     type="tel"
                     value={newPatient.phone}
                     onChange={e => setNewPatient(prev => ({ ...prev, phone: e.target.value }))}
-                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors"
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40 transition-colors"
                     placeholder="+1 or +971..."
                   />
                 </div>
@@ -189,7 +189,7 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
                     type="date"
                     value={newPatient.dob}
                     onChange={e => setNewPatient(prev => ({ ...prev, dob: e.target.value }))}
-                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors"
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40 transition-colors"
                   />
                 </div>
               </div>
@@ -210,7 +210,7 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
                     <input
                       value={newPatient.insuranceProvider}
                       onChange={e => setNewPatient(prev => ({ ...prev, insuranceProvider: e.target.value }))}
-                      className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors"
+                      className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40 transition-colors"
                       placeholder="e.g. Daman, Aetna, ADNIC..."
                     />
                   </div>
@@ -220,7 +220,7 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
                       <input
                         value={newPatient.memberId}
                         onChange={e => setNewPatient(prev => ({ ...prev, memberId: e.target.value }))}
-                        className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors"
+                        className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40 transition-colors"
                       />
                     </div>
                     <div>
@@ -228,7 +228,7 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
                       <input
                         value={newPatient.policyNo}
                         onChange={e => setNewPatient(prev => ({ ...prev, policyNo: e.target.value }))}
-                        className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors"
+                        className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40 transition-colors"
                       />
                     </div>
                   </div>
@@ -240,19 +240,19 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
           {/* Date & Time */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-content-secondary block mb-1">Date <span className="text-red-400">*</span></label>
-              <input type="date" value={apptDate} onChange={e => setApptDate(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" />
+              <label className="text-xs text-content-secondary block mb-1">Date <span className="text-brand">*</span></label>
+              <input type="date" value={apptDate} onChange={e => setApptDate(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40 transition-colors" />
             </div>
             <div>
-              <label className="text-xs text-content-secondary block mb-1">Time <span className="text-red-400">*</span></label>
-              <input type="time" value={apptTime} onChange={e => setApptTime(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" />
+              <label className="text-xs text-content-secondary block mb-1">Time <span className="text-brand">*</span></label>
+              <input type="time" value={apptTime} onChange={e => setApptTime(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40 transition-colors" />
             </div>
           </div>
 
           {/* Visit Type */}
           <div>
             <label className="text-xs text-content-secondary block mb-1">Visit Type</label>
-            <select value={visitType} onChange={e => setVisitType(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors">
+            <select value={visitType} onChange={e => setVisitType(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40 transition-colors">
               <option value="follow_up">Follow-up</option>
               <option value="new_patient">Initial Visit</option>
               <option value="consultation">Consultation</option>
@@ -264,11 +264,11 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
 
           <div>
             <label className="text-xs text-content-secondary block mb-1">Notes</label>
-            <input value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors" placeholder="Optional..." />
+            <input value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40 transition-colors" placeholder="Optional..." />
           </div>
 
           {(createAppointment.error || createPatient.error) && (
-            <p className="text-xs text-red-400 text-center -mt-1">
+            <p className="text-xs text-brand text-center -mt-1">
               Failed to book appointment — please try again
             </p>
           )}

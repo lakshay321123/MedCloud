@@ -70,13 +70,13 @@ export default function CredentialingPage() {
         <KPICard label={t('credentialing','totalEnrollments')} value={totalEnrollments}/>
       </div>
       {expiring > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-4 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2">
+        <div className="bg-brand-pale0/10 border border-brand-light/20 rounded-lg p-3 mb-4 text-xs text-brand-deep dark:text-brand-deep flex items-center gap-2">
           <AlertTriangle size={14}/> {expiring} provider(s) have credentials expiring within 30 days
         </div>
       )}
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
             <th className="text-left px-4 py-3">Provider</th><th className="text-left px-4 py-3">NPI</th>
             <th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">License Exp</th>
             <th className="text-left px-4 py-3">Malpractice Exp</th><th className="text-left px-4 py-3">CAQH</th>
@@ -87,13 +87,13 @@ export default function CredentialingPage() {
               onClick={() => setSelected(p)}
               className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
               <td className="px-4 py-3 font-medium">{p.name}</td>
-              <td className="px-4 py-3 font-mono text-xs text-content-secondary">{p.npi}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{p.client}</td>
+              <td className="px-4 py-3 font-mono text-[13px] text-content-secondary">{p.npi}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{p.client}</td>
               <td className="px-4 py-3 text-xs">{p.license}</td>
               <td className="px-4 py-3 text-xs">{p.malpractice}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{p.caqh}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{p.caqh}</td>
               <td className="px-4 py-3 text-right">{p.payers}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${p.status==='active'?'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20':p.status==='expiring'?'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20':'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'}`}>{p.status}</span></td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-1.5 py-0.5 rounded-full border ${p.status==='active'?'bg-brand/10 text-brand-dark dark:text-brand-dark border-brand/20':p.status==='expiring'?'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep border-brand-light/20':'bg-brand/10 text-brand-dark border-brand/20'}`}>{p.status}</span></td>
             </tr>
           ))}</tbody>
         </table>
@@ -103,7 +103,7 @@ export default function CredentialingPage() {
         <>
           <div className="fixed inset-0 bg-black/20 z-30" onClick={() => setSelected(null)} />
           <div className="fixed right-0 top-0 h-full w-[420px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between p-4 border-b border-separator">
+            <div className="flex gap-2 items-center justify-between p-4 border-b border-separator pb-1">
               <h3 className="font-semibold text-content-primary">{selected.name}</h3>
               <button onClick={() => setSelected(null)} className="p-1 hover:bg-surface-elevated rounded-btn">
                 <X size={16} className="text-content-secondary" />
@@ -117,7 +117,7 @@ export default function CredentialingPage() {
                 </div>
                 <div>
                   <div className="font-semibold text-content-primary">{selected.name}</div>
-                  <div className="text-xs text-content-secondary">NPI: {selected.npi} · {selected.client}</div>
+                  <div className="text-[13px] text-content-secondary">NPI: {selected.npi} · {selected.client}</div>
                 </div>
               </div>
 
@@ -127,16 +127,16 @@ export default function CredentialingPage() {
                 { label: 'DEA', value: selected.dea },
                 { label: 'CAQH', value: selected.caqh },
               ].map(item => (
-                <div key={item.label} className="flex items-center justify-between py-2 border-b border-separator">
-                  <span className="text-xs text-content-secondary">{item.label}</span>
-                  <span className={`text-xs font-medium ${item.value === 'Pending' ? 'text-amber-500' : item.value === 'N/A' ? 'text-content-tertiary' : 'text-content-primary'}`}>
+                <div key={item.label} className="flex gap-2 items-center justify-between py-2 border-b border-separator pb-1">
+                  <span className="text-[13px] text-content-secondary">{item.label}</span>
+                  <span className={`text-[13px] font-medium ${item.value === 'Pending' ? 'text-brand-deep' : item.value === 'N/A' ? 'text-content-tertiary' : 'text-content-primary'}`}>
                     {item.value}
                   </span>
                 </div>
               ))}
 
               <div>
-                <div className="text-xs text-content-secondary mb-2">Active Payer Enrollments: {selected.payers}</div>
+                <div className="text-[13px] text-content-secondary mb-2">Active Payer Enrollments: {selected.payers}</div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -149,11 +149,11 @@ export default function CredentialingPage() {
                     toast.error('Failed to initiate re-credentialing')
                   }
                 }}
-                  className="bg-brand/10 text-brand rounded-lg py-2 text-xs font-medium hover:bg-brand/20 transition-colors">
+                  className="bg-brand/10 text-brand rounded-lg py-2 text-[13px] font-medium hover:bg-brand/20 transition-colors">
                   Initiate Re-credentialing
                 </button>
                 <button onClick={() => { window.open('https://proview.caqh.org/PR', '_blank'); toast.success('CAQH ProView opened') }}
-                  className="bg-surface-elevated border border-separator rounded-lg py-2 text-xs font-medium">
+                  className="bg-surface-elevated border border-separator rounded-lg py-2 text-[13px] font-medium">
                   Update CAQH
                 </button>
                 <button onClick={async () => {
@@ -165,7 +165,7 @@ export default function CredentialingPage() {
                     toast.error('Failed to start enrollment')
                   }
                 }}
-                  className="bg-surface-elevated border border-separator rounded-lg py-2 text-xs font-medium col-span-2">
+                  className="bg-surface-elevated border border-separator rounded-lg py-2 text-[13px] font-medium col-span-2">
                   Add Payer Enrollment
                 </button>
               </div>
@@ -178,29 +178,29 @@ export default function CredentialingPage() {
       <div className="card p-4 mt-4">
         <h3 className="text-sm font-semibold mb-3">Payer Enrollment Pipeline</h3>
         <div className="grid grid-cols-5 gap-2 mb-4">
-          {[{stage:'Submitted',count:4,color:'bg-blue-500'},{stage:'In Review',count:7,color:'bg-amber-500'},{stage:'Approved',count:23,color:'bg-emerald-500'},{stage:'Denied',count:1,color:'bg-red-500'},{stage:'Re-credentialing',count:3,color:'bg-purple-500'}].map(s=>(
+          {[{stage:'Submitted',count:4,color:'bg-brand/60'},{stage:'In Review',count:7,color:'bg-brand-light'},{stage:'Approved',count:23,color:'bg-brand'},{stage:'Denied',count:1,color:'bg-red-500'},{stage:'Re-credentialing',count:3,color:'bg-brand-dark'}].map(s=>(
             <div key={s.stage} className="text-center">
               <div className={`${s.color} text-white rounded-lg py-3 mb-1`}>
                 <span className="text-lg font-bold">{s.count}</span>
               </div>
-              <span className="text-[10px] text-content-secondary">{s.stage}</span>
+              <span className="text-[11px] text-content-secondary">{s.stage}</span>
             </div>
           ))}
         </div>
         <div className="space-y-2">
-          <h4 className="text-[10px] font-semibold text-content-secondary uppercase tracking-wider">Upcoming Expirations</h4>
+          <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider">Upcoming Expirations</h4>
           {[{name:'Dr. Patel',item:'Malpractice Insurance',date:'2026-04-15',days:42},
             {name:'Dr. Martinez',item:'State License',date:'2026-05-10',days:67},
             {name:'Dr. Williams',item:'CAQH Attestation',date:'2026-04-01',days:28}
           ].sort((a,b)=>a.days-b.days).map(e=>(
-            <div key={`${e.name}-${e.item}`} className={`flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2 ${e.days<=30?'border border-amber-500/30':''}`}>
+            <div key={`${e.name}-${e.item}`} className={`flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2 ${e.days<=30?'border border-brand-light/30':''}`}>
               <div className="flex items-center gap-3">
-                <span className="text-xs font-medium">{e.name}</span>
-                <span className="text-[10px] text-content-secondary">{e.item}</span>
+                <span className="text-[13px] font-medium">{e.name}</span>
+                <span className="text-[11px] text-content-secondary">{e.item}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`text-xs font-medium ${e.days<=30?'text-amber-500':e.days<=60?'text-blue-500':'text-content-secondary'}`}>{e.days}d</span>
-                <span className="text-[10px] text-content-tertiary">{e.date}</span>
+                <span className={`text-[13px] font-medium ${e.days<=30?'text-brand-deep':e.days<=60?'text-blue-500':'text-content-secondary'}`}>{e.days}d</span>
+                <span className="text-[11px] text-content-tertiary">{e.date}</span>
               </div>
             </div>
           ))}

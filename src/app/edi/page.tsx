@@ -29,14 +29,14 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  '837P': 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  '837I': 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
-  '835': 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  '270': 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  '271': 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  '276': 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
-  '277': 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
-  '999': 'bg-gray-500/10 text-gray-600 dark:text-gray-400',
+  '837P': 'bg-brand/10 text-brand-dark dark:text-brand',
+  '837I': 'bg-brand/10 text-brand-dark',
+  '835': 'bg-brand/10 text-brand-dark dark:text-brand-dark',
+  '270': 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep',
+  '271': 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep',
+  '276': 'bg-brand/10 text-brand-dark dark:text-brand-dark',
+  '277': 'bg-brand/10 text-brand-dark dark:text-brand-dark',
+  '999': 'bg-gray-500/10 text-gray-600 dark:text-content-tertiary',
   'DHA': 'bg-teal-500/10 text-teal-600 dark:text-teal-400',
 }
 
@@ -143,8 +143,8 @@ function EDIContent() {
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-3 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
               tab === t.key
-                ? 'bg-brand/10 text-brand border border-brand/30'
-                : 'text-content-secondary border border-transparent hover:text-content-primary hover:bg-surface-elevated'
+                ? 'bg-brand text-white border border-brand'
+                : 'text-content-tertiary border border-transparent hover:text-content-primary hover:bg-surface-elevated'
             }`}>
             {t.label} <span className="ml-1 opacity-60">({t.count})</span>
           </button>
@@ -162,16 +162,16 @@ function EDIContent() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search type, file, claim…"
-            className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
+            className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-xs text-content-secondary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
         </div>
         <select value={dirFilter} onChange={e => setDirFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary">
           <option value="">All Directions</option>
           <option value="outbound">Outbound</option>
           <option value="inbound">Inbound</option>
         </select>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary">
           <option value="">All Statuses</option>
           <option value="pending">Pending</option>
           <option value="sent">Sent</option>
@@ -212,14 +212,14 @@ function EDIContent() {
                   <tr key={tx.id} onClick={() => setSelected(tx)}
                     className="border-b border-separator/50 hover:bg-surface-elevated/50 cursor-pointer transition-colors">
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium ${TYPE_COLORS[tx.transaction_type] || 'bg-gray-500/10 text-gray-500'}`}>
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium ${TYPE_COLORS[tx.transaction_type] || 'bg-gray-500/10 text-content-tertiary'}`}>
                         {tx.transaction_type}
                       </span>
-                      {tx.file_name && <p className="text-[10px] text-content-tertiary mt-0.5 truncate max-w-[140px]">{tx.file_name}</p>}
+                      {tx.file_name && <p className="text-[11px] text-content-tertiary mt-0.5 truncate max-w-[140px]">{tx.file_name}</p>}
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1 text-xs text-content-secondary">
-                        {tx.direction === 'outbound' ? <ArrowUpRight size={12} className="text-blue-500" /> : <ArrowDownLeft size={12} className="text-emerald-500" />}
+                        {tx.direction === 'outbound' ? <ArrowUpRight size={12} className="text-brand" /> : <ArrowDownLeft size={12} className="text-brand-dark" />}
                         {tx.direction}
                       </span>
                     </td>
@@ -322,7 +322,7 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
         <div className="sticky top-0 bg-surface border-b border-separator px-6 py-4 flex items-center justify-between z-10">
           <div>
             <div className="flex items-center gap-2">
-              <span id={titleId} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold ${TYPE_COLORS[tx.transaction_type] || 'bg-gray-500/10 text-gray-500'}`}>
+              <span id={titleId} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold ${TYPE_COLORS[tx.transaction_type] || 'bg-gray-500/10 text-content-tertiary'}`}>
                 {tx.transaction_type}
               </span>
               <StatusBadge status={tx.status} />
@@ -337,7 +337,7 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
           {/* Meta */}
           <div className="grid grid-cols-2 gap-4">
             <DetailField label="Transaction ID" value={tx.id.slice(0, 8) + '…'} action={<button onClick={handleCopyId}><Copy size={12} className="text-content-tertiary hover:text-brand" /></button>} />
-            <DetailField label="Direction" value={tx.direction} icon={tx.direction === 'outbound' ? <ArrowUpRight size={12} className="text-blue-500" /> : <ArrowDownLeft size={12} className="text-emerald-500" />} />
+            <DetailField label="Direction" value={tx.direction} icon={tx.direction === 'outbound' ? <ArrowUpRight size={12} className="text-brand" /> : <ArrowDownLeft size={12} className="text-brand-dark" />} />
             <DetailField label="Clearinghouse" value={tx.clearinghouse || 'N/A'} />
             <DetailField label="Claims Count" value={String(tx.claim_count ?? 'N/A')} />
             <DetailField label="Submitted" value={tx.submitted_at ? new Date(tx.submitted_at).toLocaleString() : '—'} />
@@ -347,15 +347,15 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
           {/* File Name */}
           {tx.file_name && (
             <div className="bg-surface-elevated rounded-lg p-3">
-              <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">File Name</p>
+              <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1">File Name</p>
               <p className="text-xs font-mono text-content-primary">{tx.file_name}</p>
             </div>
           )}
 
           {/* Response */}
           {(tx.response_code || tx.response_detail) && (
-            <div className={`rounded-lg p-3 ${tx.status === 'rejected' || tx.status === 'error' ? 'bg-red-500/5 border border-red-500/20' : 'bg-emerald-500/5 border border-emerald-500/20'}`}>
-              <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">Response</p>
+            <div className={`rounded-lg p-3 ${tx.status === 'rejected' || tx.status === 'error' ? 'bg-red-500/5 border border-red-500/20' : 'bg-brand/5 border border-brand/20'}`}>
+              <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1">Response</p>
               {tx.response_code && <p className="text-xs font-mono font-semibold text-content-primary">{tx.response_code}</p>}
               {tx.response_detail && <p className="text-xs text-content-secondary mt-1">{tx.response_detail}</p>}
             </div>
@@ -364,14 +364,14 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
           {/* Claim Link */}
           {tx.claim_id && (
             <div className="bg-surface-elevated rounded-lg p-3">
-              <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">Linked Claim</p>
+              <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1">Linked Claim</p>
               <p className="text-xs font-mono text-brand">{tx.claim_id.slice(0, 8)}…</p>
             </div>
           )}
 
           {/* Timeline */}
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-2">Timeline</p>
+            <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-2">Timeline</p>
             <div className="space-y-2">
               {tx.created_at && (
                 <TimelineEntry label="Created" time={tx.created_at} icon={<Clock size={12} />} />
@@ -381,7 +381,7 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
               )}
               {tx.response_at && (
                 <TimelineEntry label="Response Received" time={tx.response_at}
-                  icon={tx.status === 'accepted' || tx.status === 'received' ? <CheckCircle2 size={12} className="text-emerald-500" /> : <AlertTriangle size={12} className="text-red-500" />} />
+                  icon={tx.status === 'accepted' || tx.status === 'received' ? <CheckCircle2 size={12} className="text-brand-dark" /> : <AlertTriangle size={12} className="text-red-500" />} />
               )}
             </div>
           </div>
@@ -398,7 +398,7 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
 function DetailField({ label, value, icon, action }: { label: string; value: string; icon?: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-0.5">{label}</p>
+      <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-0.5">{label}</p>
       <div className="flex items-center gap-1.5">
         {icon}
         <span className="text-xs text-content-primary font-medium">{value}</span>
@@ -414,7 +414,7 @@ function TimelineEntry({ label, time, icon }: { label: string; time: string; ico
       <div className="w-6 h-6 rounded-full bg-surface-elevated flex items-center justify-center text-content-secondary">{icon}</div>
       <div>
         <p className="text-xs text-content-primary">{label}</p>
-        <p className="text-[10px] text-content-tertiary">{new Date(time).toLocaleString()}</p>
+        <p className="text-[11px] text-content-tertiary">{new Date(time).toLocaleString()}</p>
       </div>
     </div>
   )

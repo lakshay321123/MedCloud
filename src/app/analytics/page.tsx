@@ -1,5 +1,6 @@
 'use client'
 import { useT } from '@/lib/i18n'
+import Dropdown from '@/components/shared/Dropdown'
 import React, { useState, useMemo } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -67,13 +68,13 @@ const staffData = [
 ]
 
 const payerHassle: Record<string, { score: number; color: string }> = {
-  UnitedHealthcare: { score: 42, color: 'text-amber-400' },
-  Medicare: { score: 28, color: 'text-emerald-400' },
-  Aetna: { score: 58, color: 'text-amber-400' },
+  UnitedHealthcare: { score: 42, color: 'text-brand-deep' },
+  Medicare: { score: 28, color: 'text-brand-dark' },
+  Aetna: { score: 58, color: 'text-brand-deep' },
   Daman: { score: 71, color: 'text-red-400' },
-  NAS: { score: 35, color: 'text-emerald-400' },
-  'Self-Pay': { score: 15, color: 'text-emerald-400' },
-  BCBS: { score: 45, color: 'text-amber-400' },
+  NAS: { score: 35, color: 'text-brand-dark' },
+  'Self-Pay': { score: 15, color: 'text-brand-dark' },
+  BCBS: { score: 45, color: 'text-brand-deep' },
 }
 
 const denialCategories = ['Auth','Eligibility','Timely Filing','Duplicate','Non-Covered','Coding','Medical Nec.','Billing Error']
@@ -91,12 +92,14 @@ const aiFeatures = [
 
 const PAYER_COLORS: Record<string, string> = {
   UnitedHealthcare: '#00B5D6',
-  Medicare: '#8B5CF6',
-  Aetna: '#F59E0B',
-  Daman: '#10B981',
-  NAS: '#3B82F6',
-  'Self-Pay': '#6B7280',
-  BCBS: '#EF4444',
+  Medicare: '#047285',
+  Aetna: '#36C2DE',
+  Daman: '#68D1E6',
+  NAS: '#A1DEED',
+  Blue: '#014E5C',
+  'Self-Pay': '#616161',
+  BCBS: '#0095B8',
+  Cigna: '#D6EBF2',
 }
 
 // ─── Heatmap cell ─────────────────────────────────────────────────────────────
@@ -221,13 +224,13 @@ export default function AnalyticsPage() {
     })
     const result = Object.values(byClient).map(cl => {
       const rate = cl.billed > 0 ? Math.round((cl.paid / cl.billed) * 100) : 0
-      return { name: cl.name.split(' ')[0], rate, fill: rate >= 95 ? '#10B981' : rate >= 85 ? '#F59E0B' : '#EF4444' }
+      return { name: cl.name.split(' ')[0], rate, fill: rate >= 95 ? '#00B5D6' : rate >= 85 ? '#36C2DE' : '#047285' }
     })
     if (result.length === 0) return [
-      { name: 'Pacific Ortho', rate: 94, fill: '#F59E0B' },
-      { name: 'Irvine FP', rate: 97, fill: '#10B981' },
-      { name: 'Sunrise Cardio', rate: 88, fill: '#F59E0B' },
-      { name: 'Metro Internal', rate: 79, fill: '#EF4444' },
+      { name: 'Pacific Ortho', rate: 94, fill: '#36C2DE' },
+      { name: 'Irvine FP', rate: 97, fill: '#00B5D6' },
+      { name: 'Sunrise Cardio', rate: 88, fill: '#36C2DE' },
+      { name: 'Metro Internal', rate: 79, fill: '#047285' },
     ]
     return result
   }, [claims])
@@ -254,7 +257,7 @@ export default function AnalyticsPage() {
       denialRate: d.count > 0 ? ((d.denied / d.count) * 100).toFixed(0) : '0',
       avgDays: d.days.length > 0 ? Math.round(d.days.reduce((a, b) => a + b, 0) / d.days.length) : '—',
       phi: payerHassle[payer]?.score || 40,
-      phiColor: payerHassle[payer]?.color || 'text-amber-400',
+      phiColor: payerHassle[payer]?.color || 'text-brand-deep',
     }))
   }, [claims])
 
@@ -314,20 +317,24 @@ export default function AnalyticsPage() {
 
   return (
     <ModuleShell title={t("analytics","title")} subtitle={t("analytics","subtitle")}
-      actions={<button onClick={handleExportCSV} className="flex items-center gap-2 bg-surface-elevated text-content-primary border border-separator rounded-lg px-4 py-2 text-sm hover:bg-surface-secondary transition-colors"><Download size={14}/> Export CSV</button>}>
-      <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
+      actions={<button onClick={handleExportCSV} className="flex items-center gap-2 bg-surface-elevated text-content-secondary border border-separator rounded-lg px-4 py-2 text-sm hover:bg-surface-secondary transition-colors"><Download size={14}/> Export CSV</button>}>
+      <div className='mx-4 mb-4 px-4 py-2.5 bg-brand-pale0/10 border border-brand-light/30 rounded-lg flex items-center gap-2 text-xs text-brand-deep dark:text-brand-deep'>
         <AlertTriangle size={13} className='shrink-0' />
         Analytics connected — live financial reporting
       </div>
       {/* Global filters */}
       <div className="flex items-center gap-3 mb-5">
-        <select value={dateRange} onChange={e => setDateRange(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:ring-1 focus:ring-brand/30">
-          <option value="last30">{t('analytics','last30')}</option>
-          <option value="last90">{t('analytics','last90')}</option>
-          <option value="ytd">{t('analytics','ytd')}</option>
-          <option value="custom">Custom</option>
-        </select>
+        <Dropdown
+          value={dateRange}
+          onChange={setDateRange}
+          options={[
+            { value: 'last30', label: 'Last 30 Days' },
+            { value: 'last90', label: 'Last 90 Days' },
+            { value: 'ytd',    label: 'Year to Date' },
+            { value: 'custom', label: 'Custom' },
+          ]}
+          buttonClassName="bg-surface-elevated border border-separator text-content-secondary hover:bg-surface-primary hover:border-brand/30"
+        />
         <span className="text-[13px] text-content-tertiary">|</span>
         <span className="text-[13px] text-content-secondary">
           {selectedClient ? selectedClient.name : 'All Clients'}
@@ -335,10 +342,10 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex border-b border-separator mb-6">
+      <div className="flex gap-2 border-b border-separator mb-6 pb-1">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`px-5 py-2.5 text-[13px] font-medium transition-colors ${tab === t.id ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>
+            className={`px-4 py-2 text-[13px] font-medium rounded-[10px] transition-all ${tab === t.id ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'}`}>
             {t.label}
           </button>
         ))}
@@ -383,10 +390,10 @@ export default function AnalyticsPage() {
               <h3 className="text-[14px] font-semibold text-content-primary mb-4">Revenue Trend</h3>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={monthlyRevenue}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <YAxis tickFormatter={v => `$${v/1000}K`} tick={{ fontSize: 11, fill: '#9CA3AF' }} />
-                  <Tooltip formatter={(v: number | string | undefined) => [`$${(Number(v ?? 0)/1000).toFixed(0)}K`, 'Revenue']} contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip formatter={(v: number | string | undefined) => [`$${(Number(v ?? 0)/1000).toFixed(0)}K`, 'Revenue']} contentStyle={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 12, color: '#3A3A3C', boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }} itemStyle={{ color: '#3A3A3C' }} labelStyle={{ color: '#1D1D1F', fontWeight: 600 }} />
                   <Line type="monotone" dataKey="revenue" stroke="#00B5D6" strokeWidth={2} dot={{ fill: '#00B5D6', r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
@@ -402,7 +409,7 @@ export default function AnalyticsPage() {
                       <Cell key={index} fill={PAYER_COLORS[entry.name] || '#6B7280'} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip contentStyle={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 12, color: '#3A3A3C', boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }} itemStyle={{ color: '#3A3A3C' }} labelStyle={{ color: '#1D1D1F', fontWeight: 600 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -414,10 +421,10 @@ export default function AnalyticsPage() {
               <h3 className="text-[14px] font-semibold text-content-primary mb-4">Collection Rate by Client</h3>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={clientCollectionRates} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" horizontal={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" horizontal={false} />
                   <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#9CA3AF' }} width={65} />
-                  <Tooltip formatter={(v: number | string | undefined) => [`${v ?? 0}%`, 'Collection Rate']} contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip formatter={(v: number | string | undefined) => [`${v ?? 0}%`, 'Collection Rate']} contentStyle={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 12, color: '#3A3A3C', boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }} itemStyle={{ color: '#3A3A3C' }} labelStyle={{ color: '#1D1D1F', fontWeight: 600 }} />
                   <Bar dataKey="rate" radius={[0, 4, 4, 0]}>
                     {clientCollectionRates.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
                   </Bar>
@@ -430,12 +437,12 @@ export default function AnalyticsPage() {
               <h3 className="text-[14px] font-semibold text-content-primary mb-4">Denial Rate Trend</h3>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={denialTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <YAxis tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: '#9CA3AF' }} />
-                  <Tooltip formatter={(v: number | string | undefined) => [`${v ?? 0}%`]} contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip formatter={(v: number | string | undefined) => [`${v ?? 0}%`]} contentStyle={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 12, color: '#3A3A3C', boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }} itemStyle={{ color: '#3A3A3C' }} labelStyle={{ color: '#1D1D1F', fontWeight: 600 }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <ReferenceLine y={5} stroke="#F59E0B" strokeDasharray="4 4" label={{ value: 'Target 5%', position: 'insideTopRight', fontSize: 10, fill: '#F59E0B' }} />
+                  <ReferenceLine y={5} stroke="#A1DEED" strokeDasharray="4 4" label={{ value: 'Target 5%', position: 'insideTopRight', fontSize: 10, fill: '#616161' }} />
                   <Line type="monotone" dataKey="initial" name="Initial Denial Rate" stroke="#EF4444" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="net" name="Net Denial Rate" stroke="#00B5D6" strokeWidth={2} dot={false} />
                 </LineChart>
@@ -483,12 +490,12 @@ export default function AnalyticsPage() {
                     <td className="px-4 py-2.5 text-content-secondary">{s.avgMin}</td>
                     <td className="px-4 py-2.5">
                       {s.accuracy !== '—' && (
-                        <span className={parseFloat(s.accuracy) >= 97 ? 'text-emerald-400' : 'text-amber-400'}>{s.accuracy}</span>
+                        <span className={parseFloat(s.accuracy) >= 97 ? 'text-brand-dark' : 'text-brand-deep'}>{s.accuracy}</span>
                       )}
                       {s.accuracy === '—' && <span className="text-content-tertiary">—</span>}
                     </td>
                     <td className="px-4 py-2.5">
-                      <span className={parseFloat(s.sla) >= 97 ? 'text-emerald-400' : 'text-amber-400'}>{s.sla}</span>
+                      <span className={parseFloat(s.sla) >= 97 ? 'text-brand-dark' : 'text-brand-deep'}>{s.sla}</span>
                     </td>
                   </tr>
                 ))}
@@ -501,10 +508,10 @@ export default function AnalyticsPage() {
             <h3 className="text-[14px] font-semibold text-content-primary mb-4">Claims Processed Per Day (Last 14 Days)</h3>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={last14Days}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" vertical={false} />
                 <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9CA3AF' }} />
                 <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} />
-                <Tooltip contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
+                <Tooltip contentStyle={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 12, color: '#3A3A3C', boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }} itemStyle={{ color: '#3A3A3C' }} labelStyle={{ color: '#1D1D1F', fontWeight: 600 }} />
                 <Bar dataKey="claims" fill="#00B5D6" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -537,7 +544,7 @@ export default function AnalyticsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-[11px] text-content-secondary">{f.uses}</span>
-                  <span className={`text-[11px] font-medium ${f.trend.startsWith('↑') ? 'text-emerald-400' : f.trend.startsWith('↓') ? 'text-red-400' : 'text-content-tertiary'}`}>{f.trend}</span>
+                  <span className={`text-[11px] font-medium ${f.trend.startsWith('↑') ? 'text-brand-dark' : f.trend.startsWith('↓') ? 'text-red-400' : 'text-content-tertiary'}`}>{f.trend}</span>
                 </div>
               </div>
             ))}
@@ -568,16 +575,16 @@ export default function AnalyticsPage() {
                     </td>
                     <td className="px-4 py-2.5">{p.count}</td>
                     <td className="px-4 py-2.5">${p.billed.toLocaleString()}</td>
-                    <td className="px-4 py-2.5 text-emerald-400">${p.paid.toLocaleString()}</td>
+                    <td className="px-4 py-2.5 text-brand-dark">${p.paid.toLocaleString()}</td>
                     <td className="px-4 py-2.5">
-                      <span className={parseInt(p.denialRate) > 10 ? 'text-red-400' : parseInt(p.denialRate) > 5 ? 'text-amber-400' : 'text-emerald-400'}>
+                      <span className={parseInt(p.denialRate) > 10 ? 'text-red-400' : parseInt(p.denialRate) > 5 ? 'text-brand-deep' : 'text-brand-dark'}>
                         {p.denialRate}%
                       </span>
                     </td>
                     <td className="px-4 py-2.5 font-mono">{p.avgDays}{typeof p.avgDays === 'number' ? 'd' : ''}</td>
                     <td className="px-4 py-2.5">
                       <span className={`font-semibold ${p.phiColor}`}>{p.phi}</span>
-                      <span className="text-content-tertiary text-[10px] ml-1">/ 100</span>
+                      <span className="text-content-tertiary text-[11px] ml-1">/ 100</span>
                     </td>
                   </tr>
                 ))}
@@ -635,12 +642,12 @@ export default function AnalyticsPage() {
                   { month: 'Feb', charges: 46300, collections: 41200 },
                   { month: 'Mar', charges: 48800, collections: 43500 },
                 ]}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <YAxis tickFormatter={v => `$${v/1000}K`} tick={{ fontSize: 11, fill: '#9CA3AF' }} />
-                  <Tooltip formatter={(v: number | string | undefined) => [`$${(Number(v ?? 0)/1000).toFixed(1)}K`]} contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip formatter={(v: number | string | undefined) => [`$${(Number(v ?? 0)/1000).toFixed(1)}K`]} contentStyle={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 12, color: '#3A3A3C', boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }} itemStyle={{ color: '#3A3A3C' }} labelStyle={{ color: '#1D1D1F', fontWeight: 600 }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Line type="monotone" dataKey="charges" name="Billed" stroke="#6366F1" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="charges" name="Billed" stroke="#047285" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="collections" name="Collected" stroke="#00B5D6" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
@@ -656,10 +663,10 @@ export default function AnalyticsPage() {
                   { cpt: '85025', count: 5, revenue: 225 },
                   { cpt: '99215', count: 3, revenue: 1245 },
                 ]} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" horizontal={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <YAxis dataKey="cpt" type="category" tick={{ fontSize: 11, fill: '#9CA3AF', fontFamily: 'monospace' }} width={50} />
-                  <Tooltip formatter={(v: number | string | undefined) => [v ?? 0, 'Count']} contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip formatter={(v: number | string | undefined) => [v ?? 0, 'Count']} contentStyle={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 12, color: '#3A3A3C', boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }} itemStyle={{ color: '#3A3A3C' }} labelStyle={{ color: '#1D1D1F', fontWeight: 600 }} />
                   <Bar dataKey="count" fill="#00B5D6" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -671,11 +678,11 @@ export default function AnalyticsPage() {
               <h3 className="text-[14px] font-semibold text-content-primary mb-3">Claim Status Breakdown</h3>
               <div className="space-y-2">
                 {[
-                  { label: 'Paid', count: claims.filter(c=>c.status==='paid').length || 18, color: 'bg-emerald-500' },
-                  { label: 'Submitted', count: claims.filter(c=>c.status==='submitted').length || 9, color: 'bg-blue-500' },
+                  { label: 'Paid', count: claims.filter(c=>c.status==='paid').length || 18, color: 'bg-brand' },
+                  { label: 'Submitted', count: claims.filter(c=>c.status==='submitted').length || 9, color: 'bg-brand' },
                   { label: 'Ready', count: claims.filter(c=>c.status==='ready').length || 5, color: 'bg-brand' },
                   { label: 'Denied', count: claims.filter(c=>c.status==='denied').length || 3, color: 'bg-red-500' },
-                  { label: 'In Process', count: claims.filter(c=>c.status==='in_process').length || 2, color: 'bg-amber-500' },
+                  { label: 'In Process', count: claims.filter(c=>c.status==='in_process').length || 2, color: 'bg-brand-pale' },
                 ].map(s => (
                   <div key={s.label} className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${s.color} shrink-0`} />
@@ -691,10 +698,10 @@ export default function AnalyticsPage() {
               <div className="space-y-2.5">
                 {[
                   { label: 'Missing diagnosis linkage', count: 2, color: 'text-red-500' },
-                  { label: 'Incomplete SOAP notes', count: 1, color: 'text-amber-500' },
-                  { label: 'Unsigned encounters', count: 3, color: 'text-amber-500' },
+                  { label: 'Incomplete SOAP notes', count: 1, color: 'text-brand-deep' },
+                  { label: 'Unsigned encounters', count: 3, color: 'text-brand-deep' },
                   { label: 'E/M level mismatch', count: 1, color: 'text-red-500' },
-                  { label: 'Missing modifier', count: 0, color: 'text-emerald-500' },
+                  { label: 'Missing modifier', count: 0, color: 'text-brand-dark' },
                 ].map(a => (
                   <div key={a.label} className="flex items-center justify-between">
                     <span className="text-[12px] text-content-secondary">{a.label}</span>
@@ -717,7 +724,7 @@ export default function AnalyticsPage() {
                   <div key={a.time} className="flex items-center gap-2">
                     <span className="text-[11px] font-mono text-content-tertiary w-16 shrink-0">{a.time}</span>
                     <span className="text-[12px] text-content-primary flex-1">{a.patient}</span>
-                    <span className="text-[10px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-pill">{a.type}</span>
+                    <span className="text-[11px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-pill">{a.type}</span>
                   </div>
                 ))}
               </div>

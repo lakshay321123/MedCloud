@@ -13,7 +13,7 @@ const REPORT_TYPES = [
     label: 'A/R Aging Detail',
     description: 'All open claims bucketed by age (0–30, 31–60, 61–90, 90+)',
     icon: TrendingUp,
-    color: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+    color: 'bg-brand/10 text-brand border-blue-500/20',
     dot: 'bg-blue-500',
   },
   {
@@ -29,24 +29,24 @@ const REPORT_TYPES = [
     label: 'Payment Summary',
     description: 'ERA payments posted, auto-posted vs manual, by payer',
     icon: CreditCard,
-    color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-    dot: 'bg-emerald-500',
+    color: 'bg-brand/10 text-brand-dark border-brand/20',
+    dot: 'bg-brand',
   },
   {
     id: 'coding_production',
     label: 'Coding Production',
     description: 'Charts coded per coder, AI acceptance rate, avg time',
     icon: FileText,
-    color: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-    dot: 'bg-purple-500',
+    color: 'bg-brand/10 text-brand-dark border-purple-500/20',
+    dot: 'bg-brand',
   },
   {
     id: 'payer_performance',
     label: 'Payer Performance',
     description: 'Days to payment, denial rate, clean claim rate by payer',
     icon: BarChart3,
-    color: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-    dot: 'bg-amber-500',
+    color: 'bg-brand-pale0/10 text-brand-deep border-brand-light/20',
+    dot: 'bg-brand-pale',
   },
   {
     id: 'eligibility_summary',
@@ -258,7 +258,7 @@ export default function ReportsPage() {
           ) : (
             <>
               {/* Report header */}
-              <div className="flex items-center gap-3 px-5 py-4 border-b border-separator shrink-0">
+              <div className="flex gap-2 items-center gap-3 px-5 py-4 border-b border-separator pb-1 shrink-0">
                 {activeType && (
                   <div className={`w-8 h-8 rounded-lg border flex items-center justify-center ${activeType.color}`}>
                     <activeType.icon size={15} />
@@ -298,10 +298,10 @@ export default function ReportsPage() {
                 )}
 
                 {error && (
-                  <div className="m-5 bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 flex items-start gap-3">
-                    <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                  <div className="m-5 bg-brand-pale0/10 border border-brand-light/20 rounded-lg p-4 flex items-start gap-3">
+                    <AlertTriangle size={16} className="text-brand-deep shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-[13px] font-medium text-amber-600 dark:text-amber-400">Report data unavailable</p>
+                      <p className="text-[13px] font-medium text-brand-deep dark:text-brand-deep">Report data unavailable</p>
                       <p className="text-[12px] text-content-secondary mt-1">Connect to the MedCloud API to load live report data. Showing structure preview.</p>
                     </div>
                   </div>

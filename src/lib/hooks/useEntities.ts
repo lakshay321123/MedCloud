@@ -719,6 +719,15 @@ export function useDocuments() {
   return useApi<ApiDocument[]>('/documents', useClientParams())
 }
 
+export function useClaimDocuments(claimId: string | null) {
+  const { orgId } = useApp()
+  return useApi<{ data: ApiDocument[]; meta: { total: number } }>(
+    `/documents?claim_id=${claimId ?? ''}`,
+    { org_id: orgId },
+    { skip: !claimId }
+  )
+}
+
 export function useDocument(id: string) {
   return useApi<ApiDocument>(`/documents/${id}`)
 }
@@ -735,6 +744,7 @@ export function useCreateDocument() {
   return useMutation<ApiDocument, {
     client_id?: string
     patient_id?: string
+    claim_id?: string
     encounter_id?: string
     doc_type?: string
     document_type: string

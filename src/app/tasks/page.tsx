@@ -59,7 +59,7 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
       <div className="card w-[520px]" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-separator">
+        <div className="flex gap-2 items-center justify-between p-4 border-b border-separator pb-1">
           <h3 className="font-semibold text-content-primary">Create Task</h3>
           <button onClick={onClose} className="p-1 hover:bg-surface-elevated rounded-btn"><X size={16} className="text-content-secondary"/></button>
         </div>
@@ -157,7 +157,7 @@ export default function TasksPage() {
     setPendingStatus(null)
   }, [selected])
 
-  const slaColor = (s: string) => s === 'green' ? 'bg-emerald-500' : s === 'yellow' ? 'bg-amber-500' : 'bg-red-500'
+  const slaColor = (s: string) => s === 'green' ? 'bg-brand' : s === 'yellow' ? 'bg-brand-pale' : 'bg-red-500'
 
   const rawTasks = taskList
   const displayTasks = rawTasks.filter(t => {
@@ -223,7 +223,7 @@ export default function TasksPage() {
         <>
           <div className="fixed inset-0 bg-black/20 z-30" onClick={() => setSelected(null)} />
           <div className="fixed right-0 top-0 h-full w-[380px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between p-4 border-b border-separator">
+            <div className="flex gap-2 items-center justify-between p-4 border-b border-separator pb-1">
               <div>
                 <h3 className="font-semibold text-content-primary">{selected.type}</h3>
                 <p className="text-xs text-content-secondary">{selected.id}</p>
