@@ -43,10 +43,10 @@ const ic = 'w-full bg-surface-elevated border border-separator rounded-lg px-3 p
 function SectionHeader({ title, badge, open, onToggle }: { title: string; badge?: string; open: boolean; onToggle: () => void }) {
   return (
     <button type="button" onClick={onToggle}
-      className="w-full flex items-center justify-between py-2.5 text-xs font-semibold text-content-secondary uppercase tracking-wide hover:text-content-primary transition-colors">
+      className="w-full flex items-center justify-between py-2.5 text-[13px] font-semibold text-content-secondary uppercase tracking-wide hover:text-content-primary transition-colors">
       <div className="flex items-center gap-2">
         <span>{title}</span>
-        {badge && <span className="text-[10px] font-normal text-content-tertiary normal-case">{badge}</span>}
+        {badge && <span className="text-[11px] font-normal text-content-tertiary normal-case">{badge}</span>}
       </div>
       <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
     </button>
@@ -88,45 +88,45 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
         </div>
 
         <div className="p-5 space-y-4">
-          <p className="text-xs text-content-secondary bg-brand/5 border border-brand/20 rounded-lg p-3">
+          <p className="text-[13px] text-content-secondary bg-brand/5 border border-brand/20 rounded-lg p-3">
             Only name and phone are required to start. Expand sections below to add more details.
           </p>
 
           {/* ── DEMOGRAPHICS ── */}
           <div className="space-y-3">
-            <div className="text-xs font-semibold text-content-secondary uppercase tracking-wide">Demographics</div>
+            <div className="text-[13px] font-semibold text-content-secondary uppercase tracking-wide">Demographics</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div><label className="text-xs text-content-secondary block mb-1">First Name <span className="text-red-400">*</span></label>
+              <div><label className="text-[13px] text-content-secondary block mb-1">First Name <span className="text-red-400">*</span></label>
                 <input className={ic} placeholder="First name" value={form.firstName} onChange={e => upd('firstName', e.target.value)} /></div>
-              <div><label className="text-xs text-content-secondary block mb-1">Middle</label>
+              <div><label className="text-[13px] text-content-secondary block mb-1">Middle</label>
                 <input className={ic} placeholder="M.I." value={form.middleName} onChange={e => upd('middleName', e.target.value)} /></div>
-              <div><label className="text-xs text-content-secondary block mb-1">Last Name <span className="text-red-400">*</span></label>
+              <div><label className="text-[13px] text-content-secondary block mb-1">Last Name <span className="text-red-400">*</span></label>
                 <input className={ic} placeholder="Last name" value={form.lastName} onChange={e => upd('lastName', e.target.value)} /></div>
             </div>
-            <div><label className="text-xs text-content-secondary block mb-1">Preferred Name / Nickname</label>
+            <div><label className="text-[13px] text-content-secondary block mb-1">Preferred Name / Nickname</label>
               <input className={ic} placeholder="Goes by..." value={form.preferredName} onChange={e => upd('preferredName', e.target.value)} /></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><label className="text-xs text-content-secondary block mb-1">Date of Birth</label>
+              <div><label className="text-[13px] text-content-secondary block mb-1">Date of Birth</label>
                 <input type="date" className={ic} value={form.dob} onChange={e => upd('dob', e.target.value)} /></div>
-              <div><label className="text-xs text-content-secondary block mb-1">Gender</label>
+              <div><label className="text-[13px] text-content-secondary block mb-1">Gender</label>
                 <select className={ic} value={form.gender} onChange={e => upd('gender', e.target.value)}><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option><option>Prefer not to say</option></select></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><label className="text-xs text-content-secondary block mb-1">Marital Status</label>
+              <div><label className="text-[13px] text-content-secondary block mb-1">Marital Status</label>
                 <select className={ic} value={form.maritalStatus} onChange={e => upd('maritalStatus', e.target.value)}><option value="">Select</option><option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option><option>Separated</option></select></div>
-              <div><label className="text-xs text-content-secondary block mb-1">Preferred Language</label>
+              <div><label className="text-[13px] text-content-secondary block mb-1">Preferred Language</label>
                 <select className={ic} value={form.preferredLanguage} onChange={e => upd('preferredLanguage', e.target.value)}><option>English</option><option>Arabic</option><option>Spanish</option><option>Other</option></select></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><label className="text-xs text-content-secondary block mb-1">Phone (Primary) <span className="text-red-400">*</span></label>
+              <div><label className="text-[13px] text-content-secondary block mb-1">Phone (Primary) <span className="text-red-400">*</span></label>
                 <input type="tel" className={ic} placeholder={isUAE ? '+971 50 xxx xxxx' : '(949) xxx-xxxx'} value={form.phone} onChange={e => upd('phone', e.target.value)} /></div>
-              <div><label className="text-xs text-content-secondary block mb-1">Phone (Secondary/Cell)</label>
+              <div><label className="text-[13px] text-content-secondary block mb-1">Phone (Secondary/Cell)</label>
                 <input type="tel" className={ic} placeholder="Optional" value={form.secondaryPhone} onChange={e => upd('secondaryPhone', e.target.value)} /></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><label className="text-xs text-content-secondary block mb-1">Email</label>
+              <div><label className="text-[13px] text-content-secondary block mb-1">Email</label>
                 <input type="email" className={ic} placeholder="email@example.com" value={form.email} onChange={e => upd('email', e.target.value)} /></div>
-              <div><label className="text-xs text-content-secondary block mb-1">Preferred Contact</label>
+              <div><label className="text-[13px] text-content-secondary block mb-1">Preferred Contact</label>
                 <select className={ic} value={form.preferredContact} onChange={e => upd('preferredContact', e.target.value)}><option>Phone</option><option>Email</option><option>SMS</option><option>Portal</option></select></div>
             </div>
           </div>
@@ -138,20 +138,20 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
             <SectionHeader title="Address" open={sections.address} onToggle={() => toggle('address')} />
             {sections.address && (
               <div className="space-y-3 pt-1">
-                <div><label className="text-xs text-content-secondary block mb-1">Address Line 1</label><input className={ic} placeholder="Street address" value={form.addressLine1} onChange={e => upd('addressLine1', e.target.value)} /></div>
-                <div><label className="text-xs text-content-secondary block mb-1">Address Line 2</label><input className={ic} placeholder="Apt, Suite, etc." value={form.addressLine2} onChange={e => upd('addressLine2', e.target.value)} /></div>
+                <div><label className="text-[13px] text-content-secondary block mb-1">Address Line 1</label><input className={ic} placeholder="Street address" value={form.addressLine1} onChange={e => upd('addressLine1', e.target.value)} /></div>
+                <div><label className="text-[13px] text-content-secondary block mb-1">Address Line 2</label><input className={ic} placeholder="Apt, Suite, etc." value={form.addressLine2} onChange={e => upd('addressLine2', e.target.value)} /></div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div><label className="text-xs text-content-secondary block mb-1">City</label><input className={ic} value={form.city} onChange={e => upd('city', e.target.value)} /></div>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">City</label><input className={ic} value={form.city} onChange={e => upd('city', e.target.value)} /></div>
                   <div>
-                    <label className="text-xs text-content-secondary block mb-1">{isUAE ? 'Emirate' : 'State'}</label>
+                    <label className="text-[13px] text-content-secondary block mb-1">{isUAE ? 'Emirate' : 'State'}</label>
                     <select className={ic} value={form.stateEmirate} onChange={e => upd('stateEmirate', e.target.value)}>
                       <option value="">Select</option>
                       {(isUAE ? uaeEmirates : usStates).map(s => <option key={s}>{s}</option>)}
                     </select>
                   </div>
-                  <div><label className="text-xs text-content-secondary block mb-1">{isUAE ? 'Postal Code' : 'ZIP Code'}</label><input className={ic} placeholder={isUAE ? 'Optional' : '00000'} value={form.zip} onChange={e => upd('zip', e.target.value)} /></div>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">{isUAE ? 'Postal Code' : 'ZIP Code'}</label><input className={ic} placeholder={isUAE ? 'Optional' : '00000'} value={form.zip} onChange={e => upd('zip', e.target.value)} /></div>
                 </div>
-                <div><label className="text-xs text-content-secondary block mb-1">Country</label>
+                <div><label className="text-[13px] text-content-secondary block mb-1">Country</label>
                   <input className={`${ic} bg-surface-primary`} value={isUAE ? 'United Arab Emirates' : 'United States'} readOnly /></div>
               </div>
             )}
@@ -164,10 +164,10 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
             <SectionHeader title="Identification" open={sections.id} onToggle={() => toggle('id')} />
             {sections.id && (
               <div className="space-y-3 pt-1">
-                {!isUAE && <div><label className="text-xs text-content-secondary block mb-1">SSN (last 4 digits)</label><input className={ic} placeholder="****-**-XXXX" maxLength={4} value={form.ssn} onChange={e => upd('ssn', e.target.value)} /></div>}
-                {!isUAE && <div><label className="text-xs text-content-secondary block mb-1">Driver&apos;s License #</label><input className={ic} placeholder="License number" value={form.driversLicense} onChange={e => upd('driversLicense', e.target.value)} /></div>}
-                {isUAE && <div><label className="text-xs text-content-secondary block mb-1">Emirates ID</label><input className={ic} placeholder="784-XXXX-XXXXXXX-X" value={form.emiratesId} onChange={e => upd('emiratesId', e.target.value)} /></div>}
-                <div><label className="text-xs text-content-secondary block mb-1">Passport #</label><input className={ic} placeholder="Passport number" value={form.passport} onChange={e => upd('passport', e.target.value)} /></div>
+                {!isUAE && <div><label className="text-[13px] text-content-secondary block mb-1">SSN (last 4 digits)</label><input className={ic} placeholder="****-**-XXXX" maxLength={4} value={form.ssn} onChange={e => upd('ssn', e.target.value)} /></div>}
+                {!isUAE && <div><label className="text-[13px] text-content-secondary block mb-1">Driver&apos;s License #</label><input className={ic} placeholder="License number" value={form.driversLicense} onChange={e => upd('driversLicense', e.target.value)} /></div>}
+                {isUAE && <div><label className="text-[13px] text-content-secondary block mb-1">Emirates ID</label><input className={ic} placeholder="784-XXXX-XXXXXXX-X" value={form.emiratesId} onChange={e => upd('emiratesId', e.target.value)} /></div>}
+                <div><label className="text-[13px] text-content-secondary block mb-1">Passport #</label><input className={ic} placeholder="Passport number" value={form.passport} onChange={e => upd('passport', e.target.value)} /></div>
               </div>
             )}
           </div>
@@ -179,21 +179,21 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
             <SectionHeader title="Primary Insurance" open={sections.insurance} onToggle={() => toggle('insurance')} />
             {sections.insurance && (
               <div className="space-y-3 pt-1">
-                <div><label className="text-xs text-content-secondary block mb-1">Insurance Payer</label><input className={ic} placeholder={isUAE ? 'e.g. Daman, NAS, ADNIC...' : 'e.g. Aetna, UHC, BCBS...'} value={form.insurancePayer} onChange={e => upd('insurancePayer', e.target.value)} /></div>
+                <div><label className="text-[13px] text-content-secondary block mb-1">Insurance Payer</label><input className={ic} placeholder={isUAE ? 'e.g. Daman, NAS, ADNIC...' : 'e.g. Aetna, UHC, BCBS...'} value={form.insurancePayer} onChange={e => upd('insurancePayer', e.target.value)} /></div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div><label className="text-xs text-content-secondary block mb-1">Policy Number</label><input className={ic} value={form.policyNo} onChange={e => upd('policyNo', e.target.value)} /></div>
-                  {!isUAE && <div><label className="text-xs text-content-secondary block mb-1">Group Number</label><input className={ic} value={form.groupNo} onChange={e => upd('groupNo', e.target.value)} /></div>}
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Policy Number</label><input className={ic} value={form.policyNo} onChange={e => upd('policyNo', e.target.value)} /></div>
+                  {!isUAE && <div><label className="text-[13px] text-content-secondary block mb-1">Group Number</label><input className={ic} value={form.groupNo} onChange={e => upd('groupNo', e.target.value)} /></div>}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div><label className="text-xs text-content-secondary block mb-1">Member ID</label><input className={ic} value={form.memberId} onChange={e => upd('memberId', e.target.value)} /></div>
-                  <div><label className="text-xs text-content-secondary block mb-1">Copay Amount</label><input type="number" className={ic} placeholder="0.00" value={form.copay} onChange={e => upd('copay', e.target.value)} /></div>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Member ID</label><input className={ic} value={form.memberId} onChange={e => upd('memberId', e.target.value)} /></div>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Copay Amount</label><input type="number" className={ic} placeholder="0.00" value={form.copay} onChange={e => upd('copay', e.target.value)} /></div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div><label className="text-xs text-content-secondary block mb-1">Relationship to Subscriber</label>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Relationship to Subscriber</label>
                     <select className={ic} value={form.relationship} onChange={e => upd('relationship', e.target.value)}><option>Self</option><option>Spouse</option><option>Child</option><option>Other</option></select></div>
-                  <div><label className="text-xs text-content-secondary block mb-1">Subscriber Name (if not self)</label><input className={ic} value={form.subscriberName} onChange={e => upd('subscriberName', e.target.value)} /></div>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Subscriber Name (if not self)</label><input className={ic} value={form.subscriberName} onChange={e => upd('subscriberName', e.target.value)} /></div>
                 </div>
-                <div><label className="text-xs text-content-secondary block mb-1">Subscriber DOB (if not self)</label><input type="date" className={ic} value={form.subscriberDob} onChange={e => upd('subscriberDob', e.target.value)} /></div>
+                <div><label className="text-[13px] text-content-secondary block mb-1">Subscriber DOB (if not self)</label><input type="date" className={ic} value={form.subscriberDob} onChange={e => upd('subscriberDob', e.target.value)} /></div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {(['Front', 'Back'] as const).map(side => {
                     const key = `insuranceCard${side}` as 'insuranceCardFront' | 'insuranceCardBack'
@@ -205,12 +205,12 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
                           <div className="relative w-full h-24 rounded-lg overflow-hidden border border-separator">
                             <img src={preview} alt={`Card ${side}`} className="w-full h-full object-cover" />
                             <button type="button" onClick={() => upd(key, '')}
-                              className="absolute top-1 right-1 bg-black/60 text-white rounded px-1.5 py-0.5 text-[10px] hover:bg-red-500/80">
+                              className="absolute top-1 right-1 bg-black/60 text-white rounded px-1.5 py-0.5 text-[11px] hover:bg-red-500/80">
                               Remove
                             </button>
                           </div>
                         ) : (
-                          <label className="block w-full border border-dashed border-separator rounded-lg py-3 text-center text-xs text-content-secondary cursor-pointer hover:border-brand/30 hover:text-brand transition-all">
+                          <label className="block w-full border border-dashed border-separator rounded-lg py-3 text-center text-[13px] text-content-secondary cursor-pointer hover:border-brand/30 hover:text-brand transition-all">
                             <Upload size={14} className="mx-auto mb-1" />
                             Upload {side}
                             <input type="file" accept="image/*,application/pdf" className="hidden"
@@ -238,10 +238,10 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
             <SectionHeader title="Secondary Insurance" badge="(optional)" open={sections.secondary} onToggle={() => toggle('secondary')} />
             {sections.secondary && (
               <div className="space-y-3 pt-1">
-                <div><label className="text-xs text-content-secondary block mb-1">Insurance Payer</label><input className={ic} placeholder={isUAE ? 'e.g. Daman, NAS...' : 'e.g. Aetna, UHC...'} value={form.secPayer} onChange={e => upd('secPayer', e.target.value)} /></div>
+                <div><label className="text-[13px] text-content-secondary block mb-1">Insurance Payer</label><input className={ic} placeholder={isUAE ? 'e.g. Daman, NAS...' : 'e.g. Aetna, UHC...'} value={form.secPayer} onChange={e => upd('secPayer', e.target.value)} /></div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div><label className="text-xs text-content-secondary block mb-1">Policy Number</label><input className={ic} value={form.secPolicyNo} onChange={e => upd('secPolicyNo', e.target.value)} /></div>
-                  <div><label className="text-xs text-content-secondary block mb-1">Member ID</label><input className={ic} value={form.secMemberId} onChange={e => upd('secMemberId', e.target.value)} /></div>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Policy Number</label><input className={ic} value={form.secPolicyNo} onChange={e => upd('secPolicyNo', e.target.value)} /></div>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Member ID</label><input className={ic} value={form.secMemberId} onChange={e => upd('secMemberId', e.target.value)} /></div>
                 </div>
               </div>
             )}
@@ -255,11 +255,11 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
             {sections.emergency && (
               <div className="space-y-3 pt-1">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div><label className="text-xs text-content-secondary block mb-1">Name</label><input className={ic} value={form.ecName} onChange={e => upd('ecName', e.target.value)} /></div>
-                  <div><label className="text-xs text-content-secondary block mb-1">Relationship</label>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Name</label><input className={ic} value={form.ecName} onChange={e => upd('ecName', e.target.value)} /></div>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Relationship</label>
                     <select className={ic} value={form.ecRelationship} onChange={e => upd('ecRelationship', e.target.value)}><option value="">Select</option><option>Spouse</option><option>Parent</option><option>Sibling</option><option>Child</option><option>Friend</option><option>Other</option></select></div>
                 </div>
-                <div><label className="text-xs text-content-secondary block mb-1">Phone</label><input type="tel" className={ic} value={form.ecPhone} onChange={e => upd('ecPhone', e.target.value)} /></div>
+                <div><label className="text-[13px] text-content-secondary block mb-1">Phone</label><input type="tel" className={ic} value={form.ecPhone} onChange={e => upd('ecPhone', e.target.value)} /></div>
               </div>
             )}
           </div>
@@ -271,13 +271,13 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
             <SectionHeader title="Employment" badge="(optional)" open={sections.employment} onToggle={() => toggle('employment')} />
             {sections.employment && (
               <div className="space-y-3 pt-1">
-                <div><label className="text-xs text-content-secondary block mb-1">Employment Status</label>
+                <div><label className="text-[13px] text-content-secondary block mb-1">Employment Status</label>
                   <select className={ic} value={form.empStatus} onChange={e => upd('empStatus', e.target.value)}><option>Employed</option><option>Self-Employed</option><option>Unemployed</option><option>Retired</option><option>Student</option></select></div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div><label className="text-xs text-content-secondary block mb-1">Employer Name</label><input className={ic} value={form.employer} onChange={e => upd('employer', e.target.value)} /></div>
-                  <div><label className="text-xs text-content-secondary block mb-1">Occupation</label><input className={ic} value={form.occupation} onChange={e => upd('occupation', e.target.value)} /></div>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Employer Name</label><input className={ic} value={form.employer} onChange={e => upd('employer', e.target.value)} /></div>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Occupation</label><input className={ic} value={form.occupation} onChange={e => upd('occupation', e.target.value)} /></div>
                 </div>
-                <div><label className="text-xs text-content-secondary block mb-1">Work Phone</label><input type="tel" className={ic} value={form.workPhone} onChange={e => upd('workPhone', e.target.value)} /></div>
+                <div><label className="text-[13px] text-content-secondary block mb-1">Work Phone</label><input type="tel" className={ic} value={form.workPhone} onChange={e => upd('workPhone', e.target.value)} /></div>
               </div>
             )}
           </div>
@@ -289,11 +289,11 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
             <SectionHeader title="Medical Quick Info" badge="(optional)" open={sections.medical} onToggle={() => toggle('medical')} />
             {sections.medical && (
               <div className="space-y-3 pt-1">
-                <div><label className="text-xs text-content-secondary block mb-1">Known Allergies</label><textarea className={`${ic} resize-none`} rows={2} placeholder="e.g. Penicillin, Sulfa drugs..." value={form.allergies} onChange={e => upd('allergies', e.target.value)} /></div>
-                <div><label className="text-xs text-content-secondary block mb-1">Current Medications</label><textarea className={`${ic} resize-none`} rows={2} placeholder="List current medications..." value={form.medications} onChange={e => upd('medications', e.target.value)} /></div>
+                <div><label className="text-[13px] text-content-secondary block mb-1">Known Allergies</label><textarea className={`${ic} resize-none`} rows={2} placeholder="e.g. Penicillin, Sulfa drugs..." value={form.allergies} onChange={e => upd('allergies', e.target.value)} /></div>
+                <div><label className="text-[13px] text-content-secondary block mb-1">Current Medications</label><textarea className={`${ic} resize-none`} rows={2} placeholder="List current medications..." value={form.medications} onChange={e => upd('medications', e.target.value)} /></div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div><label className="text-xs text-content-secondary block mb-1">Referring Physician</label><input className={ic} value={form.referringPhysician} onChange={e => upd('referringPhysician', e.target.value)} /></div>
-                  <div><label className="text-xs text-content-secondary block mb-1">Primary Care Physician</label><input className={ic} value={form.pcp} onChange={e => upd('pcp', e.target.value)} /></div>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Referring Physician</label><input className={ic} value={form.referringPhysician} onChange={e => upd('referringPhysician', e.target.value)} /></div>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Primary Care Physician</label><input className={ic} value={form.pcp} onChange={e => upd('pcp', e.target.value)} /></div>
                 </div>
               </div>
             )}
@@ -303,7 +303,7 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
 
           {/* Scan ID + Buttons */}
           <div>
-            <button type="button" onClick={() => { toast.info('Go to Scan & Submit to capture ID'); setTimeout(() => router.push('/portal/scan-submit'), 800) }} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2 mb-4">
+            <button type="button" onClick={() => { toast.info('Go to Scan & Submit to capture ID'); setTimeout(() => router.push('/portal/scan-submit'), 800) }} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-[13px] text-content-secondary hover:border-brand/30 hover:text-brand transition-all flex items-center justify-center gap-2 mb-4">
               <Upload size={14} className="text-brand" />
               <span>📷 {isUAE ? 'Scan Emirates ID' : "Scan Driver's License"} to auto-fill demographics</span>
             </button>
@@ -381,13 +381,13 @@ function PatientMessagesTab({ patientId, clientId, patientName }: { patientId: s
   return (
     <div className="flex flex-col gap-3">
       {apiMessages.length === 0 ? (
-        <div className="text-center py-6 text-xs text-content-secondary">No messages yet — start a conversation below.</div>
+        <div className="text-center py-6 text-[13px] text-content-secondary">No messages yet — start a conversation below.</div>
       ) : (
         <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
           {apiMessages.map((m: any) => (
             <div key={m.id} className={`flex ${['client','provider'].includes(m.sender_role) ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[75%] rounded-lg px-3 py-2 text-xs ${['client','provider'].includes(m.sender_role) ? 'bg-brand/10 border border-brand/20' : 'bg-surface-elevated border border-separator'}`}>
-                <span className="font-medium block mb-0.5 text-[10px] text-content-secondary">{m.sender_name || m.sender_role}</span>
+                <span className="font-medium block mb-0.5 text-[11px] text-content-secondary">{m.sender_name || m.sender_role}</span>
                 <p className="text-content-primary">{m.body}</p>
                 <span className="text-[9px] text-content-tertiary mt-1 block">{new Date(m.created_at).toLocaleString()}</span>
               </div>
@@ -399,8 +399,8 @@ function PatientMessagesTab({ patientId, clientId, patientName }: { patientId: s
         <input value={msgInput} onChange={e => setMsgInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && msgInput.trim()) handleSend() }}
           placeholder="Message back office about this patient…"
-          className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary placeholder:text-content-tertiary" />
-        <button onClick={handleSend} className="px-3 py-1.5 bg-brand text-white rounded-lg text-xs font-medium hover:bg-brand-deep transition-colors">Send</button>
+          className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-[13px] text-content-secondary placeholder:text-content-tertiary" />
+        <button onClick={handleSend} className="px-3 py-1.5 bg-brand text-white rounded-lg text-[13px] font-medium hover:bg-brand-deep transition-colors">Send</button>
       </div>
     </div>
   )
@@ -503,7 +503,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
             </div>
             <div>
               <h2 className="font-semibold text-content-primary">{localPatient.firstName} {localPatient.lastName}</h2>
-              <span className="text-xs text-content-secondary">{toMRN(patient.id)} • {isUAE ? '🇦🇪 UAE' : '🇺🇸 US'}</span>
+              <span className="text-[13px] text-content-secondary">{toMRN(patient.id)} • {isUAE ? '🇦🇪 UAE' : '🇺🇸 US'}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -511,7 +511,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
               <div className="w-16 h-1.5 rounded-full bg-surface-elevated">
                 <div className={`h-full rounded-full ${completenessColor(profileComplete)}`} style={{ width: `${profileComplete}%` }} />
               </div>
-              <span className="text-[10px] text-content-secondary">{profileComplete}%</span>
+              <span className="text-[11px] text-content-secondary">{profileComplete}%</span>
             </div>
             <button
               onClick={() => { if (editMode) handleSave(); else setEditMode(true) }}
@@ -529,7 +529,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
         <div className="flex border-b border-separator overflow-x-auto shrink-0">
           {tabs.map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={`px-4 py-2 text-xs font-medium border-b-2 whitespace-nowrap transition-all ${tab === t ? 'border-brand text-brand' : 'border-transparent text-content-secondary hover:text-content-primary'}`}>
+              className={`px-4 py-2 text-[13px] font-medium border-b-2 whitespace-nowrap transition-all ${tab === t ? 'border-brand text-brand' : 'border-transparent text-content-secondary hover:text-content-primary'}`}>
               {t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
@@ -542,27 +542,27 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
               {editMode ? (
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div><label className="text-xs text-content-secondary block mb-1">First Name</label>
+                    <div><label className="text-[13px] text-content-secondary block mb-1">First Name</label>
                       <input className={ic} value={editForm.firstName} onChange={e => upd('firstName', e.target.value)} /></div>
-                    <div><label className="text-xs text-content-secondary block mb-1">Last Name</label>
+                    <div><label className="text-[13px] text-content-secondary block mb-1">Last Name</label>
                       <input className={ic} value={editForm.lastName} onChange={e => upd('lastName', e.target.value)} /></div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div><label className="text-xs text-content-secondary block mb-1">Date of Birth</label>
+                    <div><label className="text-[13px] text-content-secondary block mb-1">Date of Birth</label>
                       <input type="date" className={ic} value={editForm.dob} onChange={e => upd('dob', e.target.value)} /></div>
-                    <div><label className="text-xs text-content-secondary block mb-1">Gender</label>
+                    <div><label className="text-[13px] text-content-secondary block mb-1">Gender</label>
                       <select className={ic} value={editForm.gender} onChange={e => upd('gender', e.target.value)}>
                         <option value="">Select</option><option>Male</option><option>Female</option><option>Other</option>
                       </select></div>
                   </div>
-                  <div><label className="text-xs text-content-secondary block mb-1">Phone</label>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Phone</label>
                     <input type="tel" className={ic} value={editForm.phone} onChange={e => upd('phone', e.target.value)} /></div>
-                  <div><label className="text-xs text-content-secondary block mb-1">Email</label>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Email</label>
                     <input type="email" className={ic} value={editForm.email} onChange={e => upd('email', e.target.value)} /></div>
                   {isUAE
-                    ? <div><label className="text-xs text-content-secondary block mb-1">Emirates ID</label>
+                    ? <div><label className="text-[13px] text-content-secondary block mb-1">Emirates ID</label>
                         <input className={ic} value={editForm.emiratesId} onChange={e => upd('emiratesId', e.target.value)} /></div>
-                    : <div><label className="text-xs text-content-secondary block mb-1">SSN</label>
+                    : <div><label className="text-[13px] text-content-secondary block mb-1">SSN</label>
                         <input className={ic} value={editForm.ssn} onChange={e => upd('ssn', e.target.value)} /></div>
                   }
                   <div className="flex gap-2 pt-2">
@@ -573,17 +573,17 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
               ) : (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div><span className="text-xs text-content-secondary block">Name</span><span>{localPatient.firstName} {localPatient.middleName ? localPatient.middleName + ' ' : ''}{localPatient.lastName}</span></div>
-                    <div><span className="text-xs text-content-secondary block">DOB</span><span>{formatDOB(localPatient.dob)}</span></div>
-                    <div><span className="text-xs text-content-secondary block">Gender</span><span>{localPatient.gender || '—'}</span></div>
-                    <div><span className="text-xs text-content-secondary block">Marital Status</span><span>{localPatient.maritalStatus || '—'}</span></div>
-                    <div><span className="text-xs text-content-secondary block">Phone</span><span>{localPatient.phone}</span></div>
-                    {localPatient.secondaryPhone && <div><span className="text-xs text-content-secondary block">Secondary Phone</span><span>{localPatient.secondaryPhone}</span></div>}
-                    <div><span className="text-xs text-content-secondary block">Email</span><span>{localPatient.email || '—'}</span></div>
-                    <div><span className="text-xs text-content-secondary block">Preferred Language</span><span>{localPatient.preferredLanguage || '—'}</span></div>
-                    {isUAE && <div><span className="text-xs text-content-secondary block">Emirates ID</span><span>{localPatient.emiratesId || '—'}</span></div>}
-                    {!isUAE && <div><span className="text-xs text-content-secondary block">SSN</span><span>{localPatient.ssn || '—'}</span></div>}
-                    {!isUAE && localPatient.driversLicense && <div><span className="text-xs text-content-secondary block">Driver&apos;s License</span><span>{localPatient.driversLicense}</span></div>}
+                    <div><span className="text-[13px] text-content-secondary block">Name</span><span>{localPatient.firstName} {localPatient.middleName ? localPatient.middleName + ' ' : ''}{localPatient.lastName}</span></div>
+                    <div><span className="text-[13px] text-content-secondary block">DOB</span><span>{formatDOB(localPatient.dob)}</span></div>
+                    <div><span className="text-[13px] text-content-secondary block">Gender</span><span>{localPatient.gender || '—'}</span></div>
+                    <div><span className="text-[13px] text-content-secondary block">Marital Status</span><span>{localPatient.maritalStatus || '—'}</span></div>
+                    <div><span className="text-[13px] text-content-secondary block">Phone</span><span>{localPatient.phone}</span></div>
+                    {localPatient.secondaryPhone && <div><span className="text-[13px] text-content-secondary block">Secondary Phone</span><span>{localPatient.secondaryPhone}</span></div>}
+                    <div><span className="text-[13px] text-content-secondary block">Email</span><span>{localPatient.email || '—'}</span></div>
+                    <div><span className="text-[13px] text-content-secondary block">Preferred Language</span><span>{localPatient.preferredLanguage || '—'}</span></div>
+                    {isUAE && <div><span className="text-[13px] text-content-secondary block">Emirates ID</span><span>{localPatient.emiratesId || '—'}</span></div>}
+                    {!isUAE && <div><span className="text-[13px] text-content-secondary block">SSN</span><span>{localPatient.ssn || '—'}</span></div>}
+                    {!isUAE && localPatient.driversLicense && <div><span className="text-[13px] text-content-secondary block">Driver&apos;s License</span><span>{localPatient.driversLicense}</span></div>}
                   </div>
                   {localPatient.allergies && localPatient.allergies.length > 0 && (
                     <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-2 text-xs">
@@ -602,17 +602,17 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
             <div className="p-4 space-y-3">
               {editMode ? (
                 <>
-                  <div><label className="text-xs text-content-secondary block mb-1">Address Line 1</label>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Address Line 1</label>
                     <input className={ic} value={editAddress.line1} onChange={e => setEditAddress(p => ({...p, line1: e.target.value}))} /></div>
-                  <div><label className="text-xs text-content-secondary block mb-1">Address Line 2</label>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Address Line 2</label>
                     <input className={ic} value={editAddress.line2} onChange={e => setEditAddress(p => ({...p, line2: e.target.value}))} /></div>
                   <div className="grid grid-cols-2 gap-2">
-                    <div><label className="text-xs text-content-secondary block mb-1">City</label>
+                    <div><label className="text-[13px] text-content-secondary block mb-1">City</label>
                       <input className={ic} value={editAddress.city} onChange={e => setEditAddress(p => ({...p, city: e.target.value}))} /></div>
-                    <div><label className="text-xs text-content-secondary block mb-1">State / Emirate</label>
+                    <div><label className="text-[13px] text-content-secondary block mb-1">State / Emirate</label>
                       <input className={ic} value={editAddress.state} onChange={e => setEditAddress(p => ({...p, state: e.target.value}))} /></div>
                   </div>
-                  <div><label className="text-xs text-content-secondary block mb-1">ZIP / Postal</label>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">ZIP / Postal</label>
                     <input className={ic} value={editAddress.zip} onChange={e => setEditAddress(p => ({...p, zip: e.target.value}))} /></div>
                 </>
               ) : localPatient.address?.line1 ? (
@@ -622,7 +622,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
                   <div>{localPatient.address.city}, {localPatient.address.state} {localPatient.address.zip}</div>
                 </div>
               ) : (
-                <div className="text-center py-8 text-xs text-content-secondary">
+                <div className="text-center py-8 text-[13px] text-content-secondary">
                   No address on file. <button onClick={() => setEditMode(true)} className="ml-1 text-brand underline">Add address</button>
                 </div>
               )}
@@ -633,7 +633,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
             <div className="space-y-3">
               {localPatient.insurance ? (
                 <div className="bg-surface-elevated border border-separator rounded-lg p-3">
-                  <div className="text-xs text-content-secondary mb-2">Primary Insurance</div>
+                  <div className="text-[13px] text-content-secondary mb-2">Primary Insurance</div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div><span className="text-content-secondary">Payer:</span> {localPatient.insurance.payer}</div>
                     <div><span className="text-content-secondary">Policy:</span> {localPatient.insurance.policyNo}</div>
@@ -643,7 +643,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
                     {localPatient.insurance.copay !== undefined && <div><span className="text-content-secondary">Copay:</span> {isUAE ? 'AED' : '$'}{localPatient.insurance.copay}</div>}
                   </div>
                 </div>
-              ) : <div className="text-center py-6 text-xs text-content-secondary">No insurance on file. <button onClick={() => router.push('/portal/scan-submit')} className="text-brand underline">Upload insurance card</button></div>}
+              ) : <div className="text-center py-6 text-[13px] text-content-secondary">No insurance on file. <button onClick={() => router.push('/portal/scan-submit')} className="text-brand underline">Upload insurance card</button></div>}
               {localPatient.insurance && (
                 <button onClick={() => { onClose(); router.push(`/eligibility?patientId=${localPatient.id}`) }}
                   className="w-full flex items-center justify-center gap-2 bg-brand text-white border border-brand/20 rounded-lg py-2 text-[12px] font-medium hover:bg-brand/20 transition-colors">
@@ -652,7 +652,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
               )}
               {localPatient.secondaryInsurance && (
                 <div className="bg-surface-elevated border border-separator rounded-lg p-3">
-                  <div className="text-xs text-content-secondary mb-2">Secondary Insurance</div>
+                  <div className="text-[13px] text-content-secondary mb-2">Secondary Insurance</div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div><span className="text-content-secondary">Payer:</span> {localPatient.secondaryInsurance.payer}</div>
                     <div><span className="text-content-secondary">Policy:</span> {localPatient.secondaryInsurance.policyNo}</div>
@@ -660,7 +660,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
                   </div>
                 </div>
               )}
-              <button type="button" onClick={() => router.push('/portal/scan-submit')} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-xs text-content-secondary hover:border-brand/30">
+              <button type="button" onClick={() => router.push('/portal/scan-submit')} className="w-full bg-surface-elevated border border-dashed border-separator rounded-lg py-3 text-[13px] text-content-secondary hover:border-brand/30">
                 <Upload size={14} className="inline mr-1"/> Scan insurance card to auto-fill
               </button>
             </div>
@@ -670,11 +670,11 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
             <div className="p-4 space-y-3">
               {editMode ? (
                 <>
-                  <div><label className="text-xs text-content-secondary block mb-1">Contact Name</label>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Contact Name</label>
                     <input className={ic} value={editEmergency.name} onChange={e => setEditEmergency(p => ({...p, name: e.target.value}))} /></div>
-                  <div><label className="text-xs text-content-secondary block mb-1">Relationship</label>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Relationship</label>
                     <input className={ic} value={editEmergency.relationship} onChange={e => setEditEmergency(p => ({...p, relationship: e.target.value}))} /></div>
-                  <div><label className="text-xs text-content-secondary block mb-1">Phone</label>
+                  <div><label className="text-[13px] text-content-secondary block mb-1">Phone</label>
                     <input className={ic} value={editEmergency.phone} onChange={e => setEditEmergency(p => ({...p, phone: e.target.value}))} /></div>
                 </>
               ) : localPatient.emergencyContact?.name ? (
@@ -684,7 +684,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
                   <div>{localPatient.emergencyContact.phone}</div>
                 </div>
               ) : (
-                <div className="text-center py-8 text-xs text-content-secondary">
+                <div className="text-center py-8 text-[13px] text-content-secondary">
                   No emergency contact on file. <button onClick={() => setEditMode(true)} className="ml-1 text-brand underline">Add contact</button>
                 </div>
               )}
@@ -695,17 +695,17 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
             <div>
               {localPatient.employment ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div><span className="text-xs text-content-secondary block">Status</span><span>{localPatient.employment.status}</span></div>
-                  {localPatient.employment.occupation && <div><span className="text-xs text-content-secondary block">Occupation</span><span>{localPatient.employment.occupation}</span></div>}
-                  {localPatient.employment.employer && <div><span className="text-xs text-content-secondary block">Employer</span><span>{localPatient.employment.employer}</span></div>}
-                  {localPatient.employment.workPhone && <div><span className="text-xs text-content-secondary block">Work Phone</span><span>{localPatient.employment.workPhone}</span></div>}
+                  <div><span className="text-[13px] text-content-secondary block">Status</span><span>{localPatient.employment.status}</span></div>
+                  {localPatient.employment.occupation && <div><span className="text-[13px] text-content-secondary block">Occupation</span><span>{localPatient.employment.occupation}</span></div>}
+                  {localPatient.employment.employer && <div><span className="text-[13px] text-content-secondary block">Employer</span><span>{localPatient.employment.employer}</span></div>}
+                  {localPatient.employment.workPhone && <div><span className="text-[13px] text-content-secondary block">Work Phone</span><span>{localPatient.employment.workPhone}</span></div>}
                 </div>
-              ) : <div className="text-center py-8 text-xs text-content-secondary">No employment info on file.</div>}
+              ) : <div className="text-center py-8 text-[13px] text-content-secondary">No employment info on file.</div>}
             </div>
           )}
 
           {tab === 'documents' && <PatientDocumentsTab patientId={localPatient.id} patientName={`${localPatient.firstName} ${localPatient.lastName}`} />}
-          {tab === 'visits' && <div className="text-center py-8 text-xs text-content-secondary">No visit history yet.</div>}
+          {tab === 'visits' && <div className="text-center py-8 text-[13px] text-content-secondary">No visit history yet.</div>}
           {tab === 'messages' && (
             <PatientMessagesTab patientId={localPatient.id} clientId={localPatient.clientId} patientName={`${localPatient.firstName} ${localPatient.lastName}`} />
           )}
@@ -727,10 +727,10 @@ function PatientDocumentsTab({ patientId, patientName }: { patientId: string; pa
     return () => { cancelled = true }
   }, [patientId])
 
-  if (loading) return <div className="text-center py-8 text-xs text-content-secondary">Loading documents…</div>
+  if (loading) return <div className="text-center py-8 text-[13px] text-content-secondary">Loading documents…</div>
   if (docs.length === 0) return (
     <div className="text-center py-8">
-      <p className="text-xs text-content-secondary mb-2">No documents linked to {patientName} yet.</p>
+      <p className="text-[13px] text-content-secondary mb-2">No documents linked to {patientName} yet.</p>
       <button onClick={() => window.location.href = '/portal/scan-submit'} className="text-xs text-brand hover:underline">Upload via Scan & Submit →</button>
     </div>
   )
@@ -741,8 +741,8 @@ function PatientDocumentsTab({ patientId, patientName }: { patientId: string; pa
           <div className="flex items-center gap-3 min-w-0">
             <FileText size={14} className="text-brand shrink-0" />
             <div className="min-w-0">
-              <p className="text-xs font-medium truncate">{d.file_name || 'document'}</p>
-              <p className="text-[10px] text-content-tertiary">{d.doc_type || d.document_type || 'Other'} · {d.created_at ? new Date(d.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</p>
+              <p className="text-[13px] font-medium truncate">{d.file_name || 'document'}</p>
+              <p className="text-[11px] text-content-tertiary">{d.doc_type || d.document_type || 'Other'} · {d.created_at ? new Date(d.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</p>
             </div>
           </div>
           <button onClick={async () => {
@@ -750,7 +750,7 @@ function PatientDocumentsTab({ patientId, patientName }: { patientId: string; pa
               const res = await api.get<{ download_url: string }>(`/documents/${d.id}/download`)
               window.open(res.download_url, '_blank', 'noopener')
             } catch {}
-          }} className="text-[10px] text-brand hover:underline shrink-0">Download</button>
+          }} className="text-[11px] text-brand hover:underline shrink-0">Download</button>
         </div>
       ))}
     </div>
@@ -792,7 +792,7 @@ export default function PatientsPage() {
           className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-4 py-2 text-sm text-content-secondary placeholder:text-content-tertiary outline-none focus:border-brand/40 transition-colors"/>
       </div>
       <div className="card overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm min-w-[600px]">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
             <th className="text-left px-4 py-3">Patient {apiResult ? <span className="text-brand font-normal">(live)</span> : null}</th>
             <th className="text-left px-4 py-3">MRN</th>
             <th className="text-left px-4 py-3">DOB</th>
@@ -810,17 +810,17 @@ export default function PatientsPage() {
                   <Users size={20} className='text-content-tertiary' />
                 </div>
                 <p className='text-sm font-medium text-content-primary mb-1'>No patients yet</p>
-                <p className='text-xs text-content-secondary'>Patients will appear here once they&apos;re added to the system.</p>
+                <p className='text-[13px] text-content-secondary'>Patients will appear here once they&apos;re added to the system.</p>
               </div>
             </td></tr>
           ) : patients.map(p => (
             <tr key={p.id} onClick={() => setSelected(p)} className="border-b border-separator last:border-0 table-row cursor-pointer transition-all">
-              <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full bg-brand/10 flex items-center justify-center text-brand text-[10px] font-bold">{p.firstName[0]}{p.lastName[0]}</div><div className="font-medium">{p.firstName} {p.lastName}</div></div></td>
-              <td className="px-4 py-3 text-xs text-content-secondary font-mono">{toMRN(p.id)}</td>
+              <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full bg-brand/10 flex items-center justify-center text-brand text-[11px] font-bold">{p.firstName[0]}{p.lastName[0]}</div><div className="font-medium">{p.firstName} {p.lastName}</div></div></td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary font-mono">{toMRN(p.id)}</td>
               <td className="px-4 py-3 text-content-secondary text-xs">{formatDOB(p.dob)}</td>
               <td className="px-4 py-3 text-content-secondary">{p.phone}</td>
               <td className="px-4 py-3 text-content-secondary text-xs">{p.insurance?.payer || <span className="text-brand-deep dark:text-brand-deep">Not on file</span>}</td>
-              <td className="px-4 py-3"><div className="flex items-center gap-1.5"><div className="w-12 h-1.5 rounded-full bg-surface-elevated"><div className={`h-full rounded-full ${completenessColor(computeProfileComplete(p))}`} style={{ width: `${computeProfileComplete(p)}%` }}/></div><span className="text-[10px] text-content-secondary">{computeProfileComplete(p)}%</span></div></td>
+              <td className="px-4 py-3"><div className="flex items-center gap-1.5"><div className="w-12 h-1.5 rounded-full bg-surface-elevated"><div className={`h-full rounded-full ${completenessColor(computeProfileComplete(p))}`} style={{ width: `${computeProfileComplete(p)}%` }}/></div><span className="text-[11px] text-content-secondary">{computeProfileComplete(p)}%</span></div></td>
               <td className="px-4 py-3"><StatusBadge status={p.status} small/></td>
             </tr>
           ))
@@ -834,7 +834,7 @@ export default function PatientsPage() {
       <div className="card p-4 mt-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold">Patient Statements</h3>
-          {['admin', 'manager', 'biller', 'ar_team'].includes(currentUser.role) && <button onClick={async () => { try { await api.post('/reports/batch-statements', {}); toast.success('Batch statements queued — check Documents when ready') } catch { toast.error('Failed to generate statements — try again') } }} className="text-xs bg-brand/10 text-brand px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors">Generate Batch Statements</button>}
+          {['admin', 'manager', 'biller', 'ar_team'].includes(currentUser.role) && <button onClick={async () => { try { await api.post('/reports/batch-statements', {}); toast.success('Batch statements queued — check Documents when ready') } catch { toast.error('Failed to generate statements — try again') } }} className="text-[13px] bg-brand/10 text-brand px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors">Generate Batch Statements</button>}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
           {[{label:'Outstanding Balances',value:`$${(patients.length * 127).toLocaleString()}`,color:'text-brand-deep'},
@@ -844,7 +844,7 @@ export default function PatientsPage() {
           ].map(k=>
             <div key={k.label} className="bg-surface-elevated rounded-lg p-3">
               <p className={`text-lg font-bold ${k.color}`}>{k.value}</p>
-              <p className="text-[10px] text-content-tertiary">{k.label}</p>
+              <p className="text-[11px] text-content-tertiary">{k.label}</p>
             </div>
           )}
         </div>

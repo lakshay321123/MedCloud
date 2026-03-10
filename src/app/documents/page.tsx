@@ -95,14 +95,14 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
             <span className="text-sm font-semibold text-content-primary">{doc.type}</span>
           </div>
           <p className="text-[13px] text-content-secondary font-mono">{doc.name}</p>
-          <p className="text-[10px] text-content-tertiary mt-0.5">Uploaded {doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'} · {doc.source}</p>
+          <p className="text-[11px] text-content-tertiary mt-0.5">Uploaded {doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'} · {doc.source}</p>
         </div>
         <button onClick={onClose} className="p-1 hover:bg-surface-elevated rounded-btn"><X size={16} className="text-content-secondary"/></button>
       </div>
       <div className="flex-1 overflow-y-auto">
         {/* Preview area */}
         <div className={`relative bg-surface-elevated overflow-hidden border border-separator ${fullscreen ? 'fixed inset-0 z-50 rounded-none m-0' : 'm-4 rounded-lg'}`} style={fullscreen ? {} : { height: 'calc(100vh - 240px)', minHeight: '400px' }}>
-          {previewUrl && <button onClick={() => setFullscreen(f => !f)} className="absolute top-2 right-2 z-10 bg-black/60 text-white rounded-lg px-2.5 py-1.5 text-[10px] hover:bg-black/80 transition-colors backdrop-blur-sm">{fullscreen ? '✕ Exit Fullscreen' : '⛶ Fullscreen'}</button>}
+          {previewUrl && <button onClick={() => setFullscreen(f => !f)} className="absolute top-2 right-2 z-10 bg-black/60 text-white rounded-lg px-2.5 py-1.5 text-[11px] hover:bg-black/80 transition-colors backdrop-blur-sm">{fullscreen ? '✕ Exit Fullscreen' : '⛶ Fullscreen'}</button>}
           {previewLoading ? (
             <div className="flex flex-col items-center justify-center h-full gap-3">
               <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin" />
@@ -120,7 +120,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
               <p className="text-sm font-mono text-content-secondary">{doc.name}</p>
               <p className="text-xs text-content-tertiary">This file type cannot be previewed inline</p>
               <button onClick={() => window.open(previewUrl, '_blank', 'noopener')}
-                className="text-xs bg-brand/10 text-brand px-4 py-2 rounded-lg hover:bg-brand/20 transition-colors mt-2">
+                className="text-[13px] bg-brand text-white px-4 py-2 rounded-lg hover:bg-brand-deep transition-colors mt-2 shadow-sm">
                 Open in New Tab
               </button>
             </div>
@@ -135,7 +135,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
         {/* Quick Code Entry for Superbill / Clinical Note */}
         {(doc.type === 'Superbill' || doc.type === 'Clinical Note') && (
           <div className="mx-4 mb-4 card p-4">
-            <div className="text-[10px] font-semibold text-content-secondary uppercase tracking-wider mb-3">Quick Code Entry</div>
+            <div className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-3">Quick Code Entry</div>
             <div className="space-y-2">
               {[
                 { label: 'CPT Code(s)', placeholder: 'e.g. 99214, 93000' },
@@ -165,7 +165,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
         {/* Link to patient section */}
         {!doc.patientId && (
           <div className="mx-4 mb-4 card p-4">
-            <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Link to Patient</h4>
+            <h4 className="text-[13px] font-semibold text-content-secondary uppercase tracking-wider mb-3">Link to Patient</h4>
             {doc.aiConfidence && (
               <div className="bg-brand/10 border border-brand/20 rounded-lg p-2 mb-3 text-[11px] text-brand flex items-center gap-2">
                 <span>AI Classification: {doc.type}</span>
@@ -193,13 +193,13 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
         {/* Access log */}
         <div className="mx-4 mb-4">
           <details className="card">
-            <summary className="px-4 py-3 text-xs font-semibold text-content-secondary cursor-pointer select-none">Access Log</summary>
+            <summary className="px-4 py-3 text-[13px] font-semibold text-content-secondary cursor-pointer select-none">Access Log</summary>
             <div className="px-4 pb-3 space-y-1.5 border-t border-separator pt-2">
               {[
                 { user: 'Maria Rodriguez', time: 'Mar 1 2026 9:14 AM', action: 'Viewed' },
                 { user: 'Tom Baker', time: 'Mar 1 2026 11:32 AM', action: 'Downloaded' },
               ].map((e,i)=>(
-                <div key={i} className="text-[10px] text-content-secondary">{e.action} by {e.user} — {e.time}</div>
+                <div key={i} className="text-[11px] text-content-secondary">{e.action} by {e.user} — {e.time}</div>
               ))}
             </div>
           </details>
@@ -306,15 +306,15 @@ function AllDocsTab() {
               <td className="px-4 py-3 text-[13px] text-content-secondary">{d.client}</td>
               <td className="px-4 py-3 text-xs">{d.patient}</td>
               <td className="px-4 py-3 text-[13px] text-content-secondary">{d.uploadDate ? new Date(d.uploadDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${sourceBadge(d.source)}`}>{d.source}</span></td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusBadge(d.status)}`}>{d.status}</span></td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full ${sourceBadge(d.source)}`}>{d.source}</span></td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${statusBadge(d.status)}`}>{d.status}</span></td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-1">
                   {!d.patientId && (
                     <button onClick={e=>{e.stopPropagation(); setLinkingDocId(d.id === linkingDocId ? null : d.id)}}
-                      className="text-[10px] text-brand hover:underline px-1.5 py-1">Link</button>
+                      className="text-[11px] text-brand hover:underline px-1.5 py-1">Link</button>
                   )}
-                  {d.patientId && <span className="text-[10px] text-brand-dark px-1.5">✓</span>}
+                  {d.patientId && <span className="text-[11px] text-brand-dark px-1.5">✓</span>}
                   <button onClick={e=>{e.stopPropagation();setSelectedDoc(d)}} className="p-1.5 rounded hover:bg-surface-elevated text-content-secondary hover:text-content-primary transition-colors">
                     <Eye size={12}/>
                   </button>
@@ -334,9 +334,9 @@ function AllDocsTab() {
                           } catch(err) {
                             toast.error('Link failed: ' + (err instanceof Error ? err.message : 'Unknown error'))
                           }
-                        }} className="w-full text-left px-2 py-1.5 text-xs hover:bg-brand/10 hover:text-brand rounded transition-colors">{p.name}</button>
+                        }} className="w-full text-left px-2 py-1.5 text-[13px] hover:bg-brand/10 hover:text-brand rounded transition-colors">{p.name}</button>
                       ))}
-                      {linkPatients.length === 0 && <p className="text-[10px] text-content-tertiary text-center py-2">No patients found</p>}
+                      {linkPatients.length === 0 && <p className="text-[11px] text-content-tertiary text-center py-2">No patients found</p>}
                     </div>
                   </div>
                 )}
@@ -381,9 +381,9 @@ function UnlinkedQueueTab() {
               <div>
                 <p className="text-sm font-medium font-mono">{d.name}</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${sourceBadge(d.source)}`}>{d.source}</span>
-                  {d.aiConfidence&&<span className="text-[10px] text-brand">AI: {d.type} · {d.aiConfidence}% conf</span>}
-                  <span className="text-[10px] text-content-tertiary">Arrived: {d.uploadDate ? new Date(d.uploadDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</span>
+                  <span className={`text-[11px] px-2 py-0.5 rounded-full ${sourceBadge(d.source)}`}>{d.source}</span>
+                  {d.aiConfidence&&<span className="text-[11px] text-brand">AI: {d.type} · {d.aiConfidence}% conf</span>}
+                  <span className="text-[11px] text-content-tertiary">Arrived: {d.uploadDate ? new Date(d.uploadDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</span>
                 </div>
               </div>
             </div>
@@ -403,13 +403,13 @@ function UnlinkedQueueTab() {
                     )}
                   </div>
                   <button disabled={!selectedPatientIds[d.id]} onClick={async ()=>{ if (!linking || !selectedPatientIds[d.id]) return; try { await api.patch(`/documents/${linking}`, { patient_id: selectedPatientIds[d.id], status: 'linked' }); toast.success('Document linked'); setLinking(null) } catch { toast.error('Link failed') } }}
-                    className="text-[10px] bg-brand text-white px-3 py-1.5 rounded-lg disabled:opacity-40">Link</button>
-                  <button onClick={()=>setLinking(null)} className="text-[10px] border border-separator px-2 py-1.5 rounded-lg text-content-secondary">Cancel</button>
+                    className="text-[11px] bg-brand text-white px-3 py-1.5 rounded-lg disabled:opacity-40">Link</button>
+                  <button onClick={()=>setLinking(null)} className="text-[11px] border border-separator px-2 py-1.5 rounded-lg text-content-secondary">Cancel</button>
                 </div>
               ) : (
                 <>
-                  <button onClick={()=>setLinking(d.id)} className="text-[10px] bg-brand/10 text-brand px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors">Link to Patient</button>
-                  <button onClick={async ()=>{ try { await api.patch(`/documents/${d.id}`, { status: 'discarded' }); toast.success('Document discarded') } catch { toast.warning('Document discarded locally') } }} className="text-[10px] border border-separator text-content-secondary px-3 py-1.5 rounded-lg hover:text-red-500 hover:border-red-500/30 transition-colors">Discard</button>
+                  <button onClick={()=>setLinking(d.id)} className="text-[11px] bg-brand text-white px-3 py-1.5 rounded-lg hover:bg-brand-deep transition-colors shadow-sm">Link to Patient</button>
+                  <button onClick={async ()=>{ try { await api.patch(`/documents/${d.id}`, { status: 'discarded' }); toast.success('Document discarded') } catch { toast.warning('Document discarded locally') } }} className="text-[11px] border border-separator text-content-secondary px-3 py-1.5 rounded-lg hover:text-red-500 hover:border-red-500/30 transition-colors">Discard</button>
                 </>
               )}
             </div>
@@ -437,7 +437,7 @@ function FaxCenterTab() {
         <div className="flex gap-1">
           {(['inbound','outbound'] as const).map(t=>(
             <button key={t} onClick={()=>setSubTab(t)}
-              className={`px-4 py-1.5 rounded-lg text-[13px] font-medium ${subTab===t?'bg-brand/10 text-brand':'bg-surface-elevated text-content-secondary border border-separator'}`}>
+              className={`px-4 py-1.5 rounded-lg text-[13px] font-medium ${subTab===t?'bg-brand text-white shadow-sm':'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'}`}>
               {t==='inbound'?'Inbound':'Outbound'}
             </button>
           ))}
@@ -459,11 +459,11 @@ function FaxCenterTab() {
               <td className="px-4 py-3 text-xs">{f.fromTo}</td>
               <td className="px-4 py-3 text-[13px] text-content-secondary">{f.date}</td>
               <td className="px-4 py-3 text-xs">{f.pages}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${statusStyle(f.status)}`}>{f.status}</span></td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full ${statusStyle(f.status)}`}>{f.status}</span></td>
               <td className="px-4 py-3 text-xs text-brand">{f.document??'—'}</td>
               <td className="px-4 py-3 flex gap-1">
-                {f.document&&<button onClick={e=>{e.stopPropagation(); if (f.document?.startsWith('http')) { window.open(f.document, '_blank'); toast.info('Opening fax...') } else { toast.error('Invalid document link') }}} className="text-[10px] text-content-secondary hover:text-content-secondary border border-separator px-2 py-1 rounded transition-colors">View</button>}
-                {f.direction==='Inbound'&&<button onClick={e=>{e.stopPropagation();toast.info('Open fax in preview drawer to link to a patient')}} className="text-[10px] text-brand hover:underline px-2 py-1">Link</button>}
+                {f.document&&<button onClick={e=>{e.stopPropagation(); if (f.document?.startsWith('http')) { window.open(f.document, '_blank'); toast.info('Opening fax...') } else { toast.error('Invalid document link') }}} className="text-[11px] text-content-secondary hover:text-content-secondary border border-separator px-2 py-1 rounded transition-colors">View</button>}
+                {f.direction==='Inbound'&&<button onClick={e=>{e.stopPropagation();toast.info('Open fax in preview drawer to link to a patient')}} className="text-[11px] text-brand hover:underline px-2 py-1">Link</button>}
               </td>
             </tr>
           ))}</tbody>
@@ -592,15 +592,15 @@ function AIProcessingTab() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="card p-4 text-center">
           <p className="text-2xl font-bold text-brand">{processed}</p>
-          <p className="text-[10px] text-content-tertiary mt-1">Documents Processed</p>
+          <p className="text-[11px] text-content-tertiary mt-1">Documents Processed</p>
         </div>
         <div className="card p-4 text-center">
           <p className="text-2xl font-bold text-brand-dark">{avgConfidence || '—'}%</p>
-          <p className="text-[10px] text-content-tertiary mt-1">Avg AI Confidence</p>
+          <p className="text-[11px] text-content-tertiary mt-1">Avg AI Confidence</p>
         </div>
         <div className="card p-4 text-center">
           <p className="text-2xl font-bold text-brand-deep">{pending}</p>
-          <p className="text-[10px] text-content-tertiary mt-1">Pending Processing</p>
+          <p className="text-[11px] text-content-tertiary mt-1">Pending Processing</p>
         </div>
       </div>
 
@@ -615,15 +615,15 @@ function AIProcessingTab() {
               <div key={d.id} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
                 <div>
                   <p className="text-xs font-mono">{d.file_name}</p>
-                  <p className="text-[10px] text-content-tertiary">{d.doc_type || d.document_type || 'Other'} · {d.content_type}</p>
+                  <p className="text-[11px] text-content-tertiary">{d.doc_type || d.document_type || 'Other'} · {d.content_type}</p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => handleClassify(d.id)} disabled={!!processing[d.id]}
-                    className="text-[10px] bg-brand/10 text-brand px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors disabled:opacity-50">
+                    className="text-[11px] bg-brand text-white px-3 py-1.5 rounded-lg hover:bg-brand-deep transition-colors disabled:opacity-50 shadow-sm">
                     {processing[d.id] === 'classifying' ? 'Classifying…' : 'AI Classify'}
                   </button>
                   <button onClick={() => handleTrigger(d.id)} disabled={!!processing[d.id]}
-                    className="text-[10px] bg-brand/10 text-brand-dark px-3 py-1.5 rounded-lg hover:bg-brand/10 transition-colors disabled:opacity-50">
+                    className="text-[11px] bg-brand/10 text-brand-dark border border-brand/20 px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors disabled:opacity-50">
                     {processing[d.id] === 'textract' ? 'Processing…' : 'Run Textract'}
                   </button>
                 </div>
@@ -637,7 +637,7 @@ function AIProcessingTab() {
       <div className="card p-4">
         <h3 className="text-sm font-semibold mb-3">Processed Documents</h3>
         {textractDocs.length === 0 ? (
-          <p className="text-xs text-content-tertiary py-4 text-center">No documents have been processed yet. Upload documents and run Textract to see results here.</p>
+          <p className="text-[13px] text-content-tertiary py-4 text-center">No documents have been processed yet. Upload documents and run Textract to see results here.</p>
         ) : (
           <table className="w-full text-xs">
             <thead><tr className="border-b border-separator text-content-secondary">
@@ -650,14 +650,14 @@ function AIProcessingTab() {
               {textractDocs.slice(0, 20).map(d => (
                 <tr key={d.id} className="border-b border-separator last:border-0">
                   <td className="py-2 px-3 font-mono">{d.file_name}</td>
-                  <td className="py-2 px-3"><span className="text-[10px] px-2 py-0.5 rounded bg-surface-elevated">{(d as any).classification || d.doc_type || d.document_type || '—'}</span></td>
+                  <td className="py-2 px-3"><span className="text-[11px] px-2 py-0.5 rounded bg-surface-elevated">{(d as any).classification || d.doc_type || d.document_type || '—'}</span></td>
                   <td className="py-2 px-3">
                     <span className={`font-medium ${(d.ai_confidence||0)>=90?'text-brand-dark':(d.ai_confidence||0)>=80?'text-brand-deep':'text-red-500'}`}>
                       {d.ai_confidence ? `${d.ai_confidence}%` : '—'}
                     </span>
                   </td>
                   <td className="py-2 px-3">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${
                       (d as any).textract_status === 'completed' ? 'bg-brand/10 text-brand-dark' :
                       (d as any).textract_status === 'processing' ? 'bg-brand/10 text-brand' :
                       'bg-brand-pale0/10 text-brand-deep'
@@ -877,14 +877,14 @@ function UploadModal({ onClose }: { onClose: () => void }) {
               <div className="space-y-1.5 max-h-36 overflow-y-auto">
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-[13px] font-medium text-content-secondary">{files.length} file{files.length !== 1 ? 's' : ''} selected</p>
-                  <button onClick={() => setFiles([])} className="text-[10px] text-red-500 hover:text-red-600">Clear all</button>
+                  <button onClick={() => setFiles([])} className="text-[11px] text-red-500 hover:text-red-600">Clear all</button>
                 </div>
                 {files.map((f, i) => (
                   <div key={`${f.name}-${f.lastModified}`} className="flex items-center gap-3 bg-surface-elevated rounded-lg px-3 py-2">
                     <FileText size={14} className="text-brand shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate">{f.name}</p>
-                      <p className="text-[10px] text-content-tertiary">{(f.size / 1024 / 1024).toFixed(1)} MB</p>
+                      <p className="text-[13px] font-medium truncate">{f.name}</p>
+                      <p className="text-[11px] text-content-tertiary">{(f.size / 1024 / 1024).toFixed(1)} MB</p>
                     </div>
                     <button onClick={() => setFiles(prev => prev.filter(file => file !== f))}>
                       <X size={14} className="text-content-tertiary hover:text-red-500 transition-colors" />

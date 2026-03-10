@@ -611,7 +611,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                               <span className="shrink-0 mt-0.5">•</span>{r}
                             </p>
                           ))}
-                          <button onClick={() => setDenialRisk(null)} className="text-[10px] text-content-tertiary hover:text-content-secondary mt-1.5">Re-analyze</button>
+                          <button onClick={() => setDenialRisk(null)} className="text-[11px] text-content-tertiary hover:text-content-secondary mt-1.5">Re-analyze</button>
                         </div>
                       )}
                       <button onClick={statusAction} disabled={transitioning} className="w-full bg-brand text-white rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{transitioning ? 'Submitting…' : 'Submit to Clearinghouse'}</button>
@@ -641,7 +641,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   {ediOutput && (
                     <div className="mt-2">
                       <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-1">Generated 837P EDI</p>
-                      <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[10px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{ediOutput}</pre>
+                      <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[11px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{ediOutput}</pre>
                       <button onClick={() => router.push('/edi')}
                         className="mt-1.5 text-[11px] text-brand hover:underline block">View in EDI Center →</button>
                     </div>
@@ -649,7 +649,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   {edi837IOutput && (
                     <div className="mt-2">
                       <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-1">Generated 837I Institutional EDI</p>
-                      <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[10px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{edi837IOutput}</pre>
+                      <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[11px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{edi837IOutput}</pre>
                     </div>
                   )}
                   {underpayResult && (
@@ -673,7 +673,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   {statusInquiryResult && (
                     <div className="mt-2">
                       <p className="text-[11px] uppercase tracking-wider text-brand-dark font-semibold mb-1">276 Claim Status Inquiry</p>
-                      <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[10px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{statusInquiryResult}</pre>
+                      <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[11px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{statusInquiryResult}</pre>
                     </div>
                   )}
                 </div>
@@ -721,27 +721,27 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                       <p className="text-[11px] font-semibold text-content-tertiary uppercase tracking-wider">New Line Item</p>
                       <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <label className="text-[10px] text-content-tertiary block mb-0.5">CPT *</label>
+                          <label className="text-[11px] text-content-tertiary block mb-0.5">CPT *</label>
                           <input value={newLine.cpt_code} onChange={e => setNewLine(p => ({...p, cpt_code: e.target.value}))} placeholder="99213" className="w-full bg-surface-primary border border-separator rounded px-2 py-1 text-[12px] font-mono focus:outline-none focus:border-brand/40" />
                         </div>
                         <div>
-                          <label className="text-[10px] text-content-tertiary block mb-0.5">Charge ($) *</label>
+                          <label className="text-[11px] text-content-tertiary block mb-0.5">Charge ($) *</label>
                           <input value={newLine.charge_amount} onChange={e => setNewLine(p => ({...p, charge_amount: e.target.value}))} placeholder="185.00" className="w-full bg-surface-primary border border-separator rounded px-2 py-1 text-[12px] focus:outline-none focus:border-brand/40" />
                         </div>
                         <div>
-                          <label className="text-[10px] text-content-tertiary block mb-0.5">Units</label>
+                          <label className="text-[11px] text-content-tertiary block mb-0.5">Units</label>
                           <input value={newLine.units} onChange={e => setNewLine(p => ({...p, units: e.target.value}))} placeholder="1" className="w-full bg-surface-primary border border-separator rounded px-2 py-1 text-[12px] focus:outline-none focus:border-brand/40" />
                         </div>
                         <div>
-                          <label className="text-[10px] text-content-tertiary block mb-0.5">Modifier</label>
+                          <label className="text-[11px] text-content-tertiary block mb-0.5">Modifier</label>
                           <input value={newLine.modifier_1} onChange={e => setNewLine(p => ({...p, modifier_1: e.target.value}))} placeholder="25" className="w-full bg-surface-primary border border-separator rounded px-2 py-1 text-[12px] font-mono focus:outline-none focus:border-brand/40" />
                         </div>
                         <div>
-                          <label className="text-[10px] text-content-tertiary block mb-0.5">POS</label>
+                          <label className="text-[11px] text-content-tertiary block mb-0.5">POS</label>
                           <input value={newLine.place_of_service} onChange={e => setNewLine(p => ({...p, place_of_service: e.target.value}))} placeholder="11" className="w-full bg-surface-primary border border-separator rounded px-2 py-1 text-[12px] focus:outline-none focus:border-brand/40" />
                         </div>
                         <div>
-                          <label className="text-[10px] text-content-tertiary block mb-0.5">Description</label>
+                          <label className="text-[11px] text-content-tertiary block mb-0.5">Description</label>
                           <input value={newLine.description} onChange={e => setNewLine(p => ({...p, description: e.target.value}))} placeholder="Office visit" className="w-full bg-surface-primary border border-separator rounded px-2 py-1 text-[12px] focus:outline-none focus:border-brand/40" />
                         </div>
                       </div>
@@ -765,7 +765,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                       <div key={dx.id} className="flex items-center gap-3 text-[12px]">
                         <span className="font-mono text-content-primary w-16">{dx.icd_code}</span>
                         <span className="text-content-secondary">{dx.description || '—'}</span>
-                        {dx.is_primary && <span className="text-[10px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-pill">Primary</span>}
+                        {dx.is_primary && <span className="text-[11px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-pill">Primary</span>}
                       </div>
                     ))}
                   </div>
@@ -782,7 +782,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
             <div className="grid grid-cols-2 gap-4 h-[calc(100vh-320px)]">
               {/* Left: document preview */}
               <div className="card overflow-hidden flex flex-col">
-                <div className="px-4 py-2 border-b border-separator text-xs font-semibold text-content-secondary uppercase tracking-wider">
+                <div className="px-4 py-2 border-b border-separator text-[13px] font-semibold text-content-secondary uppercase tracking-wider">
                   Supporting Documents
                 </div>
                 <div className="flex-1 flex flex-col items-center justify-center gap-3 text-content-tertiary">
@@ -807,7 +807,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                 {scrubResults.length > 0 ? (
                   <>
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-content-primary uppercase tracking-wider">AI Scrub Results</p>
+                      <p className="text-[13px] font-semibold text-content-primary uppercase tracking-wider">AI Scrub Results</p>
                       <div className="flex gap-2 text-[11px]">
                         <span className="text-brand-dark">{scrubResults.filter(r => r.passed).length} passed</span>
                         <span className="text-red-500">{scrubResults.filter(r => !r.passed && r.severity === 'error').length} errors</span>
@@ -818,7 +818,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                       <div className="space-y-1">
                         {scrubResults.filter(r => !r.passed).map(r => (
                           <div key={r.rule_code} className={`flex items-start gap-2 px-3 py-2 rounded-lg ${r.severity === 'error' ? 'bg-red-500/10 border border-red-500/20' : 'bg-brand-pale0/10 border border-brand-light/20'}`}>
-                            <span className={`text-[10px] font-mono mt-0.5 shrink-0 ${r.severity === 'error' ? 'text-red-500' : 'text-brand-deep'}`}>{r.severity === 'error' ? '✕' : '⚠'}</span>
+                            <span className={`text-[11px] font-mono mt-0.5 shrink-0 ${r.severity === 'error' ? 'text-red-500' : 'text-brand-deep'}`}>{r.severity === 'error' ? '✕' : '⚠'}</span>
                             <div>
                               <p className="text-[12px] text-content-primary font-medium">{r.rule_name}</p>
                               <p className="text-[11px] text-content-tertiary">{r.message}</p>
@@ -918,7 +918,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                       <div className={`max-w-[80%] px-3 py-2 rounded-lg text-[13px] ${isStaff ? 'bg-brand/10 text-content-primary' : 'bg-surface-elevated text-content-primary'}`}>
                         <p className="text-[11px] text-content-tertiary mb-1">{msg.sender_email || msg.sender_role || 'Staff'}</p>
                         {msg.body}
-                        <p className="text-[10px] text-content-tertiary mt-1">{new Date(msg.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                        <p className="text-[11px] text-content-tertiary mt-1">{new Date(msg.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
                       </div>
                     </div>
                   )
@@ -1102,12 +1102,12 @@ export default function ClaimsPage() {
             <p className="text-[12px] font-semibold text-red-600">Timely Filing Deadlines Approaching</p>
             <div className="flex flex-wrap gap-2 mt-1.5">
               {timelyFilingData.data.filter(tf => tf.days_remaining <= 14).slice(0, 5).map(tf => (
-                <span key={tf.claim_id} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${tf.days_remaining <= 3 ? 'bg-red-500/20 text-red-600' : tf.days_remaining <= 7 ? 'bg-brand-pale0/20 text-brand-deep' : 'bg-brand-pale0/20 text-brand-deep'}`}>
+                <span key={tf.claim_id} className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${tf.days_remaining <= 3 ? 'bg-red-500/20 text-red-600' : tf.days_remaining <= 7 ? 'bg-brand-pale0/20 text-brand-deep' : 'bg-brand-pale0/20 text-brand-deep'}`}>
                   {tf.claim_number || tf.claim_id.slice(0,8)} · {tf.days_remaining}d left · {tf.payer_name || 'Unknown'}
                 </span>
               ))}
               {timelyFilingData.data.filter(tf => tf.days_remaining <= 14).length > 5 && (
-                <span className="text-[10px] text-content-tertiary">+{timelyFilingData.data.filter(tf => tf.days_remaining <= 14).length - 5} more</span>
+                <span className="text-[11px] text-content-tertiary">+{timelyFilingData.data.filter(tf => tf.days_remaining <= 14).length - 5} more</span>
               )}
             </div>
           </div>
@@ -1393,7 +1393,7 @@ export default function ClaimsPage() {
             {label:'EDI Transactions Today',value:allClaims.filter(c=>c.status==='submitted'||c.status==='accepted').length,color:'text-brand-dark'}].map(k=>
             <div key={k.label} className="bg-surface-elevated rounded-lg p-3">
               <p className={`text-lg font-bold ${k.color}`}>{k.value}</p>
-              <p className="text-[10px] text-content-tertiary">{k.label}</p>
+              <p className="text-[11px] text-content-tertiary">{k.label}</p>
             </div>
           )}
         </div>

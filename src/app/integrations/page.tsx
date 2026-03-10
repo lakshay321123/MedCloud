@@ -97,26 +97,26 @@ function LogDrawer({ integration, onClose }: { integration: Integration; onClose
         <div className="p-4 border-b border-separator flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 ${integration.color} rounded-lg flex items-center justify-center text-white font-bold text-xs`}>{integration.initials}</div>
-            <div><p className="text-sm font-semibold">{integration.name}</p><p className="text-[10px] text-content-secondary">Sync Logs</p></div>
+            <div><p className="text-sm font-semibold">{integration.name}</p><p className="text-[11px] text-content-secondary">Sync Logs</p></div>
           </div>
           <button onClick={onClose}><X size={16} className="text-content-secondary"/></button>
         </div>
         <div className="flex-1 overflow-y-auto">
           <table className="w-full text-sm">
-            <thead><tr className="border-b border-separator text-[10px] text-content-secondary">
+            <thead><tr className="border-b border-separator text-[11px] text-content-secondary">
               <th className="text-left px-4 py-2">Timestamp</th><th className="text-left px-4 py-2">Dir</th>
               <th className="text-left px-4 py-2">Status</th><th className="text-left px-4 py-2">Records</th>
               <th className="text-left px-4 py-2">Duration</th>
             </tr></thead>
             <tbody>{logs.map((l,i)=>(
               <tr key={i} className="border-b border-separator last:border-0">
-                <td className="px-4 py-2.5 font-mono text-[10px] text-content-secondary">{l.ts}</td>
-                <td className="px-4 py-2.5 text-[10px]">{l.dir}</td>
+                <td className="px-4 py-2.5 font-mono text-[11px] text-content-secondary">{l.ts}</td>
+                <td className="px-4 py-2.5 text-[11px]">{l.dir}</td>
                 <td className="px-4 py-2.5">
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${l.status==='Success'?'bg-brand/10 text-brand-dark dark:text-brand-dark':'bg-red-500/10 text-red-500'}`}>{l.status}</span>
+                  <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${l.status==='Success'?'bg-brand/10 text-brand-dark dark:text-brand-dark':'bg-red-500/10 text-red-500'}`}>{l.status}</span>
                 </td>
-                <td className="px-4 py-2.5 text-[10px]">{l.records}</td>
-                <td className="px-4 py-2.5 text-[10px] text-content-secondary">{l.duration}</td>
+                <td className="px-4 py-2.5 text-[11px]">{l.records}</td>
+                <td className="px-4 py-2.5 text-[11px] text-content-secondary">{l.duration}</td>
               </tr>
             ))}</tbody>
           </table>
@@ -185,18 +185,18 @@ export default function IntegrationsPage() {
                       <p className="text-sm font-semibold text-content-primary truncate">{intg.name}</p>
                       {statusIcon(intg.status)}
                     </div>
-                    <p className="text-[10px] text-content-secondary truncate">{intg.description}</p>
+                    <p className="text-[11px] text-content-secondary truncate">{intg.description}</p>
                   </div>
                 </div>
                 <div className="mb-3">
                   <span className={`text-[11px] font-medium ${statusColor(intg.status)}`}>{statusLabel(intg.status)}</span>
-                  {intg.lastSync&&<p className="text-[10px] text-content-tertiary">Last sync: {intg.lastSync}</p>}
-                  {intg.errorMsg&&<p className="text-[10px] text-red-500 mt-0.5 truncate">{intg.errorMsg}</p>}
+                  {intg.lastSync&&<p className="text-[11px] text-content-tertiary">Last sync: {intg.lastSync}</p>}
+                  {intg.errorMsg&&<p className="text-[11px] text-red-500 mt-0.5 truncate">{intg.errorMsg}</p>}
                 </div>
                 <div className="flex gap-1.5">
-                  <button onClick={()=>setConfigFor(intg)} className="flex-1 text-[10px] font-medium border border-brand/30 text-brand py-1.5 rounded hover:bg-brand/10 transition-colors">Configure</button>
-                  {intg.status==='connected'&&<button onClick={()=>toast.info(`Testing ${intg.name}...`)} className="flex-1 text-[10px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-secondary transition-colors">Test</button>}
-                  <button onClick={()=>setLogsFor(intg)} className="flex-1 text-[10px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-secondary transition-colors">Logs</button>
+                  <button onClick={()=>setConfigFor(intg)} className="flex-1 text-[11px] font-medium border border-brand/30 text-brand py-1.5 rounded hover:bg-brand/10 transition-colors">Configure</button>
+                  {intg.status==='connected'&&<button onClick={()=>toast.info(`Testing ${intg.name}...`)} className="flex-1 text-[11px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-secondary transition-colors">Test</button>}
+                  <button onClick={()=>setLogsFor(intg)} className="flex-1 text-[11px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-secondary transition-colors">Logs</button>
                 </div>
               </div>
             ))}
@@ -214,7 +214,7 @@ export default function IntegrationsPage() {
           {[{label:'Claims Sent Today',value:'234',color:'text-brand'},{label:'Accepted',value:'228',color:'text-brand-dark'},{label:'Rejected',value:'6',color:'text-red-500'},{label:'Acceptance Rate',value:'97.4%',color:'text-brand-dark'}].map(k=>
             <div key={k.label} className="bg-surface-elevated rounded-lg p-3">
               <p className={`text-lg font-bold ${k.color}`}>{k.value}</p>
-              <p className="text-[10px] text-content-tertiary">{k.label}</p>
+              <p className="text-[11px] text-content-tertiary">{k.label}</p>
             </div>
           )}
         </div>
@@ -222,7 +222,7 @@ export default function IntegrationsPage() {
           {ediStats.map(edi=>(
             <div key={edi.type} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
               <span className="text-xs font-medium w-48">{edi.type}</span>
-              <div className="flex items-center gap-4 text-[10px]">
+              <div className="flex items-center gap-4 text-[11px]">
                 <span className="text-content-secondary">{edi.sent} sent</span>
                 <span className="text-brand-dark">{edi.accepted} accepted</span>
                 {edi.rejected > 0 && <span className="text-red-500">{edi.rejected} rejected</span>}
@@ -246,11 +246,11 @@ export default function IntegrationsPage() {
             <div key={p.payer} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
               <div className="flex items-center gap-3">
                 <span className="text-xs font-medium w-36">{p.payer}</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full ${p.status==='enrolled'?'bg-brand/10 text-brand-dark':'bg-brand-pale0/10 text-brand-deep'}`}>{p.status}</span>
+                <span className={`text-[11px] px-2 py-0.5 rounded-full ${p.status==='enrolled'?'bg-brand/10 text-brand-dark':'bg-brand-pale0/10 text-brand-deep'}`}>{p.status}</span>
               </div>
               <div className="flex items-center gap-2">
                 {p.types.map(t=><span key={t} className="text-[9px] bg-surface px-1.5 py-0.5 rounded text-content-tertiary">{t}</span>)}
-                <span className="text-[10px] text-content-tertiary ml-2">Since {p.since}</span>
+                <span className="text-[11px] text-content-tertiary ml-2">Since {p.since}</span>
               </div>
             </div>
           ))}

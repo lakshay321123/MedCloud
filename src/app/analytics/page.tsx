@@ -579,7 +579,7 @@ export default function AnalyticsPage() {
                     <td className="px-4 py-2.5 font-mono">{p.avgDays}{typeof p.avgDays === 'number' ? 'd' : ''}</td>
                     <td className="px-4 py-2.5">
                       <span className={`font-semibold ${p.phiColor}`}>{p.phi}</span>
-                      <span className="text-content-tertiary text-[10px] ml-1">/ 100</span>
+                      <span className="text-content-tertiary text-[11px] ml-1">/ 100</span>
                     </td>
                   </tr>
                 ))}
@@ -719,7 +719,7 @@ export default function AnalyticsPage() {
                   <div key={a.time} className="flex items-center gap-2">
                     <span className="text-[11px] font-mono text-content-tertiary w-16 shrink-0">{a.time}</span>
                     <span className="text-[12px] text-content-primary flex-1">{a.patient}</span>
-                    <span className="text-[10px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-pill">{a.type}</span>
+                    <span className="text-[11px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-pill">{a.type}</span>
                   </div>
                 ))}
               </div>

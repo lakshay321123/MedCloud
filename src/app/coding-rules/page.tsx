@@ -112,7 +112,7 @@ export default function CodingRulesPage() {
         <div className="card p-4">
           <div className="flex items-center gap-4 flex-wrap">
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Client</label>
+              <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Client</label>
               <select value={filterClient} onChange={e => setFilterClient(e.target.value)}
                 className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary min-w-[200px]">
                 <option value="">All Clients</option>
@@ -120,7 +120,7 @@ export default function CodingRulesPage() {
               </select>
             </div>
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Payer</label>
+              <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Payer</label>
               <input value={filterPayer} onChange={e => setFilterPayer(e.target.value)} placeholder="Filter by payer name..."
                 className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary min-w-[200px]" />
             </div>
@@ -153,18 +153,18 @@ export default function CodingRulesPage() {
                   <Zap size={13} /> Convert
                 </button>
               </div>
-              <p className="text-[10px] text-brand-dark mt-1">AI will interpret your English rule and fill in the structured fields below. Review and adjust before saving.</p>
+              <p className="text-[11px] text-brand-dark mt-1">AI will interpret your English rule and fill in the structured fields below. Review and adjust before saving.</p>
             </div>
 
             {/* Structured fields */}
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Rule Name</label>
+                <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Rule Name</label>
                 <input value={form.rule_name} onChange={e => setForm(p => ({ ...p, rule_name: e.target.value }))} placeholder="Descriptive name"
                   className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Payer</label>
+                <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Payer</label>
                 <input value={form.payer_name} onChange={e => setForm(p => ({ ...p, payer_name: e.target.value }))} placeholder="e.g. Aetna, UHC (blank = all payers)"
                   className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm" />
               </div>
@@ -172,7 +172,7 @@ export default function CodingRulesPage() {
 
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Client</label>
+                <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Client</label>
                 <select value={form.client_id} onChange={e => setForm(p => ({ ...p, client_id: e.target.value }))}
                   className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm">
                   <option value="">All Clients</option>
@@ -180,14 +180,14 @@ export default function CodingRulesPage() {
                 </select>
               </div>
               <div>
-                <label className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Priority (lower = runs first)</label>
+                <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Priority (lower = runs first)</label>
                 <input type="number" value={form.priority} onChange={e => setForm(p => ({ ...p, priority: +e.target.value }))}
                   className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm" />
               </div>
             </div>
 
             <div className="p-4 bg-surface-elevated rounded-xl border border-separator mb-4">
-              <p className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold mb-3">Condition → Action</p>
+              <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-3">Condition → Action</p>
               <div className="grid grid-cols-3 gap-3 mb-3">
                 <select value={form.condition_field} onChange={e => setForm(p => ({ ...p, condition_field: e.target.value }))}
                   className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary">

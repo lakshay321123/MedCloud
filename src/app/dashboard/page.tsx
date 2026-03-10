@@ -122,11 +122,11 @@ function ExecutiveDashboard() {
             {agingBuckets
               ? agingBuckets.map((b, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-                    <span className="text-[10px] font-medium text-content-secondary truncate w-full text-center">{b.value > 0 ? b.value.toLocaleString() : '—'}</span>
+                    <span className="text-[11px] font-medium text-content-secondary truncate w-full text-center">{b.value > 0 ? b.value.toLocaleString() : '—'}</span>
                     <div className="w-full rounded-lg relative overflow-hidden" style={{ height: `${Math.max((b.value / maxAgingVal) * 120, b.value > 0 ? 8 : 2)}px` }}>
                       <div className="absolute inset-0 bg-gradient-to-t from-brand-dark to-brand rounded-lg" />
                     </div>
-                    <span className="text-[10px] text-content-tertiary whitespace-nowrap">{b.label}d</span>
+                    <span className="text-[11px] text-content-tertiary whitespace-nowrap">{b.label}d</span>
                   </div>
                 ))
               : [1.8, 2.0, 2.1, 2.2, 2.3, 2.4].map((v, i) => (
@@ -185,7 +185,7 @@ function AIPerformanceSection() {
         ].map(ai=>(
           <div key={ai.feature} className="bg-surface-elevated rounded-lg p-3">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-semibold truncate">{ai.feature}</span>
+              <span className="text-[11px] font-semibold truncate">{ai.feature}</span>
               <span className={`text-[8px] px-1.5 py-0.5 rounded-full ${ai.status==='active'?'bg-brand/10 text-brand-dark':'bg-brand-pale0/10 text-brand-deep'}`}>{ai.status}</span>
             </div>
             <p className="text-sm font-bold text-brand">{ai.accuracy}</p>

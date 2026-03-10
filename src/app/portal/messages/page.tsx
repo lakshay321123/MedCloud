@@ -250,10 +250,10 @@ export default function MessagesPage() {
                   <span className="text-xs font-medium truncate flex-1">{m.subject}</span>
                   {m.unread && <span className="w-2 h-2 bg-brand rounded-full shrink-0"/>}
                 </div>
-                <div className="text-[10px] text-content-secondary truncate">{m.lastMessage}</div>
+                <div className="text-[11px] text-content-secondary truncate">{m.lastMessage}</div>
                 <div className="flex items-center justify-between mt-1">
-                  {isStaff && <span className="text-[10px] text-content-secondary">{m.clientName}</span>}
-                  <span className="text-[10px] text-content-secondary ml-auto">{new Date(m.timestamp).toLocaleDateString()}</span>
+                  {isStaff && <span className="text-[11px] text-content-secondary">{m.clientName}</span>}
+                  <span className="text-[11px] text-content-secondary ml-auto">{new Date(m.timestamp).toLocaleDateString()}</span>
                 </div>
               </button>
             ))}
@@ -273,7 +273,7 @@ export default function MessagesPage() {
                   <span className="text-content-secondary">{entityIcons[selected.entityType]}</span>
                   <div>
                     <h3 className="text-sm font-semibold">{selected.subject}</h3>
-                    <span className="text-[10px] text-content-secondary">Re: {selected.entityLabel} • {selected.clientName}</span>
+                    <span className="text-[11px] text-content-secondary">Re: {selected.entityLabel} • {selected.clientName}</span>
                   </div>
                   <StatusBadge status={selected.status} small/>
                 </div>
@@ -283,7 +283,7 @@ export default function MessagesPage() {
                   <div key={i} className={`flex ${msg.role === 'client' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[70%] rounded-card px-3 py-2 ${msg.role === 'client' ? 'bg-brand/10 border border-brand/20' : 'bg-surface-elevated border border-separator'}`}>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] font-medium">{msg.sender}</span>
+                        <span className="text-[11px] font-medium">{msg.sender}</span>
                         <span className={`text-[9px] px-1 rounded ${msg.role === 'client' ? 'bg-brand/20 text-brand-dark text-brand-dark dark:text-brand-dark' : 'bg-blue-500/20 text-brand-dark dark:text-brand'}`}>{msg.role}</span>
                       </div>
                       <p className="text-xs">{msg.text}</p>

@@ -438,7 +438,7 @@ export default function PaymentPostingPage() {
                       finally { setApplyingPayment(null) }
                     }}
                     disabled={applyingPayment === p.id}
-                    className="text-[10px] bg-brand text-white px-2.5 py-1 rounded transition-colors hover:bg-brand-deep disabled:opacity-50">
+                    className="text-[11px] bg-brand text-white px-2.5 py-1 rounded transition-colors hover:bg-brand-deep disabled:opacity-50">
                     {applyingPayment === p.id ? '…' : 'Apply'}
                   </button>
                   <button
@@ -452,7 +452,7 @@ export default function PaymentPostingPage() {
                       finally { setWritingOff(null) }
                     }}
                     disabled={writingOff === p.id}
-                    className="text-[10px] border border-separator text-content-secondary hover:text-red-500 px-2.5 py-1 rounded transition-colors disabled:opacity-50">
+                    className="text-[11px] border border-separator text-content-secondary hover:text-red-500 px-2.5 py-1 rounded transition-colors disabled:opacity-50">
                     {writingOff === p.id ? '…' : 'Write Off'}
                   </button>
                 </div>
@@ -689,7 +689,7 @@ export default function PaymentPostingPage() {
       <div className="card p-4 mt-6">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold">Bank Deposit Reconciliation</h3>
-          <button onClick={() => { setDepositAmount(''); setDepositDate(new Date().toISOString().split('T')[0]); setShowDepositModal(true) }} className="text-xs bg-brand/10 text-brand-dark px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors">Upload Statement</button>
+          <button onClick={() => { setDepositAmount(''); setDepositDate(new Date().toISOString().split('T')[0]); setShowDepositModal(true) }} className="text-[13px] bg-brand/10 text-brand-dark px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors">Upload Statement</button>
         </div>
         {showDepositModal && (
           <>
@@ -732,7 +732,7 @@ export default function PaymentPostingPage() {
           ].map(k =>
             <div key={k.l} className="bg-surface-elevated rounded-lg p-3 text-center">
               <p className={`text-lg font-bold ${k.c}`}>{k.v}</p>
-              <p className="text-[10px] text-content-tertiary">{k.l}</p>
+              <p className="text-[11px] text-content-tertiary">{k.l}</p>
             </div>
           )}
         </div>

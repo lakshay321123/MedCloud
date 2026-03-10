@@ -292,7 +292,7 @@ export default function ScanSubmitPage() {
             <React.Fragment key={s}>
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap
                 ${step === s ? 'bg-brand text-white' : step > s ? 'bg-brand/10 text-brand-dark dark:text-brand-dark' : 'bg-surface-elevated text-content-tertiary'}`}>
-                {step > s ? <CheckCircle2 size={12} /> : <span className="w-4 h-4 rounded-full border-2 border-current flex items-center justify-center text-[10px]">{s}</span>}
+                {step > s ? <CheckCircle2 size={12} /> : <span className="w-4 h-4 rounded-full border-2 border-current flex items-center justify-center text-[11px]">{s}</span>}
                 {s === 1 ? 'Select Patient' : s === 2 ? 'Upload Files' : 'Review & Confirm'}
               </div>
               {s < 3 && <div className="flex-1 h-px bg-separator" />}
@@ -327,10 +327,10 @@ export default function ScanSubmitPage() {
                     <div className="bg-brand/5 border border-brand/20 rounded-lg p-3 flex items-center justify-between">
                       <div>
                         <p className="text-sm font-semibold">{(selectedPatient as any).name}</p>
-                        <p className="text-[10px] text-content-secondary">{(selectedPatient as any).dob}</p>
+                        <p className="text-[11px] text-content-secondary">{(selectedPatient as any).dob}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] bg-brand/10 text-brand-dark dark:text-brand-dark px-2 py-0.5 rounded-full">✓ Selected</span>
+                        <span className="text-[11px] bg-brand/10 text-brand-dark dark:text-brand-dark px-2 py-0.5 rounded-full">✓ Selected</span>
                         <button onClick={() => setPatientId('')} className="text-content-tertiary hover:text-red-500"><X size={14} /></button>
                       </div>
                     </div>
@@ -379,7 +379,7 @@ export default function ScanSubmitPage() {
                 <p className="text-sm font-semibold text-content-primary">{dragging ? 'Drop files here' : 'Drag & drop all documents here'}</p>
                 <p className="text-xs text-content-secondary mt-1">Superbills · Visit Notes · Insurance Cards · Referrals · Licenses</p>
                 <p className="text-[11px] text-content-tertiary mt-1">PDF, JPG, PNG, HEIC · Up to {MAX_FILES} files · Max 25MB each</p>
-                <p className="text-[10px] text-brand mt-2">Or click to browse files</p>
+                <p className="text-[11px] text-brand mt-2">Or click to browse files</p>
                 <input ref={fileInputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.heic" className="hidden"
                   onChange={e => { if (e.target.files) { addFiles(Array.from(e.target.files)); e.target.value = '' } }} />
               </div>
@@ -394,7 +394,7 @@ export default function ScanSubmitPage() {
                       <FileText size={15} className="text-brand shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm truncate font-medium">{f.name}</p>
-                        <p className="text-[10px] text-content-tertiary">{f.sizeMB}</p>
+                        <p className="text-[11px] text-content-tertiary">{f.sizeMB}</p>
                       </div>
                       <button onClick={() => setFiles(p => p.filter(x => x.id !== f.id))} className="text-content-tertiary hover:text-red-500"><X size={14} /></button>
                     </div>
@@ -492,15 +492,15 @@ function FileReviewRow({ entry, onTypeChange }: { entry: FileEntry; onTypeChange
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{entry.name}</p>
           <div className="flex items-center gap-2 mt-0.5">
-            {entry.status === 'uploading' && <span className="flex items-center gap-1 text-[10px] text-blue-500"><Loader2 size={10} className="animate-spin" />Uploading…</span>}
-            {entry.status === 'classifying' && <span className="flex items-center gap-1 text-[10px] text-brand"><Loader2 size={10} className="animate-spin" />AI reading…</span>}
+            {entry.status === 'uploading' && <span className="flex items-center gap-1 text-[11px] text-blue-500"><Loader2 size={10} className="animate-spin" />Uploading…</span>}
+            {entry.status === 'classifying' && <span className="flex items-center gap-1 text-[11px] text-brand"><Loader2 size={10} className="animate-spin" />AI reading…</span>}
             {entry.status === 'done' && (
-              <span className={`text-[10px] font-medium ${(entry.aiConfidence || 0) >= 80 ? 'text-brand-dark' : (entry.aiConfidence || 0) >= 50 ? 'text-brand-deep' : 'text-red-400'}`}>
+              <span className={`text-[11px] font-medium ${(entry.aiConfidence || 0) >= 80 ? 'text-brand-dark' : (entry.aiConfidence || 0) >= 50 ? 'text-brand-deep' : 'text-red-400'}`}>
                 {(entry.aiConfidence || 0) > 0 ? `AI: ${entry.aiConfidence}% confident` : '⚠ Review needed'}
               </span>
             )}
-            {entry.status === 'error' && <span className="text-[10px] text-red-500">{entry.error || 'Upload failed'}</span>}
-            <span className="text-[10px] text-content-tertiary">{entry.sizeMB}</span>
+            {entry.status === 'error' && <span className="text-[11px] text-red-500">{entry.error || 'Upload failed'}</span>}
+            <span className="text-[11px] text-content-tertiary">{entry.sizeMB}</span>
           </div>
         </div>
 

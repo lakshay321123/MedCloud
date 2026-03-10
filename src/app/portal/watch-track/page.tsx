@@ -67,7 +67,7 @@ export default function WatchTrackPage() {
         <button onClick={() => setActiveTab('submissions')}
           className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${activeTab === 'submissions' ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'}`}>
           My Submissions
-          {allDocs.length > 0 && <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${activeTab === 'submissions' ? 'bg-white/20' : 'bg-brand/20 text-brand'}`}>{allDocs.length}</span>}
+          {allDocs.length > 0 && <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-bold ${activeTab === 'submissions' ? 'bg-white/20' : 'bg-brand/20 text-brand'}`}>{allDocs.length}</span>}
         </button>
       </div>
 
@@ -92,7 +92,7 @@ export default function WatchTrackPage() {
                       <tr key={d.id} className="border-b border-separator last:border-0 hover:bg-surface-elevated transition-colors">
                         <td className="px-4 py-3 text-xs font-mono text-content-secondary truncate max-w-[160px]">{d.fileName}</td>
                         <td className="px-4 py-3">
-                          <span className="bg-brand/10 text-brand text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                          <span className="bg-brand/10 text-brand text-[11px] font-semibold px-2 py-0.5 rounded-full">
                             {({'Clinical Note':'📋','Superbill':'🧾','Insurance Card':'🏥','Referral':'📨','License':'🪪','EOB':'💵','Denial Letter':'❌','Contract':'📄','Credential':'🔖'} as Record<string,string>)[d.docType] || '📁'} {d.docType}
                           </span>
                         </td>
@@ -101,7 +101,7 @@ export default function WatchTrackPage() {
                           {d.uploadedAt ? new Date(d.uploadedAt).toLocaleDateString(country === 'uae' ? 'en-AE' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
                             d.status === 'uploaded' ? 'bg-brand/10 text-brand-dark' :
                             d.status === 'processing' ? 'bg-brand-pale0/10 text-brand-deep' :
                             'bg-gray-500/10 text-gray-400'}`}>
@@ -214,9 +214,9 @@ export default function WatchTrackPage() {
               <div className="flex-1 -mt-0.5">
                 <div className="flex items-center gap-2">
                   <span className={`text-xs font-medium ${s.status==='pending'?'text-content-tertiary':'text-content-primary'}`}>{s.step}</span>
-                  <span className="text-[10px] text-content-tertiary">{s.date}</span>
+                  <span className="text-[11px] text-content-tertiary">{s.date}</span>
                 </div>
-                <p className="text-[10px] text-content-secondary">{s.detail}</p>
+                <p className="text-[11px] text-content-secondary">{s.detail}</p>
               </div>
             </div>
           ))}

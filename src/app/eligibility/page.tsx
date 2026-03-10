@@ -200,7 +200,7 @@ function SingleCheckTab() {
             options={[{ value: '', label: 'All clients' }, ...clients.map(c => ({ value: c.id, label: c.name }))]} />
 
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Patient *</label>
+            <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">Patient *</label>
             <select value={patientId} onChange={e => { setPatientId(e.target.value); setResult(null) }}
               className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary">
               <option value="">Select patient</option>
@@ -218,17 +218,17 @@ function SingleCheckTab() {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Date of Service</label>
+            <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">Date of Service</label>
             <input type="date" value={dos} onChange={e => setDos(e.target.value)}
               className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary" />
           </div>
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Member ID</label>
+            <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">Member ID</label>
             <input value={memberId} onChange={e => setMemberId(e.target.value)} placeholder="Auto-filled from patient"
               className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary placeholder:text-content-tertiary" />
           </div>
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Group Number</label>
+            <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">Group Number</label>
             <input value={groupNumber} onChange={e => setGroupNumber(e.target.value)} placeholder="Optional"
               className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary placeholder:text-content-tertiary" />
           </div>
@@ -268,7 +268,7 @@ function EligibilityResultCard({ result, patient }: { result: ApiEligibilityChec
           <p className="text-sm font-semibold text-content-primary">
             {patient ? `${patient.first_name} ${patient.last_name}` : result.patient_name || 'Patient'}
           </p>
-          <p className={`text-xs font-medium ${isActive ? 'text-brand-dark dark:text-brand-dark' : 'text-red-600 dark:text-red-400'}`}>
+          <p className={`text-[13px] font-medium ${isActive ? 'text-brand-dark dark:text-brand-dark' : 'text-red-600 dark:text-red-400'}`}>
             Coverage {result.status === 'active' ? 'Active' : result.status || 'Unknown'}
             {result.network_status && ` · ${result.network_status}`}
           </p>
@@ -296,7 +296,7 @@ function EligibilityResultCard({ result, patient }: { result: ApiEligibilityChec
 function BenefitField({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-0.5 flex items-center gap-1">{icon}{label}</p>
+      <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-0.5 flex items-center gap-1">{icon}{label}</p>
       <p className="text-sm font-medium text-content-primary">{value}</p>
     </div>
   )
@@ -336,7 +336,7 @@ function BatchCheckTab() {
         </p>
         <div className="flex items-end gap-3">
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Appointment Date</label>
+            <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">Appointment Date</label>
             <input type="date" value={batchDate} onChange={e => setBatchDate(e.target.value)}
               className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary" />
           </div>
@@ -350,7 +350,7 @@ function BatchCheckTab() {
       {results && results.length > 0 && (
         <div className="card overflow-hidden">
           <div className="px-4 py-3 border-b border-separator flex items-center justify-between">
-            <p className="text-xs font-medium text-content-primary">{results.length} patients checked</p>
+            <p className="text-[13px] font-medium text-content-primary">{results.length} patients checked</p>
             <div className="flex items-center gap-3 text-[11px]">
               <span className="text-brand-dark">{results.filter(r => r.status === 'active').length} active</span>
               <span className="text-red-500">{results.filter(r => r.status !== 'active').length} issues</span>
@@ -399,7 +399,7 @@ function BatchCheckTab() {
             </div>
           </div>
           <table className="w-full text-xs">
-            <thead><tr className="border-b border-separator text-[10px] text-content-secondary uppercase tracking-wider">
+            <thead><tr className="border-b border-separator text-[11px] text-content-secondary uppercase tracking-wider">
               <th className="text-left px-4 py-2">Patient</th><th className="text-left px-4 py-2">Status</th>
               <th className="text-left px-4 py-2">Network</th><th className="text-left px-4 py-2">Copay</th>
               <th className="text-left px-4 py-2">Deductible</th><th className="text-left px-4 py-2">Prior Auth</th>
@@ -469,7 +469,7 @@ function CheckHistoryTab({ checks, loading }: { checks: ApiEligibilityCheck[]; l
           <EmptyState icon={<ShieldCheck size={20} />} title="No eligibility checks" subtitle="Run a single or batch check to see history here." />
         ) : (
           <table className="w-full text-xs">
-            <thead><tr className="border-b border-separator text-[10px] text-content-secondary uppercase tracking-wider">
+            <thead><tr className="border-b border-separator text-[11px] text-content-secondary uppercase tracking-wider">
               <th className="text-left px-4 py-2.5">Patient</th><th className="text-left px-4 py-2.5">DOS</th>
               <th className="text-left px-4 py-2.5">Status</th><th className="text-left px-4 py-2.5">Network</th>
               <th className="text-left px-4 py-2.5">Copay</th><th className="text-left px-4 py-2.5">Deductible</th>
@@ -515,14 +515,14 @@ function EligibilityDetailRow({ check }: { check: ApiEligibilityCheck }) {
   const rd = typeof check.result === 'object' && check.result !== null ? check.result as Record<string, unknown> : {}
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-      <div><span className="text-content-tertiary block text-[10px]">Patient ID</span><span className="font-mono text-content-secondary">{check.patient_id?.slice(0, 8) || '—'}…</span></div>
-      <div><span className="text-content-tertiary block text-[10px]">Payer ID</span><span className="font-mono text-content-secondary">{check.payer_id?.slice(0, 8) || '—'}…</span></div>
-      {Boolean(rd.plan_name) && <div><span className="text-content-tertiary block text-[10px]">Plan Name</span><span className="text-content-primary">{String(rd.plan_name)}</span></div>}
-      {Boolean(rd.group_number) && <div><span className="text-content-tertiary block text-[10px]">Group Number</span><span className="text-content-primary">{String(rd.group_number)}</span></div>}
-      {Boolean(rd.coinsurance_pct) && <div><span className="text-content-tertiary block text-[10px]">Coinsurance</span><span className="text-content-primary">{String(rd.coinsurance_pct)}%</span></div>}
-      {Boolean(rd.out_of_pocket_max) && <div><span className="text-content-tertiary block text-[10px]">OOP Maximum</span><span className="text-content-primary">${String(rd.out_of_pocket_max)}</span></div>}
-      <div><span className="text-content-tertiary block text-[10px]">Check ID</span><span className="font-mono text-content-secondary">{check.id.slice(0, 12)}…</span></div>
-      <div><span className="text-content-tertiary block text-[10px]">Checked At</span><span className="text-content-secondary">{check.created_at ? new Date(check.created_at).toLocaleString() : '—'}</span></div>
+      <div><span className="text-content-tertiary block text-[11px]">Patient ID</span><span className="font-mono text-content-secondary">{check.patient_id?.slice(0, 8) || '—'}…</span></div>
+      <div><span className="text-content-tertiary block text-[11px]">Payer ID</span><span className="font-mono text-content-secondary">{check.payer_id?.slice(0, 8) || '—'}…</span></div>
+      {Boolean(rd.plan_name) && <div><span className="text-content-tertiary block text-[11px]">Plan Name</span><span className="text-content-primary">{String(rd.plan_name)}</span></div>}
+      {Boolean(rd.group_number) && <div><span className="text-content-tertiary block text-[11px]">Group Number</span><span className="text-content-primary">{String(rd.group_number)}</span></div>}
+      {Boolean(rd.coinsurance_pct) && <div><span className="text-content-tertiary block text-[11px]">Coinsurance</span><span className="text-content-primary">{String(rd.coinsurance_pct)}%</span></div>}
+      {Boolean(rd.out_of_pocket_max) && <div><span className="text-content-tertiary block text-[11px]">OOP Maximum</span><span className="text-content-primary">${String(rd.out_of_pocket_max)}</span></div>}
+      <div><span className="text-content-tertiary block text-[11px]">Check ID</span><span className="font-mono text-content-secondary">{check.id.slice(0, 12)}…</span></div>
+      <div><span className="text-content-tertiary block text-[11px]">Checked At</span><span className="text-content-secondary">{check.created_at ? new Date(check.created_at).toLocaleString() : '—'}</span></div>
     </div>
   )
 }
@@ -573,7 +573,7 @@ function PriorAuthTab({ auths, loading, onRefresh }: { auths: ApiPriorAuth[]; lo
         ].map(k => (
           <div key={k.label} className="card p-4 text-center">
             <p className={`text-xl font-bold ${k.color}`}>{k.value}</p>
-            <p className="text-[10px] text-content-tertiary mt-1">{k.label}</p>
+            <p className="text-[11px] text-content-tertiary mt-1">{k.label}</p>
           </div>
         ))}
       </div>
@@ -603,7 +603,7 @@ function PriorAuthTab({ auths, loading, onRefresh }: { auths: ApiPriorAuth[]; lo
           <EmptyState icon={<FileText size={20} />} title="No prior authorizations" subtitle="Create a new prior auth request to get started." />
         ) : (
           <table className="w-full text-xs">
-            <thead><tr className="border-b border-separator text-[10px] text-content-secondary uppercase tracking-wider">
+            <thead><tr className="border-b border-separator text-[11px] text-content-secondary uppercase tracking-wider">
               <th className="text-left px-4 py-2.5">Auth #</th><th className="text-left px-4 py-2.5">Patient</th>
               <th className="text-left px-4 py-2.5">Payer</th><th className="text-left px-4 py-2.5">CPT Codes</th>
               <th className="text-left px-4 py-2.5">Urgency</th><th className="text-left px-4 py-2.5">DOS</th>
@@ -620,18 +620,18 @@ function PriorAuthTab({ auths, loading, onRefresh }: { auths: ApiPriorAuth[]; lo
                   <td className="px-4 py-2.5">
                     <div className="flex flex-wrap gap-1">
                       {(pa.cpt_codes || []).slice(0, 3).map(c => (
-                        <span key={c} className="bg-brand/10 text-brand-dark dark:text-brand px-1.5 py-0.5 rounded text-[10px] font-mono">{c}</span>
+                        <span key={c} className="bg-brand/10 text-brand-dark dark:text-brand px-1.5 py-0.5 rounded text-[11px] font-mono">{c}</span>
                       ))}
-                      {(pa.cpt_codes || []).length > 3 && <span className="text-[10px] text-content-tertiary">+{pa.cpt_codes!.length - 3}</span>}
+                      {(pa.cpt_codes || []).length > 3 && <span className="text-[11px] text-content-tertiary">+{pa.cpt_codes!.length - 3}</span>}
                     </div>
                   </td>
                   <td className="px-4 py-2.5">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${pa.urgency === 'urgent' ? 'bg-red-500/10 text-red-500' : 'bg-gray-500/10 text-content-secondary'}`}>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${pa.urgency === 'urgent' ? 'bg-red-500/10 text-red-500' : 'bg-gray-500/10 text-content-secondary'}`}>
                       {pa.urgency || 'routine'}
                     </span>
                   </td>
                   <td className="px-4 py-2.5 text-content-secondary text-[11px]">{pa.dos_from || '—'}{pa.dos_to ? ` → ${pa.dos_to}` : ''}</td>
-                  <td className="px-4 py-2.5"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${st.cls}`}>{st.label}</span></td>
+                  <td className="px-4 py-2.5"><span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${st.cls}`}>{st.label}</span></td>
                   <td className="px-4 py-2.5 text-content-tertiary text-[11px]">
                     {pa.created_at ? new Date(pa.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</td>
                   <td className="px-4 py-2.5"><Eye size={12} className="text-content-tertiary" /></td>
@@ -701,7 +701,7 @@ function CreatePriorAuthModal({ onClose, onCreated }: { onClose: () => void; onC
             <LabeledSelect label="Client" value={clientId} onChange={v => { setClientId(v); setPatientId('') }}
               options={[{ value: '', label: 'All' }, ...clients.map(c => ({ value: c.id, label: c.name }))]} />
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Patient *</label>
+              <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">Patient *</label>
               <select value={patientId} onChange={e => setPatientId(e.target.value)}
                 className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs">
                 <option value="">Select patient</option>
@@ -721,18 +721,18 @@ function CreatePriorAuthModal({ onClose, onCreated }: { onClose: () => void; onC
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">DOS From</label>
+              <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">DOS From</label>
               <input type="date" value={dosFrom} onChange={e => setDosFrom(e.target.value)}
                 className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs" />
             </div>
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">DOS To</label>
+              <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">DOS To</label>
               <input type="date" value={dosTo} onChange={e => setDosTo(e.target.value)}
                 className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs" />
             </div>
           </div>
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Clinical Rationale</label>
+            <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">Clinical Rationale</label>
             <textarea value={rationale} onChange={e => setRationale(e.target.value)} rows={3}
               placeholder="Clinical justification for authorization request…"
               className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs placeholder:text-content-tertiary resize-none" />
@@ -773,7 +773,7 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
           <div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-content-primary">{pa.auth_number || pa.id.slice(0, 12)}</span>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${st.cls}`}>{st.label}</span>
+              <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${st.cls}`}>{st.label}</span>
             </div>
             <p className="text-[11px] text-content-tertiary mt-0.5">Prior Authorization Request</p>
           </div>
@@ -788,7 +788,7 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
               icon={pa.urgency === 'urgent' ? <AlertTriangle size={12} className="text-red-500" /> : <Clock size={12} />} />
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-2">Procedure Codes</p>
+            <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-2">Procedure Codes</p>
             <div className="flex flex-wrap gap-1.5">
               {(pa.cpt_codes || []).map(c => <span key={c} className="bg-brand/10 text-brand-dark dark:text-brand px-2 py-1 rounded text-[11px] font-mono">{c}</span>)}
               {(!pa.cpt_codes || pa.cpt_codes.length === 0) && <span className="text-xs text-content-tertiary">No CPT codes</span>}
@@ -796,7 +796,7 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
           </div>
           {pa.icd_codes && pa.icd_codes.length > 0 && (
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-2">Diagnosis Codes</p>
+              <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-2">Diagnosis Codes</p>
               <div className="flex flex-wrap gap-1.5">
                 {pa.icd_codes.map(c => <span key={c} className="bg-brand/10 text-brand-dark dark:text-brand-dark px-2 py-1 rounded text-[11px] font-mono">{c}</span>)}
               </div>
@@ -811,24 +811,24 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
           {pa.approved_units && <DrawerField label="Approved Units" value={String(pa.approved_units)} icon={<Activity size={12} />} />}
           {pa.auth_number_payer && (
             <div className="bg-brand/5 border border-brand/20 rounded-lg p-3">
-              <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">Payer Auth Number</p>
+              <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1">Payer Auth Number</p>
               <p className="text-sm font-mono font-semibold text-brand-dark dark:text-brand-dark">{pa.auth_number_payer}</p>
             </div>
           )}
           {pa.clinical_rationale && (
             <div className="bg-surface-elevated rounded-lg p-3">
-              <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">Clinical Rationale</p>
+              <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1">Clinical Rationale</p>
               <p className="text-[13px] text-content-primary whitespace-pre-wrap">{pa.clinical_rationale}</p>
             </div>
           )}
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-2">Timeline</p>
+            <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-2">Timeline</p>
             <div className="space-y-2">
               {pa.created_at && <TimelineItem label="Created" time={pa.created_at} icon={<Clock size={12} />} />}
             </div>
           </div>
           <div className="pt-3 border-t border-separator">
-            <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-2">Actions</p>
+            <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-2">Actions</p>
             <div className="flex flex-wrap gap-2">
               {(pa.status === 'pending' || pa.status === 'submitted') && (
                 <>
@@ -871,8 +871,8 @@ function EligStatusBadge({ status }: { status: string }) {
 function DrawerField({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-0.5 flex items-center gap-1">{icon}{label}</p>
-      <p className="text-xs font-medium text-content-primary">{value}</p>
+      <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-0.5 flex items-center gap-1">{icon}{label}</p>
+      <p className="text-[13px] font-medium text-content-primary">{value}</p>
     </div>
   )
 }
@@ -881,7 +881,7 @@ function TimelineItem({ label, time, icon }: { label: string; time: string; icon
   return (
     <div className="flex items-center gap-2">
       <div className="w-6 h-6 rounded-full bg-surface-elevated flex items-center justify-center text-content-secondary">{icon}</div>
-      <div><p className="text-[13px] text-content-primary">{label}</p><p className="text-[10px] text-content-tertiary">{new Date(time).toLocaleString()}</p></div>
+      <div><p className="text-[13px] text-content-primary">{label}</p><p className="text-[11px] text-content-tertiary">{new Date(time).toLocaleString()}</p></div>
     </div>
   )
 }
@@ -899,7 +899,7 @@ function EmptyState({ icon, title, subtitle }: { icon: React.ReactNode; title: s
 function LabeledSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
   return (
     <div>
-      <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">{label}</label>
+      <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">{label}</label>
       <select value={value} onChange={e => onChange(e.target.value)}
         className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary">
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -911,7 +911,7 @@ function LabeledSelect({ label, value, onChange, options }: { label: string; val
 function LabeledInput({ label, value, onChange, placeholder, mono }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; mono?: boolean }) {
   return (
     <div>
-      <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">{label}</label>
+      <label className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1 block">{label}</label>
       <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         className={`w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-primary placeholder:text-content-tertiary ${mono ? 'font-mono' : ''}`} />
     </div>

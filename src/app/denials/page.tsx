@@ -261,7 +261,7 @@ export default function DenialsPage() {
             <p className="text-[12px] font-semibold text-red-600">Appeal Deadlines Approaching</p>
             <div className="flex flex-wrap gap-2 mt-1.5">
               {appealDeadlines.slice(0, 5).map(a => (
-                <span key={a.denial_id} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${a.urgency === 'critical' ? 'bg-red-500/20 text-red-600' : a.urgency === 'high' ? 'bg-brand-pale0/20 text-brand-deep' : 'bg-brand-pale0/20 text-brand-deep'}`}>
+                <span key={a.denial_id} className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${a.urgency === 'critical' ? 'bg-red-500/20 text-red-600' : a.urgency === 'high' ? 'bg-brand-pale0/20 text-brand-deep' : 'bg-brand-pale0/20 text-brand-deep'}`}>
                   {a.claim_number || a.denial_id.slice(0,8)} · {a.days_remaining}d left
                 </span>
               ))}
@@ -306,7 +306,7 @@ export default function DenialsPage() {
                 <td className="px-4 py-3 text-[13px] text-content-secondary">{d.payer}</td>
                 <td className="px-4 py-3 text-[13px] text-content-primary">{d.denialReason}</td>
                 <td className="px-4 py-3">
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-pill ${
+                  <span className={`text-[11px] px-1.5 py-0.5 rounded-pill ${
                     d.source === 'payment_posting' ? 'bg-brand/10 text-brand-dark dark:text-brand' :
                     d.source === 'claim_rejection' ? 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep' :
                     'bg-brand-pale0/10 text-brand-deep'
@@ -314,7 +314,7 @@ export default function DenialsPage() {
                     {d.source === 'payment_posting' ? 'Payment Posting' : d.source === 'claim_rejection' ? 'Claim Rejection' : 'Payer Audit'}
                   </span>
                 </td>
-                <td className={`px-4 py-3 text-xs font-semibold ${
+                <td className={`px-4 py-3 text-[13px] font-semibold ${
                   d.appealLevel === 'L1' ? 'text-brand' :
                   d.appealLevel === 'L2' ? 'text-brand-deep dark:text-brand-deep' :
                   d.appealLevel === 'L3' ? 'text-brand-deep dark:text-brand-deep' : 'text-content-tertiary'
@@ -349,7 +349,7 @@ export default function DenialsPage() {
                     <button
                       key={doc.label}
                       onClick={() => router.push(doc.path)}
-                      className="bg-brand/5 border border-brand/20 rounded-btn px-2.5 py-1 text-[10px] font-medium text-brand-dark flex items-center gap-1 hover:bg-brand/10 hover:border-brand/40 transition-colors cursor-pointer"
+                      className="bg-brand/5 border border-brand/20 rounded-btn px-2.5 py-1 text-[11px] font-medium text-brand-dark flex items-center gap-1 hover:bg-brand/10 hover:border-brand/40 transition-colors cursor-pointer"
                     >
                       <FileText size={10} />{doc.label}
                     </button>
@@ -434,7 +434,7 @@ export default function DenialsPage() {
               {US_PAYERS.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
             <button onClick={openNewTemplate}
-              className="flex items-center gap-1 text-xs bg-brand/10 text-brand-dark px-3 py-1.5 rounded-lg hover:bg-brand/10 transition-colors font-medium">
+              className="flex items-center gap-1 text-[13px] bg-brand/10 text-brand-dark px-3 py-1.5 rounded-lg hover:bg-brand/10 transition-colors font-medium">
               <Plus size={12} /> New Template
             </button>
           </div>
@@ -443,7 +443,7 @@ export default function DenialsPage() {
           {filteredTemplates.map(t => (
             <div key={t.id} className="bg-surface-elevated rounded-lg p-3 hover:border-brand/30 border border-transparent transition-colors group">
               <div className="flex items-start justify-between mb-1">
-                <span className="text-xs font-medium leading-tight flex-1 cursor-pointer" onClick={() => applyTemplate(t)}>{t.name}</span>
+                <span className="text-[13px] font-medium leading-tight flex-1 cursor-pointer" onClick={() => applyTemplate(t)}>{t.name}</span>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1 shrink-0">
                   <button onClick={() => openEditTemplate(t)} className="p-0.5 rounded hover:bg-surface text-content-tertiary hover:text-brand transition-colors"><Edit2 size={11} /></button>
                   <button onClick={() => deleteTemplate(t.id)} className="p-0.5 rounded hover:bg-surface text-content-tertiary hover:text-red-500 transition-colors"><Trash2 size={11} /></button>
@@ -458,11 +458,11 @@ export default function DenialsPage() {
                 <div className="flex-1">
                   <div className="w-full bg-surface rounded-full h-1.5"><div className="bg-brand h-1.5 rounded-full" style={{ width: `${t.winRate}%` }} /></div>
                 </div>
-                <span className="text-[10px] text-brand-dark font-medium">{t.winRate}% win</span>
-                <span className="text-[10px] text-content-tertiary">{t.used}×</span>
+                <span className="text-[11px] text-brand-dark font-medium">{t.winRate}% win</span>
+                <span className="text-[11px] text-content-tertiary">{t.used}×</span>
               </div>
               <button onClick={() => applyTemplate(t)}
-                className="mt-2 w-full text-[10px] py-1 rounded bg-brand/10 text-brand hover:bg-brand/20 transition-colors font-medium">
+                className="mt-2 w-full text-[11px] py-1 rounded bg-brand/10 text-brand hover:bg-brand/20 transition-colors font-medium">
                 Apply to Current Appeal
               </button>
             </div>
@@ -515,7 +515,7 @@ export default function DenialsPage() {
               </div>
               <div>
                 <label className="block text-[13px] text-content-secondary mb-1">Template Body *</label>
-                <p className="text-[10px] text-content-tertiary mb-1">Variables: [PAYER] [CLAIM_NUMBER] [PATIENT_NAME] [DOS] [PROVIDER_NAME] [SERVICE]</p>
+                <p className="text-[11px] text-content-tertiary mb-1">Variables: [PAYER] [CLAIM_NUMBER] [PATIENT_NAME] [DOS] [PROVIDER_NAME] [SERVICE]</p>
                 <textarea value={templateForm.body} onChange={e => setTemplateForm(f => ({ ...f, body: e.target.value }))}
                   placeholder="Dear [PAYER] Appeals Department,&#10;&#10;RE: Appeal — Claim [CLAIM_NUMBER]&#10;Patient: [PATIENT_NAME]&#10;..."
                   rows={10}
@@ -541,9 +541,9 @@ export default function DenialsPage() {
               <div key={d.denial_id} className={`flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2 ${d.days_remaining <= 3 ? 'border border-red-500/30' : ''}`}>
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-mono">{d.claim_number || d.denial_id.slice(0, 8)}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded bg-brand/10 text-brand`}>{d.urgency}</span>
+                  <span className={`text-[11px] px-1.5 py-0.5 rounded bg-brand/10 text-brand`}>{d.urgency}</span>
                 </div>
-                <span className={`text-xs font-medium ${d.days_remaining <= 3 ? 'text-red-500' : d.days_remaining <= 7 ? 'text-brand-deep' : 'text-content-secondary'}`}>{d.days_remaining}d left</span>
+                <span className={`text-[13px] font-medium ${d.days_remaining <= 3 ? 'text-red-500' : d.days_remaining <= 7 ? 'text-brand-deep' : 'text-content-secondary'}`}>{d.days_remaining}d left</span>
               </div>
             ))}
           </div>

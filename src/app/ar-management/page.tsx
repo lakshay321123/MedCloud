@@ -101,7 +101,7 @@ function CreditBalanceRow({ cr, onResolved }: {
     <tr className="border-b border-separator last:border-0 table-row">
       <td className="px-4 py-3 font-mono text-xs">{cr.claim}</td>
       <td className="px-4 py-3 text-xs">{cr.patient}</td>
-      <td className="px-4 py-3 text-xs font-semibold text-brand-deep">{cr.amt}</td>
+      <td className="px-4 py-3 text-[13px] font-semibold text-brand-deep">{cr.amt}</td>
       <td className="px-4 py-3 text-[13px] text-content-secondary">{cr.payer}</td>
       <td className="px-4 py-3 text-xs">{cr.reason}</td>
       <td className="px-4 py-3 flex gap-2">
@@ -116,7 +116,7 @@ function CreditBalanceRow({ cr, onResolved }: {
           } else {
             toast.success(`Refund of ${cr.amt} initiated for ${cr.claim} — ${cr.patient}`)
           }
-        }} className="text-[10px] text-brand hover:underline font-medium disabled:opacity-50">{resolving ? '…' : 'Refund'}</button>
+        }} className="text-[11px] text-brand hover:underline font-medium disabled:opacity-50">{resolving ? '…' : 'Refund'}</button>
         <button disabled={resolving} onClick={async () => {
           if (!window.confirm(`Apply ${cr.amt} credit to open patient balance for ${cr.patient}?\n\nClaim: ${cr.claim}\nThis will reduce their outstanding balance by ${cr.amt}.`)) return
           if (cr.apiId) {
@@ -128,7 +128,7 @@ function CreditBalanceRow({ cr, onResolved }: {
           } else {
             toast.success(`${cr.amt} applied to ${cr.patient}'s open balance`)
           }
-        }} className="text-[10px] text-brand-dark hover:underline font-medium disabled:opacity-50">{resolving ? '…' : 'Apply'}</button>
+        }} className="text-[11px] text-brand-dark hover:underline font-medium disabled:opacity-50">{resolving ? '…' : 'Apply'}</button>
       </td>
     </tr>
   )
@@ -188,7 +188,7 @@ function LogCallModal({
             <div className="bg-brand/5 border border-brand/20 rounded-lg p-3 flex items-start gap-3">
               <Phone size={14} className="text-brand mt-0.5 shrink-0"/>
               <div>
-                <div className="text-xs font-semibold text-brand mb-0.5">Payer Phone</div>
+                <div className="text-[13px] font-semibold text-brand mb-0.5">Payer Phone</div>
                 <div className="text-sm text-content-primary font-mono">{phone}</div>
               </div>
             </div>
@@ -205,7 +205,7 @@ function LogCallModal({
                   <div className="px-3 pb-3 space-y-1.5 bg-surface-elevated">
                     {ivr.map((step, i) => (
                       <div key={i} className="flex items-start gap-2 text-xs">
-                        <span className="shrink-0 w-5 h-5 rounded-full bg-brand/10 text-brand flex items-center justify-center text-[10px] font-bold">{i+1}</span>
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-brand/10 text-brand flex items-center justify-center text-[11px] font-bold">{i+1}</span>
                         <span className="text-content-primary">{step}</span>
                       </div>
                     ))}
@@ -349,15 +349,15 @@ function ARDrawer({
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-surface-elevated rounded-lg p-3 text-center">
                   <div className="text-lg font-bold text-content-primary">${account.original}</div>
-                  <div className="text-[10px] text-content-secondary">Original</div>
+                  <div className="text-[11px] text-content-secondary">Original</div>
                 </div>
                 <div className="bg-surface-elevated rounded-lg p-3 text-center">
                   <div className={`text-lg font-bold ${account.balance > 0 ? 'text-brand-deep' : 'text-brand-dark'}`}>${account.balance}</div>
-                  <div className="text-[10px] text-content-secondary">Balance</div>
+                  <div className="text-[11px] text-content-secondary">Balance</div>
                 </div>
                 <div className="bg-surface-elevated rounded-lg p-3 text-center">
                   <div className="text-lg font-bold text-content-primary">{account.age}d</div>
-                  <div className="text-[10px] text-content-secondary">Age</div>
+                  <div className="text-[11px] text-content-secondary">Age</div>
                 </div>
               </div>
 
@@ -503,11 +503,11 @@ function ARDrawer({
                 <div key={c.id} className="bg-surface-elevated rounded-lg p-3 space-y-1.5">
                   <div className="flex items-center gap-2">
                     {c.type === 'ai' ? (
-                      <span className="flex items-center gap-1 text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded-full font-medium">
+                      <span className="flex items-center gap-1 text-[11px] bg-brand/10 text-brand px-2 py-0.5 rounded-full font-medium">
                         <Bot size={10} /> AI Call
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 text-[10px] bg-surface-secondary border border-separator text-content-secondary px-2 py-0.5 rounded-full font-medium">
+                      <span className="flex items-center gap-1 text-[11px] bg-surface-secondary border border-separator text-content-secondary px-2 py-0.5 rounded-full font-medium">
                         <User size={10} /> Manual
                       </span>
                     )}
@@ -552,7 +552,7 @@ function ARDrawer({
                   <p className="text-[13px] font-medium text-content-primary">CLM-{account.id.replace('AR-', '10')}</p>
                   <p className="text-[11px] text-content-secondary">{account.payer} · DOS {account.dos} · ${account.original}</p>
                 </div>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${sourceInfo[account.source]?.color || 'bg-surface-elevated text-content-secondary'}`}>
+                <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${sourceInfo[account.source]?.color || 'bg-surface-elevated text-content-secondary'}`}>
                   {sourceInfo[account.source]?.label || account.source}
                 </span>
               </div>
@@ -870,9 +870,9 @@ export default function ARManagementPage() {
             <button onClick={() => { refetchCredits(); toast.success('Credit balance scan triggered') }} disabled={identifyingCredits} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors disabled:opacity-50">{identifyingCredits ? 'Scanning…' : 'Identify Credits'}</button>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-deep">${creditStats.total}</p><p className="text-[10px] text-content-tertiary mt-1">Total Credits</p></div>
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand">{creditStats.open}</p><p className="text-[10px] text-content-tertiary mt-1">Open Credits</p></div>
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-dark">${creditStats.resolved}</p><p className="text-[10px] text-content-tertiary mt-1">Resolved This Month</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-deep">${creditStats.total}</p><p className="text-[11px] text-content-tertiary mt-1">Total Credits</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand">{creditStats.open}</p><p className="text-[11px] text-content-tertiary mt-1">Open Credits</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-dark">${creditStats.resolved}</p><p className="text-[11px] text-content-tertiary mt-1">Resolved This Month</p></div>
           </div>
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
@@ -900,10 +900,10 @@ export default function ARManagementPage() {
             <button onClick={handleSlaCheck} disabled={checkingSLA} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-dark transition-colors disabled:opacity-50">{checkingSLA ? 'Checking…' : 'Run SLA Check'}</button>
           </div>
           <div className="grid grid-cols-4 gap-3">
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-red-500">7</p><p className="text-[10px] text-content-tertiary mt-1">Past SLA</p></div>
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-deep">12</p><p className="text-[10px] text-content-tertiary mt-1">At Risk</p></div>
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-dark">94.2%</p><p className="text-[10px] text-content-tertiary mt-1">SLA Compliance</p></div>
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand">48h</p><p className="text-[10px] text-content-tertiary mt-1">Avg Resolution</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-red-500">7</p><p className="text-[11px] text-content-tertiary mt-1">Past SLA</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-deep">12</p><p className="text-[11px] text-content-tertiary mt-1">At Risk</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-dark">94.2%</p><p className="text-[11px] text-content-tertiary mt-1">SLA Compliance</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand">48h</p><p className="text-[11px] text-content-tertiary mt-1">Avg Resolution</p></div>
           </div>
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
@@ -914,8 +914,8 @@ export default function ARManagementPage() {
                     <td className="px-4 py-3 font-mono text-xs">{s.acct}</td>
                     <td className="px-4 py-3 text-xs">{s.client}</td>
                     <td className="px-4 py-3 text-[13px] text-content-secondary">{s.sla}</td>
-                    <td className="px-4 py-3 text-xs font-semibold">{s.days}d</td>
-                    <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${s.priority==='critical'?'bg-red-500/10 text-red-500':s.priority==='high'?'bg-brand-pale0/10 text-brand-deep':'bg-brand/10 text-brand'}`}>{s.priority}</span></td>
+                    <td className="px-4 py-3 text-[13px] font-semibold">{s.days}d</td>
+                    <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full ${s.priority==='critical'?'bg-red-500/10 text-red-500':s.priority==='high'?'bg-brand-pale0/10 text-brand-deep':'bg-brand/10 text-brand'}`}>{s.priority}</span></td>
                     <td className="px-4 py-3 text-xs">{s.assignee}</td>
                   </tr>
                 ))}
@@ -926,15 +926,15 @@ export default function ARManagementPage() {
           {slaResult.length > 0 && (
             <div className="mt-4 card p-4">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-xs font-semibold text-content-primary">SLA Check Results — {slaResult.length} Escalation(s)</h4>
-                <button onClick={() => setSlaResult([])} className="text-[10px] text-content-tertiary hover:text-content-secondary">Clear</button>
+                <h4 className="text-[13px] font-semibold text-content-primary">SLA Check Results — {slaResult.length} Escalation(s)</h4>
+                <button onClick={() => setSlaResult([])} className="text-[11px] text-content-tertiary hover:text-content-secondary">Clear</button>
               </div>
               <div className="space-y-2">
                 {slaResult.map(r => (
                   <div key={r.task_id} className="flex items-center justify-between bg-red-500/5 border border-red-500/20 rounded-lg px-3 py-2">
                     <div>
-                      <p className="text-xs font-medium text-content-primary">{r.title}</p>
-                      <p className="text-[10px] text-red-400 mt-0.5">{Math.round(r.hours_overdue)}h overdue · Escalation level {r.escalation_level}</p>
+                      <p className="text-[13px] font-medium text-content-primary">{r.title}</p>
+                      <p className="text-[11px] text-red-400 mt-0.5">{Math.round(r.hours_overdue)}h overdue · Escalation level {r.escalation_level}</p>
                     </div>
                     <button onClick={async () => {
                       try {
@@ -942,7 +942,7 @@ export default function ARManagementPage() {
                         toast.success(`Escalation task created for ${r.task_id}`)
                       } catch { toast.error('Failed to create escalation task') }
                     }}
-                      className="text-[10px] px-2 py-1 bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 transition-colors whitespace-nowrap">
+                      className="text-[11px] px-2 py-1 bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 transition-colors whitespace-nowrap">
                       Send Escalation
                     </button>
                   </div>
@@ -953,12 +953,12 @@ export default function ARManagementPage() {
         </div>
       ) : (<>
       <div className="card p-4 mb-4">
-        <h3 className="text-xs font-semibold text-content-secondary mb-2">AGING BUCKETS</h3>
+        <h3 className="text-[13px] font-semibold text-content-secondary mb-2">AGING BUCKETS</h3>
         <div className="flex items-end gap-4 h-28 px-4">{computedBuckets.map(b => (
           <div key={b.l} className="flex-1 flex flex-col items-center gap-1">
-            <span className="text-[10px] text-content-secondary">${(b.v / 1000).toFixed(0)}K</span>
+            <span className="text-[11px] text-content-secondary">${(b.v / 1000).toFixed(0)}K</span>
             <div className={`w-full ${b.c} rounded-t transition-all`} style={{ height: `${(b.v / computedMax) * 90}px` }} />
-            <span className="text-[10px] text-content-secondary">{b.l} days</span>
+            <span className="text-[11px] text-content-secondary">{b.l} days</span>
           </div>
         ))}</div>
       </div>
@@ -985,13 +985,13 @@ export default function ARManagementPage() {
                 <td className="px-4 py-3 font-medium">
                   <div>{a.patient}</div>
                   {a.paymentPromisedDate && (
-                    <div className="text-[10px] text-brand-dark dark:text-brand-dark font-normal">💰 Promised {a.paymentPromisedDate}</div>
+                    <div className="text-[11px] text-brand-dark dark:text-brand-dark font-normal">💰 Promised {a.paymentPromisedDate}</div>
                   )}
                 </td>
                 <td className="px-4 py-3 text-[13px] text-content-secondary">{a.client}</td>
                 <td className="px-4 py-3 text-[13px] text-content-secondary">{a.payer}</td>
                 <td className="px-4 py-3">
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${sourceInfo[a.source]?.color || 'bg-surface-elevated text-content-secondary'}`}>
+                  <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full ${sourceInfo[a.source]?.color || 'bg-surface-elevated text-content-secondary'}`}>
                     {sourceInfo[a.source]?.label || a.source}
                   </span>
                 </td>

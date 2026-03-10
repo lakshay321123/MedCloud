@@ -114,7 +114,7 @@ export default function LoginPage() {
         <div className="relative z-10 px-16 pb-10">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0 backdrop-blur-sm">
-              <span className="text-white text-[10px] font-bold">Inc</span>
+              <span className="text-white text-[11px] font-bold">Inc</span>
             </div>
             <p className="text-white/45 text-[12px] leading-snug">
               INC 5000 Fastest Growing · 3 consecutive years<br />

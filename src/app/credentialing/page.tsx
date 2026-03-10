@@ -93,7 +93,7 @@ export default function CredentialingPage() {
               <td className="px-4 py-3 text-xs">{p.malpractice}</td>
               <td className="px-4 py-3 text-[13px] text-content-secondary">{p.caqh}</td>
               <td className="px-4 py-3 text-right">{p.payers}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${p.status==='active'?'bg-brand/10 text-brand-dark dark:text-brand-dark border-brand/20':p.status==='expiring'?'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep border-brand-light/20':'bg-brand/10 text-brand-dark border-brand/20'}`}>{p.status}</span></td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-1.5 py-0.5 rounded-full border ${p.status==='active'?'bg-brand/10 text-brand-dark dark:text-brand-dark border-brand/20':p.status==='expiring'?'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep border-brand-light/20':'bg-brand/10 text-brand-dark border-brand/20'}`}>{p.status}</span></td>
             </tr>
           ))}</tbody>
         </table>
@@ -129,7 +129,7 @@ export default function CredentialingPage() {
               ].map(item => (
                 <div key={item.label} className="flex items-center justify-between py-2 border-b border-separator">
                   <span className="text-[13px] text-content-secondary">{item.label}</span>
-                  <span className={`text-xs font-medium ${item.value === 'Pending' ? 'text-brand-deep' : item.value === 'N/A' ? 'text-content-tertiary' : 'text-content-primary'}`}>
+                  <span className={`text-[13px] font-medium ${item.value === 'Pending' ? 'text-brand-deep' : item.value === 'N/A' ? 'text-content-tertiary' : 'text-content-primary'}`}>
                     {item.value}
                   </span>
                 </div>
@@ -183,24 +183,24 @@ export default function CredentialingPage() {
               <div className={`${s.color} text-white rounded-lg py-3 mb-1`}>
                 <span className="text-lg font-bold">{s.count}</span>
               </div>
-              <span className="text-[10px] text-content-secondary">{s.stage}</span>
+              <span className="text-[11px] text-content-secondary">{s.stage}</span>
             </div>
           ))}
         </div>
         <div className="space-y-2">
-          <h4 className="text-[10px] font-semibold text-content-secondary uppercase tracking-wider">Upcoming Expirations</h4>
+          <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider">Upcoming Expirations</h4>
           {[{name:'Dr. Patel',item:'Malpractice Insurance',date:'2026-04-15',days:42},
             {name:'Dr. Martinez',item:'State License',date:'2026-05-10',days:67},
             {name:'Dr. Williams',item:'CAQH Attestation',date:'2026-04-01',days:28}
           ].sort((a,b)=>a.days-b.days).map(e=>(
             <div key={`${e.name}-${e.item}`} className={`flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2 ${e.days<=30?'border border-brand-light/30':''}`}>
               <div className="flex items-center gap-3">
-                <span className="text-xs font-medium">{e.name}</span>
-                <span className="text-[10px] text-content-secondary">{e.item}</span>
+                <span className="text-[13px] font-medium">{e.name}</span>
+                <span className="text-[11px] text-content-secondary">{e.item}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`text-xs font-medium ${e.days<=30?'text-brand-deep':e.days<=60?'text-blue-500':'text-content-secondary'}`}>{e.days}d</span>
-                <span className="text-[10px] text-content-tertiary">{e.date}</span>
+                <span className={`text-[13px] font-medium ${e.days<=30?'text-brand-deep':e.days<=60?'text-blue-500':'text-content-secondary'}`}>{e.days}d</span>
+                <span className="text-[11px] text-content-tertiary">{e.date}</span>
               </div>
             </div>
           ))}

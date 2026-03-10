@@ -128,14 +128,14 @@ function UsersTab() {
             <tr key={u.email} className="border-b border-separator last:border-0 table-row">
               <td className="px-4 py-3 font-medium">{u.name}</td>
               <td className="px-4 py-3 text-[13px] text-content-secondary">{u.email}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${roleColors[u.role]??'bg-surface-elevated text-content-secondary'}`}>{u.role}</span></td>
+              <td className="px-4 py-3"><span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${roleColors[u.role]??'bg-surface-elevated text-content-secondary'}`}>{u.role}</span></td>
               <td className="px-4 py-3 text-[13px] text-content-secondary">{u.clients}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${u.active?'bg-brand/10 text-brand-dark dark:text-brand-dark':'bg-gray-500/10 text-gray-400'}`}>{u.active?'Active':'Disabled'}</span></td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full ${u.active?'bg-brand/10 text-brand-dark dark:text-brand-dark':'bg-gray-500/10 text-gray-400'}`}>{u.active?'Active':'Disabled'}</span></td>
               <td className="px-4 py-3 text-[13px] text-content-secondary">{u.lastLogin}</td>
               <td className="px-4 py-3 flex gap-1">
-                <button onClick={()=>setEditingUser(u)} className="text-[10px] text-brand hover:underline">Edit</button>
+                <button onClick={()=>setEditingUser(u)} className="text-[11px] text-brand hover:underline">Edit</button>
                 <span className="text-content-tertiary">·</span>
-                <button onClick={()=>handleToggleActive(u.email, u.active)} className={`text-[10px] hover:underline ${u.active ? 'text-content-secondary hover:text-brand' : 'text-brand-dark'}`}>{u.active ? 'Disable' : 'Enable'}</button>
+                <button onClick={()=>handleToggleActive(u.email, u.active)} className={`text-[11px] hover:underline ${u.active ? 'text-content-secondary hover:text-brand' : 'text-brand-dark'}`}>{u.active ? 'Disable' : 'Enable'}</button>
               </td>
             </tr>
           ))}</tbody>
@@ -243,9 +243,9 @@ function OrgsTab() {
               <td className="px-4 py-3 font-medium">{o.name}</td>
               <td className="px-4 py-3 text-xs">{o.region}</td>
               <td className="px-4 py-3 text-[13px] text-content-secondary">{o.ehr}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${pricingColors[o.pricing]??'bg-surface-elevated text-content-secondary'}`}>{o.pricing}</span></td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${pricingColors[o.pricing]??'bg-surface-elevated text-content-secondary'}`}>{o.pricing}</span></td>
               <td className="px-4 py-3 text-[13px] text-content-secondary">{o.since}</td>
-              <td className="px-4 py-3"><span className="text-[10px] bg-brand/10 text-brand-dark dark:text-brand-dark px-2 py-0.5 rounded-full">Active</span></td>
+              <td className="px-4 py-3"><span className="text-[11px] bg-brand/10 text-brand-dark dark:text-brand-dark px-2 py-0.5 rounded-full">Active</span></td>
             </tr>
           ))}</tbody>
         </table>
@@ -339,15 +339,15 @@ function SystemHealthTab() {
               <span className={`text-[11px] font-medium ${s.status==='operational'?'text-brand-dark dark:text-brand-dark':s.status==='degraded'?'text-brand-deep':'text-red-500'}`}>
                 {s.status==='operational'?'Operational':s.status==='degraded'?'Degraded':'Down'}
               </span>
-              <span className="text-[10px] text-content-tertiary">{s.ms}ms</span>
+              <span className="text-[11px] text-content-tertiary">{s.ms}ms</span>
             </div>
-            <p className="text-[10px] text-content-tertiary mt-1">Last check: {s.lastCheck} ago</p>
+            <p className="text-[11px] text-content-tertiary mt-1">Last check: {s.lastCheck} ago</p>
           </div>
         ))}
       </div>
       <div className="card overflow-hidden">
         <div className="px-4 py-3 border-b border-separator">
-          <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Queue Depths</h3>
+          <h3 className="text-[13px] font-semibold text-content-secondary uppercase tracking-wider">Queue Depths</h3>
         </div>
         <table className="w-full text-sm">
           <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
@@ -399,7 +399,7 @@ function AuditLogTab() {
           <option value="">All Actions</option>
           {['VIEW','CREATE','UPDATE','DELETE','EXPORT'].map(a=><option key={a}>{a}</option>)}
         </select>
-        <button onClick={()=>toast.info('Audit export queued. You will receive an email.')} className="ml-auto text-xs border border-separator text-content-secondary px-3 py-1.5 rounded-lg hover:text-content-secondary transition-colors">
+        <button onClick={()=>toast.info('Audit export queued. You will receive an email.')} className="ml-auto text-[13px] border border-separator text-content-secondary px-3 py-1.5 rounded-lg hover:text-content-secondary transition-colors">
           Export
         </button>
       </div>
@@ -413,13 +413,13 @@ function AuditLogTab() {
           </tr></thead>
           <tbody>{filtered.map(e=>(
             <tr key={e.id} className="border-b border-separator last:border-0">
-              <td className="px-4 py-3 font-mono text-[10px] text-content-secondary">{e.timestamp}</td>
-              <td className="px-4 py-3 text-xs font-medium">{e.user}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${roleColors[e.role]??'bg-surface-elevated text-content-secondary'}`}>{e.role}</span></td>
-              <td className="px-4 py-3"><span className={`text-[10px] font-bold px-2 py-0.5 rounded ${actionColors[e.action]??'bg-surface-elevated text-content-secondary'}`}>{e.action}</span></td>
+              <td className="px-4 py-3 font-mono text-[11px] text-content-secondary">{e.timestamp}</td>
+              <td className="px-4 py-3 text-[13px] font-medium">{e.user}</td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full ${roleColors[e.role]??'bg-surface-elevated text-content-secondary'}`}>{e.role}</span></td>
+              <td className="px-4 py-3"><span className={`text-[11px] font-bold px-2 py-0.5 rounded ${actionColors[e.action]??'bg-surface-elevated text-content-secondary'}`}>{e.action}</span></td>
               <td className="px-4 py-3 text-xs">{e.entity}</td>
-              <td className="px-4 py-3 font-mono text-[10px] text-brand">{e.entityId}</td>
-              <td className="px-4 py-3 font-mono text-[10px] text-content-tertiary">{e.ip}</td>
+              <td className="px-4 py-3 font-mono text-[11px] text-brand">{e.entityId}</td>
+              <td className="px-4 py-3 font-mono text-[11px] text-content-tertiary">{e.ip}</td>
             </tr>
           ))}</tbody>
         </table>
@@ -460,8 +460,8 @@ function InvoicesTab() {
               <td className="px-4 py-3 font-mono text-xs">{inv.invoice_number || inv.id?.slice(0,8)}</td>
               <td className="px-4 py-3 text-xs">{inv.client_name || '—'}</td>
               <td className="px-4 py-3 text-[13px] text-content-secondary">{inv.period_start?.slice(0,10)} → {inv.period_end?.slice(0,10)}</td>
-              <td className="px-4 py-3 text-xs font-semibold">${Number(inv.total_amount || 0).toLocaleString()}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${({paid:'bg-brand/10 text-brand-dark',sent:'bg-brand/10 text-brand'} as Record<string,string>)[inv.status ?? ''] || 'bg-brand-pale0/10 text-brand-deep'}`}>{inv.status || 'draft'}</span></td>
+              <td className="px-4 py-3 text-[13px] font-semibold">${Number(inv.total_amount || 0).toLocaleString()}</td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full ${({paid:'bg-brand/10 text-brand-dark',sent:'bg-brand/10 text-brand'} as Record<string,string>)[inv.status ?? ''] || 'bg-brand-pale0/10 text-brand-deep'}`}>{inv.status || 'draft'}</span></td>
             </tr>
           ))}</tbody>
         </table>
@@ -485,12 +485,12 @@ function OnboardingTab() {
         <div key={ob.id} className="card p-4 mb-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-semibold">{ob.client_name || ob.client_id?.slice(0,8)}</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full ${ob.status === 'completed' ? 'bg-brand/10 text-brand-dark' : 'bg-brand/10 text-brand'}`}>{ob.status || 'in_progress'}</span>
+            <span className={`text-[11px] px-2 py-0.5 rounded-full ${ob.status === 'completed' ? 'bg-brand/10 text-brand-dark' : 'bg-brand/10 text-brand'}`}>{ob.status || 'in_progress'}</span>
           </div>
           <div className="w-full bg-surface-elevated rounded-full h-2 mb-2">
             <div className="bg-brand h-2 rounded-full transition-all" style={{ width: `${ob.completion_pct || 0}%` }}/>
           </div>
-          <p className="text-[10px] text-content-tertiary">{ob.completion_pct || 0}% complete · {ob.items_completed || 0}/{ob.items_total || 0} items</p>
+          <p className="text-[11px] text-content-tertiary">{ob.completion_pct || 0}% complete · {ob.items_completed || 0}/{ob.items_total || 0} items</p>
         </div>
       ))}
     </div>
@@ -514,8 +514,8 @@ function PatientAccessTab() {
               <td className="px-4 py-3 text-xs">{r.request_type || 'records'}</td>
               <td className="px-4 py-3 text-[13px] text-content-secondary">{r.created_at?.slice(0,10)}</td>
               <td className="px-4 py-3 text-[13px] text-content-secondary">{r.deadline?.slice(0,10) || '—'}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${r.status === 'completed' ? 'bg-brand/10 text-brand-dark' : r.status === 'overdue' ? 'bg-red-500/10 text-red-500' : 'bg-brand-pale0/10 text-brand-deep'}`}>{r.status || 'pending'}</span></td>
-              <td className="px-4 py-3"><button onClick={() => toast.success('Marked complete — use patient access API')} className="text-[10px] text-brand hover:underline">Complete</button></td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full ${r.status === 'completed' ? 'bg-brand/10 text-brand-dark' : r.status === 'overdue' ? 'bg-red-500/10 text-red-500' : 'bg-brand-pale0/10 text-brand-deep'}`}>{r.status || 'pending'}</span></td>
+              <td className="px-4 py-3"><button onClick={() => toast.success('Marked complete — use patient access API')} className="text-[11px] text-brand hover:underline">Complete</button></td>
             </tr>
           ))}</tbody>
         </table>

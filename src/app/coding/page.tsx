@@ -332,7 +332,7 @@ function InlineDocPreview({ patientId, label }: { patientId?: string; label?: st
       {/* Inline preview — always stable, never remounts */}
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-          {label && <p className="text-[10px] uppercase tracking-widest text-brand font-bold shrink-0">{label}</p>}
+          {label && <p className="text-[11px] uppercase tracking-widest text-brand font-bold shrink-0">{label}</p>}
           <div className="flex items-center gap-2 ml-auto shrink-0">
             {docs.length > 1 && (
               <select value={selectedDocId || ''} onChange={e => setSelectedDocId(e.target.value)}
@@ -340,9 +340,9 @@ function InlineDocPreview({ patientId, label }: { patientId?: string; label?: st
                 {docs.map(d => <option key={d.id} value={d.id}>{d.file_name}</option>)}
               </select>
             )}
-            {docs.length === 1 && <span className="text-[10px] text-content-tertiary truncate max-w-[140px]">{docs[0].file_name}</span>}
+            {docs.length === 1 && <span className="text-[11px] text-content-tertiary truncate max-w-[140px]">{docs[0].file_name}</span>}
             <button onClick={() => setFullscreen(true)}
-              className="text-[10px] px-2 py-1 rounded border border-separator text-content-secondary hover:text-content-secondary hover:border-brand/40 transition-colors whitespace-nowrap">
+              className="text-[11px] px-2 py-1 rounded border border-separator text-content-secondary hover:text-content-secondary hover:border-brand/40 transition-colors whitespace-nowrap">
               ⛶ Fullscreen
             </button>
           </div>
@@ -399,51 +399,51 @@ function CodingRulesPanel() {
   return (
     <div className="p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Payer Coding Rules</h4>
-        <button onClick={() => setShowAdd(!showAdd)} className="text-[10px] px-2 py-1 rounded bg-brand text-white">+ Add Rule</button>
+        <h4 className="text-[13px] font-semibold text-content-secondary uppercase tracking-wider">Payer Coding Rules</h4>
+        <button onClick={() => setShowAdd(!showAdd)} className="text-[11px] px-2 py-1 rounded bg-brand text-white">+ Add Rule</button>
       </div>
       <p className="text-[11px] text-content-tertiary">Rules are automatically applied by AI when generating codes. E.g. &quot;For Aetna, always add modifier 25 to E/M with injection&quot;</p>
       {showAdd && (
         <div className="space-y-2 p-3 bg-surface-elevated rounded-lg border border-separator">
-          <input value={form.rule_name} onChange={e => setForm(p => ({...p, rule_name: e.target.value}))} placeholder="Rule name (e.g. Aetna modifier 25)" className="w-full bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-secondary" />
-          <input value={form.payer_name} onChange={e => setForm(p => ({...p, payer_name: e.target.value}))} placeholder="Payer (blank = all payers)" className="w-full bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-secondary" />
+          <input value={form.rule_name} onChange={e => setForm(p => ({...p, rule_name: e.target.value}))} placeholder="Rule name (e.g. Aetna modifier 25)" className="w-full bg-surface-default border border-separator rounded px-2 py-1.5 text-[13px] text-content-secondary" />
+          <input value={form.payer_name} onChange={e => setForm(p => ({...p, payer_name: e.target.value}))} placeholder="Payer (blank = all payers)" className="w-full bg-surface-default border border-separator rounded px-2 py-1.5 text-[13px] text-content-secondary" />
           <div className="grid grid-cols-3 gap-2">
-            <select value={form.condition_field} onChange={e => setForm(p => ({...p, condition_field: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-secondary">
+            <select value={form.condition_field} onChange={e => setForm(p => ({...p, condition_field: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-[13px] text-content-secondary">
               <option value="diagnosis">IF Diagnosis</option>
               <option value="cpt_code">IF CPT Code</option>
               <option value="specialty">IF Specialty</option>
               <option value="visit_type">IF Visit Type</option>
               <option value="age">IF Patient Age</option>
             </select>
-            <select value={form.condition_operator} onChange={e => setForm(p => ({...p, condition_operator: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-secondary">
+            <select value={form.condition_operator} onChange={e => setForm(p => ({...p, condition_operator: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-[13px] text-content-secondary">
               <option value="contains">contains</option>
               <option value="equals">equals</option>
               <option value="starts_with">starts with</option>
               <option value="greater_than">&gt;</option>
               <option value="less_than">&lt;</option>
             </select>
-            <input value={form.condition_value} onChange={e => setForm(p => ({...p, condition_value: e.target.value}))} placeholder="Value" className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-secondary" />
+            <input value={form.condition_value} onChange={e => setForm(p => ({...p, condition_value: e.target.value}))} placeholder="Value" className="bg-surface-default border border-separator rounded px-2 py-1.5 text-[13px] text-content-secondary" />
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <select value={form.action_type} onChange={e => setForm(p => ({...p, action_type: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-secondary">
+            <select value={form.action_type} onChange={e => setForm(p => ({...p, action_type: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-[13px] text-content-secondary">
               <option value="auto_code">→ Auto-code to</option>
               <option value="add_modifier">→ Add modifier</option>
               <option value="replace_code">→ Replace code</option>
               <option value="flag_review">→ Flag for review</option>
               <option value="deny_code">→ Never use code</option>
             </select>
-            <input value={form.action_value} onChange={e => setForm(p => ({...p, action_value: e.target.value}))} placeholder="e.g. 99214-25, E11.65" className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-secondary" />
+            <input value={form.action_value} onChange={e => setForm(p => ({...p, action_value: e.target.value}))} placeholder="e.g. 99214-25, E11.65" className="bg-surface-default border border-separator rounded px-2 py-1.5 text-[13px] text-content-secondary" />
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setShowAdd(false)} className="flex-1 border border-separator rounded py-1.5 text-xs text-content-secondary">Cancel</button>
+            <button onClick={() => setShowAdd(false)} className="flex-1 border border-separator rounded py-1.5 text-[13px] text-content-secondary">Cancel</button>
             <button onClick={addRule} disabled={!form.rule_name || !form.condition_value || !form.action_value} className="flex-1 bg-brand text-white rounded py-1.5 text-xs disabled:opacity-40">Save Rule</button>
           </div>
         </div>
       )}
-      {loading ? <p className="text-xs text-content-tertiary text-center py-4">Loading rules...</p> : rules.length === 0 ? (
+      {loading ? <p className="text-[13px] text-content-tertiary text-center py-4">Loading rules...</p> : rules.length === 0 ? (
         <div className="text-center py-6">
           <p className="text-xs text-content-tertiary">No coding rules configured yet.</p>
-          <p className="text-[10px] text-content-tertiary mt-1">Add rules to customize AI coding by payer, diagnosis, or specialty.</p>
+          <p className="text-[11px] text-content-tertiary mt-1">Add rules to customize AI coding by payer, diagnosis, or specialty.</p>
         </div>
       ) : (
         <div className="space-y-1.5">
@@ -452,9 +452,9 @@ function CodingRulesPanel() {
               <div className="flex-1">
                 <span className="font-medium text-content-primary">{r.rule_name}</span>
                 {r.payer_name && <span className="text-content-tertiary ml-2">[{r.payer_name}]</span>}
-                <p className="text-[10px] text-content-tertiary">IF {r.condition_field} {r.condition_operator} &quot;{r.condition_value}&quot; → {r.action_type}: {r.action_value}</p>
+                <p className="text-[11px] text-content-tertiary">IF {r.condition_field} {r.condition_operator} &quot;{r.condition_value}&quot; → {r.action_type}: {r.action_value}</p>
               </div>
-              <button onClick={() => deleteRule(r.id)} className="text-[10px] text-red-500 hover:text-red-500">✕</button>
+              <button onClick={() => deleteRule(r.id)} className="text-[11px] text-red-500 hover:text-red-500">✕</button>
             </div>
           ))}
         </div>
@@ -908,7 +908,7 @@ export default function CodingPage() {
                   if (done > 0) toast.success(`${done} chart${done > 1 ? 's' : ''} accepted → ${done} claim${done > 1 ? 's' : ''} created${failed > 0 ? ` (${failed} failed)` : ''}`)
                   else toast.error('Batch accept failed — no charts approved')
                 }}
-                className="text-[10px] px-2.5 py-1.5 rounded-lg bg-brand text-white hover:bg-brand-deep font-medium transition-colors shadow-sm"
+                className="text-[11px] px-2.5 py-1.5 rounded-lg bg-brand text-white hover:bg-brand-deep font-medium transition-colors shadow-sm"
               >
                 Approve for Billing
               </button>
@@ -921,7 +921,7 @@ export default function CodingPage() {
                     <BrainCircuit size={20} className='text-content-tertiary' />
                   </div>
                   <p className='text-sm font-medium text-content-primary mb-1'>No charts in queue</p>
-                  <p className='text-xs text-content-secondary'>Charts will appear here once they&apos;re added to the system.</p>
+                  <p className='text-[13px] text-content-secondary'>Charts will appear here once they&apos;re added to the system.</p>
                 </div>
               )}
               {queue.map(q => {
@@ -954,7 +954,7 @@ export default function CodingPage() {
                       <span className={`text-[11px] font-mono font-semibold ${sla.color}`}>{sla.label}</span>
                     </div>
                     {q.status !== 'pending' && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-pill mt-0.5 inline-block ${
+                      <span className={`text-[11px] px-1.5 py-0.5 rounded-pill mt-0.5 inline-block ${
                         q.status === 'on_hold' ? 'bg-brand-pale0/10 text-brand-deep' :
                         q.status === 'query_sent' ? 'bg-brand/10 text-brand-dark' :
                         q.status === 'in_progress' ? 'bg-brand/10 text-brand' : ''
@@ -976,7 +976,7 @@ export default function CodingPage() {
                             toast.success(`Reassigned to ${c.name}`)
                             setReassignTarget(null)
                           }}
-                            className="block w-full text-left text-[10px] px-2 py-1 rounded bg-surface-elevated hover:bg-brand/10 hover:text-brand text-content-secondary transition-colors">
+                            className="block w-full text-left text-[11px] px-2 py-1 rounded bg-surface-elevated hover:bg-brand/10 hover:text-brand text-content-secondary transition-colors">
                             {c.name}
                           </button>
                         ))}
@@ -1077,7 +1077,7 @@ export default function CodingPage() {
                     </button>
                     <button
                       onClick={() => router.push('/coding-rules')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border border-separator text-content-secondary hover:border-brand-light/40 hover:text-brand-deep transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] rounded-btn font-medium border border-separator text-content-secondary hover:border-brand-light/40 hover:text-brand-deep transition-colors"
                     >
                       ⚙ Coding Rules
                     </button>
@@ -1098,7 +1098,7 @@ export default function CodingPage() {
                       <div className="grid grid-cols-4 gap-2 mt-2">
                         {fields.map(([label, value]) => (
                           <div key={label} className="bg-surface-elevated rounded-lg px-2 py-1.5">
-                            <span className="text-[10px] text-content-tertiary block">{label}</span>
+                            <span className="text-[11px] text-content-tertiary block">{label}</span>
                             <span className="text-[12px] text-content-primary font-medium">{value}</span>
                           </div>
                         ))}
@@ -1118,13 +1118,13 @@ export default function CodingPage() {
                         <Clock size={16} className='text-content-tertiary opacity-40' />
                       </div>
                       <p className='text-[13px] font-medium text-content-primary mb-1'>Prior Visit History</p>
-                      <p className='text-xs text-content-secondary'>Visit history will appear here once the patient&apos;s prior encounters are linked.</p>
+                      <p className='text-[13px] text-content-secondary'>Visit history will appear here once the patient&apos;s prior encounters are linked.</p>
                     </div>
                   )}
                   {tab === 'qa' && (
                     <div className="p-4 space-y-3">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">QA Coding Audit</h4>
+                        <h4 className="text-[13px] font-semibold text-content-secondary uppercase tracking-wider">QA Coding Audit</h4>
                       </div>
                       <div className="flex flex-col items-center justify-center py-10 text-center">
                         <div className="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center mb-3">
@@ -1145,7 +1145,7 @@ export default function CodingPage() {
                         <button
                           onClick={() => setDocOpen('note')}
                           className={`px-3 py-1.5 text-xs rounded-btn font-medium transition-colors ${
-                            docOpen === 'note' ? 'bg-brand text-white' : 'text-content-secondary hover:text-content-primary'
+                            docOpen === 'note' ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'
                           }`}
                         >
                           Visit Note
@@ -1154,7 +1154,7 @@ export default function CodingPage() {
                           <button
                             onClick={() => setDocOpen('superbill')}
                             className={`px-3 py-1.5 text-xs rounded-btn font-medium transition-colors ${
-                              docOpen === 'superbill' ? 'bg-brand text-white' : 'text-content-secondary hover:text-content-primary'
+                              docOpen === 'superbill' ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'
                             }`}
                           >
                             Superbill
@@ -1181,7 +1181,7 @@ export default function CodingPage() {
                           {item.source === 'upload' && (
                             <div className="flex items-center gap-2 px-3 py-2 bg-surface-elevated border border-separator rounded-lg">
                               <FileText size={13} className="text-content-tertiary shrink-0" />
-                              <span className="text-xs text-content-secondary flex-1">Source chart — {item.patientName}</span>
+                              <span className="text-[13px] text-content-secondary flex-1">Source chart — {item.patientName}</span>
                               <button onClick={() => setDocOpen('superbill')} className="text-xs text-brand underline shrink-0">
                                 View Superbill →
                               </button>
@@ -1189,7 +1189,7 @@ export default function CodingPage() {
                           )}
                           {(['subjective', 'objective', 'assessment', 'plan'] as const).map(section => (
                             <div key={section} className="pb-3 border-b border-separator last:border-0">
-                              <p className="text-[10px] uppercase tracking-widest text-content-tertiary font-bold mb-1.5">{section}</p>
+                              <p className="text-[11px] uppercase tracking-widest text-content-tertiary font-bold mb-1.5">{section}</p>
                               <p className="text-[13px] text-content-secondary leading-relaxed whitespace-pre-line">
                                 {item.visitNote[section] || <span className="italic text-content-tertiary text-[12px]">No documentation yet — attach a visit note or type above to begin coding</span>}
                               </p>
@@ -1206,7 +1206,7 @@ export default function CodingPage() {
                               <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold">Codes on Superbill</p>
                               {item.superbillCpt.map(code => (
                                 <div key={code} className="flex items-center justify-between px-3 py-2 bg-surface-elevated rounded-lg border border-separator">
-                                  <span className="font-mono text-xs text-content-primary">{code}</span>
+                                  <span className="font-mono text-[13px] text-content-primary">{code}</span>
                                   {aiCptCodes.includes(code)
                                     ? <span className="text-[11px] text-brand-dark font-medium">✓ AI matched</span>
                                     : <span className="text-[11px] text-brand-deep font-medium">⚠ Not in AI suggestion</span>
@@ -1223,7 +1223,7 @@ export default function CodingPage() {
                         <div className="grid grid-cols-2 gap-3 h-full">
                           {/* Left: Visit Note */}
                           <div className="overflow-y-auto border-r border-separator pr-3 space-y-3">
-                            <p className="text-[10px] uppercase tracking-widest text-brand font-bold">Visit Note</p>
+                            <p className="text-[11px] uppercase tracking-widest text-brand font-bold">Visit Note</p>
                             {(['subjective', 'objective', 'assessment', 'plan'] as const).map(section => (
                               <div key={section} className="pb-2 border-b border-separator last:border-0">
                                 <p className="text-[9px] uppercase tracking-widest text-content-tertiary font-bold mb-1">{section}</p>
@@ -1238,19 +1238,19 @@ export default function CodingPage() {
                             <InlineDocPreview patientId={item.patientId} label="Document Preview" />
                             {item.superbillCpt && item.superbillCpt.length > 0 ? (
                               <div className="space-y-1.5">
-                                <p className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold">Superbill Codes</p>
+                                <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold">Superbill Codes</p>
                                 {item.superbillCpt.map(code => (
                                   <div key={code} className="flex items-center justify-between px-2 py-1.5 bg-surface-elevated rounded border border-separator">
                                     <span className="font-mono text-[11px] text-content-primary">{code}</span>
                                     {aiCptCodes.includes(code)
-                                      ? <span className="text-[10px] text-brand-dark">✓ matched</span>
-                                      : <span className="text-[10px] text-brand-deep">⚠ missing</span>
+                                      ? <span className="text-[11px] text-brand-dark">✓ matched</span>
+                                      : <span className="text-[11px] text-brand-deep">⚠ missing</span>
                                     }
                                   </div>
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-[10px] text-content-tertiary text-center py-3">No superbill codes extracted yet</p>
+                              <p className="text-[11px] text-content-tertiary text-center py-3">No superbill codes extracted yet</p>
                             )}
                           </div>
                         </div>
@@ -1296,7 +1296,7 @@ export default function CodingPage() {
                 {process.env.NODE_ENV === 'development' && (
                   <button
                     onClick={() => setAiUnavailable(p => !p)}
-                    className={`text-[10px] px-2 py-0.5 rounded border mb-2 ${aiUnavailable ? 'border-red-500/40 text-red-500 bg-red-500/10' : 'border-separator text-content-tertiary'}`}
+                    className={`text-[11px] px-2 py-0.5 rounded border mb-2 ${aiUnavailable ? 'border-red-500/40 text-red-500 bg-red-500/10' : 'border-separator text-content-tertiary'}`}
                   >
                     {aiUnavailable ? '🔴 AI Unavailable (simulated)' : 'Simulate AI Failure'}
                   </button>
@@ -1335,7 +1335,7 @@ export default function CodingPage() {
                         ) : (
                           <div className="space-y-2">
                             <div>
-                              <label className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Specialty</label>
+                              <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Specialty</label>
                               <input
                                 value={quickSoap.specialty}
                                 onChange={e => setQuickSoap(p => ({ ...p, specialty: e.target.value }))}
@@ -1344,7 +1344,7 @@ export default function CodingPage() {
                               />
                             </div>
                             <div>
-                              <label className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Assessment / Diagnoses</label>
+                              <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Assessment / Diagnoses</label>
                               <textarea
                                 rows={3}
                                 value={quickSoap.assessment}
@@ -1354,7 +1354,7 @@ export default function CodingPage() {
                               />
                             </div>
                             <div>
-                              <label className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Plan / Procedures</label>
+                              <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Plan / Procedures</label>
                               <textarea
                                 rows={2}
                                 value={quickSoap.plan}
@@ -1411,7 +1411,7 @@ export default function CodingPage() {
                               setCoderInstructions('')
                             }
                           }}
-                          className="text-[10px] px-3 py-1.5 rounded-lg bg-brand text-white hover:bg-brand-mid transition-colors whitespace-nowrap">
+                          className="text-[11px] px-3 py-1.5 rounded-lg bg-brand text-white hover:bg-brand-mid transition-colors whitespace-nowrap">
                           ✦ {coderInstructions ? 'Re-code' : 'Regenerate'}
                         </button>
                       </div>
@@ -1431,7 +1431,7 @@ export default function CodingPage() {
                           <div key={key} className="p-2 rounded-lg border border-dashed border-separator opacity-50 flex items-center justify-between gap-2">
                             <span className="text-[12px] font-mono line-through text-content-tertiary">{code.code}</span>
                             <span className="text-[11px] text-content-tertiary flex-1">Removed: {codeOverrides[key].reason}</span>
-                            <button onClick={() => setCodeOverrides(p => { const n = { ...p }; delete n[key]; return n })} className="text-[10px] text-brand">Undo</button>
+                            <button onClick={() => setCodeOverrides(p => { const n = { ...p }; delete n[key]; return n })} className="text-[11px] text-brand">Undo</button>
                           </div>
                         )
 
@@ -1455,10 +1455,10 @@ export default function CodingPage() {
                               <span className="text-[12px] text-content-secondary flex-1">{code.desc}</span>
                               <span className={`text-[12px] font-semibold ${(code.confidence ?? 0) >= 90 ? 'text-brand-dark' : (code.confidence ?? 0) >= 70 ? 'text-brand-deep' : 'text-red-500'}`}>{code.confidence ?? 0}%</span>
                               {code.reasoning && <button onClick={() => setExpanded(p => ({ ...p, [key]: !p[key] }))} className="text-content-tertiary">{expanded[key] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button>}
-                              <button onClick={() => { setEditingCode(editingCode === key ? null : key); setEditSearch('') }} className="text-[10px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-brand/40 hover:text-brand transition-colors">Edit</button>
-                              <button onClick={() => setRemovingCode(removingCode === key ? null : key)} className="text-[10px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-red-500/40 hover:text-red-500 transition-colors">Remove</button>
+                              <button onClick={() => { setEditingCode(editingCode === key ? null : key); setEditSearch('') }} className="text-[11px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-brand/40 hover:text-brand transition-colors">Edit</button>
+                              <button onClick={() => setRemovingCode(removingCode === key ? null : key)} className="text-[11px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-red-500/40 hover:text-red-500 transition-colors">Remove</button>
                               {isLowConfidence && !isForcedReview && (
-                                <button onClick={() => { setForcedReviewCodes(prev => { const s = new Set(Array.from(prev)); s.add(key); return s }); toast.info('Marked as manually reviewed') }} className="text-[10px] px-1.5 py-0.5 rounded bg-brand-pale0/20 text-brand-deep font-semibold">Confirm</button>
+                                <button onClick={() => { setForcedReviewCodes(prev => { const s = new Set(Array.from(prev)); s.add(key); return s }); toast.info('Marked as manually reviewed') }} className="text-[11px] px-1.5 py-0.5 rounded bg-brand-pale0/20 text-brand-deep font-semibold">Confirm</button>
                               )}
                             </div>
                             {expanded[key] && code.reasoning && <p className="mt-1 text-[12px] italic text-content-secondary pl-6">{code.reasoning}</p>}
@@ -1511,7 +1511,7 @@ export default function CodingPage() {
                         <span className="text-[12px] font-mono font-semibold text-brand">{mc.code}</span>
                         <span className="text-[12px] text-content-secondary flex-1">{mc.description}</span>
                         <span className="text-[11px] text-content-tertiary">Manual</span>
-                        <button onClick={() => setManualCodes(p => p.filter(m => m.key !== mc.key))} className="text-[10px] text-red-500">Remove</button>
+                        <button onClick={() => setManualCodes(p => p.filter(m => m.key !== mc.key))} className="text-[11px] text-red-500">Remove</button>
                       </div>
                     ))}
 
@@ -1529,7 +1529,7 @@ export default function CodingPage() {
                           <div key={key} className="p-2 rounded-lg border border-dashed border-separator opacity-50 flex items-center justify-between gap-2">
                             <span className="text-[12px] font-mono line-through text-content-tertiary">{code.code}</span>
                             <span className="text-[11px] text-content-tertiary flex-1">Removed: {codeOverrides[key].reason}</span>
-                            <button onClick={() => setCodeOverrides(p => { const n = { ...p }; delete n[key]; return n })} className="text-[10px] text-brand">Undo</button>
+                            <button onClick={() => setCodeOverrides(p => { const n = { ...p }; delete n[key]; return n })} className="text-[11px] text-brand">Undo</button>
                           </div>
                         )
 
@@ -1553,10 +1553,10 @@ export default function CodingPage() {
                               <span className="text-[12px] text-content-secondary flex-1">{code.desc}</span>
                               <span className={`text-[12px] font-semibold ${(code.confidence ?? 0) >= 90 ? 'text-brand-dark' : (code.confidence ?? 0) >= 70 ? 'text-brand-deep' : 'text-red-500'}`}>{code.confidence ?? 0}%</span>
                               {code.reasoning && <button onClick={() => setExpanded(p => ({ ...p, [key]: !p[key] }))} className="text-content-tertiary">{expanded[key] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button>}
-                              <button onClick={() => { setEditingCode(editingCode === key ? null : key); setEditSearch('') }} className="text-[10px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-brand/40 hover:text-brand transition-colors">Edit</button>
-                              <button onClick={() => setRemovingCode(removingCode === key ? null : key)} className="text-[10px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-red-500/40 hover:text-red-500 transition-colors">Remove</button>
+                              <button onClick={() => { setEditingCode(editingCode === key ? null : key); setEditSearch('') }} className="text-[11px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-brand/40 hover:text-brand transition-colors">Edit</button>
+                              <button onClick={() => setRemovingCode(removingCode === key ? null : key)} className="text-[11px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-red-500/40 hover:text-red-500 transition-colors">Remove</button>
                               {isLowConfidence && !isForcedReview && (
-                                <button onClick={() => { setForcedReviewCodes(prev => { const s = new Set(Array.from(prev)); s.add(key); return s }); toast.info('Marked as manually reviewed') }} className="text-[10px] px-1.5 py-0.5 rounded bg-brand-pale0/20 text-brand-deep font-semibold">Confirm</button>
+                                <button onClick={() => { setForcedReviewCodes(prev => { const s = new Set(Array.from(prev)); s.add(key); return s }); toast.info('Marked as manually reviewed') }} className="text-[11px] px-1.5 py-0.5 rounded bg-brand-pale0/20 text-brand-deep font-semibold">Confirm</button>
                               )}
                             </div>
                             {expanded[key] && code.reasoning && <p className="mt-1 text-[12px] italic text-content-secondary pl-6">{code.reasoning}</p>}
@@ -1609,7 +1609,7 @@ export default function CodingPage() {
                         <span className="text-[12px] font-mono font-semibold text-brand">{mc.code}</span>
                         <span className="text-[12px] text-content-secondary flex-1">{mc.description}</span>
                         <span className="text-[11px] text-content-tertiary">Manual</span>
-                        <button onClick={() => setManualCodes(p => p.filter(m => m.key !== mc.key))} className="text-[10px] text-red-500">Remove</button>
+                        <button onClick={() => setManualCodes(p => p.filter(m => m.key !== mc.key))} className="text-[11px] text-red-500">Remove</button>
                       </div>
                     ))}
 

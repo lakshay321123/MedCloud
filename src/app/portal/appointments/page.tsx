@@ -57,7 +57,7 @@ function MiniCalendar({ selectedDate, onSelect, apptDates }: { selectedDate: str
     <div className="card p-4">
       <div className="flex items-center justify-between mb-3">
         <button onClick={prevMonth} className="p-1 hover:bg-surface-elevated rounded transition-colors"><ChevronLeft size={14}/></button>
-        <span className="text-xs font-semibold text-content-primary">{monthName}</span>
+        <span className="text-[13px] font-semibold text-content-primary">{monthName}</span>
         <button onClick={nextMonth} className="p-1 hover:bg-surface-elevated rounded transition-colors"><ChevronRight size={14}/></button>
       </div>
       <div className="grid grid-cols-7 gap-0.5 mb-1">
@@ -131,7 +131,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
             </div>
             <div>
               <h3 className="font-semibold text-content-primary">{appt.patientName}</h3>
-              <p className="text-xs text-content-secondary">{appt.time} · {appt.type} · {appt.provider}</p>
+              <p className="text-[13px] text-content-secondary">{appt.time} · {appt.type} · {appt.provider}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-surface-elevated rounded-btn">
@@ -147,7 +147,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
         }`}>
           <span className={`w-2 h-2 rounded-full ${ec.color}`}/>
           Eligibility: {ec.label}
-          {elig !== 'verified' && <button onClick={() => router.push(`/eligibility?patientId=${appt.patientId}`)} className="ml-auto text-brand underline text-[10px]">Verify Now</button>}
+          {elig !== 'verified' && <button onClick={() => router.push(`/eligibility?patientId=${appt.patientId}`)} className="ml-auto text-brand underline text-[11px]">Verify Now</button>}
         </div>
 
         {/* Content */}
@@ -155,7 +155,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
           {/* Demographics */}
           {patient && (
             <div className="bg-surface-elevated rounded-lg p-3 space-y-2">
-              <div className="text-xs font-semibold text-content-secondary uppercase tracking-wide mb-2">Patient Demographics</div>
+              <div className="text-[13px] font-semibold text-content-secondary uppercase tracking-wide mb-2">Patient Demographics</div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div><span className="text-content-tertiary block">DOB</span>{formatDOB(patient.dob)}</div>
                 <div><span className="text-content-tertiary block">Gender</span>{patient.gender || '—'}</div>
@@ -339,10 +339,10 @@ export default function AppointmentsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4">
-        <div className="card px-3 py-2 text-center"><div className="text-lg font-bold">{stats.total}</div><div className="text-[10px] text-content-secondary">Today Total</div></div>
-        <div className="card px-3 py-2 text-center"><div className="text-lg font-bold text-cyan-600 dark:text-cyan-400">{stats.checkedIn}</div><div className="text-[10px] text-content-secondary">Checked In</div></div>
-        <div className="card px-3 py-2 text-center"><div className="text-lg font-bold text-brand-dark dark:text-brand-dark">{stats.completed}</div><div className="text-[10px] text-content-secondary">Completed</div></div>
-        <div className="card px-3 py-2 text-center"><div className="text-lg font-bold text-red-500">{stats.noShows}</div><div className="text-[10px] text-content-secondary">No-Shows</div></div>
+        <div className="card px-3 py-2 text-center"><div className="text-lg font-bold">{stats.total}</div><div className="text-[11px] text-content-secondary">Today Total</div></div>
+        <div className="card px-3 py-2 text-center"><div className="text-lg font-bold text-cyan-600 dark:text-cyan-400">{stats.checkedIn}</div><div className="text-[11px] text-content-secondary">Checked In</div></div>
+        <div className="card px-3 py-2 text-center"><div className="text-lg font-bold text-brand-dark dark:text-brand-dark">{stats.completed}</div><div className="text-[11px] text-content-secondary">Completed</div></div>
+        <div className="card px-3 py-2 text-center"><div className="text-lg font-bold text-content-secondary">{stats.noShows}</div><div className="text-[11px] text-content-secondary">No-Shows</div></div>
       </div>
 
       {missingDocs.length > 0 && isStaff && (
@@ -363,7 +363,7 @@ export default function AppointmentsPage() {
             <h3 className="text-sm font-semibold text-content-primary">
               {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' })}
             </h3>
-            <span className="text-xs text-content-secondary">{dayApts.length} appointment{dayApts.length!==1?'s':''}</span>
+            <span className="text-[13px] text-content-secondary">{dayApts.length} appointment{dayApts.length!==1?'s':''}</span>
           </div>
 
           {dayApts.length === 0 ? (
@@ -372,7 +372,7 @@ export default function AppointmentsPage() {
                 <CalendarDays size={20} className='text-content-tertiary' />
               </div>
               <p className='text-sm font-medium text-content-primary mb-1'>No appointments yet</p>
-              <p className='text-xs text-content-secondary'>Appointments will appear here once they&apos;re added to the system.</p>
+              <p className='text-[13px] text-content-secondary'>Appointments will appear here once they&apos;re added to the system.</p>
             </div>
           ) : dayApts.map(a => {
             const currentStatus = a.status
@@ -389,7 +389,7 @@ export default function AppointmentsPage() {
                 <div className="flex items-start gap-3">
                   <div className="shrink-0 w-14 text-center pt-0.5">
                     <div className="text-base font-bold text-content-primary">{a.time}</div>
-                    <div className="text-[10px] text-content-secondary">{a.duration}m</div>
+                    <div className="text-[11px] text-content-secondary">{a.duration}m</div>
                   </div>
                   <div className="w-px self-stretch bg-separator mx-1"/>
                   <div className="flex-1 min-w-0">
@@ -402,8 +402,8 @@ export default function AppointmentsPage() {
                     </div>
                     <div className="flex items-center gap-2 ml-9 flex-wrap">
                       <span className="text-[11px] text-content-secondary">{a.provider}</span>
-                      <span className="text-[10px] bg-surface-elevated px-2 py-0.5 rounded border border-separator">{a.type}</span>
-                      {isStaff && a.clientId && <span className="text-[10px] text-content-tertiary">{(a as any).client_name || ''}</span>}
+                      <span className="text-[11px] bg-surface-elevated px-2 py-0.5 rounded border border-separator">{a.type}</span>
+                      {isStaff && a.clientId && <span className="text-[11px] text-content-tertiary">{(a as any).client_name || ''}</span>}
                       <span className="hidden sm:flex items-center gap-1 ml-auto shrink-0">
                         <span className={`w-2 h-2 rounded-full ${ec.color}`}/>
                         <span className="text-[11px] text-content-secondary">{ec.label}</span>
@@ -421,11 +421,11 @@ export default function AppointmentsPage() {
                     className="text-[11px] px-3 py-1.5 border border-brand/30 text-brand-dark bg-brand/5 rounded-lg hover:bg-brand/10 font-medium transition-colors">View</button>
                   {['booked','confirmed'].includes(currentStatus) && (
                     <button onClick={() => checkIn(a.id, a.patientName)}
-                      className="text-[10px] px-2.5 py-1.5 bg-brand/10 text-brand-dark border border-brand/20 rounded hover:bg-brand/15 transition-colors">Check In</button>
+                      className="text-[11px] px-2.5 py-1.5 bg-brand/10 text-brand-dark border border-brand/20 rounded hover:bg-brand/15 transition-colors">Check In</button>
                   )}
                   {['booked','confirmed'].includes(currentStatus) && (
                     <button onClick={() => markNoShow(a.id, a.patientName)}
-                      className="text-[10px] px-2.5 py-1.5 border border-separator text-content-secondary rounded hover:text-red-500 hover:border-red-500/30 transition-colors">No Show</button>
+                      className="text-[11px] px-2.5 py-1.5 border border-separator text-content-secondary rounded hover:text-content-primary hover:border-separator transition-colors">No Show</button>
                   )}
                 </div>
               </div>
