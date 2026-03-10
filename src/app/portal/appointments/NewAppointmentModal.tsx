@@ -100,7 +100,7 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
           <button
             onClick={() => setMode('existing')}
             className={`flex-1 py-1.5 text-xs font-medium rounded-[10px] transition-all ${
-              mode === 'existing' ? 'bg-brand text-white shadow-sm' : 'text-content-tertiary'
+              mode === 'existing' ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'
             }`}
           >
             Existing Patient
@@ -108,7 +108,7 @@ export default function NewAppointmentModal({ onClose, onSaved }: { onClose: () 
           <button
             onClick={() => setMode('new')}
             className={`flex-1 py-1.5 text-xs font-medium rounded-[10px] transition-all ${
-              mode === 'new' ? 'bg-brand text-white shadow-sm' : 'text-content-tertiary'
+              mode === 'new' ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'
             }`}
           >
             New Patient

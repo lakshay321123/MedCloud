@@ -12,10 +12,9 @@ export default function Footer() {
       */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/assets/cosentus-division.png"
+        src="/logos/A COSENTUS DIVISION.png"
         alt="A Cosentus Division"
-        className="h-[18px] w-auto object-contain"
-        style={{ filter: 'invert(1)', mixBlendMode: 'multiply' }}
+        className="h-[18px] w-auto object-contain opacity-70"
       />
     </footer>
   )

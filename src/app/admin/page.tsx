@@ -110,7 +110,7 @@ function UsersTab() {
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary"/>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search users..."
-            className="bg-surface-elevated border border-separator rounded-lg pl-8 pr-3 py-1.5 text-xs text-content-secondary w-60"/>
+            className="bg-surface-elevated border border-separator rounded-lg pl-8 pr-3 py-1.5 text-[13px] text-content-secondary w-60"/>
         </div>
         <button onClick={()=>setShowAdd(true)} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors">
           <Plus size={14}/> Add User
@@ -118,7 +118,7 @@ function UsersTab() {
       </div>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
             <th className="text-left px-4 py-3">Name</th><th className="text-left px-4 py-3">Email</th>
             <th className="text-left px-4 py-3">Role</th><th className="text-left px-4 py-3">Clients</th>
             <th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3">Last Login</th>
@@ -127,11 +127,11 @@ function UsersTab() {
           <tbody>{filtered.map(u=>(
             <tr key={u.email} className="border-b border-separator last:border-0 table-row">
               <td className="px-4 py-3 font-medium">{u.name}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{u.email}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{u.email}</td>
               <td className="px-4 py-3"><span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${roleColors[u.role]??'bg-surface-elevated text-content-secondary'}`}>{u.role}</span></td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{u.clients}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{u.clients}</td>
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${u.active?'bg-brand/10 text-brand-dark dark:text-brand-dark':'bg-gray-500/10 text-gray-400'}`}>{u.active?'Active':'Disabled'}</span></td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{u.lastLogin}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{u.lastLogin}</td>
               <td className="px-4 py-3 flex gap-1">
                 <button onClick={()=>setEditingUser(u)} className="text-[10px] text-brand hover:underline">Edit</button>
                 <span className="text-content-tertiary">·</span>
@@ -151,21 +151,21 @@ function UsersTab() {
                 <button onClick={()=>setShowAdd(false)}><X size={16} className="text-content-secondary"/></button>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Full Name *</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Full Name *</label>
                 <input value={newUser.name} onChange={e=>setNewUser(p=>({...p,name:e.target.value}))} placeholder="Jane Smith" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Email *</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Email *</label>
                 <input value={newUser.email} onChange={e=>setNewUser(p=>({...p,email:e.target.value}))} placeholder="jane@cosentus.ai" type="email" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Role</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Role</label>
                 <select value={newUser.role} onChange={e=>setNewUser(p=>({...p,role:e.target.value}))} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40">
                   {Object.keys(roleColors).map(r=><option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Assign to Clients</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Assign to Clients</label>
                 <input value={newUser.clients} onChange={e=>setNewUser(p=>({...p,clients:e.target.value}))} placeholder="IFP, GMC (or leave blank for All)" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <button onClick={handleCreateUser} disabled={creating}
@@ -184,21 +184,21 @@ function UsersTab() {
                 <button onClick={()=>setEditingUser(null)}><X size={16} className="text-content-secondary"/></button>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Full Name</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Full Name</label>
                 <input value={editingUser.name} onChange={e=>setEditingUser(u=>u?{...u,name:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Email</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Email</label>
                 <input value={editingUser.email} readOnly className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-tertiary cursor-not-allowed focus:outline-none"/>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Role</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Role</label>
                 <select value={editingUser.role} onChange={e=>setEditingUser(u=>u?{...u,role:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40">
                   {Object.keys(roleColors).map(r=><option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Assigned Clients</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Assigned Clients</label>
                 <input value={editingUser.clients} onChange={e=>setEditingUser(u=>u?{...u,clients:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <button onClick={async ()=>{
@@ -233,7 +233,7 @@ function OrgsTab() {
       </div>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
             <th className="text-left px-4 py-3">Name</th><th className="text-left px-4 py-3">Region</th>
             <th className="text-left px-4 py-3">EHR Mode</th><th className="text-left px-4 py-3">Pricing</th>
             <th className="text-left px-4 py-3">Active Since</th><th className="text-left px-4 py-3">Status</th>
@@ -242,9 +242,9 @@ function OrgsTab() {
             <tr key={o.name} onClick={()=>toast.info(`Opening ${o.name} settings`)} className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
               <td className="px-4 py-3 font-medium">{o.name}</td>
               <td className="px-4 py-3 text-xs">{o.region}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{o.ehr}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{o.ehr}</td>
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${pricingColors[o.pricing]??'bg-surface-elevated text-content-secondary'}`}>{o.pricing}</span></td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{o.since}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{o.since}</td>
               <td className="px-4 py-3"><span className="text-[10px] bg-brand/10 text-brand-dark dark:text-brand-dark px-2 py-0.5 rounded-full">Active</span></td>
             </tr>
           ))}</tbody>
@@ -260,7 +260,7 @@ function OrgsTab() {
                 <button onClick={()=>setShowAddOrg(false)}><X size={16} className="text-content-secondary"/></button>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Organization Name</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Organization Name</label>
                 <input
                   placeholder="e.g. City Medical Group"
                   value={orgData.name}
@@ -269,7 +269,7 @@ function OrgsTab() {
                 />
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Primary Contact</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Primary Contact</label>
                 <input
                   placeholder="Jane Smith"
                   value={orgData.contact}
@@ -278,7 +278,7 @@ function OrgsTab() {
                 />
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Contact Email</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Contact Email</label>
                 <input
                   placeholder="jane@org.com"
                   value={orgData.email}
@@ -288,7 +288,7 @@ function OrgsTab() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-content-secondary block mb-1">Region</label>
+                  <label className="text-[13px] text-content-secondary block mb-1">Region</label>
                   <select
                     value={orgData.region}
                     onChange={e => setOrgData(p => ({ ...p, region: e.target.value }))}
@@ -297,7 +297,7 @@ function OrgsTab() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-content-secondary block mb-1">Pricing Model</label>
+                  <label className="text-[13px] text-content-secondary block mb-1">Pricing Model</label>
                   <select
                     value={orgData.pricing}
                     onChange={e => setOrgData(p => ({ ...p, pricing: e.target.value }))}
@@ -350,7 +350,7 @@ function SystemHealthTab() {
           <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Queue Depths</h3>
         </div>
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
             <th className="text-left px-4 py-3">Queue</th><th className="text-left px-4 py-3">Items</th>
             <th className="text-left px-4 py-3">Processing</th><th className="text-left px-4 py-3">Failed</th>
             <th className="text-left px-4 py-3">Last Flush</th>
@@ -361,7 +361,7 @@ function SystemHealthTab() {
               <td className="px-4 py-3 text-xs font-mono">{q.items}</td>
               <td className="px-4 py-3 text-xs text-brand">{q.processing}</td>
               <td className="px-4 py-3 text-xs"><span className={q.failed>0?'text-red-500':'text-content-secondary'}>{q.failed}</span></td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{q.flush}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{q.flush}</td>
             </tr>
           ))}</tbody>
         </table>
@@ -392,10 +392,10 @@ function AuditLogTab() {
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary"/>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by user..."
-            className="bg-surface-elevated border border-separator rounded-lg pl-8 pr-3 py-1.5 text-xs text-content-secondary w-48"/>
+            className="bg-surface-elevated border border-separator rounded-lg pl-8 pr-3 py-1.5 text-[13px] text-content-secondary w-48"/>
         </div>
         <select value={actionFilter} onChange={e=>setActionFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary">
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-[13px] text-content-secondary">
           <option value="">All Actions</option>
           {['VIEW','CREATE','UPDATE','DELETE','EXPORT'].map(a=><option key={a}>{a}</option>)}
         </select>
@@ -405,7 +405,7 @@ function AuditLogTab() {
       </div>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
             <th className="text-left px-4 py-3">Timestamp</th><th className="text-left px-4 py-3">User</th>
             <th className="text-left px-4 py-3">Role</th><th className="text-left px-4 py-3">Action</th>
             <th className="text-left px-4 py-3">Entity</th><th className="text-left px-4 py-3">Entity ID</th>
@@ -454,12 +454,12 @@ function InvoicesTab() {
       </div>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary"><th className="text-left px-4 py-3">Invoice #</th><th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">Period</th><th className="text-left px-4 py-3">Amount</th><th className="text-left px-4 py-3">Status</th></tr></thead>
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary"><th className="text-left px-4 py-3">Invoice #</th><th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">Period</th><th className="text-left px-4 py-3">Amount</th><th className="text-left px-4 py-3">Status</th></tr></thead>
           <tbody>{loading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-content-secondary text-xs">Loading…</td></tr> : items.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-content-tertiary text-xs">No invoices yet — generate one above</td></tr> : items.map((inv) => (
             <tr key={inv.id} className="border-b border-separator last:border-0 table-row">
               <td className="px-4 py-3 font-mono text-xs">{inv.invoice_number || inv.id?.slice(0,8)}</td>
               <td className="px-4 py-3 text-xs">{inv.client_name || '—'}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{inv.period_start?.slice(0,10)} → {inv.period_end?.slice(0,10)}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{inv.period_start?.slice(0,10)} → {inv.period_end?.slice(0,10)}</td>
               <td className="px-4 py-3 text-xs font-semibold">${Number(inv.total_amount || 0).toLocaleString()}</td>
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${({paid:'bg-brand/10 text-brand-dark',sent:'bg-brand/10 text-brand'} as Record<string,string>)[inv.status ?? ''] || 'bg-brand-pale0/10 text-brand-deep'}`}>{inv.status || 'draft'}</span></td>
             </tr>
@@ -507,13 +507,13 @@ function PatientAccessTab() {
       {loading ? <div className="text-center py-8 text-content-secondary text-xs">Loading…</div> : items.length === 0 ? <div className="card p-8 text-center text-content-tertiary text-xs">No pending patient access requests</div> :
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary"><th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Request Type</th><th className="text-left px-4 py-3">Submitted</th><th className="text-left px-4 py-3">Deadline</th><th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3">Actions</th></tr></thead>
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary"><th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Request Type</th><th className="text-left px-4 py-3">Submitted</th><th className="text-left px-4 py-3">Deadline</th><th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3">Actions</th></tr></thead>
           <tbody>{items.map((r) => (
             <tr key={r.id} className="border-b border-separator last:border-0 table-row">
               <td className="px-4 py-3 text-xs">{r.patient_name || '—'}</td>
               <td className="px-4 py-3 text-xs">{r.request_type || 'records'}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{r.created_at?.slice(0,10)}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{r.deadline?.slice(0,10) || '—'}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{r.created_at?.slice(0,10)}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{r.deadline?.slice(0,10) || '—'}</td>
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${r.status === 'completed' ? 'bg-brand/10 text-brand-dark' : r.status === 'overdue' ? 'bg-red-500/10 text-red-500' : 'bg-brand-pale0/10 text-brand-deep'}`}>{r.status || 'pending'}</span></td>
               <td className="px-4 py-3"><button onClick={() => toast.success('Marked complete — use patient access API')} className="text-[10px] text-brand hover:underline">Complete</button></td>
             </tr>

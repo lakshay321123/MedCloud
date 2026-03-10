@@ -678,11 +678,11 @@ export default function PaymentPostingPage() {
           const denied = eraLines.filter(l => l.action === 'deny_route')
           if (denied.length === 0) { toast.warning('No lines marked for denial routing'); return }
           toast.success(`${denied.length} denial(s) routed to AR queue`)
-        }} className="bg-red-500/10 text-red-600 dark:text-red-400 rounded-btn px-4 py-2 text-[13px]">Route Denials to AR</button>
+        }} className="bg-surface-elevated text-content-secondary border border-separator rounded-btn px-4 py-2 text-[13px] hover:border-brand/30 hover:text-brand-dark transition-colors">Route Denials to AR</button>
         <button onClick={() => {
           const patBal = eraLines.filter(l => l.action === 'patient_bill')
           toast.success(`${patBal.length || 2} patient statement(s) queued for delivery`)
-        }} className="bg-brand/10 text-brand-dark dark:text-brand rounded-btn px-4 py-2 text-[13px] inline-flex items-center gap-1"><FileText size={14} />Generate Patient Statements</button>
+        }} className="bg-brand/10 text-brand-dark border border-brand/20 rounded-btn px-4 py-2 text-[13px] inline-flex items-center gap-1 hover:bg-brand/20 transition-colors"><FileText size={14} />Generate Patient Statements</button>
       </div>
 
       {/* ── Bank Deposit Reconciliation ── */}
@@ -701,11 +701,11 @@ export default function PaymentPostingPage() {
                   <button onClick={() => setShowDepositModal(false)} className="text-content-secondary hover:text-content-primary"><X size={16} /></button>
                 </div>
                 <div>
-                  <label className="text-xs text-content-secondary block mb-1">Deposit Amount ($) *</label>
+                  <label className="text-[13px] text-content-secondary block mb-1">Deposit Amount ($) *</label>
                   <input type="number" step="0.01" min="0" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} placeholder="12345.67" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40" />
                 </div>
                 <div>
-                  <label className="text-xs text-content-secondary block mb-1">Deposit Date *</label>
+                  <label className="text-[13px] text-content-secondary block mb-1">Deposit Date *</label>
                   <input type="date" value={depositDate} onChange={e => setDepositDate(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40" />
                 </div>
                 <button disabled={savingDeposit || !depositAmount || isNaN(parseFloat(depositAmount))} onClick={async () => {
@@ -741,7 +741,7 @@ export default function PaymentPostingPage() {
             <Receipt size={16} className="text-content-tertiary opacity-40" />
           </div>
           <p className="text-[13px] font-medium text-content-primary mb-1">Bank statement matching — Sprint 3</p>
-          <p className="text-xs text-content-secondary">Upload a bank statement to reconcile deposits against ERA payments. This feature will be available once the bank feed integration is live.</p>
+          <p className="text-[13px] text-content-secondary">Upload a bank statement to reconcile deposits against ERA payments. This feature will be available once the bank feed integration is live.</p>
         </div>
       </div>
     </ModuleShell>

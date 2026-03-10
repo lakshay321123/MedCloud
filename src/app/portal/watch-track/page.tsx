@@ -61,11 +61,11 @@ export default function WatchTrackPage() {
       {/* Tabs */}
       <div className="flex gap-1 mb-5 bg-surface-elevated rounded-xl p-1 w-fit">
         <button onClick={() => setActiveTab('claims')}
-          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === 'claims' ? 'bg-brand text-white shadow-sm' : 'text-content-secondary hover:text-content-primary'}`}>
+          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === 'claims' ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'}`}>
           Claims
         </button>
         <button onClick={() => setActiveTab('submissions')}
-          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${activeTab === 'submissions' ? 'bg-brand text-white shadow-sm' : 'text-content-secondary hover:text-content-primary'}`}>
+          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${activeTab === 'submissions' ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'}`}>
           My Submissions
           {allDocs.length > 0 && <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${activeTab === 'submissions' ? 'bg-white/20' : 'bg-brand/20 text-brand'}`}>{allDocs.length}</span>}
         </button>

@@ -102,7 +102,7 @@ function CreditBalanceRow({ cr, onResolved }: {
       <td className="px-4 py-3 font-mono text-xs">{cr.claim}</td>
       <td className="px-4 py-3 text-xs">{cr.patient}</td>
       <td className="px-4 py-3 text-xs font-semibold text-brand-deep">{cr.amt}</td>
-      <td className="px-4 py-3 text-xs text-content-secondary">{cr.payer}</td>
+      <td className="px-4 py-3 text-[13px] text-content-secondary">{cr.payer}</td>
       <td className="px-4 py-3 text-xs">{cr.reason}</td>
       <td className="px-4 py-3 flex gap-2">
         <button disabled={resolving} onClick={async () => {
@@ -197,7 +197,7 @@ function LogCallModal({
             {ivr.length > 0 && (
               <div className="border border-separator rounded-lg overflow-hidden">
                 <button onClick={() => setShowIVR(p => !p)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-content-secondary hover:bg-surface-elevated transition-colors">
+                  className="w-full flex items-center justify-between px-3 py-2 text-[13px] font-medium text-content-secondary hover:bg-surface-elevated transition-colors">
                   <span>IVR Navigation Steps ({ivr.length} steps)</span>
                   {showIVR ? <ChevronUp size={13}/> : <ChevronDown size={13}/>}
                 </button>
@@ -321,7 +321,7 @@ function ARDrawer({
         <div className="flex items-center justify-between p-4 border-b border-separator shrink-0">
           <div>
             <h3 className="font-semibold text-content-primary">{account.patient}</h3>
-            <p className="text-xs text-content-secondary">{account.client} · {account.payer}</p>
+            <p className="text-[13px] text-content-secondary">{account.client} · {account.payer}</p>
             <button onClick={() => router.push(`/claims?id=${account.id}`)}
               className="text-[11px] text-brand hover:underline mt-0.5 block">
               View Claim {account.claimNumber || account.id} →
@@ -384,7 +384,7 @@ function ARDrawer({
               </div>
 
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Next Follow-up Date</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Next Follow-up Date</label>
                 <input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)}
                   className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm" />
               </div>
@@ -396,11 +396,11 @@ function ARDrawer({
                   onClose()
                   router.push(`/voice-ai?payer=${encodeURIComponent(account.payer)}&patient=${encodeURIComponent(account.patient)}&claim=${account.id}`)
                 }}
-                  className="bg-brand/10 text-brand rounded-lg py-2.5 text-xs font-medium hover:bg-brand/20 transition-colors flex items-center justify-center gap-2">
+                  className="bg-brand/10 text-brand rounded-lg py-2.5 text-[13px] font-medium hover:bg-brand/20 transition-colors flex items-center justify-center gap-2">
                   <Phone size={13} /> Voice AI
                 </button>
                 <button onClick={() => setShowCallModal(true)}
-                  className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-xs font-medium hover:text-content-secondary transition-colors flex items-center justify-center gap-2">
+                  className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-[13px] font-medium hover:text-content-secondary transition-colors flex items-center justify-center gap-2">
                   <PhoneCall size={13} /> Log Manual Call
                 </button>
                 <button onClick={async () => {
@@ -419,7 +419,7 @@ function ARDrawer({
                     toast.success(`Follow-up saved for ${followUpDate}`)
                     onClose()
                   } catch { toast.error('Failed to save follow-up') }
-                }} className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-xs font-medium hover:text-content-secondary transition-colors">
+                }} className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-[13px] font-medium hover:text-content-secondary transition-colors">
                   Save Follow-up
                 </button>
                 <button onClick={async () => {
@@ -440,11 +440,11 @@ function ARDrawer({
                     onClose()
                   } catch { toast.error('Failed to route to appeals') }
                 }}
-                  className="bg-brand-pale0/10 text-brand-deep dark:text-brand-deep rounded-lg py-2.5 text-xs font-medium hover:bg-brand-pale0/20 transition-colors">
+                  className="bg-brand-pale0/10 text-brand-deep dark:text-brand-deep rounded-lg py-2.5 text-[13px] font-medium hover:bg-brand-pale0/20 transition-colors">
                   Route to Appeals
                 </button>
                 <button onClick={() => setShowWriteoffModal(true)}
-                  className="col-span-2 bg-red-500/10 text-red-500 rounded-lg py-2.5 text-xs font-medium hover:bg-red-500/20 transition-colors">
+                  className="col-span-2 bg-red-500/10 text-red-500 rounded-lg py-2.5 text-[13px] font-medium hover:bg-red-500/20 transition-colors">
                   Request Write-off
                 </button>
                 <button
@@ -457,7 +457,7 @@ function ARDrawer({
                       onClose()
                     } catch { toast.error('Failed to send info request') }
                   }}
-                  className="bg-brand/10 text-brand-dark dark:text-brand rounded-lg py-2.5 text-xs font-medium hover:bg-brand/20 transition-colors disabled:opacity-50">
+                  className="bg-brand/10 text-brand-dark dark:text-brand rounded-lg py-2.5 text-[13px] font-medium hover:bg-brand/20 transition-colors disabled:opacity-50">
                   {requestingInfo ? 'Requesting…' : 'Request Info'}
                 </button>
                 <button
@@ -470,7 +470,7 @@ function ARDrawer({
                       onClose()
                     } catch { toast.error('Failed to escalate claim') }
                   }}
-                  className="bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-lg py-2.5 text-xs font-medium hover:bg-orange-500/20 transition-colors disabled:opacity-50">
+                  className="bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-lg py-2.5 text-[13px] font-medium hover:bg-orange-500/20 transition-colors disabled:opacity-50">
                   {escalating ? 'Escalating…' : 'Escalate'}
                 </button>
                 <button
@@ -483,7 +483,7 @@ function ARDrawer({
                       onClose()
                     } catch { toast.error('Failed to send statement') }
                   }}
-                  className="col-span-2 bg-brand/10 text-brand-dark dark:text-brand-dark rounded-lg py-2.5 text-xs font-medium hover:bg-brand/10 transition-colors disabled:opacity-50">
+                  className="col-span-2 bg-brand/10 text-brand-dark dark:text-brand-dark rounded-lg py-2.5 text-[13px] font-medium hover:bg-brand/10 transition-colors disabled:opacity-50">
                   {sendingStatement ? 'Sending…' : 'Send Statement'}
                 </button>
               </div>
@@ -628,7 +628,7 @@ function InboundCallPanel() {
   return (
     <div className="card p-6 max-w-2xl">
       <h3 className="text-base font-semibold mb-1">Inbound Patient Call</h3>
-      <p className="text-xs text-content-secondary mb-4">Patient calling in — look up account by name or phone.</p>
+      <p className="text-[13px] text-content-secondary mb-4">Patient calling in — look up account by name or phone.</p>
       <div className="flex gap-2 mb-4">
         <input value={phoneSearch} onChange={e => setPhoneSearch(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && lookUp()}
@@ -642,7 +642,7 @@ function InboundCallPanel() {
             <div className="flex justify-between mb-3">
               <div>
                 <p className="font-semibold">{found.patient}</p>
-                <p className="text-xs text-content-secondary">{found.client} · {found.payer}</p>
+                <p className="text-[13px] text-content-secondary">{found.client} · {found.payer}</p>
               </div>
               <span className={`text-xs font-bold px-2 py-1 rounded ${found.balance > 0 ? 'bg-brand-pale0/10 text-brand-deep' : 'bg-brand/10 text-brand-dark'}`}>
                 {found.balance > 0 ? `$${found.balance} BALANCE` : 'PAID'}
@@ -674,7 +674,7 @@ function InboundCallPanel() {
                   toast.success(b.msg)
                 } catch { toast.error('Failed to create task') }
               }}
-                className={`${b.color} rounded-lg py-2.5 text-xs font-medium border hover:opacity-80 transition-opacity`}>
+                className={`${b.color} rounded-lg py-2.5 text-[13px] font-medium border hover:opacity-80 transition-opacity`}>
                 {b.label}
               </button>
             ))}
@@ -876,7 +876,7 @@ export default function ARManagementPage() {
           </div>
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-separator text-xs text-content-secondary"><th className="text-left px-4 py-3">Claim</th><th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Amount</th><th className="text-left px-4 py-3">Payer</th><th className="text-left px-4 py-3">Reason</th><th className="text-left px-4 py-3">Actions</th></tr></thead>
+              <thead><tr className="border-b border-separator text-[13px] text-content-secondary"><th className="text-left px-4 py-3">Claim</th><th className="text-left px-4 py-3">Patient</th><th className="text-left px-4 py-3">Amount</th><th className="text-left px-4 py-3">Payer</th><th className="text-left px-4 py-3">Reason</th><th className="text-left px-4 py-3">Actions</th></tr></thead>
               <tbody>
                 {(creditBalances.length > 0 ? creditBalances.map(cb => ({
                   id: cb.id,
@@ -907,13 +907,13 @@ export default function ARManagementPage() {
           </div>
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-separator text-xs text-content-secondary"><th className="text-left px-4 py-3">Account</th><th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">SLA Target</th><th className="text-left px-4 py-3">Days Elapsed</th><th className="text-left px-4 py-3">Priority</th><th className="text-left px-4 py-3">Assigned To</th></tr></thead>
+              <thead><tr className="border-b border-separator text-[13px] text-content-secondary"><th className="text-left px-4 py-3">Account</th><th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">SLA Target</th><th className="text-left px-4 py-3">Days Elapsed</th><th className="text-left px-4 py-3">Priority</th><th className="text-left px-4 py-3">Assigned To</th></tr></thead>
               <tbody>
                 {[{acct:'AR-3301',client:'Valley Ortho',sla:'30 days',days:34,priority:'critical',assignee:'Team Lead'},{acct:'AR-2987',client:'Metro Health',sla:'45 days',days:42,priority:'high',assignee:'Sarah K.'},{acct:'AR-4102',client:'CityMed',sla:'30 days',days:28,priority:'medium',assignee:'John D.'}].map(s=>(
                   <tr key={s.acct} className="border-b border-separator last:border-0 table-row">
                     <td className="px-4 py-3 font-mono text-xs">{s.acct}</td>
                     <td className="px-4 py-3 text-xs">{s.client}</td>
-                    <td className="px-4 py-3 text-xs text-content-secondary">{s.sla}</td>
+                    <td className="px-4 py-3 text-[13px] text-content-secondary">{s.sla}</td>
                     <td className="px-4 py-3 text-xs font-semibold">{s.days}d</td>
                     <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${s.priority==='critical'?'bg-red-500/10 text-red-500':s.priority==='high'?'bg-brand-pale0/10 text-brand-deep':'bg-brand/10 text-brand'}`}>{s.priority}</span></td>
                     <td className="px-4 py-3 text-xs">{s.assignee}</td>
@@ -964,7 +964,7 @@ export default function ARManagementPage() {
       </div>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
             <th className="text-left px-4 py-3">Patient</th>
             <th className="text-left px-4 py-3">Client</th>
             <th className="text-left px-4 py-3">Payer</th>
@@ -988,8 +988,8 @@ export default function ARManagementPage() {
                     <div className="text-[10px] text-brand-dark dark:text-brand-dark font-normal">💰 Promised {a.paymentPromisedDate}</div>
                   )}
                 </td>
-                <td className="px-4 py-3 text-xs text-content-secondary">{a.client}</td>
-                <td className="px-4 py-3 text-xs text-content-secondary">{a.payer}</td>
+                <td className="px-4 py-3 text-[13px] text-content-secondary">{a.client}</td>
+                <td className="px-4 py-3 text-[13px] text-content-secondary">{a.payer}</td>
                 <td className="px-4 py-3">
                   <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${sourceInfo[a.source]?.color || 'bg-surface-elevated text-content-secondary'}`}>
                     {sourceInfo[a.source]?.label || a.source}
@@ -1002,8 +1002,8 @@ export default function ARManagementPage() {
                     {tf < 0 ? 'PASSED' : `${tf}d`}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs text-content-secondary">{a.lastAction}</td>
-                <td className="px-4 py-3 text-xs text-content-secondary">{a.nextFollowup}</td>
+                <td className="px-4 py-3 text-[13px] text-content-secondary">{a.lastAction}</td>
+                <td className="px-4 py-3 text-[13px] text-content-secondary">{a.nextFollowup}</td>
                 <td className="px-4 py-3"><StatusBadge status={a.priority} small /></td>
               </tr>
             )

@@ -76,7 +76,7 @@ export default function CredentialingPage() {
       )}
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
             <th className="text-left px-4 py-3">Provider</th><th className="text-left px-4 py-3">NPI</th>
             <th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">License Exp</th>
             <th className="text-left px-4 py-3">Malpractice Exp</th><th className="text-left px-4 py-3">CAQH</th>
@@ -87,11 +87,11 @@ export default function CredentialingPage() {
               onClick={() => setSelected(p)}
               className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
               <td className="px-4 py-3 font-medium">{p.name}</td>
-              <td className="px-4 py-3 font-mono text-xs text-content-secondary">{p.npi}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{p.client}</td>
+              <td className="px-4 py-3 font-mono text-[13px] text-content-secondary">{p.npi}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{p.client}</td>
               <td className="px-4 py-3 text-xs">{p.license}</td>
               <td className="px-4 py-3 text-xs">{p.malpractice}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{p.caqh}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{p.caqh}</td>
               <td className="px-4 py-3 text-right">{p.payers}</td>
               <td className="px-4 py-3"><span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${p.status==='active'?'bg-brand/10 text-brand-dark dark:text-brand-dark border-brand/20':p.status==='expiring'?'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep border-brand-light/20':'bg-brand/10 text-brand-dark border-brand/20'}`}>{p.status}</span></td>
             </tr>
@@ -117,7 +117,7 @@ export default function CredentialingPage() {
                 </div>
                 <div>
                   <div className="font-semibold text-content-primary">{selected.name}</div>
-                  <div className="text-xs text-content-secondary">NPI: {selected.npi} · {selected.client}</div>
+                  <div className="text-[13px] text-content-secondary">NPI: {selected.npi} · {selected.client}</div>
                 </div>
               </div>
 
@@ -128,7 +128,7 @@ export default function CredentialingPage() {
                 { label: 'CAQH', value: selected.caqh },
               ].map(item => (
                 <div key={item.label} className="flex items-center justify-between py-2 border-b border-separator">
-                  <span className="text-xs text-content-secondary">{item.label}</span>
+                  <span className="text-[13px] text-content-secondary">{item.label}</span>
                   <span className={`text-xs font-medium ${item.value === 'Pending' ? 'text-brand-deep' : item.value === 'N/A' ? 'text-content-tertiary' : 'text-content-primary'}`}>
                     {item.value}
                   </span>
@@ -136,7 +136,7 @@ export default function CredentialingPage() {
               ))}
 
               <div>
-                <div className="text-xs text-content-secondary mb-2">Active Payer Enrollments: {selected.payers}</div>
+                <div className="text-[13px] text-content-secondary mb-2">Active Payer Enrollments: {selected.payers}</div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -149,11 +149,11 @@ export default function CredentialingPage() {
                     toast.error('Failed to initiate re-credentialing')
                   }
                 }}
-                  className="bg-brand/10 text-brand rounded-lg py-2 text-xs font-medium hover:bg-brand/20 transition-colors">
+                  className="bg-brand/10 text-brand rounded-lg py-2 text-[13px] font-medium hover:bg-brand/20 transition-colors">
                   Initiate Re-credentialing
                 </button>
                 <button onClick={() => { window.open('https://proview.caqh.org/PR', '_blank'); toast.success('CAQH ProView opened') }}
-                  className="bg-surface-elevated border border-separator rounded-lg py-2 text-xs font-medium">
+                  className="bg-surface-elevated border border-separator rounded-lg py-2 text-[13px] font-medium">
                   Update CAQH
                 </button>
                 <button onClick={async () => {
@@ -165,7 +165,7 @@ export default function CredentialingPage() {
                     toast.error('Failed to start enrollment')
                   }
                 }}
-                  className="bg-surface-elevated border border-separator rounded-lg py-2 text-xs font-medium col-span-2">
+                  className="bg-surface-elevated border border-separator rounded-lg py-2 text-[13px] font-medium col-span-2">
                   Add Payer Enrollment
                 </button>
               </div>

@@ -468,7 +468,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
         <div className="flex border-b border-separator px-4 shrink-0 overflow-x-auto">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`px-3 py-2.5 text-[12px] font-medium transition-colors whitespace-nowrap ${tab === t.id ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>
+              className={`px-3 py-2.5 text-[12px] font-medium transition-colors whitespace-nowrap ${tab === t.id ? 'text-brand border-b-2 border-brand' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'}`}>
               {t.label}
             </button>
           ))}
@@ -1242,7 +1242,7 @@ export default function ClaimsPage() {
                         <FileText size={20} className='text-content-tertiary' />
                       </div>
                       <p className='text-sm font-medium text-content-primary mb-1'>No claims yet</p>
-                      <p className='text-xs text-content-secondary'>Claims will appear here once they&apos;re added to the system.</p>
+                      <p className='text-[13px] text-content-secondary'>Claims will appear here once they&apos;re added to the system.</p>
                     </div>
                   </td></tr>
                 )}
@@ -1282,7 +1282,7 @@ export default function ClaimsPage() {
                       {menuOpen === c.id && (
                         <>
                           <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(null)} />
-                          <div className="absolute right-0 top-full mt-1 bg-surface-secondary border border-separator rounded-lg shadow-elevated z-50 w-40 overflow-hidden">
+                          <div className="absolute right-0 top-full mt-1 bg-white border border-[rgba(0,0,0,0.09)] rounded-[12px] shadow-elevated z-50 w-40 overflow-hidden">
                             {([
                               { label: 'View Detail',      variant: 'default',             action: () => { setDrawerClaim(c); setMenuOpen(null) } },
                               { label: 'Correct Claim',    variant: 'default',             action: () => { setDrawerClaim(c); setMenuOpen(null) } },

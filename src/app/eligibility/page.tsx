@@ -202,7 +202,7 @@ function SingleCheckTab() {
           <div>
             <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Patient *</label>
             <select value={patientId} onChange={e => { setPatientId(e.target.value); setResult(null) }}
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary">
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary">
               <option value="">Select patient</option>
               {patients.map(p => (
                 <option key={p.id} value={p.id}>
@@ -220,21 +220,21 @@ function SingleCheckTab() {
           <div>
             <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Date of Service</label>
             <input type="date" value={dos} onChange={e => setDos(e.target.value)}
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary" />
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary" />
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Member ID</label>
             <input value={memberId} onChange={e => setMemberId(e.target.value)} placeholder="Auto-filled from patient"
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary placeholder:text-content-tertiary" />
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary placeholder:text-content-tertiary" />
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Group Number</label>
             <input value={groupNumber} onChange={e => setGroupNumber(e.target.value)} placeholder="Optional"
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary placeholder:text-content-tertiary" />
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary placeholder:text-content-tertiary" />
           </div>
           <div className="flex items-end">
             <button onClick={handleVerify} disabled={checking || !patientId || !payerId}
-              className="w-full bg-brand text-white rounded-lg px-4 py-2 text-xs font-medium disabled:opacity-50 hover:bg-brand-deep transition-colors flex items-center justify-center gap-2">
+              className="w-full bg-brand text-white rounded-lg px-4 py-2 text-[13px] font-medium disabled:opacity-50 hover:bg-brand-deep transition-colors flex items-center justify-center gap-2">
               {checking ? <><RefreshCw size={12} className="animate-spin" /> Checking…</> : <><ShieldCheck size={14} /> Verify</>}
             </button>
           </div>
@@ -331,17 +331,17 @@ function BatchCheckTab() {
         <h3 className="text-sm font-semibold text-content-primary mb-3 flex items-center gap-2">
           <Calendar size={16} className="text-brand" /> Batch Eligibility — All Appointments for Date
         </h3>
-        <p className="text-xs text-content-secondary mb-4">
+        <p className="text-[13px] text-content-secondary mb-4">
           Automatically verify eligibility for every patient with an appointment on the selected date. Results saved to each patient record.
         </p>
         <div className="flex items-end gap-3">
           <div>
             <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Appointment Date</label>
             <input type="date" value={batchDate} onChange={e => setBatchDate(e.target.value)}
-              className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary" />
+              className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary" />
           </div>
           <button onClick={handleBatch} disabled={running}
-            className="bg-brand text-white rounded-lg px-5 py-2 text-xs font-medium disabled:opacity-50 hover:bg-brand-deep transition-colors flex items-center gap-2">
+            className="bg-brand text-white rounded-lg px-5 py-2 text-[13px] font-medium disabled:opacity-50 hover:bg-brand-deep transition-colors flex items-center gap-2">
             {running ? <><RefreshCw size={12} className="animate-spin" /> Running…</> : <><Activity size={14} /> Run Batch</>}
           </button>
         </div>
@@ -452,10 +452,10 @@ function CheckHistoryTab({ checks, loading }: { checks: ApiEligibilityCheck[]; l
         <div className="relative flex-1 max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search patient name…"
-            className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-xs text-content-secondary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
+            className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-[13px] text-content-secondary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
         </div>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary">
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary">
           <option value="">All statuses</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
@@ -582,16 +582,16 @@ function PriorAuthTab({ auths, loading, onRefresh }: { auths: ApiPriorAuth[]; lo
         <div className="relative flex-1 max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search auth #, patient, payer, CPT…"
-            className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-xs text-content-secondary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
+            className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-[13px] text-content-secondary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
         </div>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary">
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary">
           <option value="">All statuses</option>
           <option value="pending">Pending</option><option value="submitted">Submitted</option>
           <option value="approved">Approved</option><option value="denied">Denied</option>
         </select>
         <button onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 bg-brand text-white rounded-lg px-4 py-2 text-xs font-medium hover:bg-brand-deep transition-colors">
+          className="flex items-center gap-1.5 bg-brand text-white rounded-lg px-4 py-2 text-[13px] font-medium hover:bg-brand-deep transition-colors">
           <Plus size={14} /> New Prior Auth
         </button>
       </div>
@@ -739,9 +739,9 @@ function CreatePriorAuthModal({ onClose, onCreated }: { onClose: () => void; onC
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-separator">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-xs text-content-secondary hover:bg-surface-elevated transition-colors">Cancel</button>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-[13px] text-content-secondary hover:bg-surface-elevated transition-colors">Cancel</button>
           <button onClick={handleSubmit} disabled={submitting || !patientId || !payerId}
-            className="bg-brand text-white rounded-lg px-5 py-2 text-xs font-medium disabled:opacity-50 hover:bg-brand-deep transition-colors flex items-center gap-2">
+            className="bg-brand text-white rounded-lg px-5 py-2 text-[13px] font-medium disabled:opacity-50 hover:bg-brand-deep transition-colors flex items-center gap-2">
             {submitting ? <><RefreshCw size={12} className="animate-spin" /> Creating…</> : <><Save size={14} /> Create Request</>}
           </button>
         </div>
@@ -818,7 +818,7 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
           {pa.clinical_rationale && (
             <div className="bg-surface-elevated rounded-lg p-3">
               <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">Clinical Rationale</p>
-              <p className="text-xs text-content-primary whitespace-pre-wrap">{pa.clinical_rationale}</p>
+              <p className="text-[13px] text-content-primary whitespace-pre-wrap">{pa.clinical_rationale}</p>
             </div>
           )}
           <div>
@@ -881,7 +881,7 @@ function TimelineItem({ label, time, icon }: { label: string; time: string; icon
   return (
     <div className="flex items-center gap-2">
       <div className="w-6 h-6 rounded-full bg-surface-elevated flex items-center justify-center text-content-secondary">{icon}</div>
-      <div><p className="text-xs text-content-primary">{label}</p><p className="text-[10px] text-content-tertiary">{new Date(time).toLocaleString()}</p></div>
+      <div><p className="text-[13px] text-content-primary">{label}</p><p className="text-[10px] text-content-tertiary">{new Date(time).toLocaleString()}</p></div>
     </div>
   )
 }
@@ -891,7 +891,7 @@ function EmptyState({ icon, title, subtitle }: { icon: React.ReactNode; title: s
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <div className="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center mb-3 text-content-tertiary">{icon}</div>
       <p className="text-sm font-medium text-content-primary mb-1">{title}</p>
-      <p className="text-xs text-content-secondary">{subtitle}</p>
+      <p className="text-[13px] text-content-secondary">{subtitle}</p>
     </div>
   )
 }
@@ -901,7 +901,7 @@ function LabeledSelect({ label, value, onChange, options }: { label: string; val
     <div>
       <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">{label}</label>
       <select value={value} onChange={e => onChange(e.target.value)}
-        className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary">
+        className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary">
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </div>
@@ -913,7 +913,7 @@ function LabeledInput({ label, value, onChange, placeholder, mono }: { label: st
     <div>
       <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">{label}</label>
       <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className={`w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary ${mono ? 'font-mono' : ''}`} />
+        className={`w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-primary placeholder:text-content-tertiary ${mono ? 'font-mono' : ''}`} />
     </div>
   )
 }

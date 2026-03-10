@@ -87,14 +87,14 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
     }
   }
   return (
-    <div className="fixed inset-y-0 right-0 w-full sm:w-[600px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl animate-fade-in">
+    <div className="fixed inset-y-0 right-0 w-full sm:w-[600px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-[0_4px_24px_rgba(0,0,0,0.10),0_1px_4px_rgba(0,0,0,0.06)] animate-fade-in">
       <div className="p-4 border-b border-separator flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
             {typeIcon[doc.type] ?? <File size={14}/>}
             <span className="text-sm font-semibold text-content-primary">{doc.type}</span>
           </div>
-          <p className="text-xs text-content-secondary font-mono">{doc.name}</p>
+          <p className="text-[13px] text-content-secondary font-mono">{doc.name}</p>
           <p className="text-[10px] text-content-tertiary mt-0.5">Uploaded {doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'} · {doc.source}</p>
         </div>
         <button onClick={onClose} className="p-1 hover:bg-surface-elevated rounded-btn"><X size={16} className="text-content-secondary"/></button>
@@ -156,7 +156,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
                   onClose()
                 } catch { toast.error('Failed to send to coding queue') } finally { setSendingToCoding(false) }
               }} disabled={sendingToCoding}
-                className="w-full bg-brand text-white rounded-lg py-2 text-xs font-medium hover:bg-brand-deep transition-colors mt-1 disabled:opacity-50">
+                className="w-full bg-brand text-white rounded-lg py-2 text-[13px] font-medium hover:bg-brand-deep transition-colors mt-1 disabled:opacity-50">
                 {sendingToCoding ? 'Sending…' : 'Send to Coding Queue'}
               </button>
             </div>
@@ -273,14 +273,14 @@ function AllDocsTab() {
         ))}
         <div className="ml-auto">
           <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}
-            className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary">
+            className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-[13px] text-content-secondary">
             <option value="">All Statuses</option>
             {['Linked','Unlinked','Processing'].map(s=><option key={s} value={s}>{s}</option>)}
           </select>
         </div>
       </div>
       <div className="card overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm min-w-[700px]">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
             <th className="text-left px-4 py-3">Document</th><th className="text-left px-4 py-3">Type</th>
             <th className="text-left px-4 py-3">Client</th><th className="text-left px-4 py-3">Patient</th>
             <th className="text-left px-4 py-3">Date</th><th className="text-left px-4 py-3">Source</th>
@@ -291,7 +291,7 @@ function AllDocsTab() {
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <div className="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center mb-3"><FileText size={20} className="text-content-tertiary" /></div>
                 <p className="text-sm font-medium text-content-primary mb-1">No documents yet</p>
-                <p className="text-xs text-content-secondary">Upload documents to see them here. Supports superbills, EOBs, insurance cards, and clinical notes.</p>
+                <p className="text-[13px] text-content-secondary">Upload documents to see them here. Supports superbills, EOBs, insurance cards, and clinical notes.</p>
               </div>
             </td></tr>
           ) : filtered.map(d=>(
@@ -303,9 +303,9 @@ function AllDocsTab() {
                 </div>
               </td>
               <td className="px-4 py-3 text-xs">{d.type}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{d.client}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{d.client}</td>
               <td className="px-4 py-3 text-xs">{d.patient}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{d.uploadDate ? new Date(d.uploadDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{d.uploadDate ? new Date(d.uploadDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${sourceBadge(d.source)}`}>{d.source}</span></td>
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusBadge(d.status)}`}>{d.status}</span></td>
               <td className="px-4 py-3">
@@ -320,7 +320,7 @@ function AllDocsTab() {
                   </button>
                 </div>
                 {linkingDocId === d.id && (
-                  <div className="absolute right-4 mt-1 z-30 w-64 bg-surface-default border border-separator rounded-lg shadow-xl p-2" onClick={e=>e.stopPropagation()}>
+                  <div className="absolute right-4 mt-1 z-30 w-64 bg-surface-default border border-separator rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.10)] p-1" onClick={e=>e.stopPropagation()}>
                     <input autoFocus value={linkSearch} onChange={e=>setLinkSearch(e.target.value)} placeholder="Search patient..."
                       className="w-full bg-surface-elevated border border-separator rounded px-2 py-1.5 text-xs mb-1 focus:outline-none focus:border-brand/40" />
                     <div className="max-h-32 overflow-y-auto">
@@ -392,9 +392,9 @@ function UnlinkedQueueTab() {
                 <div className="flex gap-2 items-center">
                   <div className="relative">
                     <input value={patientSearch[d.id]||''} onChange={e=>{setPatientSearch(p=>({...p,[d.id]:e.target.value})); setSelectedPatientIds(p=>({...p,[d.id]:''}))}}
-                      placeholder="Patient name..." className="bg-surface-elevated border border-separator rounded px-2 py-1 text-xs text-content-secondary w-40"/>
+                      placeholder="Patient name..." className="bg-surface-elevated border border-separator rounded px-2 py-1 text-[13px] text-content-secondary w-40"/>
                     {(patientSearch[d.id]||'').length > 0 && !selectedPatientIds[d.id] && (
-                      <div className="absolute top-full left-0 mt-1 z-50 bg-surface-secondary border border-separator rounded-lg shadow-xl max-h-28 overflow-y-auto w-48">
+                      <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-[rgba(0,0,0,0.09)] rounded-[12px] shadow-xl max-h-28 overflow-y-auto w-48">
                         {ptList.filter((p:any)=>p.name.toLowerCase().includes((patientSearch[d.id]||'').toLowerCase())).slice(0,4).map((p:any)=>(
                           <button key={p.id} onClick={()=>{setSelectedPatientIds(prev=>({...prev,[d.id]:p.id}));setPatientSearch(prev=>({...prev,[d.id]:p.name}))}}
                             className="w-full text-left px-2 py-1.5 text-xs hover:bg-surface-elevated border-b border-separator last:border-0">{p.name}</button>
@@ -437,7 +437,7 @@ function FaxCenterTab() {
         <div className="flex gap-1">
           {(['inbound','outbound'] as const).map(t=>(
             <button key={t} onClick={()=>setSubTab(t)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-medium ${subTab===t?'bg-brand/10 text-brand':'bg-surface-elevated text-content-secondary border border-separator'}`}>
+              className={`px-4 py-1.5 rounded-lg text-[13px] font-medium ${subTab===t?'bg-brand/10 text-brand':'bg-surface-elevated text-content-secondary border border-separator'}`}>
               {t==='inbound'?'Inbound':'Outbound'}
             </button>
           ))}
@@ -447,7 +447,7 @@ function FaxCenterTab() {
         </button>
       </div>
       <div className="card overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm min-w-[600px]">
-          <thead><tr className="border-b border-separator text-xs text-content-secondary">
+          <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
             <th className="text-left px-4 py-3">Fax ID</th><th className="text-left px-4 py-3">From / To</th>
             <th className="text-left px-4 py-3">Date</th><th className="text-left px-4 py-3">Pages</th>
             <th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3">Document</th>
@@ -457,7 +457,7 @@ function FaxCenterTab() {
             <tr key={f.id} onClick={() => setSelectedFax(f)} className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
               <td className="px-4 py-3 font-mono text-xs">{f.id}</td>
               <td className="px-4 py-3 text-xs">{f.fromTo}</td>
-              <td className="px-4 py-3 text-xs text-content-secondary">{f.date}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{f.date}</td>
               <td className="px-4 py-3 text-xs">{f.pages}</td>
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${statusStyle(f.status)}`}>{f.status}</span></td>
               <td className="px-4 py-3 text-xs text-brand">{f.document??'—'}</td>
@@ -475,7 +475,7 @@ function FaxCenterTab() {
         <>
           <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setSelectedFax(null)} />
           <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-            <div className="bg-surface-secondary rounded-xl p-5 w-full max-w-md shadow-2xl border border-separator">
+            <div className="bg-surface-secondary rounded-xl p-5 w-full max-w-md shadow-[0_4px_24px_rgba(0,0,0,0.10),0_1px_4px_rgba(0,0,0,0.06)] border border-separator">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="font-semibold">{selectedFax.id}</h3>
                 <button onClick={() => setSelectedFax(null)}><X size={16} className="text-content-secondary" /></button>
@@ -500,25 +500,25 @@ function FaxCenterTab() {
         <>
           <div className="fixed inset-0 bg-black/40 z-40" onClick={()=>setShowSendFax(false)}/>
           <div className="fixed inset-0 flex items-center justify-center z-50">
-            <div className="bg-surface-secondary rounded-xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <div className="bg-surface-secondary rounded-xl p-6 w-full max-w-md shadow-[0_4px_24px_rgba(0,0,0,0.10),0_1px_4px_rgba(0,0,0,0.06)] space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-semibold">Send Fax</h3>
                 <button onClick={()=>setShowSendFax(false)}><X size={16} className="text-content-secondary"/></button>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">To (fax number)</label>
+                <label className="text-[13px] text-content-secondary block mb-1">To (fax number)</label>
                 <input value={faxTo} onChange={e => setFaxTo(e.target.value)} placeholder="e.g. 1-800-555-0001" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary"/>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">From</label>
+                <label className="text-[13px] text-content-secondary block mb-1">From</label>
                 <input value={faxFrom} onChange={e => setFaxFrom(e.target.value)} placeholder="Your fax line" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary"/>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Subject</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Subject</label>
                 <input value={faxSubject} onChange={e => setFaxSubject(e.target.value)} placeholder="Re: Patient..." className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary"/>
               </div>
               <div>
-                <label className="text-xs text-content-secondary block mb-1">Attach Document</label>
+                <label className="text-[13px] text-content-secondary block mb-1">Attach Document</label>
                 <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary">
                   <option value="">Select document...</option>
                   <option value=''>No faxes available</option>
@@ -716,7 +716,7 @@ export default function DocumentsPage() {
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1 no-scrollbar">
         {TABS.map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)}
-            className={`px-4 py-1.5 rounded-lg text-xs font-medium ${tab===t.id?'bg-brand/10 text-brand':'bg-surface-elevated text-content-secondary border border-separator'}`}>
+            className={`px-4 py-1.5 rounded-[10px] text-[13px] font-medium transition-all ${tab===t.id?'bg-brand text-white shadow-sm':'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand'}`}>
             {t.label}
           </button>
         ))}
@@ -827,7 +827,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
     <>
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-        <div className="pointer-events-auto w-full max-w-lg bg-surface-default border border-separator rounded-2xl shadow-2xl overflow-hidden">
+        <div className="pointer-events-auto w-full max-w-lg bg-surface-default border border-separator rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.10),0_1px_4px_rgba(0,0,0,0.06)] overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-separator">
             <div className="flex items-center gap-2">
@@ -843,11 +843,11 @@ function UploadModal({ onClose }: { onClose: () => void }) {
           <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
             {/* Document type chips */}
             <div>
-              <p className="text-xs font-medium text-content-secondary mb-3">Document Type</p>
+              <p className="text-[13px] font-medium text-content-secondary mb-3">Document Type</p>
               <div className="flex flex-wrap gap-2">
                 {DOCUMENT_TYPES.map(dt => (
                   <button key={dt.key} onClick={() => setDocType(dt.key)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-medium border transition-all
                       ${docType === dt.key
                         ? 'bg-brand text-white border-brand shadow-sm'
                         : 'bg-surface-elevated text-content-primary border-separator hover:border-brand/40 hover:bg-brand/5'
@@ -876,7 +876,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
             {files.length > 0 && (
               <div className="space-y-1.5 max-h-36 overflow-y-auto">
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs font-medium text-content-secondary">{files.length} file{files.length !== 1 ? 's' : ''} selected</p>
+                  <p className="text-[13px] font-medium text-content-secondary">{files.length} file{files.length !== 1 ? 's' : ''} selected</p>
                   <button onClick={() => setFiles([])} className="text-[10px] text-red-500 hover:text-red-600">Clear all</button>
                 </div>
                 {files.map((f, i) => (
@@ -898,7 +898,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
             {uploading && (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs text-content-secondary">Uploading…</span>
+                  <span className="text-[13px] text-content-secondary">Uploading…</span>
                   <span className="text-xs font-mono text-brand">{progress}%</span>
                 </div>
                 <div className="w-full bg-surface-elevated rounded-full h-2">

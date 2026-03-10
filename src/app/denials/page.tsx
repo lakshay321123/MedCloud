@@ -273,7 +273,7 @@ export default function DenialsPage() {
         <div className="card overflow-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-separator text-xs text-content-secondary sticky top-0 bg-surface-secondary">
+              <tr className="border-b border-separator text-[13px] text-content-secondary sticky top-0 bg-surface-secondary">
                 <th className="text-left px-4 py-3">Claim</th>
                 <th className="text-left px-4 py-3">Patient</th>
                 <th className="text-left px-4 py-3">Payer</th>
@@ -291,7 +291,7 @@ export default function DenialsPage() {
                       <ShieldAlert size={20} className='text-content-tertiary' />
                     </div>
                     <p className='text-sm font-medium text-content-primary mb-1'>No denials yet</p>
-                    <p className='text-xs text-content-secondary'>Denials will appear here once they&apos;re added to the system.</p>
+                    <p className='text-[13px] text-content-secondary'>Denials will appear here once they&apos;re added to the system.</p>
                   </div>
                 </td></tr>
               )}
@@ -303,8 +303,8 @@ export default function DenialsPage() {
                     className="text-brand hover:underline">{d.id}</button>
                 </td>
                 <td className="px-4 py-3">{d.patientName}</td>
-                <td className="px-4 py-3 text-xs text-content-secondary">{d.payer}</td>
-                <td className="px-4 py-3 text-xs text-content-primary">{d.denialReason}</td>
+                <td className="px-4 py-3 text-[13px] text-content-secondary">{d.payer}</td>
+                <td className="px-4 py-3 text-[13px] text-content-primary">{d.denialReason}</td>
                 <td className="px-4 py-3">
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-pill ${
                     d.source === 'payment_posting' ? 'bg-brand/10 text-brand-dark dark:text-brand' :
@@ -329,16 +329,16 @@ export default function DenialsPage() {
           {selected && selectedDenial ? (
             <>
               <h3 className="text-sm font-semibold mb-1">{selectedDenial.id} — {selectedDenial.patientName}</h3>
-              <p className="text-xs text-content-secondary mb-1">{selectedDenial.clientName} · {selectedDenial.payer} · DOS: {selectedDenial.dos}</p>
+              <p className="text-[13px] text-content-secondary mb-1">{selectedDenial.clientName} · {selectedDenial.payer} · DOS: {selectedDenial.dos}</p>
               <button onClick={() => router.push(`/claims?id=${selectedDenial.id}`)}
                 className="text-[11px] text-brand hover:underline mb-3 block">View Originating Claim →</button>
-              <div className="bg-brand/5 border border-brand/20 rounded-lg p-2 mb-2 text-xs text-content-primary">Denial: {selectedDenial.denialReason}</div>
-              <div className="bg-surface-elevated border border-separator rounded-lg p-2 mb-3 text-xs text-content-secondary inline-flex items-center gap-1">
+              <div className="bg-brand/5 border border-brand/20 rounded-lg p-2 mb-2 text-[13px] text-content-primary">Denial: {selectedDenial.denialReason}</div>
+              <div className="bg-surface-elevated border border-separator rounded-lg p-2 mb-3 text-[13px] text-content-secondary inline-flex items-center gap-1">
                 <AlertTriangle size={12} />Source: Routed from {selectedDenial.source}
               </div>
-              {selectedDenial.source === 'payment_posting' && <div className="text-xs text-content-secondary mb-3">EOB Reference: ERA-001, Line EOB-004</div>}
+              {selectedDenial.source === 'payment_posting' && <div className="text-[13px] text-content-secondary mb-3">EOB Reference: ERA-001, Line EOB-004</div>}
               <div className="mb-3">
-                <span className="text-xs text-content-secondary block mb-1">Related Documents</span>
+                <span className="text-[13px] text-content-secondary block mb-1">Related Documents</span>
                 <div className="flex gap-2 flex-wrap">
                   {[
                     { label: 'Original Claim', path: '/claims' },
@@ -357,11 +357,11 @@ export default function DenialsPage() {
                 </div>
               </div>
               <div className="mb-2">
-                <span className="text-xs text-content-secondary block mb-1">Appeal Level</span>
+                <span className="text-[13px] text-content-secondary block mb-1">Appeal Level</span>
                 <div className="flex gap-1">
                   {(['L1','L2','L3'] as const).map(lvl=>(
                     <button key={lvl} onClick={() => setAppealLevel(lvl)}
-                      className={`px-3 py-1 rounded text-xs font-medium border transition-colors ${appealLevel===lvl?'bg-brand text-white border-brand':'border-separator text-content-secondary hover:border-brand/40 hover:text-brand'}`}>
+                      className={`px-3 py-1 rounded text-[13px] font-medium border transition-colors ${appealLevel===lvl?'bg-brand text-white border-brand':'border-separator text-content-secondary hover:border-brand/40 hover:text-brand'}`}>
                       {lvl}
                     </button>
                   ))}
@@ -430,7 +430,7 @@ export default function DenialsPage() {
           <div className="flex items-center gap-2">
             {/* Payer filter */}
             <select value={templateFilter} onChange={e => setTemplateFilter(e.target.value)}
-              className="bg-surface-elevated border border-separator rounded-lg px-2 py-1 text-xs text-content-secondary outline-none focus:border-brand/40">
+              className="bg-surface-elevated border border-separator rounded-lg px-2 py-1 text-[13px] text-content-secondary outline-none focus:border-brand/40">
               {US_PAYERS.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
             <button onClick={openNewTemplate}
@@ -486,27 +486,27 @@ export default function DenialsPage() {
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-content-secondary mb-1">Template Name *</label>
+                  <label className="block text-[13px] text-content-secondary mb-1">Template Name *</label>
                   <input value={templateForm.name} onChange={e => setTemplateForm(f => ({ ...f, name: e.target.value }))}
                     placeholder="e.g. Medical Necessity — UHC"
                     className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40" />
                 </div>
                 <div>
-                  <label className="block text-xs text-content-secondary mb-1">Payer</label>
+                  <label className="block text-[13px] text-content-secondary mb-1">Payer</label>
                   <select value={templateForm.payer} onChange={e => setTemplateForm(f => ({ ...f, payer: e.target.value }))}
                     className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40">
                     {US_PAYERS.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-content-secondary mb-1">Category</label>
+                  <label className="block text-[13px] text-content-secondary mb-1">Category</label>
                   <select value={templateForm.category} onChange={e => setTemplateForm(f => ({ ...f, category: e.target.value }))}
                     className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40">
                     {TEMPLATE_CATS.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-content-secondary mb-1">Default Appeal Level</label>
+                  <label className="block text-[13px] text-content-secondary mb-1">Default Appeal Level</label>
                   <select value={templateForm.level} onChange={e => setTemplateForm(f => ({ ...f, level: e.target.value }))}
                     className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40">
                     <option>L1</option><option>L2</option><option>L3</option>
@@ -514,7 +514,7 @@ export default function DenialsPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-content-secondary mb-1">Template Body *</label>
+                <label className="block text-[13px] text-content-secondary mb-1">Template Body *</label>
                 <p className="text-[10px] text-content-tertiary mb-1">Variables: [PAYER] [CLAIM_NUMBER] [PATIENT_NAME] [DOS] [PROVIDER_NAME] [SERVICE]</p>
                 <textarea value={templateForm.body} onChange={e => setTemplateForm(f => ({ ...f, body: e.target.value }))}
                   placeholder="Dear [PAYER] Appeals Department,&#10;&#10;RE: Appeal — Claim [CLAIM_NUMBER]&#10;Patient: [PATIENT_NAME]&#10;..."
@@ -553,7 +553,7 @@ export default function DenialsPage() {
               <AlertTriangle size={16} className="text-content-tertiary opacity-40" />
             </div>
             <p className="text-[13px] font-medium text-content-primary mb-1">No urgent deadlines</p>
-            <p className="text-xs text-content-secondary">Deadlines will appear here when appeal windows are approaching. Set appeal deadlines on individual denials to track them.</p>
+            <p className="text-[13px] text-content-secondary">Deadlines will appear here when appeal windows are approaching. Set appeal deadlines on individual denials to track them.</p>
           </div>
         )}
       </div>

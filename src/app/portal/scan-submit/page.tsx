@@ -516,7 +516,7 @@ function FileReviewRow({ entry, onTypeChange }: { entry: FileEntry; onTypeChange
               <ChevronDown size={10} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
             {open && (
-              <div className="absolute right-0 top-full mt-1 z-50 bg-surface-secondary border border-separator rounded-xl shadow-2xl py-1.5 min-w-[170px] overflow-hidden">
+              <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-[rgba(0,0,0,0.09)] rounded-[12px] shadow-[0_4px_24px_rgba(0,0,0,0.10),0_1px_4px_rgba(0,0,0,0.06)] py-1.5 min-w-[170px] overflow-hidden">
                 {Object.entries(DOC_TYPE_META).map(([type, m]) => (
                   <button
                     key={type}

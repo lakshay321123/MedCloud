@@ -80,7 +80,7 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
             {analysis?.call_successful === true && <CheckCircle size={13} className="text-brand-dark" />}
             {analysis?.call_successful === false && <XCircle size={13} className="text-red-500" />}
           </div>
-          <p className="text-xs text-content-secondary font-mono">{call.to_number}</p>
+          <p className="text-[13px] text-content-secondary font-mono">{call.to_number}</p>
           {vars['patient_name'] && <p className="text-[10px] text-content-tertiary mt-0.5">{vars['patient_name']}</p>}
           {vars['primary_carrier_name'] && <p className="text-[10px] text-brand mt-0.5">{vars['primary_carrier_name']}</p>}
         </div>
@@ -106,7 +106,7 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
         {analysis?.call_summary && (
           <div className="p-4 border-b border-separator">
             <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">AI Summary</h4>
-            <p className="text-xs text-content-primary leading-relaxed">{analysis.call_summary}</p>
+            <p className="text-[13px] text-content-primary leading-relaxed">{analysis.call_summary}</p>
           </div>
         )}
 
@@ -144,7 +144,7 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
         {call.disconnection_reason && (
           <div className="p-4">
             <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-1">Disconnection</h4>
-            <p className="text-xs text-content-secondary">{call.disconnection_reason}</p>
+            <p className="text-[13px] text-content-secondary">{call.disconnection_reason}</p>
           </div>
         )}
       </div>
@@ -179,7 +179,7 @@ function ActiveCallsTab({ allCalls }: { allCalls: RetellCall[] }) {
       <div className="flex items-center gap-1 mb-4">
         {(['today', 'week', 'month'] as const).map(p => (
           <button key={p} onClick={() => setStatsPeriod(p)}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${statsPeriod === p ? 'bg-brand text-white' : 'bg-surface-elevated text-content-secondary hover:text-content-primary'}`}>
+            className={`px-3 py-1 rounded-lg text-[13px] font-medium transition-colors ${statsPeriod === p ? 'bg-brand text-white' : 'bg-surface-elevated text-content-secondary hover:text-content-primary'}`}>
             {p === 'today' ? 'Today' : p === 'week' ? 'This Week' : 'This Month'}
           </button>
         ))}
@@ -196,7 +196,7 @@ function ActiveCallsTab({ allCalls }: { allCalls: RetellCall[] }) {
         ) : (
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-separator text-xs text-content-secondary">
+              <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
                 <th className="text-left px-4 py-3 w-8"></th>
                 <th className="text-left px-4 py-3">Agent</th>
                 <th className="text-left px-4 py-3">To</th>
@@ -300,8 +300,8 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
           { key: 'cindy', label: `Cindy (${cindyCount})` },
         ].map(t => (
           <button key={t.key} onClick={() => setAgentFilter(t.key as typeof agentFilter)}
-            className={`px-4 py-2 text-xs font-medium rounded-[10px] transition-all ${
-              agentFilter === t.key ? 'bg-brand text-white shadow-sm' : 'text-content-secondary hover:text-content-primary hover:bg-surface-elevated'
+            className={`px-4 py-2 text-[13px] font-medium rounded-[10px] transition-all ${
+              agentFilter === t.key ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'
             }`}>{t.label}</button>
         ))}
         <div className="ml-auto flex items-center gap-2 pb-2">
@@ -315,20 +315,20 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
       {/* Filters */}
       <div className="flex gap-2 flex-wrap">
         <select value={outcomeFilter} onChange={e => setOutcomeFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary">
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-[13px] text-content-secondary">
           <option value="">All Outcomes</option>
           <option value="success">Resolved</option>
           <option value="failed">Failed</option>
         </select>
         <select value={payerFilter} onChange={e => setPayerFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary">
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-[13px] text-content-secondary">
           <option value="">All Payers</option>
           {payers.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
         <input type="date" value={dateRange.start} onChange={e => setDateRange(d => ({ ...d, start: e.target.value }))}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary" />
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-[13px] text-content-secondary" />
         <input type="date" value={dateRange.end} onChange={e => setDateRange(d => ({ ...d, end: e.target.value }))}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary" />
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-[13px] text-content-secondary" />
         {(outcomeFilter || payerFilter || dateRange.start || dateRange.end) && (
           <button onClick={() => { setOutcomeFilter(''); setPayerFilter(''); setDateRange({ start: '', end: '' }) }}
             className="text-xs text-content-tertiary hover:text-red-500 px-2 transition-colors">✕ Clear</button>
@@ -353,7 +353,7 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
         <>
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-separator text-xs text-content-secondary">
+              <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
                 <th className="text-left px-4 py-3">Date</th>
                 <th className="text-left px-4 py-3">Agent</th>
                 <th className="text-left px-4 py-3">To</th>
@@ -379,12 +379,12 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
                   return (
                     <tr key={call.call_id} onClick={() => setSelected(call)}
                       className="border-b border-separator last:border-0 cursor-pointer hover:bg-surface-elevated transition-colors">
-                      <td className="px-4 py-3 text-xs text-content-secondary whitespace-nowrap">
+                      <td className="px-4 py-3 text-[13px] text-content-secondary whitespace-nowrap">
                         {call.start_timestamp ? new Date(call.start_timestamp).toLocaleDateString() : '—'}
                       </td>
                       <td className="px-4 py-3"><AgentBadge agent={call._agent_name} /></td>
                       <td className="px-4 py-3 font-mono text-xs">{call.to_number}</td>
-                      <td className="px-4 py-3 text-xs text-content-secondary">{payer}</td>
+                      <td className="px-4 py-3 text-[13px] text-content-secondary">{payer}</td>
                       <td className="px-4 py-3 font-mono text-xs">{formatDuration(call.duration_ms)}</td>
                       <td className="px-4 py-3">
                         {call.call_analysis?.call_successful === true
@@ -396,7 +396,7 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
                           : <span className="text-[10px] text-content-tertiary">—</span>}
                       </td>
                       <td className="px-4 py-3"><SentimentBadge sentiment={call.call_analysis?.user_sentiment} /></td>
-                      <td className="px-4 py-3 text-xs text-content-secondary max-w-[200px] truncate">
+                      <td className="px-4 py-3 text-[13px] text-content-secondary max-w-[200px] truncate">
                         {call.call_analysis?.call_summary ?? '—'}
                       </td>
                       <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
@@ -439,7 +439,7 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
             <div className="flex items-center justify-between">
               <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
                 className="text-xs px-3 py-1.5 border border-separator rounded-lg disabled:opacity-40 hover:bg-surface-elevated transition-colors">← Prev</button>
-              <span className="text-xs text-content-secondary">Page {page + 1} of {totalPages}</span>
+              <span className="text-[13px] text-content-secondary">Page {page + 1} of {totalPages}</span>
               <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
                 className="text-xs px-3 py-1.5 border border-separator rounded-lg disabled:opacity-40 hover:bg-surface-elevated transition-colors">Next →</button>
             </div>
@@ -498,7 +498,7 @@ function SingleCallForm({ agentKey, launchCall, singleLoading }: { agentKey: 'ci
             <label className="block text-[10px] text-content-tertiary mb-0.5">{f.label}</label>
             <input value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
               placeholder={f.placeholder}
-              className={`w-full bg-surface-elevated border rounded-lg px-2.5 py-1.5 text-xs text-content-primary placeholder:text-content-tertiary outline-none transition-colors ${f.required ? 'border-brand/30 focus:border-brand/60' : 'border-separator focus:border-brand/40'}`} />
+              className={`w-full bg-surface-elevated border rounded-lg px-2.5 py-1.5 text-[13px] text-content-primary placeholder:text-content-tertiary outline-none transition-colors ${f.required ? 'border-brand/30 focus:border-brand/60' : 'border-separator focus:border-brand/40'}`} />
           </div>
         ))}
         {/* Extra / custom column for voice agent */}
@@ -508,12 +508,12 @@ function SingleCallForm({ agentKey, launchCall, singleLoading }: { agentKey: 'ci
             <div>
               <label className="block text-[10px] text-content-tertiary mb-0.5">Column Name</label>
               <input value={extraLabel} onChange={e => setExtraLabel(e.target.value)} placeholder="e.g. Auth_Number"
-                className="w-full bg-surface-elevated border border-separator rounded-lg px-2.5 py-1.5 text-xs text-content-secondary outline-none focus:border-brand/40" />
+                className="w-full bg-surface-elevated border border-separator rounded-lg px-2.5 py-1.5 text-[13px] text-content-secondary outline-none focus:border-brand/40" />
             </div>
             <div>
               <label className="block text-[10px] text-content-tertiary mb-0.5">Value</label>
               <input value={extraValue} onChange={e => setExtraValue(e.target.value)} placeholder="e.g. AUTH-99182"
-                className="w-full bg-surface-elevated border border-separator rounded-lg px-2.5 py-1.5 text-xs text-content-secondary outline-none focus:border-brand/40" />
+                className="w-full bg-surface-elevated border border-separator rounded-lg px-2.5 py-1.5 text-[13px] text-content-secondary outline-none focus:border-brand/40" />
             </div>
           </div>
         </div>
@@ -589,7 +589,7 @@ function CampaignLauncherTab() {
           <h3 className="text-sm font-semibold text-content-primary">Launch Calls</h3>
           <div className="flex gap-1 bg-surface-elevated rounded-lg p-0.5">
             {(['excel', 'single'] as const).map(m => (
-              <button key={m} onClick={() => setMode(m)} className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${mode === m ? 'bg-surface-secondary text-content-primary shadow-sm' : 'text-content-secondary'}`}>
+              <button key={m} onClick={() => setMode(m)} className={`px-3 py-1 rounded-md text-[13px] font-medium transition-all ${mode === m ? 'bg-surface-secondary text-content-primary shadow-sm' : 'text-content-secondary'}`}>
                 {m === 'excel' ? '📊 Excel Upload' : '📞 Single Call'}
               </button>
             ))}
@@ -640,7 +640,7 @@ function CampaignLauncherTab() {
 
               {parsed.practiceNames.length > 1 && (
                 <select value={filterPractice} onChange={e => setFilterPractice(e.target.value)}
-                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary">
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary">
                   <option value="all">All Practices ({parsed.rows.length})</option>
                   {parsed.practiceNames.map(p => { const cnt = parsed.rows.filter(r => (r.variables['practicename'] ?? r.variables['Practice_Name'] ?? '') === p).length; return <option key={p} value={p}>{p} ({cnt})</option> })}
                 </select>
@@ -796,7 +796,7 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
                   <tr key={s.payer} onClick={() => { setSelectedPayer(s); setPlaybook('') }}
                     className={`border-b border-separator last:border-0 cursor-pointer hover:bg-surface-elevated transition-colors ${selectedPayer?.payer === s.payer ? 'bg-brand/5' : ''}`}>
                     <td className="px-4 py-3 text-xs font-medium">{s.payer}</td>
-                    <td className="px-4 py-3 text-xs text-content-secondary">{s.total}</td>
+                    <td className="px-4 py-3 text-[13px] text-content-secondary">{s.total}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         <div className="w-16 h-1.5 bg-surface-elevated rounded-full overflow-hidden">
@@ -828,7 +828,7 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold text-content-primary">{selectedPayer.payer}</h3>
-                <p className="text-xs text-content-secondary mt-0.5">
+                <p className="text-[13px] text-content-secondary mt-0.5">
                   {selectedPayer.total} calls · {selectedPayer.successRate}% success · {formatDuration(selectedPayer.avgDuration)} avg
                 </p>
               </div>
@@ -846,7 +846,7 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
               <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-3">Recent Failures</h4>
               <div className="space-y-2 max-h-32 overflow-y-auto">
                 {selectedPayer.calls.filter(c => c.call_analysis?.call_successful === false).slice(0, 5).map(c => (
-                  <div key={c.call_id} className="text-xs text-content-secondary bg-surface-elevated rounded p-2">
+                  <div key={c.call_id} className="text-[13px] text-content-secondary bg-surface-elevated rounded p-2">
                     <span className="text-red-500 font-medium mr-2">✗</span>
                     {c.call_analysis?.call_summary ?? c.disconnection_reason ?? 'No summary'}
                   </div>
@@ -876,11 +876,11 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
                   <button onClick={() => setPlaybook('')} className="text-[10px] text-content-tertiary hover:text-content-secondary transition-colors">Discard</button>
                 </div>
                 <textarea value={playbook} onChange={e => setPlaybook(e.target.value)}
-                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-3 text-xs text-content-secondary font-mono leading-relaxed resize-none outline-none focus:border-brand/40"
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-3 text-[13px] text-content-secondary font-mono leading-relaxed resize-none outline-none focus:border-brand/40"
                   rows={12} />
                 <div className="flex gap-2">
                   <button onClick={() => generatePlaybook(selectedPayer)} disabled={generating}
-                    className="px-4 py-2 border border-separator rounded-lg text-xs text-content-secondary hover:bg-surface-elevated transition-colors">
+                    className="px-4 py-2 border border-separator rounded-lg text-[13px] text-content-secondary hover:bg-surface-elevated transition-colors">
                     <RefreshCw size={12} className="inline mr-1.5" />Regenerate
                   </button>
                   <button onClick={pushPlaybook} disabled={pushing}
@@ -979,7 +979,7 @@ function PromptEditorTab() {
           <div className="flex gap-1 bg-surface-elevated rounded-lg p-0.5">
             {(['chris', 'cindy'] as const).map(a => (
               <button key={a} onClick={() => { setActiveAgent(a); setAiSuggestion('') }}
-                className={`px-4 py-1.5 rounded-md text-xs font-medium capitalize transition-all ${activeAgent === a ? 'bg-surface-secondary text-content-primary shadow-sm' : 'text-content-secondary'}`}>
+                className={`px-4 py-1.5 rounded-md text-[13px] font-medium capitalize transition-all ${activeAgent === a ? 'bg-surface-secondary text-content-primary shadow-sm' : 'text-content-secondary'}`}>
                 {a}
               </button>
             ))}
@@ -999,7 +999,7 @@ function PromptEditorTab() {
             <p className="text-[10px] font-semibold text-content-secondary uppercase tracking-wider mb-2">Version History</p>
             {versions.map((v, i) => (
               <div key={i} className="flex items-center justify-between bg-surface-elevated rounded p-2">
-                <span className="text-xs text-content-secondary">{v.label}</span>
+                <span className="text-[13px] text-content-secondary">{v.label}</span>
                 <button onClick={() => { setLocalPrompt(v.prompt); toast.info('Version restored — save to push live') }}
                   className="text-[10px] text-brand hover:underline">Restore</button>
               </div>
@@ -1012,18 +1012,18 @@ function PromptEditorTab() {
         ) : promptError ? (
           <div className="card p-6 border-red-500/20 bg-red-500/5">
             <p className="text-xs font-semibold text-red-500 mb-1">Failed to load prompt</p>
-            <p className="text-xs text-content-secondary font-mono break-all">{promptError}</p>
+            <p className="text-[13px] text-content-secondary font-mono break-all">{promptError}</p>
             <button onClick={refetchPrompt} className="mt-3 text-xs text-brand hover:underline">Retry</button>
           </div>
         ) : (
           <>
             <textarea value={localPrompt} onChange={e => setLocalPrompt(e.target.value)}
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-4 py-3 text-xs text-content-secondary font-mono leading-relaxed resize-none outline-none focus:border-brand/40 h-[500px]"
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-4 py-3 text-[13px] text-content-secondary font-mono leading-relaxed resize-none outline-none focus:border-brand/40 h-[500px]"
               placeholder={`${activeAgent === 'chris' ? 'Chris' : 'Cindy'}'s prompt will load here from Retell…`} />
 
             <div className="flex gap-2">
               <button onClick={() => setLocalPrompt(prompt)} disabled={!isDirty}
-                className="px-4 py-2 border border-separator rounded-lg text-xs text-content-secondary hover:bg-surface-elevated disabled:opacity-40 transition-colors">
+                className="px-4 py-2 border border-separator rounded-lg text-[13px] text-content-secondary hover:bg-surface-elevated disabled:opacity-40 transition-colors">
                 Discard Changes
               </button>
               <button onClick={handleSave} disabled={saving || !isDirty}
@@ -1068,7 +1068,7 @@ function PromptEditorTab() {
                 <Plus size={12} className="inline mr-1.5" />Append to Prompt
               </button>
               <button onClick={() => setAiSuggestion('')}
-                className="px-3 py-2 border border-separator rounded-lg text-xs text-content-secondary hover:bg-surface-elevated transition-colors">
+                className="px-3 py-2 border border-separator rounded-lg text-[13px] text-content-secondary hover:bg-surface-elevated transition-colors">
                 Dismiss
               </button>
             </div>
@@ -1078,7 +1078,7 @@ function PromptEditorTab() {
         {!aiSuggestion && !analyzing && (
           <div className="card p-6 text-center">
             <Sparkles size={24} className="mx-auto mb-2 text-content-tertiary opacity-40" />
-            <p className="text-xs text-content-secondary">Click above to analyze real call outcomes</p>
+            <p className="text-[13px] text-content-secondary">Click above to analyze real call outcomes</p>
             <p className="text-[10px] text-content-tertiary mt-1">Works best after 20+ calls</p>
           </div>
         )}
