@@ -169,7 +169,7 @@ function AIPerformanceSection() {
   const { t } = useT()
   return (
     <div className="card p-6">
-      <h3 className="text-[15px] font-semibold text-content-primary mb-4">{t('dashboard','aiPerformance')}</h3>
+      <h3 className="text-[15px] font-semibold text-content-primary mb-4 flex items-center gap-2">{t('dashboard','aiPerformance')} <span className="ai-dot" /></h3>
       <div className="grid grid-cols-5 gap-3">
         {[
           {feature:'Auto-Coding',accuracy:'94.2%',volume:342,status:'active'},

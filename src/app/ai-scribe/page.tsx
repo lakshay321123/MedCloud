@@ -556,7 +556,7 @@ function ProviderView() {
       <div className="w-16 h-16 rounded-full bg-brand/10 flex items-center justify-center mx-auto">
         <Loader2 size={32} className="text-brand animate-spin" />
       </div>
-      <p className="text-base font-semibold">Processing Note…</p>
+      <p className="text-base font-semibold flex items-center gap-2"><span className="ai-dot" /> Processing Note…</p>
       <p className="text-sm text-content-secondary">Generating SOAP · ICD-10 codes · CPT codes · AVS</p>
       <div className="flex items-center justify-center gap-2 text-xs text-content-tertiary">
         <BrainCircuit size={13} className="text-brand" /> Claude on AWS Bedrock

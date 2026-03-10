@@ -41,10 +41,10 @@ const styles: Record<string, { bg: string; text: string }> = {
   // ── Red / Error ──
   denied: { bg: 'bg-content-tertiary/10', text: 'text-content-secondary' },
   no_show: { bg: 'bg-content-tertiary/10', text: 'text-content-secondary' },
-  scrub_failed: { bg: 'bg-brand-deep/10', text: 'text-brand-deep' },
-  urgent: { bg: 'bg-brand-deep/10', text: 'text-brand-deep' },
-  error: { bg: 'bg-brand-deep/10', text: 'text-brand-deep' },
-  rejected: { bg: 'bg-brand-deep/10', text: 'text-brand-deep' },
+  scrub_failed: { bg: 'bg-brand-ghost/60 border border-brand-mid/30 border-l-[3px] border-l-brand-mid', text: 'text-brand-deep font-semibold' },
+  urgent: { bg: 'bg-brand-ghost/60 border border-brand-mid/30 border-l-[3px] border-l-brand-mid', text: 'text-brand-deep font-semibold' },
+  error: { bg: 'bg-brand-ghost/60 border border-brand-mid/30 border-l-[3px] border-l-brand-mid', text: 'text-brand-deep font-semibold' },
+  rejected: { bg: 'bg-brand-ghost/60 border border-brand-mid/30 border-l-[3px] border-l-brand-mid', text: 'text-brand-deep font-semibold' },
   // ── Grey / Neutral ──
   booked: { bg: 'bg-gray-200/60', text: 'text-gray-600' },
   draft: { bg: 'bg-gray-200/60', text: 'text-gray-600' },

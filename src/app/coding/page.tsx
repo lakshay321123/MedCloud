@@ -1418,7 +1418,7 @@ export default function CodingPage() {
                     )}
 
                     {/* ICD Codes */}
-                    <h4 className="text-[11px] uppercase tracking-wider font-semibold text-content-tertiary mb-2">Diagnosis Codes (ICD-10)</h4>
+                    <h4 className="text-[11px] uppercase tracking-wider font-semibold text-content-tertiary mb-2 flex items-center gap-2">Diagnosis Codes (ICD-10) <span className="ai-dot" title="AI Suggested" /></h4>
                     <div className="space-y-2 mb-3">
                       {activeCodes.icd.map(code => {
                         const key = `icd-${code.code}`
@@ -1516,7 +1516,7 @@ export default function CodingPage() {
                     ))}
 
                     {/* CPT Codes */}
-                    <h4 className="text-[11px] uppercase tracking-wider font-semibold text-content-tertiary mb-2 mt-3">Procedure Codes (CPT)</h4>
+                    <h4 className="text-[11px] uppercase tracking-wider font-semibold text-content-tertiary mb-2 mt-3 flex items-center gap-2">Procedure Codes (CPT) <span className="ai-dot" title="AI Suggested" /></h4>
                     <div className="space-y-2 mb-3">
                       {activeCodes.cpt.map(code => {
                         const key = `cpt-${code.code}`

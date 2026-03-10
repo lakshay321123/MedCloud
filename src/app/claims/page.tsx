@@ -92,7 +92,7 @@ const POS_OPTIONS = [
 const STATUS_COLORS: Record<string, string> = {
   draft:        'bg-surface-elevated text-content-tertiary border border-separator',
   scrubbing:    'bg-brand text-white border border-brand/20 animate-pulse',
-  scrub_failed: 'bg-brand-deep/10 text-brand-deep border border-brand-deep/20',
+  scrub_failed: 'bg-brand-ghost/60 text-brand-deep font-semibold border border-brand-mid/30 border-l-[3px] border-l-brand-mid',
   ready:        'bg-brand/10 text-brand-dark border border-brand/20',
   submitted:    'bg-brand/15 text-brand-dark border border-brand/25',
   accepted:     'bg-brand text-white shadow-sm',

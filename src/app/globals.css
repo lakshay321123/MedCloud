@@ -256,10 +256,24 @@ label {
   color: var(--content-secondary);
 }
 
-/* ── Recharts: remove focus outline on chart containers ── */
+/* ── Recharts: remove ALL focus outlines on chart elements ── */
 .recharts-wrapper,
 .recharts-surface,
+.recharts-wrapper *,
+.recharts-responsive-container,
+.recharts-responsive-container *,
 .recharts-wrapper:focus,
-.recharts-surface:focus {
+.recharts-surface:focus,
+.recharts-wrapper *:focus,
+.recharts-responsive-container:focus,
+.recharts-responsive-container *:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Kill browser default focus outline on card containers (clicks) */
+.card:focus, .card:focus-visible,
+.kpi-card:focus, .kpi-card:focus-visible,
+div[class*="card"]:focus, div[class*="card"]:focus-visible {
   outline: none !important;
 }

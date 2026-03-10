@@ -134,10 +134,9 @@ export default function LoginPage() {
         <div className="flex justify-end px-10 pt-9">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/logos/medcloud-color.png"
+            src="/assets/logo-main.png"
             alt="MedCloud"
             className="h-9 w-auto object-contain"
-            style={{ mixBlendMode: 'multiply' }}
           />
         </div>
 
@@ -262,7 +261,7 @@ export default function LoginPage() {
         <div className="flex justify-end px-10 pb-9">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/logos/cosentus-division.png"
+            src="/assets/cosentus-division.png"
             alt="A Cosentus Division"
             className="h-[13px] w-auto object-contain opacity-55"
           />
