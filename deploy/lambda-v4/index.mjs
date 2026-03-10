@@ -163,6 +163,12 @@ async function runSchemaMigration() {
       UPDATE payments SET updated_at = COALESCE(created_at, NOW()) WHERE updated_at IS NULL;
 
       -- ── scrub_rules: add ordering column ────────────────────────────────────
+      -- ── eligibility_checks: add missing columns for POST /eligibility/check ──
+      ALTER TABLE eligibility_checks ADD COLUMN IF NOT EXISTS dos               DATE;
+      ALTER TABLE eligibility_checks ADD COLUMN IF NOT EXISTS status            VARCHAR(50) DEFAULT 'pending';
+      ALTER TABLE eligibility_checks ADD COLUMN IF NOT EXISTS result            VARCHAR(50);
+      ALTER TABLE eligibility_checks ADD COLUMN IF NOT EXISTS prior_auth_required BOOLEAN DEFAULT FALSE;
+      ALTER TABLE eligibility_checks ADD COLUMN IF NOT EXISTS benefits_json     JSONB;
       ALTER TABLE scrub_rules ADD COLUMN IF NOT EXISTS rule_order INTEGER DEFAULT 0;
 
       -- ── notifications: create if not exists ─────────────────────────────────
@@ -6850,9 +6856,29 @@ export const handler = async (event) => {
         !path.includes('/timely-filing') && !path.includes('/generate-837i') && !path.includes('/secondary')) {
       if (method === 'GET' && !pathParams.id) return respond(200, await enrichedClaims(effectiveOrgId, clientId));
       if (method === 'GET' && pathParams.id) {
-        const c = await getById('claims', pathParams.id);
-        if (!c || c.org_id !== effectiveOrgId) return respond(404, { error: 'Claim not found' });
-        return respond(200, c);
+        // Enriched single claim — JOINs match the list endpoint (enrichedClaims)
+        const cRow = await orgQuery(effectiveOrgId, `
+          SELECT c.*, p.first_name || ' ' || p.last_name AS patient_name,
+                 pr.first_name || ' ' || pr.last_name AS provider_name,
+                 py.name AS payer_name, cl.name AS client_name
+          FROM claims c
+          LEFT JOIN patients p ON c.patient_id = p.id
+          LEFT JOIN providers pr ON c.provider_id = pr.id
+          LEFT JOIN payers py ON c.payer_id = py.id
+          LEFT JOIN clients cl ON c.client_id = cl.id
+          WHERE c.id = $1 AND c.org_id = $2`, [pathParams.id, effectiveOrgId]);
+        if (!cRow.rows[0]) return respond(404, { error: 'Claim not found' });
+        const claim = cRow.rows[0];
+        // Attach CPT codes and ICD codes
+        const [linesR, dxR] = await Promise.all([
+          orgQuery(effectiveOrgId, `SELECT cpt_code, cpt_description, charges, units, modifiers FROM claim_lines WHERE claim_id = $1`, [claim.id]),
+          orgQuery(effectiveOrgId, `SELECT icd_code, icd_description, sequence FROM claim_diagnoses WHERE claim_id = $1 ORDER BY sequence`, [claim.id]),
+        ]);
+        claim.cpt_codes = linesR.rows.map(l => l.cpt_code);
+        claim.icd_codes = dxR.rows.map(d => d.icd_code);
+        claim.claim_lines = linesR.rows;
+        claim.claim_diagnoses = dxR.rows;
+        return respond(200, claim);
       }
       if (method === 'POST') {
         body.claim_number = body.claim_number || await nextClaimNumber(effectiveOrgId);
@@ -7282,7 +7308,8 @@ export const handler = async (event) => {
         if (qs.payer_id) { params.push(qs.payer_id); q += ` AND fs.payer_id = $${params.length}`; }
         if (qs.cpt_code) { params.push(qs.cpt_code); q += ` AND fs.cpt_code = $${params.length}`; }
         q += ' ORDER BY fs.payer_id, fs.cpt_code';
-        return respond(200, (await pool.query(q, params)).rows);
+        const rows = (await pool.query(q, params)).rows;
+        return respond(200, { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } });
       }
       if (method === 'GET' && pathParams.id) {
         const fs = await getById('fee_schedules', pathParams.id);
@@ -9609,7 +9636,7 @@ export const handler = async (event) => {
             ${qs.cpt_code ? `AND fs.cpt_code = '${qs.cpt_code.replace(/'/g, "''")}'` : ''}
           ORDER BY fs.payer_id, fs.cpt_code LIMIT 1000`,
           clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
-        return respond(200, data.rows);
+        return respond(200, { data: data.rows, meta: { total: data.rows.length, page: 1, limit: data.rows.length } });
       }
       if (method === 'POST' && !pathParams.id) {
         const fs = await create('fee_schedules', { ...body, client_id: clientId }, effectiveOrgId);
