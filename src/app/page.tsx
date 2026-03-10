@@ -42,141 +42,234 @@ export default function LoginPage() {
   ]
 
   return (
-    <div className="min-h-screen flex flex-row-reverse">
+    <div className="min-h-screen flex">
 
-      {/* ══════════════════════════════════
-          RIGHT — Login form (white panel)
-          Logos live HERE only
-      ══════════════════════════════════ */}
-      <div className="flex-1 flex flex-col justify-between p-10 bg-white min-h-screen">
+      {/* ═══════════════════════════════
+          LEFT — Brand blue hero panel
+      ═══════════════════════════════ */}
+      <div
+        className="hidden lg:flex w-[52%] shrink-0 flex-col justify-between relative overflow-hidden"
+        style={{
+          background: 'linear-gradient(145deg, #36C2DE 0%, #00B5D6 40%, #0095B8 100%)',
+        }}
+      >
+        {/* Atmospheric depth — layered radial glows */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse 70% 60% at 20% 20%, rgba(255,255,255,0.12) 0%, transparent 60%), ' +
+              'radial-gradient(ellipse 50% 50% at 80% 80%, rgba(0,80,120,0.25) 0%, transparent 60%)',
+          }}
+        />
+        {/* Subtle geometric rings */}
+        <div className="pointer-events-none absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full border border-white/10" />
+        <div className="pointer-events-none absolute -bottom-20 -right-20 w-[340px] h-[340px] rounded-full border border-white/10" />
+        <div className="pointer-events-none absolute top-[-80px] left-[-80px] w-[360px] h-[360px] rounded-full border border-white/8" />
 
-        {/* TOP-RIGHT: MedCloud logo — black bg removed via mix-blend-mode multiply */}
-        <div className="flex justify-end">
-          <Image
-            src="/assets/logo-main-login.png"
-            alt="MedCloud"
-            width={160}
-            height={40}
-            priority
-            className="h-10 w-auto object-contain"
-            style={{ mixBlendMode: 'multiply' }}
-          />
-        </div>
-
-        {/* CENTER: Form */}
-        <div className="w-full max-w-sm mx-auto">
-          <div className="mb-8">
-            <h2 className="text-[28px] font-bold text-black tracking-tight">Welcome back</h2>
-            <p className="text-[14px] text-gray-500 mt-1.5">Sign in to your MedCloud account</p>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
-                Email Address
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                autoFocus
-                className="w-full bg-[#F5FBFD] border border-[#A1DEED] rounded-xl px-4 py-3 text-[14px] text-black outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all placeholder:text-gray-400"
-                placeholder="you@cosentus.com"
-              />
-            </div>
-
-            <div>
-              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                className="w-full bg-[#F5FBFD] border border-[#A1DEED] rounded-xl px-4 py-3 text-[14px] text-black outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all placeholder:text-gray-400"
-                placeholder="Enter your password"
-              />
-            </div>
-
-            {error && (
-              <div className="text-[13px] text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-brand text-white rounded-xl py-3 text-[14px] font-bold hover:bg-brand-mid active:bg-brand-dark transition-colors disabled:opacity-50 mt-2 shadow-sm"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Signing in…
-                </span>
-              ) : 'Sign In'}
-            </button>
-          </form>
-        </div>
-
-        {/* BOTTOM-RIGHT: A Cosentus Division logo */}
-        <div className="flex justify-end">
-          <Image
-            src="/assets/cosentus-division.png"
-            alt="A Cosentus Division"
-            width={160}
-            height={24}
-            className="object-contain"
-          />
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════
-          LEFT — Brand blue panel
-          NO logos — just content
-      ══════════════════════════════════ */}
-      <div className="hidden lg:flex w-[46%] bg-brand flex-col justify-between p-12 relative overflow-hidden shrink-0">
-        {/* Decorative circles */}
-        <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/5 pointer-events-none" />
-        <div className="absolute bottom-0 -right-16 w-72 h-72 rounded-full bg-white/5 pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-white/[0.03] pointer-events-none" />
-
-        {/* TOP spacer — keep visual balance */}
+        {/* Top spacer */}
         <div />
 
-        {/* CENTER: headline + tagline + stats */}
-        <div className="relative z-10">
-          <h1 className="text-[42px] font-bold text-white leading-tight tracking-tight">
-            Revenue Cycle<br />Intelligence
-          </h1>
-          <p className="text-white/70 text-[16px] mt-4 leading-relaxed max-w-xs">
-            AI-powered RCM built on 25+ years of healthcare expertise. Faster claims, fewer denials, smarter collections.
-          </p>
+        {/* Main content */}
+        <div className="relative z-10 px-16 pb-2">
+          {/* Headline */}
+          <div className="mb-12">
+            <p className="text-white/60 text-[13px] font-semibold tracking-[0.18em] uppercase mb-4 letter-spacing">
+              MedCloud by Cosentus
+            </p>
+            <h1
+              className="text-white leading-[1.05] font-bold tracking-tight"
+              style={{ fontSize: 'clamp(36px, 3.5vw, 52px)' }}
+            >
+              Revenue Cycle<br />Intelligence
+            </h1>
+            <p className="text-white/65 mt-5 text-[16px] leading-relaxed max-w-[340px]">
+              AI-powered RCM built on 25+ years of healthcare expertise. Faster claims, fewer denials.
+            </p>
+          </div>
 
-          {/* Stats grid */}
-          <div className="mt-10 grid grid-cols-2 gap-4">
-            {stats.map(({ value, label }) => (
-              <div key={label} className="bg-white/10 rounded-2xl px-5 py-4 backdrop-blur-sm">
-                <div className="text-[28px] font-bold text-white leading-none">{value}</div>
-                <div className="text-[12px] text-white/60 mt-1.5 font-medium">{label}</div>
+          {/* Stats — Apple-style: clean numbers, thin dividers */}
+          <div className="grid grid-cols-2 gap-px bg-white/15 rounded-2xl overflow-hidden">
+            {stats.map(({ value, label }, i) => (
+              <div
+                key={label}
+                className="bg-white/10 backdrop-blur-sm px-7 py-6 flex flex-col gap-1.5"
+                style={{
+                  borderRadius:
+                    i === 0 ? '16px 0 0 0' :
+                    i === 1 ? '0 16px 0 0' :
+                    i === 2 ? '0 0 0 16px' :
+                    '0 0 16px 0',
+                }}
+              >
+                <span className="text-white font-bold leading-none" style={{ fontSize: 'clamp(24px, 2.5vw, 32px)' }}>
+                  {value}
+                </span>
+                <span className="text-white/55 text-[12px] font-medium tracking-wide">{label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* BOTTOM: INC 5000 badge */}
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center shrink-0">
-            <span className="text-white text-[10px] font-bold">Inc</span>
+        {/* Bottom — INC badge */}
+        <div className="relative z-10 px-16 pb-10">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0 backdrop-blur-sm">
+              <span className="text-white text-[10px] font-bold">Inc</span>
+            </div>
+            <p className="text-white/45 text-[12px] leading-snug">
+              INC 5000 Fastest Growing · 3 consecutive years<br />
+              Great Places to Work® Certified
+            </p>
           </div>
-          <p className="text-white/50 text-[12px] leading-snug">
-            INC 5000 Fastest Growing Company · 3 consecutive years<br />
-            Great Places to Work® Certified
-          </p>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════
+          RIGHT — Login form (white)
+          Both logos live here
+      ═══════════════════════════════ */}
+      <div className="flex-1 flex flex-col bg-white">
+
+        {/* TOP-RIGHT: MedCloud logo */}
+        <div className="flex justify-end px-10 pt-9">
+          <Image
+            src="/assets/logo-main.png"
+            alt="MedCloud"
+            width={148}
+            height={33}
+            priority
+            className="h-[33px] w-auto object-contain"
+            style={{ mixBlendMode: 'multiply' }}
+          />
+        </div>
+
+        {/* CENTER: Form — vertically + horizontally centered */}
+        <div className="flex-1 flex items-center justify-center px-10 py-12">
+          <div className="w-full max-w-[360px]">
+
+            {/* Heading */}
+            <div className="mb-9">
+              <h2
+                className="font-bold text-black tracking-tight leading-tight"
+                style={{ fontSize: '28px', letterSpacing: '-0.02em' }}
+              >
+                Welcome back
+              </h2>
+              <p className="text-[14px] text-[#888] mt-2 font-normal">
+                Sign in to your MedCloud account
+              </p>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-5">
+
+              {/* Email */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-[#999] uppercase tracking-[0.08em] block">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  autoFocus
+                  placeholder="you@cosentus.com"
+                  className="w-full rounded-[14px] px-4 py-[13px] text-[14px] text-black outline-none transition-all placeholder:text-[#C5C5C5]"
+                  style={{
+                    background: '#F7FBFD',
+                    border: '1.5px solid #E2F0F5',
+                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.03)',
+                  }}
+                  onFocus={e => {
+                    e.currentTarget.style.border = '1.5px solid #00B5D6'
+                    e.currentTarget.style.boxShadow = '0 0 0 4px rgba(0,181,214,0.1), inset 0 1px 2px rgba(0,0,0,0.02)'
+                    e.currentTarget.style.background = '#fff'
+                  }}
+                  onBlur={e => {
+                    e.currentTarget.style.border = '1.5px solid #E2F0F5'
+                    e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.03)'
+                    e.currentTarget.style.background = '#F7FBFD'
+                  }}
+                />
+              </div>
+
+              {/* Password */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-[#999] uppercase tracking-[0.08em] block">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  placeholder="••••••••••"
+                  className="w-full rounded-[14px] px-4 py-[13px] text-[14px] text-black outline-none transition-all placeholder:text-[#C5C5C5]"
+                  style={{
+                    background: '#F7FBFD',
+                    border: '1.5px solid #E2F0F5',
+                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.03)',
+                  }}
+                  onFocus={e => {
+                    e.currentTarget.style.border = '1.5px solid #00B5D6'
+                    e.currentTarget.style.boxShadow = '0 0 0 4px rgba(0,181,214,0.1), inset 0 1px 2px rgba(0,0,0,0.02)'
+                    e.currentTarget.style.background = '#fff'
+                  }}
+                  onBlur={e => {
+                    e.currentTarget.style.border = '1.5px solid #E2F0F5'
+                    e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.03)'
+                    e.currentTarget.style.background = '#F7FBFD'
+                  }}
+                />
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div className="text-[13px] text-red-600 bg-red-50 border border-red-100 rounded-[12px] px-4 py-3">
+                  {error}
+                </div>
+              )}
+
+              {/* Sign In button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full text-white rounded-[14px] py-[14px] text-[14px] font-semibold transition-all disabled:opacity-50 active:scale-[0.98]"
+                style={{
+                  background: loading ? '#00B5D6' : 'linear-gradient(180deg, #17C2E0 0%, #00B5D6 100%)',
+                  boxShadow: '0 1px 2px rgba(0,181,214,0.2), 0 4px 12px rgba(0,181,214,0.25)',
+                  letterSpacing: '0.01em',
+                }}
+                onMouseEnter={e => {
+                  if (!loading) (e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,181,214,0.25), 0 6px 20px rgba(0,181,214,0.35)')
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,181,214,0.2), 0 4px 12px rgba(0,181,214,0.25)'
+                }}
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Signing in…
+                  </span>
+                ) : 'Sign In'}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* BOTTOM-RIGHT: A Cosentus Division */}
+        <div className="flex justify-end px-10 pb-9">
+          <Image
+            src="/assets/cosentus-division.png"
+            alt="A Cosentus Division"
+            width={150}
+            height={22}
+            className="object-contain"
+          />
         </div>
       </div>
     </div>

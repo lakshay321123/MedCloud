@@ -380,9 +380,9 @@ export default function DenialsPage() {
                 <button
                   onClick={() => generateAppealWithAI(selectedDenial)}
                   disabled={aiGenerating}
-                  className="flex-1 bg-blue-500/10 border border-purple-500/30 text-blue-700 dark:text-blue-700 rounded-btn py-2 text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-500/10 disabled:opacity-50 transition-colors">
+                  className="flex-1 bg-brand text-white rounded-btn py-2 text-sm font-medium flex items-center justify-center gap-2 hover:bg-brand-mid disabled:opacity-50 transition-colors">
                   {aiGenerating ? (
-                    <><span className="animate-spin inline-block w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full"/><span>Generating...</span></>
+                    <><span className="animate-spin inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full"/><span>Generating...</span></>
                   ) : (
                     <><span>✦</span><span>Generate with AI</span></>
                   )}

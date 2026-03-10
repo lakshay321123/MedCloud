@@ -1044,7 +1044,7 @@ function PromptEditorTab() {
         </div>
 
         <button onClick={handleAIOptimize} disabled={analyzing}
-          className="w-full bg-gradient-to-r from-brand to-purple-600 text-white rounded-lg py-3 text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-all">
+          className="w-full bg-brand hover:bg-brand-mid text-white rounded-lg py-3 text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-all">
           {analyzing ? (
             <span className="flex items-center justify-center gap-2">
               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

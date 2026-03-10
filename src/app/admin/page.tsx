@@ -16,7 +16,7 @@ const roleColors: Record<string,string> = {
   biller: 'bg-brand-pale0/10 text-brand-deep',
   ar_team: 'bg-cyan-500/10 text-cyan-500',
   posting_team: 'bg-orange-500/10 text-orange-500',
-  provider: 'bg-indigo-500/10 text-indigo-500',
+  provider: 'bg-brand/10 text-brand-dark',
   client: 'bg-gray-500/10 text-gray-400',
 }
 

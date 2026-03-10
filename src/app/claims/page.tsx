@@ -621,7 +621,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   {(claim.status === 'submitted' || claim.status === 'in_process' || claim.status === 'accepted') && (
                     <>
                       {claim.status === 'submitted' && <button onClick={handleGenerateEDI} disabled={generatingEDI} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generatingEDI ? 'Generating EDI…' : 'Generate 837P EDI'}</button>}
-                      <button onClick={handleStatusInquiry} disabled={generating276} className="w-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-600 rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generating276 ? 'Generating…' : '276 Status Inquiry'}</button>
+                      <button onClick={handleStatusInquiry} disabled={generating276} className="w-full bg-brand/10 border border-brand/30 text-brand-dark rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generating276 ? 'Generating…' : '276 Status Inquiry'}</button>
                     </>
                   )}
                   {claim.status === 'denied' && (
