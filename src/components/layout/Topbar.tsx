@@ -218,7 +218,7 @@ export default function Topbar() {
           {/* MedCloud logo — white version */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/logos/Medcloud logo 1 WHITE (2).png"
+            src="/logos/medcloud-white.png"
             alt="MedCloud"
             className="h-7 w-auto object-contain"
             

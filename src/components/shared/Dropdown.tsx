@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useRef, useEffect } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Check } from 'lucide-react'
 
 export interface DropdownOption {
   value: string
@@ -48,13 +48,14 @@ export default function Dropdown({ value, options, onChange, buttonClassName = '
               key={opt.value}
               type="button"
               onClick={() => { onChange(opt.value); setOpen(false) }}
-              className={`w-full text-left px-3 py-2 text-[13px] whitespace-nowrap transition-colors rounded-[8px] ${
+              className={`w-full text-left px-3 py-2 text-[13px] whitespace-nowrap transition-colors rounded-[8px] flex items-center justify-between gap-2 ${
                 opt.value === value
                   ? 'bg-brand/10 text-brand-dark font-medium'
                   : 'text-content-secondary hover:bg-brand/5 hover:text-brand-dark'
               }`}
             >
-              {opt.label}
+              <span>{opt.label}</span>
+              {opt.value === value && <Check size={12} className="text-brand shrink-0" />}
             </button>
           ))}
         </div>

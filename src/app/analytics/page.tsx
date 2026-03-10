@@ -1,5 +1,6 @@
 'use client'
 import { useT } from '@/lib/i18n'
+import Dropdown from '@/components/shared/Dropdown'
 import React, { useState, useMemo } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -323,13 +324,17 @@ export default function AnalyticsPage() {
       </div>
       {/* Global filters */}
       <div className="flex items-center gap-3 mb-5">
-        <select value={dateRange} onChange={e => setDateRange(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-secondary focus:outline-none focus:ring-1 focus:ring-brand/30">
-          <option value="last30">{t('analytics','last30')}</option>
-          <option value="last90">{t('analytics','last90')}</option>
-          <option value="ytd">{t('analytics','ytd')}</option>
-          <option value="custom">Custom</option>
-        </select>
+        <Dropdown
+          value={dateRange}
+          onChange={setDateRange}
+          options={[
+            { value: 'last30', label: 'Last 30 Days' },
+            { value: 'last90', label: 'Last 90 Days' },
+            { value: 'ytd',    label: 'Year to Date' },
+            { value: 'custom', label: 'Custom' },
+          ]}
+          buttonClassName="bg-surface-elevated border border-separator text-content-secondary hover:bg-surface-primary hover:border-brand/30"
+        />
         <span className="text-[13px] text-content-tertiary">|</span>
         <span className="text-[13px] text-content-secondary">
           {selectedClient ? selectedClient.name : 'All Clients'}

@@ -12,7 +12,7 @@ export default function Footer() {
       */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/logos/A COSENTUS DIVISION.png"
+        src="/logos/cosentus-division.png"
         alt="A Cosentus Division"
         className="h-[18px] w-auto object-contain opacity-70"
       />
