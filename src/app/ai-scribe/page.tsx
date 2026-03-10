@@ -597,7 +597,7 @@ function ProviderView() {
           {/* Left panel — transcript OR prior visits */}
           <div className="col-span-2 card flex flex-col overflow-hidden min-h-[300px] md:min-h-0">
             {/* Tab switcher */}
-            <div className="flex border-b border-separator">
+            <div className="flex gap-2 border-b border-separator pb-1">
               <button onClick={() => setNoteLeftTab('transcript')}
                 className={`flex-1 py-2.5 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors ${noteLeftTab === 'transcript' ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>
                 <FileText size={11} /> Transcript
@@ -842,7 +842,7 @@ function ProviderView() {
         {showReferral && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-surface-default border border-separator rounded-xl shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-separator">
+              <div className="flex gap-2 items-center justify-between px-5 py-4 border-b border-separator pb-1">
                 <div className="flex items-center gap-2">
                   <BookOpen size={16} className="text-brand" />
                   <h3 className="text-sm font-semibold">Generate Referral Letter</h3>

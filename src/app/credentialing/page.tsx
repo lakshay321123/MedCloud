@@ -103,7 +103,7 @@ export default function CredentialingPage() {
         <>
           <div className="fixed inset-0 bg-black/20 z-30" onClick={() => setSelected(null)} />
           <div className="fixed right-0 top-0 h-full w-[420px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between p-4 border-b border-separator">
+            <div className="flex gap-2 items-center justify-between p-4 border-b border-separator pb-1">
               <h3 className="font-semibold text-content-primary">{selected.name}</h3>
               <button onClick={() => setSelected(null)} className="p-1 hover:bg-surface-elevated rounded-btn">
                 <X size={16} className="text-content-secondary" />
@@ -127,7 +127,7 @@ export default function CredentialingPage() {
                 { label: 'DEA', value: selected.dea },
                 { label: 'CAQH', value: selected.caqh },
               ].map(item => (
-                <div key={item.label} className="flex items-center justify-between py-2 border-b border-separator">
+                <div key={item.label} className="flex gap-2 items-center justify-between py-2 border-b border-separator pb-1">
                   <span className="text-[13px] text-content-secondary">{item.label}</span>
                   <span className={`text-[13px] font-medium ${item.value === 'Pending' ? 'text-brand-deep' : item.value === 'N/A' ? 'text-content-tertiary' : 'text-content-primary'}`}>
                     {item.value}

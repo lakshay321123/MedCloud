@@ -258,7 +258,7 @@ export default function ReportsPage() {
           ) : (
             <>
               {/* Report header */}
-              <div className="flex items-center gap-3 px-5 py-4 border-b border-separator shrink-0">
+              <div className="flex gap-2 items-center gap-3 px-5 py-4 border-b border-separator pb-1 shrink-0">
                 {activeType && (
                   <div className={`w-8 h-8 rounded-lg border flex items-center justify-center ${activeType.color}`}>
                     <activeType.icon size={15} />

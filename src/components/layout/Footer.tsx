@@ -14,7 +14,7 @@ export default function Footer() {
       <img
         src="/logos/cosentus-division.png"
         alt="A Cosentus Division"
-        className="h-[18px] w-auto object-contain opacity-70"
+        className="h-[13px] w-auto object-contain opacity-55"
       />
     </footer>
   )

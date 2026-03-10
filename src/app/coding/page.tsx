@@ -312,7 +312,7 @@ function InlineDocPreview({ patientId, label }: { patientId?: string; label?: st
       {/* Fullscreen overlay — separate from inline to prevent iframe remount */}
       {fullscreen && previewUrl && (
         <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" onClick={e => { if (e.target === e.currentTarget) setFullscreen(false) }}>
-          <div className="flex items-center justify-between p-3 bg-surface-secondary border-b border-separator">
+          <div className="flex gap-2 items-center justify-between p-3 bg-surface-secondary border-b border-separator pb-1">
             {label && <p className="text-xs font-bold text-brand uppercase tracking-wider">{label}</p>}
             <span className="text-xs text-content-tertiary ml-2">{docs.find(d => d.id === selectedDocId)?.file_name}</span>
             <button onClick={() => setFullscreen(false)}
@@ -1140,7 +1140,7 @@ export default function CodingPage() {
                 {docOpen && item && (
                   <div className="absolute inset-0 z-20 bg-surface card flex flex-col overflow-hidden">
                     {/* Header with tabs + close */}
-                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-separator shrink-0">
+                    <div className="flex gap-2 items-center justify-between px-4 py-2.5 border-b border-separator pb-1 shrink-0">
                       <div className="flex gap-1">
                         <button
                           onClick={() => setDocOpen('note')}

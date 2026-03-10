@@ -441,7 +441,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
       <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
       <div className="fixed right-0 top-0 h-full w-[600px] bg-surface-secondary border-l border-separator z-50 flex flex-col shadow-xl">
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-separator shrink-0">
+        <div className="flex gap-2 items-center gap-3 px-5 py-4 border-b border-separator pb-1 shrink-0">
           <span className="font-mono text-[15px] font-bold text-content-primary">{claim.id}</span>
           <ClaimStatusBadge status={claim.status} />
           <span className="ml-auto text-[15px] font-bold text-content-primary">${claim.billed.toLocaleString()}</span>
@@ -465,7 +465,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
           <button onClick={onClose} className="text-content-tertiary hover:text-content-primary p-1"><X size={18} /></button>
         </div>
         {/* Tab bar */}
-        <div className="flex border-b border-separator px-4 shrink-0 overflow-x-auto">
+        <div className="flex gap-2 border-b border-separator pb-1 px-4 shrink-0 overflow-x-auto">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`px-3 py-2.5 text-[12px] font-medium transition-colors whitespace-nowrap ${tab === t.id ? 'text-brand border-b-2 border-brand' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'}`}>
@@ -960,7 +960,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   <Activity size={14} />
                 const details = entry.details ? (typeof entry.details === 'string' ? entry.details : JSON.stringify(entry.details)) : ''
                 return (
-                  <div key={entry.id || i} className="flex items-start gap-3 py-2 border-b border-separator last:border-0">
+                  <div key={entry.id || i} className="flex gap-2 items-start gap-3 py-2 border-b border-separator pb-1 last:border-0">
                     <div className="text-brand mt-0.5">{actionIcon}</div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-medium text-content-primary capitalize">{(entry.action || '').replace(/_/g, ' ')}</p>
@@ -1193,7 +1193,7 @@ export default function ClaimsPage() {
               <button onClick={() => setSelectedRows([])} className="ml-auto text-content-tertiary hover:text-content-primary"><X size={14} /></button>
             </div>
           ) : (
-            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-separator shrink-0">
+            <div className="flex gap-2 items-center gap-2 px-4 py-2.5 border-b border-separator pb-1 shrink-0">
               <button onClick={() => setSidebarOpen(o => !o)} className="p-1.5 rounded hover:bg-surface-elevated text-content-tertiary">
                 <Filter size={14} />
               </button>

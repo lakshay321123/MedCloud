@@ -59,7 +59,7 @@ export default function WatchTrackPage() {
     <ModuleShell title="Watch & Track" subtitle="Track your claims and revenue">
       {!apiClaims.length && <div className='mb-4 bg-brand-pale0/10 border border-brand-light/30 rounded-lg px-4 py-2.5 text-xs text-brand-deep'>API connecting…</div>}
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 bg-surface-elevated rounded-xl p-1 w-fit">
+      <div className="flex gap-2 mb-5 bg-surface-elevated rounded-xl p-1 w-fit">
         <button onClick={() => setActiveTab('claims')}
           className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === 'claims' ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'}`}>
           Claims

@@ -169,7 +169,7 @@ export default function MessagesPage() {
       {composing && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-surface rounded-2xl border border-separator w-full max-w-lg shadow-2xl">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-separator">
+            <div className="flex gap-2 items-center justify-between px-5 py-4 border-b border-separator pb-1">
               <h3 className="text-[15px] font-semibold text-content-primary">New Message</h3>
               <button onClick={() => setComposing(false)} className="text-content-secondary hover:text-content-primary"><X size={18}/></button>
             </div>

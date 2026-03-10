@@ -496,7 +496,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
       <div className="fixed inset-0 bg-black/20 z-30" onClick={onClose} />
       <div className="fixed right-0 top-0 h-full w-full sm:w-[520px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-separator shrink-0">
+        <div className="flex gap-2 items-center justify-between p-4 border-b border-separator pb-1 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center text-brand font-bold text-sm">
               {localPatient.firstName[0]}{localPatient.lastName[0]}
@@ -526,7 +526,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-separator overflow-x-auto shrink-0">
+        <div className="flex gap-2 border-b border-separator pb-1 overflow-x-auto shrink-0">
           {tabs.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-2 text-[13px] font-medium border-b-2 whitespace-nowrap transition-all ${tab === t ? 'border-brand text-brand' : 'border-transparent text-content-secondary hover:text-content-primary'}`}>

@@ -168,7 +168,7 @@ export default function ContractsPage() {
           {selected ? (
             <>
               {/* Header */}
-              <div className="flex items-center gap-3 px-5 py-4 border-b border-separator shrink-0">
+              <div className="flex gap-2 items-center gap-3 px-5 py-4 border-b border-separator pb-1 shrink-0">
                 <div className={`w-10 h-10 rounded-full ${payerColors[selected.payerId] || 'bg-gray-500'} flex items-center justify-center text-white text-[12px] font-bold`}>
                   {selected.payer.slice(0, 2)}
                 </div>
@@ -179,7 +179,7 @@ export default function ContractsPage() {
                 <ContractStatusBadge status={selected.status} />
               </div>
               {/* Tabs */}
-              <div className="flex border-b border-separator px-4 shrink-0">
+              <div className="flex gap-2 border-b border-separator pb-1 px-4 shrink-0">
                 {TABS.map(t => (
                   <button key={t.id} onClick={() => setTab(t.id)}
                     className={`px-4 py-2.5 text-[12px] font-medium transition-colors ${tab === t.id ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>
@@ -325,7 +325,7 @@ export default function ContractsPage() {
                       { label: 'Effective Date', value: selected.effective },
                       { label: 'Expiry Date', value: selected.expiry || 'No expiry' },
                     ].map(row => (
-                      <div key={row.label} className="flex justify-between py-2.5 border-b border-separator last:border-0">
+                      <div key={row.label} className="flex gap-2 justify-between py-2.5 border-b border-separator pb-1 last:border-0">
                         <span className="text-[13px] text-content-secondary">{row.label}</span>
                         <span className="text-[13px] text-content-primary font-medium">{row.value}</span>
                       </div>

@@ -342,7 +342,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex border-b border-separator mb-6">
+      <div className="flex gap-2 border-b border-separator mb-6 pb-1">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`px-4 py-2 text-[13px] font-medium rounded-[10px] transition-all ${tab === t.id ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'}`}>

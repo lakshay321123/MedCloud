@@ -216,10 +216,10 @@ function CoderDashboard() {
         <KPICard label={t('dashboard','codedToday')} value={4} icon={<CheckCircle2 size={20} />} trend="up" />
       </div>
       {(pastSLA ?? 0) > 0 && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
-          <AlertTriangle size={16} className="text-red-500 mt-0.5 shrink-0" />
+        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-brand-deep mt-0.5 shrink-0" />
           <div>
-            <p className="text-[13px] font-semibold text-red-600">{(pastSLA ?? 0)} chart{(pastSLA ?? 0) > 1 ? 's' : ''} past 24-hour SLA</p>
+            <p className="text-[13px] font-semibold text-brand-deep">{(pastSLA ?? 0)} chart{(pastSLA ?? 0) > 1 ? 's' : ''} past 24-hour SLA</p>
             <p className="text-[12px] text-content-secondary mt-0.5">These charts were received more than 24 hours ago and must be coded immediately.</p>
           </div>
           <Link href="/coding" className="ml-auto text-[12px] text-brand font-medium shrink-0">Go to Queue →</Link>
@@ -255,11 +255,11 @@ function BillerDashboard() {
         <KPICard label={t('dashboard','chargeLagAlerts')} value={chargeLagCount} icon={<Clock size={20} />} />
       </div>
       {scrubFailed > 0 && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-start gap-3">
-            <AlertTriangle size={16} className="text-red-500 mt-0.5" />
+            <AlertTriangle size={16} className="text-brand-deep mt-0.5" />
             <div>
-              <p className="text-[13px] font-semibold text-red-600">{scrubFailed} claims need scrub error resolution</p>
+              <p className="text-[13px] font-semibold text-brand-deep">{scrubFailed} claims need scrub error resolution</p>
               <p className="text-[12px] text-content-secondary mt-0.5">Fix scrub errors before these claims can be submitted to the clearinghouse.</p>
             </div>
           </div>
@@ -304,11 +304,11 @@ function ARDashboard() {
         <KPICard label={t('dashboard','accountsWorked')} value={12} icon={<CheckCircle2 size={20} />} />
       </div>
       {appealsNearDeadline > 0 && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-start gap-3">
-            <AlertTriangle size={16} className="text-red-500 mt-0.5" />
+            <AlertTriangle size={16} className="text-brand-deep mt-0.5" />
             <div>
-              <p className="text-[13px] font-semibold text-red-600">{appealsNearDeadline} appeal response windows closing in &lt; 5 days</p>
+              <p className="text-[13px] font-semibold text-brand-deep">{appealsNearDeadline} appeal response windows closing in &lt; 5 days</p>
               <p className="text-[12px] text-content-secondary">Follow up now or escalate to Level 2 before the window closes.</p>
             </div>
           </div>
@@ -343,8 +343,8 @@ function PostingDashboard() {
         <KPICard label={t('dashboard','postedToday')} value={24} icon={<CheckCircle2 size={20} />} />
       </div>
       {pastSLAERAs > 0 && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between">
-          <p className="text-[13px] font-semibold text-red-600">{pastSLAERAs} ERA past 48-hour posting SLA — requires immediate action</p>
+        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
+          <p className="text-[13px] font-semibold text-brand-deep">{pastSLAERAs} ERA past 48-hour posting SLA — requires immediate action</p>
           <Link href="/payment-posting" className="text-[12px] text-brand font-medium">Post Now →</Link>
         </div>
       )}
@@ -426,10 +426,10 @@ function ClientDashboard() {
         {actionNeeded > 0 && (
           <button
             onClick={() => router.push('/tasks')}
-            className="bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 flex items-center gap-2 hover:bg-red-500/20 transition-colors cursor-pointer"
+            className="bg-brand/10 border border-brand/20 rounded-lg px-3 py-2 flex items-center gap-2 hover:bg-brand/15 transition-colors cursor-pointer"
           >
             <AlertTriangle size={14} className="text-red-500" />
-            <span className="text-[13px] text-red-600 font-semibold">{actionNeeded} items need your attention →</span>
+            <span className="text-[13px] text-brand-deep font-semibold">{actionNeeded} items need your attention →</span>
           </button>
         )}
       </div>

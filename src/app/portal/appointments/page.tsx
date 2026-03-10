@@ -124,7 +124,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
       <div className="fixed inset-0 bg-black/20 z-30" onClick={onClose} />
       <div className="fixed right-0 top-0 h-full w-full sm:w-[480px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-separator shrink-0">
+        <div className="flex gap-2 items-center justify-between p-4 border-b border-separator pb-1 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-brand/10 flex items-center justify-center text-brand font-bold text-sm">
               {appt.patientName.split(' ').map(n => n[0]).join('').slice(0, 2)}

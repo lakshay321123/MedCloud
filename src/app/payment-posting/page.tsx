@@ -367,7 +367,7 @@ export default function PaymentPostingPage() {
         )}
 
         <div className="card overflow-hidden mb-4">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-separator">
+          <div className="flex gap-2 items-center justify-between px-4 py-3 border-b border-separator pb-1">
             <h3 className="text-[12px] font-semibold text-content-secondary uppercase tracking-wider">ERA Files</h3>
             <button onClick={() => setShowUploadModal(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-brand text-white rounded-btn text-[12px] font-medium hover:bg-brand-dark transition-colors">
@@ -467,7 +467,7 @@ export default function PaymentPostingPage() {
             <div className="fixed inset-0 bg-black/50 z-[200]" onClick={() => { setUploadedFile(null); setShowUploadModal(false) }} />
             <div className="fixed inset-0 flex items-center justify-center z-[200] p-4">
               <div className="bg-surface-secondary rounded-xl shadow-2xl w-full max-w-md border border-separator">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-separator">
+                <div className="flex gap-2 items-center justify-between px-5 py-4 border-b border-separator pb-1">
                   <h3 className="font-semibold text-content-primary">Upload ERA File</h3>
                   <button onClick={() => { setUploadedFile(null); setShowUploadModal(false) }}><X size={16} className="text-content-secondary" /></button>
                 </div>
@@ -568,7 +568,7 @@ export default function PaymentPostingPage() {
 
       {/* ERA / EOB Document Viewer */}
       <div className="card mb-3 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2 border-b border-separator bg-surface-secondary">
+        <div className="flex gap-2 items-center justify-between px-4 py-2 border-b border-separator pb-1 bg-surface-secondary">
           <span className="text-[12px] font-semibold text-content-secondary uppercase tracking-wider">ERA / EOB Document</span>
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-content-tertiary">{era?.file}</span>

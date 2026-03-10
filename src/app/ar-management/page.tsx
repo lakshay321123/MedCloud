@@ -179,7 +179,7 @@ function LogCallModal({
       <div className="fixed inset-0 bg-black/60 z-50" onClick={onClose} />
       <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
         <div className="bg-surface-secondary rounded-xl shadow-2xl w-full max-w-lg border border-separator">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-separator">
+          <div className="flex gap-2 items-center justify-between px-5 py-4 border-b border-separator pb-1">
             <h3 className="font-semibold text-content-primary">Log Manual Call — {account.payer}</h3>
             <button onClick={onClose}><X size={16} className="text-content-secondary" /></button>
           </div>
@@ -318,7 +318,7 @@ function ARDrawer({
       <div className="fixed inset-0 bg-black/20 z-30" onClick={onClose} />
       <div className="fixed right-0 top-0 h-full w-[460px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-separator shrink-0">
+        <div className="flex gap-2 items-center justify-between p-4 border-b border-separator pb-1 shrink-0">
           <div>
             <h3 className="font-semibold text-content-primary">{account.patient}</h3>
             <p className="text-[13px] text-content-secondary">{account.client} · {account.payer}</p>
@@ -333,7 +333,7 @@ function ARDrawer({
         </div>
 
         {/* Tab bar */}
-        <div className="flex border-b border-separator px-3 shrink-0">
+        <div className="flex gap-2 border-b border-separator pb-1 px-3 shrink-0">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setDrawerTab(t.id as typeof drawerTab)}
               className={`px-3 py-2.5 text-[12px] font-medium transition-colors ${drawerTab === t.id ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>
@@ -577,7 +577,7 @@ function ARDrawer({
           <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setShowWriteoffModal(false)} />
           <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
             <div className="bg-surface-secondary rounded-xl shadow-2xl w-full max-w-md border border-separator">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-separator">
+              <div className="flex gap-2 items-center justify-between px-5 py-4 border-b border-separator pb-1">
                 <h3 className="font-semibold text-content-primary">Request Write-off</h3>
                 <button onClick={() => setShowWriteoffModal(false)}><X size={16} className="text-content-secondary" /></button>
               </div>
@@ -854,7 +854,7 @@ export default function ARManagementPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 mb-4 border-b border-separator">
+      <div className="flex gap-2 mb-4 border-b border-separator">
         {[{ id: 'accounts', label: 'AR Accounts' }, { id: 'inbound', label: '📞 Inbound Call' }, { id: 'credits', label: 'Credit Balances' }, { id: 'sla', label: 'SLA Escalations' }].map(t => (
           <button key={t.id} onClick={() => setCallMode(t.id as any)}
             className={`px-4 py-2.5 text-[13px] font-medium transition-colors ${callMode === t.id ? 'text-brand border-b-2 border-brand' : 'text-content-secondary hover:text-content-primary'}`}>

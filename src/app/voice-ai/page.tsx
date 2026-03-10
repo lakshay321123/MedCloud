@@ -293,7 +293,7 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
   return (
     <div className="space-y-4">
       {/* Agent tabs */}
-      <div className="flex items-center gap-1 border-b border-separator pb-0">
+      <div className="flex gap-2 items-center gap-1 border-b border-separator pb-1 pb-0">
         {[
           { key: 'all', label: `All (${calls.length})` },
           { key: 'chris', label: `Chris (${chrisCount})` },
@@ -1123,7 +1123,7 @@ export default function VoiceAIPage() {
 
   return (
     <ModuleShell title={t('voice', 'title')} subtitle="Powered by Retell AI — real outbound calls to payers and patients">
-      <div className="flex gap-1 mb-5 border-b border-separator overflow-x-auto">
+      <div className="flex gap-2 mb-5 border-b border-separator overflow-x-auto">
         {TABS.map(tb => {
           const Icon = tb.icon
           return (

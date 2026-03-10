@@ -829,7 +829,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div className="pointer-events-auto w-full max-w-lg bg-surface-default border border-separator rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.10),0_1px_4px_rgba(0,0,0,0.06)] overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-separator">
+          <div className="flex gap-2 items-center justify-between px-6 py-4 border-b border-separator pb-1">
             <div className="flex items-center gap-2">
               <Upload size={16} className="text-brand" />
               <h3 className="text-base font-semibold text-content-primary">Upload Document</h3>

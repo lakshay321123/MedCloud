@@ -112,12 +112,12 @@ export default function Topbar() {
 
         {/* ── LEFT: Client selector (staff only) ── */}
         {isStaff && (
-          <div className="shrink-0 [&_button]:!bg-white/20 [&_button]:!text-white [&_button]:hover:!bg-white/30 [&_button]:border-0 [&_button]:font-semibold">
+          <div className="shrink-0">
             <Dropdown
               value={selectedClient?.id || ''}
               options={clientOptions}
               onChange={v => setSelectedClient(clients.find(c => c.id === v) || null)}
-              buttonClassName="bg-white/20 text-white hover:bg-white/30 font-semibold"
+              buttonClassName="bg-white/20 text-white hover:bg-white/30 font-semibold border-0"
             />
           </div>
         )}
