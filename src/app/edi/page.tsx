@@ -144,7 +144,7 @@ function EDIContent() {
             className={`px-3 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
               tab === t.key
                 ? 'bg-brand text-white border border-brand'
-                : 'text-content-secondary border border-transparent hover:text-content-primary hover:bg-surface-elevated'
+                : 'text-content-tertiary border border-transparent hover:text-content-primary hover:bg-surface-elevated'
             }`}>
             {t.label} <span className="ml-1 opacity-60">({t.count})</span>
           </button>

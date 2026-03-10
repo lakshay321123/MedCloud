@@ -17,11 +17,12 @@ export default function Sidebar() {
   return (
     <aside className={`${w} h-screen bg-white border-r border-separator flex flex-col transition-all duration-300 shrink-0 overflow-hidden`}>
 
-      {/* Top — hamburger only, no text clutter */}
-      <div className="h-16 flex items-center px-4 border-b border-separator">
+      {/* Top — brand bar matches topbar for visual continuity */}
+      <div className="h-16 flex items-center px-4 bg-brand shrink-0">
         <button
           onClick={toggleSidebar}
-          className="p-1.5 rounded-[10px] hover:bg-brand/8 text-content-tertiary hover:text-brand transition-colors"
+          className="p-1.5 rounded-[10px] hover:bg-white/15 text-white transition-colors"
+          aria-label="Toggle sidebar"
         >
           <Icons.Menu size={19} />
         </button>

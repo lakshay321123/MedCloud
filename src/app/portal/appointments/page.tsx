@@ -204,7 +204,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
                 {patient.insurance.copay !== undefined && <div><span className="text-content-tertiary block">Copay</span>${patient.insurance.copay}</div>}
               </div>
               <button onClick={() => router.push(`/eligibility?patientId=${appt.patientId}`)}
-                className="mt-2 w-full flex items-center justify-center gap-2 bg-brand/10 text-brand border border-brand/20 rounded-lg py-2 text-[12px] font-medium hover:bg-brand/20 transition-colors">
+                className="mt-2 w-full flex items-center justify-center gap-2 bg-brand text-white border border-brand/20 rounded-lg py-2 text-[12px] font-medium hover:bg-brand/20 transition-colors">
                 <ShieldCheck size={13}/> Verify Eligibility
               </button>
             </div>

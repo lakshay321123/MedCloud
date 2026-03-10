@@ -108,8 +108,8 @@ function EligibilityContent() {
           <button key={tb.key} onClick={() => setTab(tb.key)}
             className={`px-4 py-2 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
               tab === tb.key
-                ? 'bg-brand/10 text-brand border border-brand/30'
-                : 'text-content-secondary border border-transparent hover:text-content-primary hover:bg-surface-elevated'
+                ? 'bg-brand text-white shadow-sm'
+                : 'text-content-tertiary border border-transparent hover:text-content-primary hover:bg-surface-elevated'
             }`}>
             {tb.label}
             {tb.count != null && <span className="ml-1 opacity-60">({tb.count})</span>}

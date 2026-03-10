@@ -646,7 +646,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
               ) : <div className="text-center py-6 text-xs text-content-secondary">No insurance on file. <button onClick={() => router.push('/portal/scan-submit')} className="text-brand underline">Upload insurance card</button></div>}
               {localPatient.insurance && (
                 <button onClick={() => { onClose(); router.push(`/eligibility?patientId=${localPatient.id}`) }}
-                  className="w-full flex items-center justify-center gap-2 bg-brand/10 text-brand border border-brand/20 rounded-lg py-2 text-[12px] font-medium hover:bg-brand/20 transition-colors">
+                  className="w-full flex items-center justify-center gap-2 bg-brand text-white border border-brand/20 rounded-lg py-2 text-[12px] font-medium hover:bg-brand/20 transition-colors">
                   Run Eligibility Check →
                 </button>
               )}

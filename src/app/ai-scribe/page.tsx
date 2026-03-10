@@ -763,7 +763,7 @@ function ProviderView() {
                     setManualCodes(p => [...p, { code, desc: 'Manually added', type: manualCodeType, confidence: 100, is_primary: false, modifiers: [], reasoning: '' }])
                     setKeptCodes(p => ({ ...p, [code]: true }))
                     setManualCode('')
-                  }} className="flex items-center gap-1 text-[11px] bg-brand/10 text-brand border border-brand/20 rounded px-2 py-1.5 hover:bg-brand/20 transition-colors">
+                  }} className="flex items-center gap-1 text-[11px] bg-brand text-white border border-brand/20 rounded px-2 py-1.5 hover:bg-brand/20 transition-colors">
                     <Plus size={10} /> Add
                   </button>
                 </div>

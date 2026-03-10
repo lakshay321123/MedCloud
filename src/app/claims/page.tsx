@@ -91,11 +91,11 @@ const POS_OPTIONS = [
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-500/10 text-gray-400 border border-gray-500/20',
-  scrubbing: 'bg-brand/10 text-brand border border-brand/20 animate-pulse',
+  scrubbing: 'bg-brand text-white border border-brand/20 animate-pulse',
   scrub_failed: 'bg-red-500/10 text-red-400 border border-red-500/20',
   ready: 'bg-brand-pale0/10 text-brand-deep border border-brand-light/20',
   submitted: 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20',
-  accepted: 'bg-brand/10 text-brand border border-brand/20',
+  accepted: 'bg-brand text-white shadow-sm',
   in_process: 'bg-brand/10 text-brand-dark border border-brand/20',
   paid: 'bg-brand/10 text-brand-dark border border-brand/20',
   partial_pay: 'bg-brand-pale0/10 text-brand-deep border border-brand-light/20',
@@ -574,7 +574,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
               {/* Action button */}
               {!editMode && (
                 <div className="space-y-2">
-                  {claim.status === 'scrub_failed' && <button onClick={statusAction} disabled={scrubbing} className="w-full bg-red-500 text-white rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{scrubbing ? 'Scrubbing…' : 'Fix & Re-Scrub'}</button>}
+                  {claim.status === 'scrub_failed' && <button onClick={statusAction} disabled={scrubbing} className="w-full bg-brand text-white rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{scrubbing ? 'Scrubbing…' : 'Fix & Re-Scrub'}</button>}
                   {claim.status === 'ready' && (
                     <>
                       {/* Denial Risk Prediction */}
