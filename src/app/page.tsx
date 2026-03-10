@@ -36,30 +36,34 @@ export default function LoginPage() {
 
   const stats = [
     { value: '99.3%', label: 'Coding Accuracy' },
-    { value: '25+', label: 'Years in RCM' },
+    { value: '25+',   label: 'Years in RCM' },
     { value: '1,000+', label: 'RCM Experts' },
-    { value: '< 35', label: 'Avg AR Days' },
+    { value: '< 35',  label: 'Avg AR Days' },
   ]
 
   return (
     <div className="min-h-screen flex flex-row-reverse">
 
-      {/* ── RIGHT: Login form ── */}
-      <div className="flex-1 flex flex-col justify-between p-10 bg-white">
-        {/* Top-right: MedCloud logo */}
+      {/* ══════════════════════════════════
+          RIGHT — Login form (white panel)
+          Logos live HERE only
+      ══════════════════════════════════ */}
+      <div className="flex-1 flex flex-col justify-between p-10 bg-white min-h-screen">
+
+        {/* TOP-RIGHT: MedCloud logo — black bg removed via mix-blend-mode multiply */}
         <div className="flex justify-end">
           <Image
-            src="/assets/logo-main.png"
+            src="/assets/logo-main-login.png"
             alt="MedCloud"
-            width={140}
-            height={36}
+            width={160}
+            height={40}
             priority
-            className="h-9 w-auto object-contain"
+            className="h-10 w-auto object-contain"
             style={{ mixBlendMode: 'multiply' }}
           />
         </div>
 
-        {/* Center: Form */}
+        {/* CENTER: Form */}
         <div className="w-full max-w-sm mx-auto">
           <div className="mb-8">
             <h2 className="text-[28px] font-bold text-black tracking-tight">Welcome back</h2>
@@ -119,63 +123,56 @@ export default function LoginPage() {
           </form>
         </div>
 
-        {/* Bottom: A Cosentus Division logo */}
-        <div className="flex items-center">
+        {/* BOTTOM-RIGHT: A Cosentus Division logo */}
+        <div className="flex justify-end">
           <Image
             src="/assets/cosentus-division.png"
             alt="A Cosentus Division"
-            width={148}
-            height={22}
-            className="object-contain opacity-40"
+            width={160}
+            height={24}
+            className="object-contain opacity-50"
             style={{ mixBlendMode: 'multiply' }}
           />
         </div>
       </div>
 
-      {/* ── LEFT: Brand panel ── */}
+      {/* ══════════════════════════════════
+          LEFT — Brand blue panel
+          NO logos — just content
+      ══════════════════════════════════ */}
       <div className="hidden lg:flex w-[46%] bg-brand flex-col justify-between p-12 relative overflow-hidden shrink-0">
         {/* Decorative circles */}
         <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/5 pointer-events-none" />
         <div className="absolute bottom-0 -right-16 w-72 h-72 rounded-full bg-white/5 pointer-events-none" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-white/[0.03] pointer-events-none" />
 
-        {/* Top: logo */}
-        <div className="relative z-10">
-          <Image
-            src="/assets/logo-white.png"
-            alt="MedCloud"
-            width={160}
-            height={42}
-            priority
-            className="h-10 w-auto object-contain"
-            style={{ mixBlendMode: 'screen' }}
-          />
-        </div>
+        {/* TOP spacer — keep visual balance */}
+        <div />
 
-        {/* Center: headline + tagline */}
+        {/* CENTER: headline + tagline + stats */}
         <div className="relative z-10">
-          <h1 className="text-[40px] font-bold text-white leading-tight tracking-tight">
+          <h1 className="text-[42px] font-bold text-white leading-tight tracking-tight">
             Revenue Cycle<br />Intelligence
           </h1>
           <p className="text-white/70 text-[16px] mt-4 leading-relaxed max-w-xs">
-            AI-powered RCM platform built on 25+ years of healthcare expertise. Faster claims, fewer denials, smarter collections.
+            AI-powered RCM built on 25+ years of healthcare expertise. Faster claims, fewer denials, smarter collections.
           </p>
 
           {/* Stats grid */}
           <div className="mt-10 grid grid-cols-2 gap-4">
             {stats.map(({ value, label }) => (
               <div key={label} className="bg-white/10 rounded-2xl px-5 py-4 backdrop-blur-sm">
-                <div className="text-[26px] font-bold text-white leading-none">{value}</div>
+                <div className="text-[28px] font-bold text-white leading-none">{value}</div>
                 <div className="text-[12px] text-white/60 mt-1.5 font-medium">{label}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Bottom: INC 5000 badge */}
+        {/* BOTTOM: INC 5000 badge */}
         <div className="relative z-10 flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center shrink-0">
-            <span className="text-white text-[11px] font-bold">Inc</span>
+            <span className="text-white text-[10px] font-bold">Inc</span>
           </div>
           <p className="text-white/50 text-[12px] leading-snug">
             INC 5000 Fastest Growing Company · 3 consecutive years<br />
