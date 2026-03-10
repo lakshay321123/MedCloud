@@ -393,7 +393,7 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <YAxis tickFormatter={v => `$${v/1000}K`} tick={{ fontSize: 11, fill: '#9CA3AF' }} />
-                  <Tooltip formatter={(v: number | string | undefined) => [`$${(Number(v ?? 0)/1000).toFixed(0)}K`, 'Revenue']} contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip formatter={(v: number | string | undefined) => [`$${(Number(v ?? 0)/1000).toFixed(0)}K`, 'Revenue']} contentStyle={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 12, color: '#3A3A3C', boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }} itemStyle={{ color: '#3A3A3C' }} labelStyle={{ color: '#1D1D1F', fontWeight: 600 }} />
                   <Line type="monotone" dataKey="revenue" stroke="#00B5D6" strokeWidth={2} dot={{ fill: '#00B5D6', r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
@@ -409,7 +409,7 @@ export default function AnalyticsPage() {
                       <Cell key={index} fill={PAYER_COLORS[entry.name] || '#6B7280'} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip contentStyle={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 12, color: '#3A3A3C', boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }} itemStyle={{ color: '#3A3A3C' }} labelStyle={{ color: '#1D1D1F', fontWeight: 600 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -424,7 +424,7 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" horizontal={false} />
                   <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#9CA3AF' }} width={65} />
-                  <Tooltip formatter={(v: number | string | undefined) => [`${v ?? 0}%`, 'Collection Rate']} contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip formatter={(v: number | string | undefined) => [`${v ?? 0}%`, 'Collection Rate']} contentStyle={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 12, color: '#3A3A3C', boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }} itemStyle={{ color: '#3A3A3C' }} labelStyle={{ color: '#1D1D1F', fontWeight: 600 }} />
                   <Bar dataKey="rate" radius={[0, 4, 4, 0]}>
                     {clientCollectionRates.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
                   </Bar>
@@ -440,7 +440,7 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <YAxis tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: '#9CA3AF' }} />
-                  <Tooltip formatter={(v: number | string | undefined) => [`${v ?? 0}%`]} contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip formatter={(v: number | string | undefined) => [`${v ?? 0}%`]} contentStyle={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 12, color: '#3A3A3C', boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }} itemStyle={{ color: '#3A3A3C' }} labelStyle={{ color: '#1D1D1F', fontWeight: 600 }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <ReferenceLine y={5} stroke="#A1DEED" strokeDasharray="4 4" label={{ value: 'Target 5%', position: 'insideTopRight', fontSize: 10, fill: '#616161' }} />
                   <Line type="monotone" dataKey="initial" name="Initial Denial Rate" stroke="#EF4444" strokeWidth={2} dot={false} />
@@ -511,7 +511,7 @@ export default function AnalyticsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" vertical={false} />
                 <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9CA3AF' }} />
                 <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} />
-                <Tooltip contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
+                <Tooltip contentStyle={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 12, color: '#3A3A3C', boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }} itemStyle={{ color: '#3A3A3C' }} labelStyle={{ color: '#1D1D1F', fontWeight: 600 }} />
                 <Bar dataKey="claims" fill="#00B5D6" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -645,7 +645,7 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <YAxis tickFormatter={v => `$${v/1000}K`} tick={{ fontSize: 11, fill: '#9CA3AF' }} />
-                  <Tooltip formatter={(v: number | string | undefined) => [`$${(Number(v ?? 0)/1000).toFixed(1)}K`]} contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip formatter={(v: number | string | undefined) => [`$${(Number(v ?? 0)/1000).toFixed(1)}K`]} contentStyle={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 12, color: '#3A3A3C', boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }} itemStyle={{ color: '#3A3A3C' }} labelStyle={{ color: '#1D1D1F', fontWeight: 600 }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Line type="monotone" dataKey="charges" name="Billed" stroke="#047285" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="collections" name="Collected" stroke="#00B5D6" strokeWidth={2} dot={false} />
@@ -666,7 +666,7 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <YAxis dataKey="cpt" type="category" tick={{ fontSize: 11, fill: '#9CA3AF', fontFamily: 'monospace' }} width={50} />
-                  <Tooltip formatter={(v: number | string | undefined) => [v ?? 0, 'Count']} contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip formatter={(v: number | string | undefined) => [v ?? 0, 'Count']} contentStyle={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 12, color: '#3A3A3C', boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }} itemStyle={{ color: '#3A3A3C' }} labelStyle={{ color: '#1D1D1F', fontWeight: 600 }} />
                   <Bar dataKey="count" fill="#00B5D6" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
