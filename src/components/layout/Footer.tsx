@@ -10,8 +10,7 @@ export default function Footer() {
         alt="A Cosentus Division"
         width={160}
         height={24}
-        className="object-contain opacity-50"
-        style={{ mixBlendMode: 'multiply' }}
+        className="object-contain"
       />
     </footer>
   )
