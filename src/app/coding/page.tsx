@@ -908,7 +908,7 @@ export default function CodingPage() {
                   if (done > 0) toast.success(`${done} chart${done > 1 ? 's' : ''} accepted → ${done} claim${done > 1 ? 's' : ''} created${failed > 0 ? ` (${failed} failed)` : ''}`)
                   else toast.error('Batch accept failed — no charts approved')
                 }}
-                className="text-[10px] px-2 py-1 rounded bg-brand/10 text-brand hover:bg-brand/20 font-medium transition-colors"
+                className="text-[10px] px-2.5 py-1.5 rounded-lg bg-brand text-white hover:bg-brand-deep font-medium transition-colors shadow-sm"
               >
                 Approve for Billing
               </button>
@@ -1662,7 +1662,7 @@ export default function CodingPage() {
                     onClick={handleApprove}
                     className="flex-1 bg-brand text-white rounded-btn px-3 py-2 text-[13px] font-medium inline-flex items-center justify-center gap-2"
                   >
-                    <CheckCircle2 size={14} /> Approve & Send to Billing
+                    <CheckCircle2 size={14} /> Approve for Billing
                   </button>
                   <button
                     onClick={() => setShowQueryModal(true)}

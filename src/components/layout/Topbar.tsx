@@ -100,7 +100,7 @@ export default function Topbar() {
   return (
     <>
       {isScribeRecording && (
-        <div className="h-9 bg-red-500 flex items-center justify-center gap-3 px-4 z-50">
+        <div className="h-9 bg-brand-deep flex items-center justify-center gap-3 px-4 z-50">
           <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
           <span className="text-white text-xs font-semibold">AI Scribe is recording</span>
           <a href="/ai-scribe" className="ml-2 text-xs font-bold text-white underline">Return to Scribe</a>

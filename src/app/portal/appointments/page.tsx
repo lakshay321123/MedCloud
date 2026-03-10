@@ -418,7 +418,7 @@ export default function AppointmentsPage() {
                 {/* Actions */}
                 <div className="flex gap-1.5 mt-3 ml-[calc(3.5rem+9px)]">
                   <button onClick={() => setDrawerAppt(a)}
-                    className="text-[10px] px-2.5 py-1.5 border border-separator text-content-secondary rounded hover:text-content-secondary transition-colors">View</button>
+                    className="text-[11px] px-3 py-1.5 border border-brand/30 text-brand-dark bg-brand/5 rounded-lg hover:bg-brand/10 font-medium transition-colors">View</button>
                   {['booked','confirmed'].includes(currentStatus) && (
                     <button onClick={() => checkIn(a.id, a.patientName)}
                       className="text-[10px] px-2.5 py-1.5 bg-brand/10 text-brand-dark border border-brand/20 rounded hover:bg-brand/15 transition-colors">Check In</button>
