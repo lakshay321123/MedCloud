@@ -137,7 +137,7 @@ export default function Topbar() {
                 if (e.key === 'Escape') { setSearchOpen(false); setSearchQuery('') }
               }}
               placeholder="Search patients, claims, docs..."
-              className="w-full bg-white rounded-btn pl-8 pr-4 py-2 text-[13px] text-black placeholder:text-gray-400 outline-none border-0 shadow-sm"
+              className="w-full bg-white/95 backdrop-blur-sm rounded-btn pl-8 pr-4 py-2 text-[13px] text-[#1D1D1F] placeholder:text-[#6E6E73] outline-none border-0 shadow-sm ring-1 ring-white/20 focus:ring-2 focus:ring-white/40 transition-all"
             />
             {searchOpen && searchQuery.length >= 2 && searchResults.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-separator rounded-card shadow-2xl z-50 overflow-hidden max-h-80 overflow-y-auto">
@@ -216,14 +216,12 @@ export default function Topbar() {
         {/* ── RIGHT: Logo + User menu ── */}
         <div className="flex items-center gap-3 ml-auto shrink-0">
           {/* MedCloud logo — white version */}
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/assets/logo-white.png"
             alt="MedCloud"
-            width={110}
-            height={28}
-            className="object-contain"
+            className="h-7 w-auto object-contain"
             style={{ mixBlendMode: 'screen' }}
-            priority
           />
 
           {/* User popup — Claude-style */}

@@ -29,14 +29,14 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  '837P': 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  '837P': 'bg-brand/10 text-brand-dark dark:text-brand',
   '837I': 'bg-brand/10 text-brand-dark',
   '835': 'bg-brand/10 text-brand-dark dark:text-brand-dark',
   '270': 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep',
   '271': 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep',
-  '276': 'bg-blue-500/10 text-blue-700 dark:text-blue-700',
-  '277': 'bg-blue-500/10 text-blue-700 dark:text-blue-700',
-  '999': 'bg-gray-500/10 text-gray-600 dark:text-gray-400',
+  '276': 'bg-brand/10 text-brand-dark dark:text-brand-dark',
+  '277': 'bg-brand/10 text-brand-dark dark:text-brand-dark',
+  '999': 'bg-gray-500/10 text-gray-600 dark:text-content-tertiary',
   'DHA': 'bg-teal-500/10 text-teal-600 dark:text-teal-400',
 }
 
@@ -212,14 +212,14 @@ function EDIContent() {
                   <tr key={tx.id} onClick={() => setSelected(tx)}
                     className="border-b border-separator/50 hover:bg-surface-elevated/50 cursor-pointer transition-colors">
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium ${TYPE_COLORS[tx.transaction_type] || 'bg-gray-500/10 text-gray-500'}`}>
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium ${TYPE_COLORS[tx.transaction_type] || 'bg-gray-500/10 text-content-tertiary'}`}>
                         {tx.transaction_type}
                       </span>
                       {tx.file_name && <p className="text-[10px] text-content-tertiary mt-0.5 truncate max-w-[140px]">{tx.file_name}</p>}
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1 text-xs text-content-secondary">
-                        {tx.direction === 'outbound' ? <ArrowUpRight size={12} className="text-blue-500" /> : <ArrowDownLeft size={12} className="text-brand-dark" />}
+                        {tx.direction === 'outbound' ? <ArrowUpRight size={12} className="text-brand" /> : <ArrowDownLeft size={12} className="text-brand-dark" />}
                         {tx.direction}
                       </span>
                     </td>
@@ -322,7 +322,7 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
         <div className="sticky top-0 bg-surface border-b border-separator px-6 py-4 flex items-center justify-between z-10">
           <div>
             <div className="flex items-center gap-2">
-              <span id={titleId} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold ${TYPE_COLORS[tx.transaction_type] || 'bg-gray-500/10 text-gray-500'}`}>
+              <span id={titleId} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold ${TYPE_COLORS[tx.transaction_type] || 'bg-gray-500/10 text-content-tertiary'}`}>
                 {tx.transaction_type}
               </span>
               <StatusBadge status={tx.status} />
@@ -337,7 +337,7 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
           {/* Meta */}
           <div className="grid grid-cols-2 gap-4">
             <DetailField label="Transaction ID" value={tx.id.slice(0, 8) + '…'} action={<button onClick={handleCopyId}><Copy size={12} className="text-content-tertiary hover:text-brand" /></button>} />
-            <DetailField label="Direction" value={tx.direction} icon={tx.direction === 'outbound' ? <ArrowUpRight size={12} className="text-blue-500" /> : <ArrowDownLeft size={12} className="text-brand-dark" />} />
+            <DetailField label="Direction" value={tx.direction} icon={tx.direction === 'outbound' ? <ArrowUpRight size={12} className="text-brand" /> : <ArrowDownLeft size={12} className="text-brand-dark" />} />
             <DetailField label="Clearinghouse" value={tx.clearinghouse || 'N/A'} />
             <DetailField label="Claims Count" value={String(tx.claim_count ?? 'N/A')} />
             <DetailField label="Submitted" value={tx.submitted_at ? new Date(tx.submitted_at).toLocaleString() : '—'} />

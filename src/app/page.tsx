@@ -264,8 +264,8 @@ export default function LoginPage() {
           <img
             src="/assets/cosentus-division.png"
             alt="A Cosentus Division"
-            className="h-6 w-auto object-contain"
-            style={{ mixBlendMode: 'multiply' }}
+            className="h-[18px] w-auto object-contain"
+            style={{ filter: 'invert(1)', mixBlendMode: 'multiply' }}
           />
         </div>
       </div>

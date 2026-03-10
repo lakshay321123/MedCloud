@@ -17,22 +17,22 @@ import {
 
 const typeIcon: Record<string, React.ReactNode> = {
   'Superbill': <FileText size={14} className="text-brand-deep"/>,
-  'Clinical Note': <Stethoscope size={14} className="text-blue-500"/>,
+  'Clinical Note': <Stethoscope size={14} className="text-brand"/>,
   'Insurance Card': <CreditCard size={14} className="text-brand-dark"/>,
-  'EOB': <DollarSign size={14} className="text-blue-700"/>,
+  'EOB': <DollarSign size={14} className="text-brand-dark"/>,
   'Denial Letter': <XCircle size={14} className="text-red-500"/>,
   'Contract': <FileText size={14} className="text-brand"/>,
-  'Credential': <File size={14} className="text-gray-400"/>,
+  'Credential': <File size={14} className="text-content-tertiary"/>,
   'License':    <File size={14} className="text-indigo-400"/>,
   'Referral':   <Send size={14} className="text-teal-500"/>,
-  'Fax': <Send size={14} className="text-gray-400"/>,
+  'Fax': <Send size={14} className="text-content-tertiary"/>,
 }
 
 const sourceBadge = (s: string) => {
   const map: Record<string,string> = {
-    'Portal Upload':'bg-brand/10 text-brand','Email Ingest':'bg-blue-500/10 text-blue-500',
+    'Portal Upload':'bg-brand/10 text-brand','Email Ingest':'bg-brand/10 text-brand',
     'Fax':'bg-brand-pale0/10 text-brand-deep','Manual Upload':'bg-surface-elevated text-content-secondary',
-    'Textract Scan':'bg-blue-500/10 text-blue-700',
+    'Textract Scan':'bg-brand/10 text-brand-dark',
   }
   return map[s] ?? 'bg-surface-elevated text-content-secondary'
 }
@@ -40,7 +40,7 @@ const sourceBadge = (s: string) => {
 const statusBadge = (s: string) => {
   if (s==='Linked') return 'bg-brand/10 text-brand-dark dark:text-brand-dark'
   if (s==='Unlinked') return 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep'
-  return 'bg-blue-500/10 text-blue-500'
+  return 'bg-brand/10 text-brand'
 }
 
 function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () => void }) {
@@ -619,11 +619,11 @@ function AIProcessingTab() {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => handleClassify(d.id)} disabled={!!processing[d.id]}
-                    className="text-[10px] bg-blue-500/10 text-blue-500 px-3 py-1.5 rounded-lg hover:bg-blue-500/20 transition-colors disabled:opacity-50">
+                    className="text-[10px] bg-brand/10 text-brand px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors disabled:opacity-50">
                     {processing[d.id] === 'classifying' ? 'Classifying…' : 'AI Classify'}
                   </button>
                   <button onClick={() => handleTrigger(d.id)} disabled={!!processing[d.id]}
-                    className="text-[10px] bg-blue-500/10 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-500/10 transition-colors disabled:opacity-50">
+                    className="text-[10px] bg-brand/10 text-brand-dark px-3 py-1.5 rounded-lg hover:bg-brand/10 transition-colors disabled:opacity-50">
                     {processing[d.id] === 'textract' ? 'Processing…' : 'Run Textract'}
                   </button>
                 </div>
@@ -659,7 +659,7 @@ function AIProcessingTab() {
                   <td className="py-2 px-3">
                     <span className={`text-[10px] px-2 py-0.5 rounded-full ${
                       (d as any).textract_status === 'completed' ? 'bg-brand/10 text-brand-dark' :
-                      (d as any).textract_status === 'processing' ? 'bg-blue-500/10 text-blue-500' :
+                      (d as any).textract_status === 'processing' ? 'bg-brand/10 text-brand' :
                       'bg-brand-pale0/10 text-brand-deep'
                     }`}>{(d as any).textract_status || 'unknown'}</span>
                   </td>

@@ -30,10 +30,10 @@ const ELIG_STATUS: Record<string, { label: string; color: string; icon: React.Re
 
 const PA_STATUS: Record<string, { label: string; cls: string }> = {
   pending:   { label: 'Pending',   cls: 'bg-brand-pale0/10 text-brand-deep' },
-  submitted: { label: 'Submitted', cls: 'bg-blue-500/10 text-blue-500' },
+  submitted: { label: 'Submitted', cls: 'bg-brand/10 text-brand' },
   approved:  { label: 'Approved',  cls: 'bg-brand/10 text-brand-dark' },
   denied:    { label: 'Denied',    cls: 'bg-red-500/10 text-red-500' },
-  cancelled: { label: 'Cancelled', cls: 'bg-gray-500/10 text-gray-500' },
+  cancelled: { label: 'Cancelled', cls: 'bg-gray-500/10 text-content-tertiary' },
 }
 
 type TabKey = 'single' | 'batch' | 'history' | 'priorauth'
@@ -610,7 +610,7 @@ function PriorAuthTab({ auths, loading, onRefresh }: { auths: ApiPriorAuth[]; lo
               <th className="text-left px-4 py-2.5">Status</th><th className="text-left px-4 py-2.5">Created</th><th className="w-8"></th>
             </tr></thead>
             <tbody>{filtered.slice(0, 100).map(pa => {
-              const st = PA_STATUS[pa.status] || { label: pa.status, cls: 'bg-gray-500/10 text-gray-500' }
+              const st = PA_STATUS[pa.status] || { label: pa.status, cls: 'bg-gray-500/10 text-content-tertiary' }
               return (
                 <tr key={pa.id} onClick={() => setSelectedPA(pa)}
                   className="border-b border-separator/50 hover:bg-surface-elevated/50 cursor-pointer transition-colors">
@@ -620,7 +620,7 @@ function PriorAuthTab({ auths, loading, onRefresh }: { auths: ApiPriorAuth[]; lo
                   <td className="px-4 py-2.5">
                     <div className="flex flex-wrap gap-1">
                       {(pa.cpt_codes || []).slice(0, 3).map(c => (
-                        <span key={c} className="bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded text-[10px] font-mono">{c}</span>
+                        <span key={c} className="bg-brand/10 text-brand-dark dark:text-brand px-1.5 py-0.5 rounded text-[10px] font-mono">{c}</span>
                       ))}
                       {(pa.cpt_codes || []).length > 3 && <span className="text-[10px] text-content-tertiary">+{pa.cpt_codes!.length - 3}</span>}
                     </div>
@@ -755,7 +755,7 @@ function CreatePriorAuthModal({ onClose, onCreated }: { onClose: () => void; onC
 function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose: () => void; onUpdate: () => void }) {
   const { toast } = useToast()
   const { mutate: createTask } = useCreateTask()
-  const st = PA_STATUS[pa.status] || { label: pa.status, cls: 'bg-gray-500/10 text-gray-500' }
+  const st = PA_STATUS[pa.status] || { label: pa.status, cls: 'bg-gray-500/10 text-content-tertiary' }
 
   async function handleStatusUpdate(newStatus: string) {
     try {
@@ -790,7 +790,7 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
           <div>
             <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-2">Procedure Codes</p>
             <div className="flex flex-wrap gap-1.5">
-              {(pa.cpt_codes || []).map(c => <span key={c} className="bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-1 rounded text-[11px] font-mono">{c}</span>)}
+              {(pa.cpt_codes || []).map(c => <span key={c} className="bg-brand/10 text-brand-dark dark:text-brand px-2 py-1 rounded text-[11px] font-mono">{c}</span>)}
               {(!pa.cpt_codes || pa.cpt_codes.length === 0) && <span className="text-xs text-content-tertiary">No CPT codes</span>}
             </div>
           </div>
@@ -798,7 +798,7 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
             <div>
               <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-2">Diagnosis Codes</p>
               <div className="flex flex-wrap gap-1.5">
-                {pa.icd_codes.map(c => <span key={c} className="bg-blue-500/10 text-blue-700 dark:text-blue-700 px-2 py-1 rounded text-[11px] font-mono">{c}</span>)}
+                {pa.icd_codes.map(c => <span key={c} className="bg-brand/10 text-brand-dark dark:text-brand-dark px-2 py-1 rounded text-[11px] font-mono">{c}</span>)}
               </div>
             </div>
           )}
@@ -849,7 +849,7 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
                 </button>
               )}
               {pa.status === 'pending' && (
-                <button onClick={() => handleStatusUpdate('submitted')} className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors">Mark Submitted</button>
+                <button onClick={() => handleStatusUpdate('submitted')} className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-brand/10 text-brand-dark hover:bg-brand/20 transition-colors">Mark Submitted</button>
               )}
             </div>
           </div>

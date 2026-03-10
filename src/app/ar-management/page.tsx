@@ -84,8 +84,8 @@ const initialCallHistory: Record<string, CallLogEntry[]> = {
 const sourceInfo: Record<string, { color: string; label: string }> = {
   denied_claim: { color: 'bg-red-500/10 text-red-600 dark:text-red-400', label: 'Denied Claim' },
   underpayment: { color: 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep', label: 'Underpayment' },
-  patient_balance: { color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400', label: 'Patient Balance' },
-  timely_filing_risk: { color: 'bg-blue-500/10 text-blue-700 dark:text-blue-700', label: 'Timely Filing Risk' },
+  patient_balance: { color: 'bg-brand/10 text-brand-dark dark:text-brand', label: 'Patient Balance' },
+  timely_filing_risk: { color: 'bg-brand/10 text-brand-dark dark:text-brand-dark', label: 'Timely Filing Risk' },
 }
 
 const CALL_OUTCOMES = ['Got Status', 'Voicemail', 'Payment Promised', 'Denied', 'Resubmit Required', 'Submit Appeal']
@@ -457,7 +457,7 @@ function ARDrawer({
                       onClose()
                     } catch { toast.error('Failed to send info request') }
                   }}
-                  className="bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg py-2.5 text-xs font-medium hover:bg-blue-500/20 transition-colors disabled:opacity-50">
+                  className="bg-brand/10 text-brand-dark dark:text-brand rounded-lg py-2.5 text-xs font-medium hover:bg-brand/20 transition-colors disabled:opacity-50">
                   {requestingInfo ? 'Requesting…' : 'Request Info'}
                 </button>
                 <button
@@ -483,7 +483,7 @@ function ARDrawer({
                       onClose()
                     } catch { toast.error('Failed to send statement') }
                   }}
-                  className="col-span-2 bg-blue-500/10 text-blue-700 dark:text-blue-700 rounded-lg py-2.5 text-xs font-medium hover:bg-blue-500/10 transition-colors disabled:opacity-50">
+                  className="col-span-2 bg-brand/10 text-brand-dark dark:text-brand-dark rounded-lg py-2.5 text-xs font-medium hover:bg-brand/10 transition-colors disabled:opacity-50">
                   {sendingStatement ? 'Sending…' : 'Send Statement'}
                 </button>
               </div>
@@ -915,7 +915,7 @@ export default function ARManagementPage() {
                     <td className="px-4 py-3 text-xs">{s.client}</td>
                     <td className="px-4 py-3 text-xs text-content-secondary">{s.sla}</td>
                     <td className="px-4 py-3 text-xs font-semibold">{s.days}d</td>
-                    <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${s.priority==='critical'?'bg-red-500/10 text-red-500':s.priority==='high'?'bg-brand-pale0/10 text-brand-deep':'bg-blue-500/10 text-blue-500'}`}>{s.priority}</span></td>
+                    <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${s.priority==='critical'?'bg-red-500/10 text-red-500':s.priority==='high'?'bg-brand-pale0/10 text-brand-deep':'bg-brand/10 text-brand'}`}>{s.priority}</span></td>
                     <td className="px-4 py-3 text-xs">{s.assignee}</td>
                   </tr>
                 ))}

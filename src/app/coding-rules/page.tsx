@@ -140,7 +140,7 @@ export default function CodingRulesPage() {
 
             {/* Natural language input */}
             <div className="mb-4 p-4 bg-blue-500/10 border border-brand/20 rounded-xl">
-              <label className="text-[11px] uppercase tracking-wider text-blue-700 font-semibold block mb-2">
+              <label className="text-[11px] uppercase tracking-wider text-brand-dark font-semibold block mb-2">
                 <Zap size={12} className="inline mr-1" /> Write rule in plain English
               </label>
               <div className="flex gap-2">
@@ -153,7 +153,7 @@ export default function CodingRulesPage() {
                   <Zap size={13} /> Convert
                 </button>
               </div>
-              <p className="text-[10px] text-blue-700 mt-1">AI will interpret your English rule and fill in the structured fields below. Review and adjust before saving.</p>
+              <p className="text-[10px] text-brand-dark mt-1">AI will interpret your English rule and fill in the structured fields below. Review and adjust before saving.</p>
             </div>
 
             {/* Structured fields */}

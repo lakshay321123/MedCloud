@@ -284,7 +284,7 @@ export default function MessagesPage() {
                     <div className={`max-w-[70%] rounded-card px-3 py-2 ${msg.role === 'client' ? 'bg-brand/10 border border-brand/20' : 'bg-surface-elevated border border-separator'}`}>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] font-medium">{msg.sender}</span>
-                        <span className={`text-[9px] px-1 rounded ${msg.role === 'client' ? 'bg-brand/20 text-brand-dark text-brand-dark dark:text-brand-dark' : 'bg-blue-500/20 text-blue-600 dark:text-blue-400'}`}>{msg.role}</span>
+                        <span className={`text-[9px] px-1 rounded ${msg.role === 'client' ? 'bg-brand/20 text-brand-dark text-brand-dark dark:text-brand-dark' : 'bg-blue-500/20 text-brand-dark dark:text-brand'}`}>{msg.role}</span>
                       </div>
                       <p className="text-xs">{msg.text}</p>
                       <span className="text-[9px] text-content-secondary block mt-1">{new Date(msg.time).toLocaleString()}</span>

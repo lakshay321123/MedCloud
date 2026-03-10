@@ -112,7 +112,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 localStorage.removeItem('cosentus_role')
                 window.location.href = '/'
               }}
-              className="p-2 rounded-lg text-content-secondary hover:text-red-500 hover:bg-red-500/10 transition-colors"
+              className="p-2 rounded-lg text-content-secondary hover:text-content-primary hover:bg-surface-elevated transition-colors"
               title="Logout"
             >
               <LogOut size={17} />
@@ -123,7 +123,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="hidden lg:block">
           <Topbar />
         </div>
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-8 page-enter">
           {/* Gate content on mounted: SSR always renders with role='admin' (no localStorage).
               Showing content before hydration causes a flash of wrong dashboard/sidebar.
               The spinner is only visible for ~50-80ms (one useEffect tick). */}

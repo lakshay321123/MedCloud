@@ -615,7 +615,7 @@ export default function PaymentPostingPage() {
                 <td className="px-3 py-2 font-mono" title={row.cptDesc}>{row.cpt}</td>
                 <td className="px-3 py-2 font-mono">{row.dos}</td>
                 {(['billed', 'allowed', 'paid', 'denied', 'patBalance'] as const).map(field => (
-                  <td key={field} className={`px-3 py-2 text-right font-mono ${field === 'denied' && row.denied > 0 ? 'text-red-600 dark:text-red-400' : ''} ${field === 'patBalance' && row.patBalance > 0 ? 'text-blue-600 dark:text-blue-400' : ''}`}>
+                  <td key={field} className={`px-3 py-2 text-right font-mono ${field === 'denied' && row.denied > 0 ? 'text-red-600 dark:text-red-400' : ''} ${field === 'patBalance' && row.patBalance > 0 ? 'text-brand-dark dark:text-brand' : ''}`}>
                     {editingCell?.rowId === row.id && editingCell.field === field ? (
                       <input
                         type="number"
@@ -682,7 +682,7 @@ export default function PaymentPostingPage() {
         <button onClick={() => {
           const patBal = eraLines.filter(l => l.action === 'patient_bill')
           toast.success(`${patBal.length || 2} patient statement(s) queued for delivery`)
-        }} className="bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-btn px-4 py-2 text-[13px] inline-flex items-center gap-1"><FileText size={14} />Generate Patient Statements</button>
+        }} className="bg-brand/10 text-brand-dark dark:text-brand rounded-btn px-4 py-2 text-[13px] inline-flex items-center gap-1"><FileText size={14} />Generate Patient Statements</button>
       </div>
 
       {/* ── Bank Deposit Reconciliation ── */}

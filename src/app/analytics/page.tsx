@@ -674,7 +674,7 @@ export default function AnalyticsPage() {
               <div className="space-y-2">
                 {[
                   { label: 'Paid', count: claims.filter(c=>c.status==='paid').length || 18, color: 'bg-brand' },
-                  { label: 'Submitted', count: claims.filter(c=>c.status==='submitted').length || 9, color: 'bg-blue-500' },
+                  { label: 'Submitted', count: claims.filter(c=>c.status==='submitted').length || 9, color: 'bg-brand' },
                   { label: 'Ready', count: claims.filter(c=>c.status==='ready').length || 5, color: 'bg-brand' },
                   { label: 'Denied', count: claims.filter(c=>c.status==='denied').length || 3, color: 'bg-red-500' },
                   { label: 'In Process', count: claims.filter(c=>c.status==='in_process').length || 2, color: 'bg-brand-pale' },

@@ -947,7 +947,7 @@ export default function CodingPage() {
                     </div>
                     <p className="text-[12px] text-content-secondary truncate">{q.clientName || '—'} · {q.dos}</p>
                     <div className="flex items-center justify-between mt-1 gap-1 flex-wrap">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[11px] ${q.source === 'ai_scribe' ? 'bg-brand/10 text-brand' : 'bg-blue-500/10 text-blue-700 dark:text-blue-700'}`}>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[11px] ${q.source === 'ai_scribe' ? 'bg-brand/10 text-brand' : 'bg-brand/10 text-brand-dark dark:text-brand-dark'}`}>
                         {q.source === 'ai_scribe' ? <Mic size={12} /> : <FileUp size={12} />}
                         {q.source === 'ai_scribe' ? 'Scribe' : 'Upload'}
                       </span>
@@ -956,7 +956,7 @@ export default function CodingPage() {
                     {q.status !== 'pending' && (
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-pill mt-0.5 inline-block ${
                         q.status === 'on_hold' ? 'bg-brand-pale0/10 text-brand-deep' :
-                        q.status === 'query_sent' ? 'bg-blue-500/10 text-blue-600' :
+                        q.status === 'query_sent' ? 'bg-brand/10 text-brand-dark' :
                         q.status === 'in_progress' ? 'bg-brand/10 text-brand' : ''
                       }`}>
                         {q.status === 'on_hold' ? 'On Hold' : q.status === 'query_sent' ? 'Query Sent' : q.status === 'in_progress' ? 'In Progress' : ''}
@@ -1069,7 +1069,7 @@ export default function CodingPage() {
                       onClick={() => setTab(tab === 'qa' ? 'note' : 'qa')}
                       className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border transition-colors ${
                         tab === 'qa'
-                          ? 'bg-blue-500/10 border-brand/30 text-blue-700'
+                          ? 'bg-blue-500/10 border-brand/30 text-brand-dark'
                           : 'border-separator text-content-secondary hover:border-brand/40 hover:text-content-primary'
                       }`}
                     >
@@ -1308,7 +1308,7 @@ export default function CodingPage() {
                     {!hasRealCodes && !aiCoding && (
                       <div className="mb-4 rounded-xl border border-brand/30 bg-blue-500/10 p-4">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-blue-700 text-base">✦</span>
+                          <span className="text-brand-dark text-base">✦</span>
                           <p className="text-[13px] font-semibold text-content-primary">AI Auto-Coding</p>
                         </div>
                         {!showQuickSoap ? (
@@ -1327,7 +1327,7 @@ export default function CodingPage() {
                             ) : (
                               <button
                                 onClick={() => setShowQuickSoap(true)}
-                                className="w-full bg-blue-500/10 border border-brand/30 text-blue-700 dark:text-blue-700 rounded-lg py-2 text-[13px] font-medium flex items-center justify-center gap-2 hover:bg-blue-500/10 transition-colors">
+                                className="w-full bg-blue-500/10 border border-brand/30 text-brand-dark dark:text-brand-dark rounded-lg py-2 text-[13px] font-medium flex items-center justify-center gap-2 hover:bg-brand/10 transition-colors">
                                 <span>✦</span> Enter Clinical Info to Generate Codes
                               </button>
                             )}
@@ -1381,7 +1381,7 @@ export default function CodingPage() {
                     {aiCoding && (
                       <div className="mb-4 rounded-xl border border-brand/20 bg-blue-500/10 p-5 flex flex-col items-center gap-3">
                         <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
-                        <p className="text-[13px] text-blue-700 dark:text-blue-700 font-medium">Analyzing clinical documentation…</p>
+                        <p className="text-[13px] text-brand-dark dark:text-brand-dark font-medium">Analyzing clinical documentation…</p>
                         <p className="text-[11px] text-content-tertiary">Generating ICD-10 + CPT codes</p>
                       </div>
                     )}
@@ -1451,7 +1451,7 @@ export default function CodingPage() {
                               <span className="text-[12px] font-mono font-semibold text-content-primary">
                                 {isEdited ? codeOverrides[key].newCode : code.code}
                               </span>
-                              {code.is_hcc && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-700 font-bold uppercase tracking-wider">HCC</span>}
+                              {code.is_hcc && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-brand/10 text-brand-dark font-bold uppercase tracking-wider">HCC</span>}
                               <span className="text-[12px] text-content-secondary flex-1">{code.desc}</span>
                               <span className={`text-[12px] font-semibold ${(code.confidence ?? 0) >= 90 ? 'text-brand-dark' : (code.confidence ?? 0) >= 70 ? 'text-brand-deep' : 'text-red-500'}`}>{code.confidence ?? 0}%</span>
                               {code.reasoning && <button onClick={() => setExpanded(p => ({ ...p, [key]: !p[key] }))} className="text-content-tertiary">{expanded[key] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button>}
@@ -1696,7 +1696,7 @@ export default function CodingPage() {
             <button
               onClick={generateCDIQuery}
               disabled={queryGenerating}
-              className="w-full mb-2 bg-blue-500/10 border border-brand/30 text-blue-700 dark:text-blue-700 rounded-btn py-1.5 text-[12px] font-medium flex items-center justify-center gap-2 hover:bg-blue-500/10 disabled:opacity-50 transition-colors">
+              className="w-full mb-2 bg-blue-500/10 border border-brand/30 text-brand-dark dark:text-brand-dark rounded-btn py-1.5 text-[12px] font-medium flex items-center justify-center gap-2 hover:bg-brand/10 disabled:opacity-50 transition-colors">
               {queryGenerating ? (
                 <><span className="animate-spin inline-block w-3 h-3 border-2 border-brand border-t-transparent rounded-full"/><span>Generating...</span></>
               ) : (

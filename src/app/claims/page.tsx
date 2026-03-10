@@ -91,12 +91,12 @@ const POS_OPTIONS = [
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-500/10 text-gray-400 border border-gray-500/20',
-  scrubbing: 'bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse',
+  scrubbing: 'bg-brand/10 text-brand border border-brand/20 animate-pulse',
   scrub_failed: 'bg-red-500/10 text-red-400 border border-red-500/20',
   ready: 'bg-brand-pale0/10 text-brand-deep border border-brand-light/20',
   submitted: 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20',
-  accepted: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
-  in_process: 'bg-blue-500/10 text-blue-700 border border-purple-500/20',
+  accepted: 'bg-brand/10 text-brand border border-brand/20',
+  in_process: 'bg-brand/10 text-brand-dark border border-brand/20',
   paid: 'bg-brand/10 text-brand-dark border border-brand/20',
   partial_pay: 'bg-brand-pale0/10 text-brand-deep border border-brand-light/20',
   denied: 'bg-red-500/10 text-red-400 border border-red-500/20',
@@ -582,7 +582,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                         <button
                           onClick={predictDenialRisk}
                           disabled={predictingDenial}
-                          className="w-full bg-blue-500/10 border border-purple-500/30 text-blue-700 dark:text-blue-700 rounded-btn py-2 text-[13px] font-medium flex items-center justify-center gap-2 hover:bg-blue-500/10 disabled:opacity-50 transition-colors mb-1">
+                          className="w-full bg-brand/10 border border-brand/20 text-brand-dark dark:text-brand-dark rounded-btn py-2 text-[13px] font-medium flex items-center justify-center gap-2 hover:bg-brand/10 disabled:opacity-50 transition-colors mb-1">
                           {predictingDenial
                             ? <><span className="animate-spin inline-block w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full"/><span>Analyzing denial risk…</span></>
                             : <><span>✦</span><span>Predict Denial Risk before Submit</span></>}
@@ -634,7 +634,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   {(claim.status === 'paid' || claim.status === 'partial_pay') && (
                     <>
                       <button onClick={handleUnderpaymentCheck} disabled={checkingUnderpay} className="w-full bg-brand-pale0/10 border border-brand-light/30 text-brand-deep rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{checkingUnderpay ? 'Checking…' : 'Check Underpayment'}</button>
-                      <button onClick={handleTriggerSecondary} disabled={triggeringSecondary} className="w-full bg-blue-500/10 border border-blue-500/30 text-blue-600 rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{triggeringSecondary ? 'Creating…' : 'File Secondary Claim'}</button>
+                      <button onClick={handleTriggerSecondary} disabled={triggeringSecondary} className="w-full bg-brand/10 border border-brand/20 text-brand-dark rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{triggeringSecondary ? 'Creating…' : 'File Secondary Claim'}</button>
                     </>
                   )}
                   <button onClick={handleGenerate837I} disabled={generating837I} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generating837I ? 'Generating…' : 'Generate 837I Institutional'}</button>
@@ -665,8 +665,8 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                     </div>
                   )}
                   {secondaryResult && (
-                    <div className="mt-2 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
-                      <p className="text-[11px] uppercase tracking-wider text-blue-600 font-semibold mb-1">Secondary Claim Filed</p>
+                    <div className="mt-2 p-3 bg-brand/5 border border-brand/20 rounded-lg">
+                      <p className="text-[11px] uppercase tracking-wider text-brand-dark font-semibold mb-1">Secondary Claim Filed</p>
                       <p className="text-[13px] text-content-primary">Claim #{secondaryResult.claim_number || secondaryResult.secondary_claim_id}</p>
                     </div>
                   )}
@@ -841,9 +841,9 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                     )}
                   </>
                 ) : (
-                  <div className="flex items-start gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
-                    <CheckSquare size={14} className="text-blue-400 mt-0.5 shrink-0" />
-                    <p className="text-[12px] text-blue-400">
+                  <div className="flex items-start gap-2 bg-brand/10 border border-brand/20 rounded-lg p-3">
+                    <CheckSquare size={14} className="text-brand mt-0.5 shrink-0" />
+                    <p className="text-[12px] text-brand">
                       Click &quot;Run AI Scrub&quot; to check rules automatically, or complete the manual checklist below.
                     </p>
                   </div>
@@ -1133,7 +1133,7 @@ export default function ClaimsPage() {
                   <label key={s} className="flex items-center gap-2 cursor-pointer group">
                     <input type="checkbox" checked={statusFilters.includes(s)} onChange={() => toggleStatus(s)}
                       className="rounded accent-brand w-3.5 h-3.5" />
-                    <span className={`w-2 h-2 rounded-full ${STATUS_COLORS[s]?.includes('emerald') ? 'bg-brand' : STATUS_COLORS[s]?.includes('red') ? 'bg-red-500' : STATUS_COLORS[s]?.includes('amber') ? 'bg-brand-pale' : STATUS_COLORS[s]?.includes('blue') ? 'bg-blue-500' : STATUS_COLORS[s]?.includes('cyan') ? 'bg-cyan-500' : STATUS_COLORS[s]?.includes('purple') ? 'bg-purple-500' : STATUS_COLORS[s]?.includes('orange') ? 'bg-orange-500' : STATUS_COLORS[s]?.includes('teal') ? 'bg-teal-500' : 'bg-gray-500'}`} />
+                    <span className={`w-2 h-2 rounded-full ${STATUS_COLORS[s]?.includes('emerald') ? 'bg-brand' : STATUS_COLORS[s]?.includes('red') ? 'bg-red-500' : STATUS_COLORS[s]?.includes('amber') ? 'bg-brand-pale' : STATUS_COLORS[s]?.includes('blue') ? 'bg-brand' : STATUS_COLORS[s]?.includes('cyan') ? 'bg-cyan-500' : STATUS_COLORS[s]?.includes('purple') ? 'bg-purple-500' : STATUS_COLORS[s]?.includes('orange') ? 'bg-orange-500' : STATUS_COLORS[s]?.includes('teal') ? 'bg-teal-500' : 'bg-gray-500'}`} />
                     <span className="text-[12px] text-content-secondary group-hover:text-content-primary">{s.replace(/_/g, ' ')}</span>
                   </label>
                 ))}

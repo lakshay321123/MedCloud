@@ -14,7 +14,7 @@ const STATUS_BADGES: Record<string, { label: string; className: string }> = {
   active: { label: 'Active', className: 'bg-brand/10 text-brand-dark border border-brand/20' },
   expiring_soon: { label: 'Expiring Soon', className: 'bg-brand-pale0/10 text-brand-deep border border-brand-light/20' },
   expired: { label: 'Expired', className: 'bg-red-500/10 text-red-400 border border-red-500/20' },
-  negotiating: { label: 'Negotiating', className: 'bg-blue-500/10 text-blue-700 border border-purple-500/20' },
+  negotiating: { label: 'Negotiating', className: 'bg-brand/10 text-brand-dark border border-purple-500/20' },
 }
 
 const payerColors: Record<string, string> = {
@@ -335,11 +335,11 @@ export default function ContractsPage() {
                 {tab === 'extract' && (
                   <div className="space-y-4">
                     <div className="bg-blue-500/10 border border-purple-500/20 rounded-lg p-4">
-                      <h4 className="text-xs font-semibold text-blue-700 mb-2">AI Contract Rate Extraction</h4>
+                      <h4 className="text-xs font-semibold text-brand-dark mb-2">AI Contract Rate Extraction</h4>
                       <p className="text-[11px] text-content-secondary mb-3">Upload a payer contract PDF to automatically extract fee schedule rates, payment terms, and key clauses using AI.</p>
                       <div className="flex gap-2">
                         <button onClick={() => toast.info('Upload contract PDF for rate extraction')} className="bg-brand text-white rounded-lg px-4 py-2 text-xs hover:bg-brand-mid transition-colors">Upload Contract PDF</button>
-                        <button onClick={() => toast.info('Re-extracting rates from current contract...')} className="bg-blue-500/10 text-blue-700 rounded-lg px-4 py-2 text-xs hover:bg-blue-500/10 transition-colors">Re-Extract Current</button>
+                        <button onClick={() => toast.info('Re-extracting rates from current contract...')} className="bg-brand/10 text-brand-dark rounded-lg px-4 py-2 text-xs hover:bg-brand/10 transition-colors">Re-Extract Current</button>
                       </div>
                     </div>
                     <table className="w-full text-[12px]">

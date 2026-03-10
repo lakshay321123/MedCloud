@@ -307,7 +307,7 @@ export default function DenialsPage() {
                 <td className="px-4 py-3 text-xs text-red-600 dark:text-red-400">{d.denialReason}</td>
                 <td className="px-4 py-3">
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-pill ${
-                    d.source === 'payment_posting' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' :
+                    d.source === 'payment_posting' ? 'bg-brand/10 text-brand-dark dark:text-brand' :
                     d.source === 'claim_rejection' ? 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep' :
                     'bg-red-500/10 text-red-600 dark:text-red-400'
                   }`}>
@@ -434,7 +434,7 @@ export default function DenialsPage() {
               {US_PAYERS.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
             <button onClick={openNewTemplate}
-              className="flex items-center gap-1 text-xs bg-blue-500/10 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-500/10 transition-colors font-medium">
+              className="flex items-center gap-1 text-xs bg-brand/10 text-brand-dark px-3 py-1.5 rounded-lg hover:bg-brand/10 transition-colors font-medium">
               <Plus size={12} /> New Template
             </button>
           </div>

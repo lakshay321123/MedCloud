@@ -9,8 +9,8 @@ import { Users, Building2, Activity, Shield, X, Search, Plus, Receipt, Clipboard
 
 const roleColors: Record<string,string> = {
   admin: 'bg-red-500/10 text-red-500',
-  director: 'bg-blue-500/10 text-blue-700',
-  supervisor: 'bg-blue-500/10 text-blue-500',
+  director: 'bg-brand/10 text-brand-dark',
+  supervisor: 'bg-brand/10 text-brand',
   manager: 'bg-brand/10 text-brand',
   coder: 'bg-brand/10 text-brand-dark dark:text-brand-dark',
   biller: 'bg-brand-pale0/10 text-brand-deep',
@@ -21,10 +21,10 @@ const roleColors: Record<string,string> = {
 }
 
 const pricingColors: Record<string,string> = {
-  '% Revenue': 'bg-blue-500/10 text-blue-500',
+  '% Revenue': 'bg-brand/10 text-brand',
   'Per-Claim': 'bg-brand/10 text-brand-dark dark:text-brand-dark',
   'Flat Fee': 'bg-brand-pale0/10 text-brand-deep',
-  'Hybrid': 'bg-blue-500/10 text-blue-700',
+  'Hybrid': 'bg-brand/10 text-brand-dark',
 }
 
 const actionColors: Record<string,string> = {
@@ -32,7 +32,7 @@ const actionColors: Record<string,string> = {
   CREATE: 'bg-brand/10 text-brand-dark dark:text-brand-dark',
   UPDATE: 'bg-brand-pale0/10 text-brand-deep',
   DELETE: 'bg-red-500/10 text-red-500',
-  EXPORT: 'bg-blue-500/10 text-blue-500',
+  EXPORT: 'bg-brand/10 text-brand',
 }
 
 const users = [
@@ -461,7 +461,7 @@ function InvoicesTab() {
               <td className="px-4 py-3 text-xs">{inv.client_name || '—'}</td>
               <td className="px-4 py-3 text-xs text-content-secondary">{inv.period_start?.slice(0,10)} → {inv.period_end?.slice(0,10)}</td>
               <td className="px-4 py-3 text-xs font-semibold">${Number(inv.total_amount || 0).toLocaleString()}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${({paid:'bg-brand/10 text-brand-dark',sent:'bg-blue-500/10 text-blue-500'} as Record<string,string>)[inv.status ?? ''] || 'bg-brand-pale0/10 text-brand-deep'}`}>{inv.status || 'draft'}</span></td>
+              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${({paid:'bg-brand/10 text-brand-dark',sent:'bg-brand/10 text-brand'} as Record<string,string>)[inv.status ?? ''] || 'bg-brand-pale0/10 text-brand-deep'}`}>{inv.status || 'draft'}</span></td>
             </tr>
           ))}</tbody>
         </table>
@@ -485,7 +485,7 @@ function OnboardingTab() {
         <div key={ob.id} className="card p-4 mb-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-semibold">{ob.client_name || ob.client_id?.slice(0,8)}</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full ${ob.status === 'completed' ? 'bg-brand/10 text-brand-dark' : 'bg-blue-500/10 text-blue-500'}`}>{ob.status || 'in_progress'}</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full ${ob.status === 'completed' ? 'bg-brand/10 text-brand-dark' : 'bg-brand/10 text-brand'}`}>{ob.status || 'in_progress'}</span>
           </div>
           <div className="w-full bg-surface-elevated rounded-full h-2 mb-2">
             <div className="bg-brand h-2 rounded-full transition-all" style={{ width: `${ob.completion_pct || 0}%` }}/>

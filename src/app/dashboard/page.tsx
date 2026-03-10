@@ -99,7 +99,7 @@ function ExecutiveDashboard() {
   const maxAgingVal = agingBuckets ? Math.max(...agingBuckets.map(b => b.value), 1) : 1
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 stagger-children">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
         <KPICard label={t("dashboard","totalRevenueMTD")} value={loading ? '…' : `$${(totalCollectionsMtd / 1000000).toFixed(1)}M`} sub="+8.2% vs last month" trend="up" icon={<DollarSign size={20} />} />
         <KPICard label={t("dashboard","claimsSubmitted")} value={loading ? '…' : totalClaims.toLocaleString()} sub="+124 today" trend="up" icon={<FileText size={20} />} />
@@ -206,7 +206,7 @@ function CoderDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-content-primary">My Coding Queue</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-content-primary">My Coding Queue</h1>
         <p className="text-sm text-content-secondary">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -245,7 +245,7 @@ function BillerDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-content-primary">Claims Dashboard</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-content-primary">Claims Dashboard</h1>
         <p className="text-sm text-content-secondary">Your daily billing summary</p>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -294,7 +294,7 @@ function ARDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-content-primary">A/R Dashboard</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-content-primary">A/R Dashboard</h1>
         <p className="text-sm text-content-secondary">Your accounts receivable summary</p>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -333,7 +333,7 @@ function PostingDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-content-primary">Payment Posting</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-content-primary">Payment Posting</h1>
         <p className="text-sm text-content-secondary">{t('dashboard','todayPostingSummary')}</p>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -364,7 +364,7 @@ function ProviderDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-content-primary">Good morning, Dr.</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-content-primary">Good morning, Dr.</h1>
         <p className="text-sm text-content-secondary">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
@@ -420,7 +420,7 @@ function ClientDashboard() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-content-primary">{selectedClient?.name || 'My Practice'}</h1>
+          <h1 className="text-[26px] font-bold tracking-tight text-content-primary">{selectedClient?.name || 'My Practice'}</h1>
           <p className="text-sm text-content-secondary">Revenue cycle summary · March 2026</p>
         </div>
         {actionNeeded > 0 && (
@@ -470,7 +470,7 @@ function SupervisorDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-content-primary">Exception Queue</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-content-primary">Exception Queue</h1>
         <p className="text-sm text-content-secondary">Everything that needs your attention right now</p>
       </div>
       {exceptions.length === 0 ? (

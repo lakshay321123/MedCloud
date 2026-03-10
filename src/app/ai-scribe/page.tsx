@@ -724,8 +724,8 @@ function ProviderView() {
                           </span>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${code.confidence >= 90 ? 'bg-brand/10 text-brand-dark dark:text-brand-dark' : code.confidence >= 75 ? 'bg-brand-pale0/10 text-brand-deep' : 'bg-gray-500/10 text-gray-400'}`}>{code.confidence}%</span>
                           {code.is_primary && <span className="text-[10px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-full">Primary</span>}
-                          {manualCodes.some(m => m.code === code.code) && <span className="text-[10px] bg-blue-500/10 text-blue-700 px-1.5 py-0.5 rounded-full">Manual</span>}
-                          {code.modifiers?.map((m: string) => <span key={m} className="text-[10px] bg-blue-500/10 text-blue-700 px-1.5 py-0.5 rounded">-{m}</span>)}
+                          {manualCodes.some(m => m.code === code.code) && <span className="text-[10px] bg-brand/10 text-brand-dark px-1.5 py-0.5 rounded-full">Manual</span>}
+                          {code.modifiers?.map((m: string) => <span key={m} className="text-[10px] bg-brand/10 text-brand-dark px-1.5 py-0.5 rounded">-{m}</span>)}
                         </div>
                         <p className="text-xs">{code.desc}</p>
                         {code.reasoning && <p className="text-[10px] text-content-tertiary mt-0.5">↳ {code.reasoning}</p>}

@@ -13,7 +13,7 @@ const REPORT_TYPES = [
     label: 'A/R Aging Detail',
     description: 'All open claims bucketed by age (0–30, 31–60, 61–90, 90+)',
     icon: TrendingUp,
-    color: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+    color: 'bg-brand/10 text-brand border-blue-500/20',
     dot: 'bg-blue-500',
   },
   {
@@ -37,7 +37,7 @@ const REPORT_TYPES = [
     label: 'Coding Production',
     description: 'Charts coded per coder, AI acceptance rate, avg time',
     icon: FileText,
-    color: 'bg-blue-500/10 text-blue-700 border-purple-500/20',
+    color: 'bg-brand/10 text-brand-dark border-purple-500/20',
     dot: 'bg-brand',
   },
   {
