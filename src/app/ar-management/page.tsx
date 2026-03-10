@@ -537,7 +537,7 @@ function ARDrawer({
                 if (!followUpNote.trim()) return
                 try {
                   await logCall({
-                    claim_id: account.apiId || account.id,
+                    claim_id: account.id,
                     call_type: 'note',
                     outcome: followUpNote.trim(),
                     notes: followUpNote.trim(),
