@@ -11,18 +11,18 @@ import { UAE_ORG_IDS, US_ORG_IDS, filterPayersByCountry } from '@/lib/utils/regi
 import { Scale, Search, AlertTriangle, Edit2, Plus } from 'lucide-react'
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
-  active: { label: 'Active', className: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' },
-  expiring_soon: { label: 'Expiring Soon', className: 'bg-amber-500/10 text-amber-400 border border-amber-500/20' },
+  active: { label: 'Active', className: 'bg-brand/10 text-brand-dark border border-brand/20' },
+  expiring_soon: { label: 'Expiring Soon', className: 'bg-brand-pale0/10 text-brand-deep border border-brand-light/20' },
   expired: { label: 'Expired', className: 'bg-red-500/10 text-red-400 border border-red-500/20' },
-  negotiating: { label: 'Negotiating', className: 'bg-purple-500/10 text-purple-400 border border-purple-500/20' },
+  negotiating: { label: 'Negotiating', className: 'bg-blue-500/10 text-blue-700 border border-purple-500/20' },
 }
 
 const payerColors: Record<string, string> = {
   UHC: 'bg-blue-500',
   AETNA: 'bg-purple-500',
   MEDICARE: 'bg-teal-500',
-  DAMAN: 'bg-emerald-600',
-  NAS: 'bg-amber-500',
+  DAMAN: 'bg-brand',
+  NAS: 'bg-brand-pale',
   BCBS: 'bg-blue-700',
 }
 
@@ -117,7 +117,7 @@ export default function ContractsPage() {
 
   return (
     <ModuleShell title="Contract Manager" subtitle="Payer contracts, fee schedules, and underpayment detection">
-      {!apiContracts.length && <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-400'><AlertTriangle size={13} className='shrink-0'/>Connecting to live contract data…</div>}
+      {!apiContracts.length && <div className='mx-4 mb-4 px-4 py-2.5 bg-brand-pale0/10 border border-brand-light/30 rounded-lg flex items-center gap-2 text-xs text-brand-deep'><AlertTriangle size={13} className='shrink-0'/>Connecting to live contract data…</div>}
       <div className="grid grid-cols-4 gap-4 mb-5">
         <KPICard label={t('contracts','activeContracts')} value={activeCount} icon={<Scale size={20}/>} />
         <KPICard label={t('contracts','expiring90')} value={expiringSoon} trend="down" />
@@ -126,7 +126,7 @@ export default function ContractsPage() {
       </div>
 
       {expiringSoon > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-4 text-[12px] text-amber-400 flex items-center gap-2">
+        <div className="bg-brand-pale0/10 border border-brand-light/20 rounded-lg p-3 mb-4 text-[12px] text-brand-deep flex items-center gap-2">
           <AlertTriangle size={14} /> {expiringSoon} contract(s) expiring within 90 days — review and renegotiate
         </div>
       )}
@@ -267,7 +267,7 @@ export default function ContractsPage() {
                 {tab === 'underpayments' && (
                   <div>
                     {apiUnderpayments.length > 0 && (
-                      <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 mb-4 text-[12px] text-amber-400">
+                      <div className="bg-brand-pale0/5 border border-brand-light/20 rounded-lg p-3 mb-4 text-[12px] text-brand-deep">
                         {apiUnderpayments.length} underpayment{apiUnderpayments.length !== 1 ? 's' : ''} detected
                         &nbsp;—&nbsp;${apiUnderpayments.reduce((s: number, u: any) => s + Math.abs(Number(u.variance) || 0), 0).toFixed(2)} total at risk
                       </div>
@@ -291,7 +291,7 @@ export default function ContractsPage() {
                               <td className="py-2.5 pr-3 text-content-primary">${Number(u.paid_amount || 0).toFixed(2)}</td>
                               <td className="py-2.5 pr-3 text-red-400 font-medium">−${Math.abs(Number(u.variance) || 0).toFixed(2)}</td>
                               <td className="py-2.5 pr-3">
-                                <span className={`text-[11px] px-1.5 py-0.5 rounded ${u.status === 'resolved' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>{u.status || 'open'}</span>
+                                <span className={`text-[11px] px-1.5 py-0.5 rounded ${u.status === 'resolved' ? 'bg-brand/10 text-brand-dark' : 'bg-brand-pale0/10 text-brand-deep'}`}>{u.status || 'open'}</span>
                               </td>
                               <td className="py-2.5">
                                 {u.status !== 'resolved' && (
@@ -302,7 +302,7 @@ export default function ContractsPage() {
                                       setApiUnderpayments(prev => prev.map(x => x.id === u.id ? {...x, status: 'disputed'} : x))
                                     } catch { toast.error('Failed to dispute') }
                                   }}
-                                    className="text-[11px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded hover:bg-amber-500/20 transition-colors">
+                                    className="text-[11px] bg-brand-pale0/10 text-brand-deep border border-brand-light/20 px-2 py-0.5 rounded hover:bg-brand-pale0/20 transition-colors">
                                     Dispute
                                   </button>
                                 )}
@@ -334,12 +334,12 @@ export default function ContractsPage() {
                 )}
                 {tab === 'extract' && (
                   <div className="space-y-4">
-                    <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-4">
-                      <h4 className="text-xs font-semibold text-purple-500 mb-2">AI Contract Rate Extraction</h4>
+                    <div className="bg-blue-500/10 border border-purple-500/20 rounded-lg p-4">
+                      <h4 className="text-xs font-semibold text-blue-700 mb-2">AI Contract Rate Extraction</h4>
                       <p className="text-[11px] text-content-secondary mb-3">Upload a payer contract PDF to automatically extract fee schedule rates, payment terms, and key clauses using AI.</p>
                       <div className="flex gap-2">
                         <button onClick={() => toast.info('Upload contract PDF for rate extraction')} className="bg-purple-500 text-white rounded-lg px-4 py-2 text-xs hover:bg-purple-600 transition-colors">Upload Contract PDF</button>
-                        <button onClick={() => toast.info('Re-extracting rates from current contract...')} className="bg-purple-500/10 text-purple-500 rounded-lg px-4 py-2 text-xs hover:bg-purple-500/20 transition-colors">Re-Extract Current</button>
+                        <button onClick={() => toast.info('Re-extracting rates from current contract...')} className="bg-blue-500/10 text-blue-700 rounded-lg px-4 py-2 text-xs hover:bg-blue-500/10 transition-colors">Re-Extract Current</button>
                       </div>
                     </div>
                     <table className="w-full text-[12px]">
@@ -353,7 +353,7 @@ export default function ContractsPage() {
                           <tr key={r.cpt} className="border-b border-separator last:border-0">
                             <td className="py-2 font-mono">{r.cpt}</td><td className="py-2 text-content-secondary">{r.desc}</td>
                             <td className="py-2 font-medium">${r.rate}</td><td className="py-2 text-content-secondary">${r.medicare}</td>
-                            <td className={`py-2 font-medium ${pctOfMedicare >= 110 ? 'text-emerald-500' : 'text-amber-500'}`}>{pctOfMedicare.toFixed(0)}%</td>
+                            <td className={`py-2 font-medium ${pctOfMedicare >= 110 ? 'text-brand-dark' : 'text-brand-deep'}`}>{pctOfMedicare.toFixed(0)}%</td>
                           </tr>
                         )})}
                       </tbody>

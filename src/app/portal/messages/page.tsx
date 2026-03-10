@@ -157,12 +157,12 @@ export default function MessagesPage() {
     <ModuleShell title={t("messages","title")} subtitle="Conversations about patients, claims, and submissions"
       actions={<button onClick={() => setComposing(true)} className="flex items-center gap-2 bg-brand text-white text-sm px-3 py-1.5 rounded-lg hover:bg-brand-deep transition-colors"><Plus size={15}/> New Message</button>}>
       {apiMsgResult && apiThreads.length > 0 && (
-        <div className="mb-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-2.5 flex items-center gap-3 text-xs text-emerald-600 dark:text-emerald-400">
+        <div className="mb-4 bg-brand/10 border border-brand/30 rounded-lg px-4 py-2.5 flex items-center gap-3 text-xs text-brand-dark dark:text-brand-dark">
           <span>✓</span><span>Live messages loaded — {apiThreads.length} thread{apiThreads.length !== 1 ? 's' : ''} from server</span>
         </div>
       )}
       {(!apiMsgResult || apiThreads.length === 0) && (
-        <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2.5 flex items-center gap-3 text-xs text-amber-700 dark:text-amber-400">
+        <div className="mb-4 bg-brand-pale0/10 border border-brand-light/30 rounded-lg px-4 py-2.5 flex items-center gap-3 text-xs text-brand-deep dark:text-brand-deep">
           <span>💬</span><span>No messages yet — send a message and threads will appear here</span>
         </div>
       )}      {/* Compose Modal */}
@@ -284,7 +284,7 @@ export default function MessagesPage() {
                     <div className={`max-w-[70%] rounded-card px-3 py-2 ${msg.role === 'client' ? 'bg-brand/10 border border-brand/20' : 'bg-surface-elevated border border-separator'}`}>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] font-medium">{msg.sender}</span>
-                        <span className={`text-[9px] px-1 rounded ${msg.role === 'client' ? 'bg-emerald-500/20 text-emerald-600 text-emerald-600 dark:text-emerald-400' : 'bg-blue-500/20 text-blue-600 dark:text-blue-400'}`}>{msg.role}</span>
+                        <span className={`text-[9px] px-1 rounded ${msg.role === 'client' ? 'bg-brand/20 text-brand-dark text-brand-dark dark:text-brand-dark' : 'bg-blue-500/20 text-blue-600 dark:text-blue-400'}`}>{msg.role}</span>
                       </div>
                       <p className="text-xs">{msg.text}</p>
                       <span className="text-[9px] text-content-secondary block mt-1">{new Date(msg.time).toLocaleString()}</span>

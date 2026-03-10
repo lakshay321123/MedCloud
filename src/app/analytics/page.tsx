@@ -67,13 +67,13 @@ const staffData = [
 ]
 
 const payerHassle: Record<string, { score: number; color: string }> = {
-  UnitedHealthcare: { score: 42, color: 'text-amber-400' },
-  Medicare: { score: 28, color: 'text-emerald-400' },
-  Aetna: { score: 58, color: 'text-amber-400' },
+  UnitedHealthcare: { score: 42, color: 'text-brand-deep' },
+  Medicare: { score: 28, color: 'text-brand-dark' },
+  Aetna: { score: 58, color: 'text-brand-deep' },
   Daman: { score: 71, color: 'text-red-400' },
-  NAS: { score: 35, color: 'text-emerald-400' },
-  'Self-Pay': { score: 15, color: 'text-emerald-400' },
-  BCBS: { score: 45, color: 'text-amber-400' },
+  NAS: { score: 35, color: 'text-brand-dark' },
+  'Self-Pay': { score: 15, color: 'text-brand-dark' },
+  BCBS: { score: 45, color: 'text-brand-deep' },
 }
 
 const denialCategories = ['Auth','Eligibility','Timely Filing','Duplicate','Non-Covered','Coding','Medical Nec.','Billing Error']
@@ -254,7 +254,7 @@ export default function AnalyticsPage() {
       denialRate: d.count > 0 ? ((d.denied / d.count) * 100).toFixed(0) : '0',
       avgDays: d.days.length > 0 ? Math.round(d.days.reduce((a, b) => a + b, 0) / d.days.length) : '—',
       phi: payerHassle[payer]?.score || 40,
-      phiColor: payerHassle[payer]?.color || 'text-amber-400',
+      phiColor: payerHassle[payer]?.color || 'text-brand-deep',
     }))
   }, [claims])
 
@@ -315,7 +315,7 @@ export default function AnalyticsPage() {
   return (
     <ModuleShell title={t("analytics","title")} subtitle={t("analytics","subtitle")}
       actions={<button onClick={handleExportCSV} className="flex items-center gap-2 bg-surface-elevated text-content-primary border border-separator rounded-lg px-4 py-2 text-sm hover:bg-surface-secondary transition-colors"><Download size={14}/> Export CSV</button>}>
-      <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
+      <div className='mx-4 mb-4 px-4 py-2.5 bg-brand-pale0/10 border border-brand-light/30 rounded-lg flex items-center gap-2 text-xs text-brand-deep dark:text-brand-deep'>
         <AlertTriangle size={13} className='shrink-0' />
         Analytics connected — live financial reporting
       </div>
@@ -483,12 +483,12 @@ export default function AnalyticsPage() {
                     <td className="px-4 py-2.5 text-content-secondary">{s.avgMin}</td>
                     <td className="px-4 py-2.5">
                       {s.accuracy !== '—' && (
-                        <span className={parseFloat(s.accuracy) >= 97 ? 'text-emerald-400' : 'text-amber-400'}>{s.accuracy}</span>
+                        <span className={parseFloat(s.accuracy) >= 97 ? 'text-brand-dark' : 'text-brand-deep'}>{s.accuracy}</span>
                       )}
                       {s.accuracy === '—' && <span className="text-content-tertiary">—</span>}
                     </td>
                     <td className="px-4 py-2.5">
-                      <span className={parseFloat(s.sla) >= 97 ? 'text-emerald-400' : 'text-amber-400'}>{s.sla}</span>
+                      <span className={parseFloat(s.sla) >= 97 ? 'text-brand-dark' : 'text-brand-deep'}>{s.sla}</span>
                     </td>
                   </tr>
                 ))}
@@ -537,7 +537,7 @@ export default function AnalyticsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-[11px] text-content-secondary">{f.uses}</span>
-                  <span className={`text-[11px] font-medium ${f.trend.startsWith('↑') ? 'text-emerald-400' : f.trend.startsWith('↓') ? 'text-red-400' : 'text-content-tertiary'}`}>{f.trend}</span>
+                  <span className={`text-[11px] font-medium ${f.trend.startsWith('↑') ? 'text-brand-dark' : f.trend.startsWith('↓') ? 'text-red-400' : 'text-content-tertiary'}`}>{f.trend}</span>
                 </div>
               </div>
             ))}
@@ -568,9 +568,9 @@ export default function AnalyticsPage() {
                     </td>
                     <td className="px-4 py-2.5">{p.count}</td>
                     <td className="px-4 py-2.5">${p.billed.toLocaleString()}</td>
-                    <td className="px-4 py-2.5 text-emerald-400">${p.paid.toLocaleString()}</td>
+                    <td className="px-4 py-2.5 text-brand-dark">${p.paid.toLocaleString()}</td>
                     <td className="px-4 py-2.5">
-                      <span className={parseInt(p.denialRate) > 10 ? 'text-red-400' : parseInt(p.denialRate) > 5 ? 'text-amber-400' : 'text-emerald-400'}>
+                      <span className={parseInt(p.denialRate) > 10 ? 'text-red-400' : parseInt(p.denialRate) > 5 ? 'text-brand-deep' : 'text-brand-dark'}>
                         {p.denialRate}%
                       </span>
                     </td>
@@ -671,11 +671,11 @@ export default function AnalyticsPage() {
               <h3 className="text-[14px] font-semibold text-content-primary mb-3">Claim Status Breakdown</h3>
               <div className="space-y-2">
                 {[
-                  { label: 'Paid', count: claims.filter(c=>c.status==='paid').length || 18, color: 'bg-emerald-500' },
+                  { label: 'Paid', count: claims.filter(c=>c.status==='paid').length || 18, color: 'bg-brand' },
                   { label: 'Submitted', count: claims.filter(c=>c.status==='submitted').length || 9, color: 'bg-blue-500' },
                   { label: 'Ready', count: claims.filter(c=>c.status==='ready').length || 5, color: 'bg-brand' },
                   { label: 'Denied', count: claims.filter(c=>c.status==='denied').length || 3, color: 'bg-red-500' },
-                  { label: 'In Process', count: claims.filter(c=>c.status==='in_process').length || 2, color: 'bg-amber-500' },
+                  { label: 'In Process', count: claims.filter(c=>c.status==='in_process').length || 2, color: 'bg-brand-pale' },
                 ].map(s => (
                   <div key={s.label} className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${s.color} shrink-0`} />
@@ -691,10 +691,10 @@ export default function AnalyticsPage() {
               <div className="space-y-2.5">
                 {[
                   { label: 'Missing diagnosis linkage', count: 2, color: 'text-red-500' },
-                  { label: 'Incomplete SOAP notes', count: 1, color: 'text-amber-500' },
-                  { label: 'Unsigned encounters', count: 3, color: 'text-amber-500' },
+                  { label: 'Incomplete SOAP notes', count: 1, color: 'text-brand-deep' },
+                  { label: 'Unsigned encounters', count: 3, color: 'text-brand-deep' },
                   { label: 'E/M level mismatch', count: 1, color: 'text-red-500' },
-                  { label: 'Missing modifier', count: 0, color: 'text-emerald-500' },
+                  { label: 'Missing modifier', count: 0, color: 'text-brand-dark' },
                 ].map(a => (
                   <div key={a.label} className="flex items-center justify-between">
                     <span className="text-[12px] text-content-secondary">{a.label}</span>

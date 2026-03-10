@@ -93,8 +93,8 @@ function MiniCalendar({ selectedDate, onSelect, apptDates }: { selectedDate: str
 }
 
 const eligibilityConfig = {
-  verified: { color: 'bg-emerald-500', label: '✓ Verified' },
-  inactive: { color: 'bg-amber-500', label: '⚠ Inactive' },
+  verified: { color: 'bg-brand', label: '✓ Verified' },
+  inactive: { color: 'bg-brand-pale', label: '⚠ Inactive' },
   not_checked: { color: 'bg-gray-400', label: 'Not Verified' },
 }
 
@@ -141,8 +141,8 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
 
         {/* Eligibility strip */}
         <div className={`px-4 py-2 flex items-center gap-2 text-xs ${
-          elig === 'verified' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
-          elig === 'inactive' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
+          elig === 'verified' ? 'bg-brand/10 text-brand-dark dark:text-brand-dark' :
+          elig === 'inactive' ? 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep' :
           'bg-surface-elevated text-content-secondary'
         }`}>
           <span className={`w-2 h-2 rounded-full ${ec.color}`}/>
@@ -341,12 +341,12 @@ export default function AppointmentsPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4">
         <div className="card px-3 py-2 text-center"><div className="text-lg font-bold">{stats.total}</div><div className="text-[10px] text-content-secondary">Today Total</div></div>
         <div className="card px-3 py-2 text-center"><div className="text-lg font-bold text-cyan-600 dark:text-cyan-400">{stats.checkedIn}</div><div className="text-[10px] text-content-secondary">Checked In</div></div>
-        <div className="card px-3 py-2 text-center"><div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{stats.completed}</div><div className="text-[10px] text-content-secondary">Completed</div></div>
+        <div className="card px-3 py-2 text-center"><div className="text-lg font-bold text-brand-dark dark:text-brand-dark">{stats.completed}</div><div className="text-[10px] text-content-secondary">Completed</div></div>
         <div className="card px-3 py-2 text-center"><div className="text-lg font-bold text-red-500">{stats.noShows}</div><div className="text-[10px] text-content-secondary">No-Shows</div></div>
       </div>
 
       {missingDocs.length > 0 && isStaff && (
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-4 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+        <div className="bg-brand-pale0/10 border border-brand-light/20 rounded-lg p-3 mb-4 flex items-center gap-2 text-xs text-brand-deep dark:text-brand-deep">
           <AlertTriangle size={14}/> {missingDocs.length} completed visit(s) with no superbill uploaded after 48h
         </div>
       )}

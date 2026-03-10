@@ -16,10 +16,10 @@ import {
 } from 'lucide-react'
 
 const typeIcon: Record<string, React.ReactNode> = {
-  'Superbill': <FileText size={14} className="text-amber-500"/>,
+  'Superbill': <FileText size={14} className="text-brand-deep"/>,
   'Clinical Note': <Stethoscope size={14} className="text-blue-500"/>,
-  'Insurance Card': <CreditCard size={14} className="text-emerald-500"/>,
-  'EOB': <DollarSign size={14} className="text-purple-500"/>,
+  'Insurance Card': <CreditCard size={14} className="text-brand-dark"/>,
+  'EOB': <DollarSign size={14} className="text-blue-700"/>,
   'Denial Letter': <XCircle size={14} className="text-red-500"/>,
   'Contract': <FileText size={14} className="text-brand"/>,
   'Credential': <File size={14} className="text-gray-400"/>,
@@ -31,15 +31,15 @@ const typeIcon: Record<string, React.ReactNode> = {
 const sourceBadge = (s: string) => {
   const map: Record<string,string> = {
     'Portal Upload':'bg-brand/10 text-brand','Email Ingest':'bg-blue-500/10 text-blue-500',
-    'Fax':'bg-amber-500/10 text-amber-500','Manual Upload':'bg-surface-elevated text-content-secondary',
-    'Textract Scan':'bg-purple-500/10 text-purple-500',
+    'Fax':'bg-brand-pale0/10 text-brand-deep','Manual Upload':'bg-surface-elevated text-content-secondary',
+    'Textract Scan':'bg-blue-500/10 text-blue-700',
   }
   return map[s] ?? 'bg-surface-elevated text-content-secondary'
 }
 
 const statusBadge = (s: string) => {
-  if (s==='Linked') return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-  if (s==='Unlinked') return 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+  if (s==='Linked') return 'bg-brand/10 text-brand-dark dark:text-brand-dark'
+  if (s==='Unlinked') return 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep'
   return 'bg-blue-500/10 text-blue-500'
 }
 
@@ -314,7 +314,7 @@ function AllDocsTab() {
                     <button onClick={e=>{e.stopPropagation(); setLinkingDocId(d.id === linkingDocId ? null : d.id)}}
                       className="text-[10px] text-brand hover:underline px-1.5 py-1">Link</button>
                   )}
-                  {d.patientId && <span className="text-[10px] text-emerald-500 px-1.5">✓</span>}
+                  {d.patientId && <span className="text-[10px] text-brand-dark px-1.5">✓</span>}
                   <button onClick={e=>{e.stopPropagation();setSelectedDoc(d)}} className="p-1.5 rounded hover:bg-surface-elevated text-content-secondary hover:text-content-primary transition-colors">
                     <Eye size={12}/>
                   </button>
@@ -370,7 +370,7 @@ function UnlinkedQueueTab() {
   const unlinked = apiDocs2.filter((d: any)=>!d.patientId)
   return (
     <div className="space-y-4">
-      <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+      <div className="bg-brand-pale0/10 border border-brand-light/20 rounded-lg p-3 flex items-center gap-2 text-xs text-brand-deep dark:text-brand-deep">
         <AlertTriangle size={14}/> {unlinked.length} document(s) need to be linked to a patient
       </div>
       {unlinked.map(d=>(
@@ -430,7 +430,7 @@ function FaxCenterTab() {
   const [faxSubject, setFaxSubject] = useState('')
   // Fax inbox is Sprint 3 (Textract pipeline) — empty until integrated
   const faxes: DemoFax[] = []
-  const statusStyle = (s: string) => s==='Received'||s==='Sent'?'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400':s==='Failed'?'bg-red-500/10 text-red-500':s==='Pending'?'bg-amber-500/10 text-amber-500':'bg-surface-elevated text-content-secondary'
+  const statusStyle = (s: string) => s==='Received'||s==='Sent'?'bg-brand/10 text-brand-dark dark:text-brand-dark':s==='Failed'?'bg-red-500/10 text-red-500':s==='Pending'?'bg-brand-pale0/10 text-brand-deep':'bg-surface-elevated text-content-secondary'
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -595,11 +595,11 @@ function AIProcessingTab() {
           <p className="text-[10px] text-content-tertiary mt-1">Documents Processed</p>
         </div>
         <div className="card p-4 text-center">
-          <p className="text-2xl font-bold text-emerald-500">{avgConfidence || '—'}%</p>
+          <p className="text-2xl font-bold text-brand-dark">{avgConfidence || '—'}%</p>
           <p className="text-[10px] text-content-tertiary mt-1">Avg AI Confidence</p>
         </div>
         <div className="card p-4 text-center">
-          <p className="text-2xl font-bold text-amber-500">{pending}</p>
+          <p className="text-2xl font-bold text-brand-deep">{pending}</p>
           <p className="text-[10px] text-content-tertiary mt-1">Pending Processing</p>
         </div>
       </div>
@@ -623,7 +623,7 @@ function AIProcessingTab() {
                     {processing[d.id] === 'classifying' ? 'Classifying…' : 'AI Classify'}
                   </button>
                   <button onClick={() => handleTrigger(d.id)} disabled={!!processing[d.id]}
-                    className="text-[10px] bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-colors disabled:opacity-50">
+                    className="text-[10px] bg-blue-500/10 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-500/10 transition-colors disabled:opacity-50">
                     {processing[d.id] === 'textract' ? 'Processing…' : 'Run Textract'}
                   </button>
                 </div>
@@ -652,15 +652,15 @@ function AIProcessingTab() {
                   <td className="py-2 px-3 font-mono">{d.file_name}</td>
                   <td className="py-2 px-3"><span className="text-[10px] px-2 py-0.5 rounded bg-surface-elevated">{(d as any).classification || d.doc_type || d.document_type || '—'}</span></td>
                   <td className="py-2 px-3">
-                    <span className={`font-medium ${(d.ai_confidence||0)>=90?'text-emerald-500':(d.ai_confidence||0)>=80?'text-amber-500':'text-red-500'}`}>
+                    <span className={`font-medium ${(d.ai_confidence||0)>=90?'text-brand-dark':(d.ai_confidence||0)>=80?'text-brand-deep':'text-red-500'}`}>
                       {d.ai_confidence ? `${d.ai_confidence}%` : '—'}
                     </span>
                   </td>
                   <td className="py-2 px-3">
                     <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                      (d as any).textract_status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' :
+                      (d as any).textract_status === 'completed' ? 'bg-brand/10 text-brand-dark' :
                       (d as any).textract_status === 'processing' ? 'bg-blue-500/10 text-blue-500' :
-                      'bg-amber-500/10 text-amber-500'
+                      'bg-brand-pale0/10 text-brand-deep'
                     }`}>{(d as any).textract_status || 'unknown'}</span>
                   </td>
                 </tr>

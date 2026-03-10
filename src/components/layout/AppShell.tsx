@@ -5,6 +5,7 @@ import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import SessionTimeout from '../shared/SessionTimeout'
 import { Menu, X, LogOut } from 'lucide-react'
+import Footer from './Footer'
 import { useHasMounted } from '@/lib/hooks/useHasMounted'
 import { useApp } from '@/lib/context'
 
@@ -82,14 +83,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Mobile topbar with hamburger */}
-        <div className="flex items-center lg:hidden h-16 bg-surface-secondary border-b border-separator px-4 gap-3 shrink-0">
+        <div className="flex items-center lg:hidden h-16 bg-brand border-b border-brand-mid px-4 gap-3 shrink-0">
           <button
             onClick={() => setMobileSidebarOpen(true)}
             className="p-2 rounded-lg text-content-secondary hover:bg-surface-elevated"
           >
             <Menu size={20} />
           </button>
-          <span className="text-sm font-bold text-content-primary">MedCloud</span>
+          <span className="text-sm font-bold text-white">MedCloud</span>
           <div className="ml-auto flex items-center gap-2">
             {/* Role switcher — facility portal only (Doctor / Front Desk) */}
             {mounted && portalType === 'facility' && (
@@ -132,6 +133,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           )}
         </main>
+        <Footer />
       </div>
       <SessionTimeout />
     </div>

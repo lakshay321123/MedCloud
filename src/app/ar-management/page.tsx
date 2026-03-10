@@ -83,9 +83,9 @@ const initialCallHistory: Record<string, CallLogEntry[]> = {
 
 const sourceInfo: Record<string, { color: string; label: string }> = {
   denied_claim: { color: 'bg-red-500/10 text-red-600 dark:text-red-400', label: 'Denied Claim' },
-  underpayment: { color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', label: 'Underpayment' },
+  underpayment: { color: 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep', label: 'Underpayment' },
   patient_balance: { color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400', label: 'Patient Balance' },
-  timely_filing_risk: { color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400', label: 'Timely Filing Risk' },
+  timely_filing_risk: { color: 'bg-blue-500/10 text-blue-700 dark:text-blue-700', label: 'Timely Filing Risk' },
 }
 
 const CALL_OUTCOMES = ['Got Status', 'Voicemail', 'Payment Promised', 'Denied', 'Resubmit Required', 'Submit Appeal']
@@ -101,7 +101,7 @@ function CreditBalanceRow({ cr, onResolved }: {
     <tr className="border-b border-separator last:border-0 table-row">
       <td className="px-4 py-3 font-mono text-xs">{cr.claim}</td>
       <td className="px-4 py-3 text-xs">{cr.patient}</td>
-      <td className="px-4 py-3 text-xs font-semibold text-amber-500">{cr.amt}</td>
+      <td className="px-4 py-3 text-xs font-semibold text-brand-deep">{cr.amt}</td>
       <td className="px-4 py-3 text-xs text-content-secondary">{cr.payer}</td>
       <td className="px-4 py-3 text-xs">{cr.reason}</td>
       <td className="px-4 py-3 flex gap-2">
@@ -128,7 +128,7 @@ function CreditBalanceRow({ cr, onResolved }: {
           } else {
             toast.success(`${cr.amt} applied to ${cr.patient}'s open balance`)
           }
-        }} className="text-[10px] text-emerald-500 hover:underline font-medium disabled:opacity-50">{resolving ? '…' : 'Apply'}</button>
+        }} className="text-[10px] text-brand-dark hover:underline font-medium disabled:opacity-50">{resolving ? '…' : 'Apply'}</button>
       </td>
     </tr>
   )
@@ -352,7 +352,7 @@ function ARDrawer({
                   <div className="text-[10px] text-content-secondary">Original</div>
                 </div>
                 <div className="bg-surface-elevated rounded-lg p-3 text-center">
-                  <div className={`text-lg font-bold ${account.balance > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>${account.balance}</div>
+                  <div className={`text-lg font-bold ${account.balance > 0 ? 'text-brand-deep' : 'text-brand-dark'}`}>${account.balance}</div>
                   <div className="text-[10px] text-content-secondary">Balance</div>
                 </div>
                 <div className="bg-surface-elevated rounded-lg p-3 text-center">
@@ -362,16 +362,16 @@ function ARDrawer({
               </div>
 
               {account.paymentPromisedDate && (
-                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 text-[12px] text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                <div className="bg-brand/10 border border-brand/20 rounded-lg p-2.5 text-[12px] text-brand-dark dark:text-brand-dark flex items-center gap-2">
                   💰 Payment Promised for {account.paymentPromisedDate}
                 </div>
               )}
 
               {/* Timely filing */}
-              <div className={`flex items-start gap-2 rounded-lg p-3 text-[12px] ${daysUntilDeadline < 30 ? 'bg-red-500/10 border border-red-500/20' : daysUntilDeadline < 60 ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-surface-elevated'}`}>
-                <AlertTriangle size={13} className={`mt-0.5 shrink-0 ${daysUntilDeadline < 30 ? 'text-red-500' : daysUntilDeadline < 60 ? 'text-amber-500' : 'text-content-tertiary'}`} />
+              <div className={`flex items-start gap-2 rounded-lg p-3 text-[12px] ${daysUntilDeadline < 30 ? 'bg-red-500/10 border border-red-500/20' : daysUntilDeadline < 60 ? 'bg-brand-pale0/10 border border-brand-light/20' : 'bg-surface-elevated'}`}>
+                <AlertTriangle size={13} className={`mt-0.5 shrink-0 ${daysUntilDeadline < 30 ? 'text-red-500' : daysUntilDeadline < 60 ? 'text-brand-deep' : 'text-content-tertiary'}`} />
                 <div>
-                  <p className={`font-medium ${daysUntilDeadline < 30 ? 'text-red-500' : daysUntilDeadline < 60 ? 'text-amber-600 dark:text-amber-400' : 'text-content-secondary'}`}>
+                  <p className={`font-medium ${daysUntilDeadline < 30 ? 'text-red-500' : daysUntilDeadline < 60 ? 'text-brand-deep dark:text-brand-deep' : 'text-content-secondary'}`}>
                     Timely Filing: {deadlineDate.toISOString().split('T')[0]}
                   </p>
                   <p className="text-content-tertiary">{daysUntilDeadline > 0 ? `${daysUntilDeadline} days remaining` : 'DEADLINE PASSED'} ({tfDays}d window)</p>
@@ -440,7 +440,7 @@ function ARDrawer({
                     onClose()
                   } catch { toast.error('Failed to route to appeals') }
                 }}
-                  className="bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg py-2.5 text-xs font-medium hover:bg-amber-500/20 transition-colors">
+                  className="bg-brand-pale0/10 text-brand-deep dark:text-brand-deep rounded-lg py-2.5 text-xs font-medium hover:bg-brand-pale0/20 transition-colors">
                   Route to Appeals
                 </button>
                 <button onClick={() => setShowWriteoffModal(true)}
@@ -483,7 +483,7 @@ function ARDrawer({
                       onClose()
                     } catch { toast.error('Failed to send statement') }
                   }}
-                  className="col-span-2 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg py-2.5 text-xs font-medium hover:bg-purple-500/20 transition-colors disabled:opacity-50">
+                  className="col-span-2 bg-blue-500/10 text-blue-700 dark:text-blue-700 rounded-lg py-2.5 text-xs font-medium hover:bg-blue-500/10 transition-colors disabled:opacity-50">
                   {sendingStatement ? 'Sending…' : 'Send Statement'}
                 </button>
               </div>
@@ -520,7 +520,7 @@ function ARDrawer({
                     {c.rep && <span className="text-[11px] text-content-secondary">· {c.rep}</span>}
                   </div>
                   {c.paymentPromisedDate && (
-                    <div className="text-[11px] text-emerald-600 dark:text-emerald-400">💰 Payment promised: {c.paymentPromisedDate}</div>
+                    <div className="text-[11px] text-brand-dark dark:text-brand-dark">💰 Payment promised: {c.paymentPromisedDate}</div>
                   )}
                   <p className="text-[12px] text-content-secondary">{c.note}</p>
                 </div>
@@ -582,9 +582,9 @@ function ARDrawer({
                 <button onClick={() => setShowWriteoffModal(false)}><X size={16} className="text-content-secondary" /></button>
               </div>
               <div className="p-5 space-y-3">
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-2">
-                  <AlertTriangle size={13} className="text-amber-500 mt-0.5 shrink-0" />
-                  <p className="text-[12px] text-amber-600 dark:text-amber-400">Write-off requests require supervisor approval. Balance: <span className="font-bold">${account.balance}</span></p>
+                <div className="bg-brand-pale0/10 border border-brand-light/20 rounded-lg p-3 flex items-start gap-2">
+                  <AlertTriangle size={13} className="text-brand-deep mt-0.5 shrink-0" />
+                  <p className="text-[12px] text-brand-deep dark:text-brand-deep">Write-off requests require supervisor approval. Balance: <span className="font-bold">${account.balance}</span></p>
                 </div>
                 <div>
                   <label className="text-[11px] text-content-tertiary block mb-1">Reason *</label>
@@ -644,7 +644,7 @@ function InboundCallPanel() {
                 <p className="font-semibold">{found.patient}</p>
                 <p className="text-xs text-content-secondary">{found.client} · {found.payer}</p>
               </div>
-              <span className={`text-xs font-bold px-2 py-1 rounded ${found.balance > 0 ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600'}`}>
+              <span className={`text-xs font-bold px-2 py-1 rounded ${found.balance > 0 ? 'bg-brand-pale0/10 text-brand-deep' : 'bg-brand/10 text-brand-dark'}`}>
                 {found.balance > 0 ? `$${found.balance} BALANCE` : 'PAID'}
               </span>
             </div>
@@ -657,8 +657,8 @@ function InboundCallPanel() {
           <div className="grid grid-cols-2 gap-2">
             {[
               { label: '💳 Offer Payment Plan', color: 'bg-brand/10 text-brand border-brand/20', taskType: 'payment_plan' as const, msg: 'Payment plan task created' },
-              { label: '✓ Take Payment', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20', taskType: 'payment' as const, msg: 'Payment logged' },
-              { label: '⚠ Log Dispute', color: 'bg-amber-500/10 text-amber-600 border-amber-500/20', taskType: 'dispute' as const, msg: 'Dispute task created' },
+              { label: '✓ Take Payment', color: 'bg-brand/10 text-brand-dark border-brand/20', taskType: 'payment' as const, msg: 'Payment logged' },
+              { label: '⚠ Log Dispute', color: 'bg-brand-pale0/10 text-brand-deep border-brand-light/20', taskType: 'dispute' as const, msg: 'Dispute task created' },
               { label: '📋 Log & Callback', color: 'bg-surface-elevated border-separator text-content-secondary', taskType: 'callback' as const, msg: 'Callback task created' },
             ].map(b => (
               <button key={b.label} onClick={async () => {
@@ -832,9 +832,9 @@ export default function ARManagementPage() {
     Math.max(1, accounts.filter(a => a.balance > 0).length)
   )
   const computedBuckets = [
-    { l: '0-30',   v: accounts.filter(a => a.age <= 30).reduce((s,a) => s+a.balance,0),  c: 'bg-emerald-500' },
+    { l: '0-30',   v: accounts.filter(a => a.age <= 30).reduce((s,a) => s+a.balance,0),  c: 'bg-brand' },
     { l: '31-60',  v: accounts.filter(a => a.age>30&&a.age<=60).reduce((s,a) => s+a.balance,0), c: 'bg-cyan-500' },
-    { l: '61-90',  v: accounts.filter(a => a.age>60&&a.age<=90).reduce((s,a) => s+a.balance,0), c: 'bg-amber-500' },
+    { l: '61-90',  v: accounts.filter(a => a.age>60&&a.age<=90).reduce((s,a) => s+a.balance,0), c: 'bg-brand-pale' },
     { l: '91-120', v: accounts.filter(a => a.age>90&&a.age<=120).reduce((s,a) => s+a.balance,0), c: 'bg-orange-500' },
     { l: '120+',   v: accounts.filter(a => a.age>120).reduce((s,a) => s+a.balance,0),  c: 'bg-red-500' },
   ]
@@ -845,7 +845,7 @@ export default function ARManagementPage() {
   return (
     <ModuleShell title={t("ar","title")} subtitle={t("ar","subtitle")}>
       {claimsLoading && <div className='mx-4 mb-4 px-4 py-2.5 bg-brand/5 border border-brand/20 rounded-lg flex items-center gap-2 text-xs text-brand'><AlertTriangle size={13} className='shrink-0'/>Loading live AR accounts…</div>}
-      {!claimsLoading && apiAccounts.length === 0 && <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-400'><AlertTriangle size={13} className='shrink-0'/>No claims in AR — showing seed data. Submit claims to populate live accounts.</div>}
+      {!claimsLoading && apiAccounts.length === 0 && <div className='mx-4 mb-4 px-4 py-2.5 bg-brand-pale0/10 border border-brand-light/30 rounded-lg flex items-center gap-2 text-xs text-brand-deep'><AlertTriangle size={13} className='shrink-0'/>No claims in AR — showing seed data. Submit claims to populate live accounts.</div>}
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KPICard label={t("ar","totalAR")} value={`$${(totalAR/1000).toFixed(0)}K`} icon={<TrendingUp size={20} />} />
         <KPICard label={t("ar","workedToday")} value={String(workedToday)} trend="up" />
@@ -870,9 +870,9 @@ export default function ARManagementPage() {
             <button onClick={() => { refetchCredits(); toast.success('Credit balance scan triggered') }} disabled={identifyingCredits} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors disabled:opacity-50">{identifyingCredits ? 'Scanning…' : 'Identify Credits'}</button>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-amber-500">${creditStats.total}</p><p className="text-[10px] text-content-tertiary mt-1">Total Credits</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-deep">${creditStats.total}</p><p className="text-[10px] text-content-tertiary mt-1">Total Credits</p></div>
             <div className="card p-4 text-center"><p className="text-xl font-bold text-brand">{creditStats.open}</p><p className="text-[10px] text-content-tertiary mt-1">Open Credits</p></div>
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-emerald-500">${creditStats.resolved}</p><p className="text-[10px] text-content-tertiary mt-1">Resolved This Month</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-dark">${creditStats.resolved}</p><p className="text-[10px] text-content-tertiary mt-1">Resolved This Month</p></div>
           </div>
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
@@ -901,8 +901,8 @@ export default function ARManagementPage() {
           </div>
           <div className="grid grid-cols-4 gap-3">
             <div className="card p-4 text-center"><p className="text-xl font-bold text-red-500">7</p><p className="text-[10px] text-content-tertiary mt-1">Past SLA</p></div>
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-amber-500">12</p><p className="text-[10px] text-content-tertiary mt-1">At Risk</p></div>
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-emerald-500">94.2%</p><p className="text-[10px] text-content-tertiary mt-1">SLA Compliance</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-deep">12</p><p className="text-[10px] text-content-tertiary mt-1">At Risk</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-dark">94.2%</p><p className="text-[10px] text-content-tertiary mt-1">SLA Compliance</p></div>
             <div className="card p-4 text-center"><p className="text-xl font-bold text-brand">48h</p><p className="text-[10px] text-content-tertiary mt-1">Avg Resolution</p></div>
           </div>
           <div className="card overflow-hidden">
@@ -915,7 +915,7 @@ export default function ARManagementPage() {
                     <td className="px-4 py-3 text-xs">{s.client}</td>
                     <td className="px-4 py-3 text-xs text-content-secondary">{s.sla}</td>
                     <td className="px-4 py-3 text-xs font-semibold">{s.days}d</td>
-                    <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${s.priority==='critical'?'bg-red-500/10 text-red-500':s.priority==='high'?'bg-amber-500/10 text-amber-500':'bg-blue-500/10 text-blue-500'}`}>{s.priority}</span></td>
+                    <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${s.priority==='critical'?'bg-red-500/10 text-red-500':s.priority==='high'?'bg-brand-pale0/10 text-brand-deep':'bg-blue-500/10 text-blue-500'}`}>{s.priority}</span></td>
                     <td className="px-4 py-3 text-xs">{s.assignee}</td>
                   </tr>
                 ))}
@@ -985,7 +985,7 @@ export default function ARManagementPage() {
                 <td className="px-4 py-3 font-medium">
                   <div>{a.patient}</div>
                   {a.paymentPromisedDate && (
-                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">💰 Promised {a.paymentPromisedDate}</div>
+                    <div className="text-[10px] text-brand-dark dark:text-brand-dark font-normal">💰 Promised {a.paymentPromisedDate}</div>
                   )}
                 </td>
                 <td className="px-4 py-3 text-xs text-content-secondary">{a.client}</td>
@@ -995,10 +995,10 @@ export default function ARManagementPage() {
                     {sourceInfo[a.source]?.label || a.source}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-right font-mono">{a.balance > 0 ? `$${a.balance}` : <span className="text-emerald-600 dark:text-emerald-400">Paid</span>}</td>
+                <td className="px-4 py-3 text-right font-mono">{a.balance > 0 ? `$${a.balance}` : <span className="text-brand-dark dark:text-brand-dark">Paid</span>}</td>
                 <td className="px-4 py-3 text-right text-xs">{a.age}d</td>
                 <td className="px-4 py-3 text-xs">
-                  <span className={`font-medium ${tf < 0 ? 'text-red-500' : tf < 30 ? 'text-red-500' : tf < 60 ? 'text-amber-500' : 'text-content-secondary'}`}>
+                  <span className={`font-medium ${tf < 0 ? 'text-red-500' : tf < 30 ? 'text-red-500' : tf < 60 ? 'text-brand-deep' : 'text-content-secondary'}`}>
                     {tf < 0 ? 'PASSED' : `${tf}d`}
                   </span>
                 </td>

@@ -184,7 +184,7 @@ interface AISuggestedCode {
 }
 const priorityColor: Record<'urgent' | 'high' | 'medium' | 'low', string> = {
   urgent: 'bg-red-500',
-  high: 'bg-amber-500',
+  high: 'bg-brand-pale',
   medium: 'bg-brand',
   low: 'bg-gray-400',
 }
@@ -947,7 +947,7 @@ export default function CodingPage() {
                     </div>
                     <p className="text-[12px] text-content-secondary truncate">{q.clientName || '—'} · {q.dos}</p>
                     <div className="flex items-center justify-between mt-1 gap-1 flex-wrap">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[11px] ${q.source === 'ai_scribe' ? 'bg-brand/10 text-brand' : 'bg-purple-500/10 text-purple-600 dark:text-purple-400'}`}>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[11px] ${q.source === 'ai_scribe' ? 'bg-brand/10 text-brand' : 'bg-blue-500/10 text-blue-700 dark:text-blue-700'}`}>
                         {q.source === 'ai_scribe' ? <Mic size={12} /> : <FileUp size={12} />}
                         {q.source === 'ai_scribe' ? 'Scribe' : 'Upload'}
                       </span>
@@ -955,7 +955,7 @@ export default function CodingPage() {
                     </div>
                     {q.status !== 'pending' && (
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-pill mt-0.5 inline-block ${
-                        q.status === 'on_hold' ? 'bg-amber-500/10 text-amber-600' :
+                        q.status === 'on_hold' ? 'bg-brand-pale0/10 text-brand-deep' :
                         q.status === 'query_sent' ? 'bg-blue-500/10 text-blue-600' :
                         q.status === 'in_progress' ? 'bg-brand/10 text-brand' : ''
                       }`}>
@@ -1010,12 +1010,12 @@ export default function CodingPage() {
                       </div>
                     )}
                     {item.priorAuthStatus === 'pending' && (
-                      <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-2 py-1 text-[11px] text-amber-600 font-semibold">
+                      <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-lg px-2 py-1 text-[11px] text-brand-deep font-semibold">
                         Auth Pending — {item.priorAuthNumber}
                       </div>
                     )}
                     {item.priorAuthStatus === 'obtained' && (
-                      <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-2 py-1 text-[11px] text-emerald-600 font-semibold">
+                      <div className="bg-brand/10 border border-brand/30 rounded-lg px-2 py-1 text-[11px] text-brand-dark font-semibold">
                         ✓ Auth on File — {item.priorAuthNumber}
                       </div>
                     )}
@@ -1069,7 +1069,7 @@ export default function CodingPage() {
                       onClick={() => setTab(tab === 'qa' ? 'note' : 'qa')}
                       className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border transition-colors ${
                         tab === 'qa'
-                          ? 'bg-purple-500/10 border-purple-500/30 text-purple-500'
+                          ? 'bg-blue-500/10 border-purple-500/30 text-blue-700'
                           : 'border-separator text-content-secondary hover:border-purple-500/40 hover:text-content-primary'
                       }`}
                     >
@@ -1077,7 +1077,7 @@ export default function CodingPage() {
                     </button>
                     <button
                       onClick={() => router.push('/coding-rules')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border border-separator text-content-secondary hover:border-amber-500/40 hover:text-amber-600 transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border border-separator text-content-secondary hover:border-brand-light/40 hover:text-brand-deep transition-colors"
                     >
                       ⚙ Coding Rules
                     </button>
@@ -1208,8 +1208,8 @@ export default function CodingPage() {
                                 <div key={code} className="flex items-center justify-between px-3 py-2 bg-surface-elevated rounded-lg border border-separator">
                                   <span className="font-mono text-xs text-content-primary">{code}</span>
                                   {aiCptCodes.includes(code)
-                                    ? <span className="text-[11px] text-emerald-500 font-medium">✓ AI matched</span>
-                                    : <span className="text-[11px] text-amber-500 font-medium">⚠ Not in AI suggestion</span>
+                                    ? <span className="text-[11px] text-brand-dark font-medium">✓ AI matched</span>
+                                    : <span className="text-[11px] text-brand-deep font-medium">⚠ Not in AI suggestion</span>
                                   }
                                 </div>
                               ))}
@@ -1243,8 +1243,8 @@ export default function CodingPage() {
                                   <div key={code} className="flex items-center justify-between px-2 py-1.5 bg-surface-elevated rounded border border-separator">
                                     <span className="font-mono text-[11px] text-content-primary">{code}</span>
                                     {aiCptCodes.includes(code)
-                                      ? <span className="text-[10px] text-emerald-500">✓ matched</span>
-                                      : <span className="text-[10px] text-amber-500">⚠ missing</span>
+                                      ? <span className="text-[10px] text-brand-dark">✓ matched</span>
+                                      : <span className="text-[10px] text-brand-deep">⚠ missing</span>
                                     }
                                   </div>
                                 ))}
@@ -1272,10 +1272,10 @@ export default function CodingPage() {
               <>
                 {/* UAE Warning Banner */}
                 {isUAEClient && (
-                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2 mb-3 flex items-center gap-2">
+                  <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-lg px-3 py-2 mb-3 flex items-center gap-2">
                     <span className="text-lg">🇦🇪</span>
                     <div>
-                      <p className="text-[12px] font-semibold text-amber-600">UAE Client — ICD-10-AM Required</p>
+                      <p className="text-[12px] font-semibold text-brand-deep">UAE Client — ICD-10-AM Required</p>
                       <p className="text-[11px] text-content-secondary">This client uses ICD-10-AM and DHA activity codes. Flag for manual review.</p>
                     </div>
                   </div>
@@ -1306,9 +1306,9 @@ export default function CodingPage() {
                   <>
                     {/* ── AI Generate panel ── */}
                     {!hasRealCodes && !aiCoding && (
-                      <div className="mb-4 rounded-xl border border-purple-500/30 bg-purple-500/5 p-4">
+                      <div className="mb-4 rounded-xl border border-purple-500/30 bg-blue-500/10 p-4">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-purple-500 text-base">✦</span>
+                          <span className="text-blue-700 text-base">✦</span>
                           <p className="text-[13px] font-semibold text-content-primary">AI Auto-Coding</p>
                         </div>
                         {!showQuickSoap ? (
@@ -1327,7 +1327,7 @@ export default function CodingPage() {
                             ) : (
                               <button
                                 onClick={() => setShowQuickSoap(true)}
-                                className="w-full bg-purple-600/10 border border-purple-500/30 text-purple-600 dark:text-purple-400 rounded-lg py-2 text-[13px] font-medium flex items-center justify-center gap-2 hover:bg-purple-600/20 transition-colors">
+                                className="w-full bg-blue-500/10 border border-purple-500/30 text-blue-700 dark:text-blue-700 rounded-lg py-2 text-[13px] font-medium flex items-center justify-center gap-2 hover:bg-blue-500/10 transition-colors">
                                 <span>✦</span> Enter Clinical Info to Generate Codes
                               </button>
                             )}
@@ -1379,9 +1379,9 @@ export default function CodingPage() {
 
                     {/* ── AI generating spinner ── */}
                     {aiCoding && (
-                      <div className="mb-4 rounded-xl border border-purple-500/20 bg-purple-500/5 p-5 flex flex-col items-center gap-3">
+                      <div className="mb-4 rounded-xl border border-purple-500/20 bg-blue-500/10 p-5 flex flex-col items-center gap-3">
                         <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                        <p className="text-[13px] text-purple-600 dark:text-purple-400 font-medium">Analyzing clinical documentation…</p>
+                        <p className="text-[13px] text-blue-700 dark:text-blue-700 font-medium">Analyzing clinical documentation…</p>
                         <p className="text-[11px] text-content-tertiary">Generating ICD-10 + CPT codes</p>
                       </div>
                     )}
@@ -1437,7 +1437,7 @@ export default function CodingPage() {
 
                         return (
                           <div key={key} className={`p-2 rounded-lg border transition-colors ${
-                            isLowConfidence && !isForcedReview ? 'border-amber-500/40 bg-amber-500/5' :
+                            isLowConfidence && !isForcedReview ? 'border-brand-light/40 bg-brand-pale0/5' :
                             selectedCodes[key] ? 'border-brand/30 bg-brand/5' : 'border-separator bg-surface-elevated'
                           }`}>
                             <div className="flex items-center gap-2">
@@ -1451,14 +1451,14 @@ export default function CodingPage() {
                               <span className="text-[12px] font-mono font-semibold text-content-primary">
                                 {isEdited ? codeOverrides[key].newCode : code.code}
                               </span>
-                              {code.is_hcc && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-400 font-bold uppercase tracking-wider">HCC</span>}
+                              {code.is_hcc && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-700 font-bold uppercase tracking-wider">HCC</span>}
                               <span className="text-[12px] text-content-secondary flex-1">{code.desc}</span>
-                              <span className={`text-[12px] font-semibold ${(code.confidence ?? 0) >= 90 ? 'text-emerald-500' : (code.confidence ?? 0) >= 70 ? 'text-amber-500' : 'text-red-500'}`}>{code.confidence ?? 0}%</span>
+                              <span className={`text-[12px] font-semibold ${(code.confidence ?? 0) >= 90 ? 'text-brand-dark' : (code.confidence ?? 0) >= 70 ? 'text-brand-deep' : 'text-red-500'}`}>{code.confidence ?? 0}%</span>
                               {code.reasoning && <button onClick={() => setExpanded(p => ({ ...p, [key]: !p[key] }))} className="text-content-tertiary">{expanded[key] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button>}
                               <button onClick={() => { setEditingCode(editingCode === key ? null : key); setEditSearch('') }} className="text-[10px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-brand/40 hover:text-brand transition-colors">Edit</button>
                               <button onClick={() => setRemovingCode(removingCode === key ? null : key)} className="text-[10px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-red-500/40 hover:text-red-500 transition-colors">Remove</button>
                               {isLowConfidence && !isForcedReview && (
-                                <button onClick={() => { setForcedReviewCodes(prev => { const s = new Set(Array.from(prev)); s.add(key); return s }); toast.info('Marked as manually reviewed') }} className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 font-semibold">Confirm</button>
+                                <button onClick={() => { setForcedReviewCodes(prev => { const s = new Set(Array.from(prev)); s.add(key); return s }); toast.info('Marked as manually reviewed') }} className="text-[10px] px-1.5 py-0.5 rounded bg-brand-pale0/20 text-brand-deep font-semibold">Confirm</button>
                               )}
                             </div>
                             {expanded[key] && code.reasoning && <p className="mt-1 text-[12px] italic text-content-secondary pl-6">{code.reasoning}</p>}
@@ -1535,7 +1535,7 @@ export default function CodingPage() {
 
                         return (
                           <div key={key} className={`p-2 rounded-lg border transition-colors ${
-                            isLowConfidence && !isForcedReview ? 'border-amber-500/40 bg-amber-500/5' :
+                            isLowConfidence && !isForcedReview ? 'border-brand-light/40 bg-brand-pale0/5' :
                             selectedCodes[key] ? 'border-brand/30 bg-brand/5' : 'border-separator bg-surface-elevated'
                           }`}>
                             <div className="flex items-center gap-2">
@@ -1551,12 +1551,12 @@ export default function CodingPage() {
                               </span>
                               {code.modifiers?.map(mod => <span key={mod} className="text-[11px] px-1.5 py-0.5 rounded-pill bg-brand/10 text-brand">Mod {mod}</span>)}
                               <span className="text-[12px] text-content-secondary flex-1">{code.desc}</span>
-                              <span className={`text-[12px] font-semibold ${(code.confidence ?? 0) >= 90 ? 'text-emerald-500' : (code.confidence ?? 0) >= 70 ? 'text-amber-500' : 'text-red-500'}`}>{code.confidence ?? 0}%</span>
+                              <span className={`text-[12px] font-semibold ${(code.confidence ?? 0) >= 90 ? 'text-brand-dark' : (code.confidence ?? 0) >= 70 ? 'text-brand-deep' : 'text-red-500'}`}>{code.confidence ?? 0}%</span>
                               {code.reasoning && <button onClick={() => setExpanded(p => ({ ...p, [key]: !p[key] }))} className="text-content-tertiary">{expanded[key] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button>}
                               <button onClick={() => { setEditingCode(editingCode === key ? null : key); setEditSearch('') }} className="text-[10px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-brand/40 hover:text-brand transition-colors">Edit</button>
                               <button onClick={() => setRemovingCode(removingCode === key ? null : key)} className="text-[10px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-red-500/40 hover:text-red-500 transition-colors">Remove</button>
                               {isLowConfidence && !isForcedReview && (
-                                <button onClick={() => { setForcedReviewCodes(prev => { const s = new Set(Array.from(prev)); s.add(key); return s }); toast.info('Marked as manually reviewed') }} className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 font-semibold">Confirm</button>
+                                <button onClick={() => { setForcedReviewCodes(prev => { const s = new Set(Array.from(prev)); s.add(key); return s }); toast.info('Marked as manually reviewed') }} className="text-[10px] px-1.5 py-0.5 rounded bg-brand-pale0/20 text-brand-deep font-semibold">Confirm</button>
                               )}
                             </div>
                             {expanded[key] && code.reasoning && <p className="mt-1 text-[12px] italic text-content-secondary pl-6">{code.reasoning}</p>}
@@ -1619,9 +1619,9 @@ export default function CodingPage() {
                         <h4 className="text-[11px] uppercase tracking-wider font-semibold text-content-tertiary mb-1">Superbill Comparison</h4>
                         <p className="text-[12px] text-content-secondary">Superbill codes: <span className="font-mono">{item.superbillCpt?.join(', ')}</span></p>
                         {allMatch ? (
-                          <p className="text-[12px] text-emerald-600 dark:text-emerald-400 mt-1">✓ All codes match</p>
+                          <p className="text-[12px] text-brand-dark dark:text-brand-dark mt-1">✓ All codes match</p>
                         ) : (
-                          <div className="text-[12px] text-amber-600 dark:text-amber-400 mt-1 space-y-0.5">
+                          <div className="text-[12px] text-brand-deep dark:text-brand-deep mt-1 space-y-0.5">
                             {aiOnly.map(code => <p key={`ai-${code}`}><AlertTriangle size={12} className="inline" /> AI suggests {code} not on superbill</p>)}
                             {superbillOnly.map(code => <p key={`sb-${code}`}><AlertTriangle size={12} className="inline" /> Superbill has {code} not suggested by AI</p>)}
                           </div>
@@ -1696,7 +1696,7 @@ export default function CodingPage() {
             <button
               onClick={generateCDIQuery}
               disabled={queryGenerating}
-              className="w-full mb-2 bg-purple-600/10 border border-purple-500/30 text-purple-600 dark:text-purple-400 rounded-btn py-1.5 text-[12px] font-medium flex items-center justify-center gap-2 hover:bg-purple-600/20 disabled:opacity-50 transition-colors">
+              className="w-full mb-2 bg-blue-500/10 border border-purple-500/30 text-blue-700 dark:text-blue-700 rounded-btn py-1.5 text-[12px] font-medium flex items-center justify-center gap-2 hover:bg-blue-500/10 disabled:opacity-50 transition-colors">
               {queryGenerating ? (
                 <><span className="animate-spin inline-block w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full"/><span>Generating...</span></>
               ) : (
@@ -1765,7 +1765,7 @@ export default function CodingPage() {
                   setShowHoldModal(false)
                   setHoldReason('')
                 }}
-                className="flex-1 bg-amber-500 text-white rounded-lg py-2 text-[13px] font-medium"
+                className="flex-1 bg-brand-pale text-white rounded-lg py-2 text-[13px] font-medium"
               >Confirm Hold</button>
             </div>
           </div>

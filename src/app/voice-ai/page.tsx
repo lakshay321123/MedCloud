@@ -23,7 +23,7 @@ import { parseRetellExcel, ExcelParseResult } from '@/lib/retell-excel'
 // ─── Shared: Status Dot ──────────────────────────────────────────────────────
 function StatusDot({ status }: { status: RetellCall['call_status'] }) {
   const map: Record<string, string> = {
-    ongoing: 'bg-emerald-500 animate-pulse',
+    ongoing: 'bg-brand animate-pulse',
     registered: 'bg-blue-500 animate-pulse',
     ended: 'bg-gray-400',
     error: 'bg-red-500',
@@ -33,7 +33,7 @@ function StatusDot({ status }: { status: RetellCall['call_status'] }) {
 
 function SentimentBadge({ sentiment }: { sentiment?: string }) {
   if (!sentiment || sentiment === 'Unknown') return null
-  const c = sentiment === 'Positive' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+  const c = sentiment === 'Positive' ? 'bg-brand/10 text-brand-dark dark:text-brand-dark'
     : sentiment === 'Negative' ? 'bg-red-500/10 text-red-500'
     : 'bg-gray-500/10 text-content-secondary'
   return <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${c}`}>{sentiment}</span>
@@ -43,7 +43,7 @@ function AgentBadge({ agent }: { agent?: string }) {
   if (!agent) return null
   return (
     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-      agent === 'chris' ? 'bg-blue-500/10 text-blue-500' : 'bg-purple-500/10 text-purple-500'
+      agent === 'chris' ? 'bg-blue-500/10 text-blue-500' : 'bg-blue-500/10 text-blue-700'
     }`}>
       {agent === 'chris' ? 'Chris' : 'Cindy'}
     </span>
@@ -77,7 +77,7 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
             <StatusDot status={call.call_status} />
             <span className={`text-sm font-semibold ${statusColor}`}>{statusLabel}</span>
             <AgentBadge agent={call._agent_name} />
-            {analysis?.call_successful === true && <CheckCircle size={13} className="text-emerald-500" />}
+            {analysis?.call_successful === true && <CheckCircle size={13} className="text-brand-dark" />}
             {analysis?.call_successful === false && <XCircle size={13} className="text-red-500" />}
           </div>
           <p className="text-xs text-content-secondary font-mono">{call.to_number}</p>
@@ -185,7 +185,7 @@ function ActiveCallsTab({ allCalls }: { allCalls: RetellCall[] }) {
         ))}
         <span className="text-[11px] text-content-tertiary ml-2">{periodCalls.length} calls in period</span>
       </div>
-      {fallback && <div className="mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400"><AlertTriangle size={13} />Demo mode — add RETELL_API_KEY to Vercel</div>}
+      {fallback && <div className="mb-4 px-4 py-2.5 bg-brand-pale0/10 border border-brand-light/30 rounded-lg flex items-center gap-2 text-xs text-brand-deep dark:text-brand-deep"><AlertTriangle size={13} />Demo mode — add RETELL_API_KEY to Vercel</div>}
 
       {loading ? <div className="card p-12 text-center text-sm text-content-tertiary">Loading…</div>
         : calls.length === 0 ? (
@@ -308,7 +308,7 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
           <button onClick={runDebug} disabled={debugging} className="text-[10px] px-2 py-1 border border-separator rounded text-content-tertiary hover:text-content-secondary hover:bg-surface-elevated disabled:opacity-40 transition-colors">
             {debugging ? '…' : 'Debug API'}
           </button>
-          {fallback && <span className="text-[10px] text-amber-500 flex items-center gap-1"><AlertTriangle size={11} />Demo</span>}
+          {fallback && <span className="text-[10px] text-brand-deep flex items-center gap-1"><AlertTriangle size={11} />Demo</span>}
         </div>
       </div>
 
@@ -338,9 +338,9 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
 
       {/* Debug panel */}
       {debugInfo && (
-        <div className="card p-4 border-amber-500/30">
+        <div className="card p-4 border-brand-light/30">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] font-semibold text-amber-500 uppercase tracking-wider">API Debug Response</p>
+            <p className="text-[11px] font-semibold text-brand-deep uppercase tracking-wider">API Debug Response</p>
             <button onClick={() => setDebugInfo(null)} className="text-[10px] text-content-tertiary hover:text-content-secondary">✕</button>
           </div>
           <pre className="text-[10px] text-content-secondary font-mono bg-surface-elevated p-3 rounded-lg overflow-auto max-h-48 whitespace-pre-wrap">
@@ -388,11 +388,11 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
                       <td className="px-4 py-3 font-mono text-xs">{formatDuration(call.duration_ms)}</td>
                       <td className="px-4 py-3">
                         {call.call_analysis?.call_successful === true
-                          ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium">Resolved</span>
+                          ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand/10 text-brand-dark dark:text-brand-dark font-medium">Resolved</span>
                           : call.call_analysis?.call_successful === false
                           ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 font-medium">Failed</span>
                           : isIncomplete
-                          ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-medium">Incomplete</span>
+                          ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-pale0/10 text-brand-deep font-medium">Incomplete</span>
                           : <span className="text-[10px] text-content-tertiary">—</span>}
                       </td>
                       <td className="px-4 py-3"><SentimentBadge sentiment={call.call_analysis?.user_sentiment} /></td>
@@ -417,12 +417,12 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
                               setCallbackQueue(q => { const n = new Set(Array.from(q)); n.delete(call.call_id); return n })
                             }}
                             disabled={callbackQueue.has(call.call_id) || callbackLoading}
-                            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors font-medium whitespace-nowrap disabled:opacity-40">
+                            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-brand-pale0/10 text-brand-deep hover:bg-brand-pale0/20 transition-colors font-medium whitespace-nowrap disabled:opacity-40">
                             <RefreshCw size={10} className={callbackQueue.has(call.call_id) ? 'animate-spin' : ''} />
                             {callbackQueue.has(call.call_id) ? 'Queuing…' : 'Call Back'}
                           </button>
                         ) : wasCalledBack ? (
-                          <span className="text-[10px] text-emerald-500">✓ Queued</span>
+                          <span className="text-[10px] text-brand-dark">✓ Queued</span>
                         ) : null}
                       </td>
                     </tr>
@@ -569,14 +569,14 @@ function CampaignLauncherTab() {
   return (
     <div className="grid grid-cols-5 gap-5">
       <div className="col-span-2 space-y-3">
-        <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Past Campaigns {fallback && <span className="text-amber-500 normal-case font-normal">(demo)</span>}</h3>
+        <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Past Campaigns {fallback && <span className="text-brand-deep normal-case font-normal">(demo)</span>}</h3>
         {batchLoading ? <div className="text-xs text-content-tertiary p-4">Loading…</div>
           : batches.length === 0 ? <div className="card p-6 text-center text-xs text-content-tertiary">No campaigns yet</div>
           : batches.map(b => (
             <div key={b.batch_id} className="card p-4">
               <div className="flex items-start justify-between mb-1.5">
                 <p className="text-sm font-semibold text-content-primary truncate pr-2">{b.name}</p>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium ${b.status === 'running' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : b.status === 'completed' ? 'bg-brand/10 text-brand' : 'bg-amber-500/10 text-amber-500'}`}>{b.status}</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium ${b.status === 'running' ? 'bg-brand/10 text-brand-dark dark:text-brand-dark' : b.status === 'completed' ? 'bg-brand/10 text-brand' : 'bg-brand-pale0/10 text-brand-deep'}`}>{b.status}</span>
               </div>
               <p className="text-[10px] text-content-secondary">{b.completed_count}/{b.total_count} completed{b.failed_count > 0 ? ` · ${b.failed_count} failed` : ''}</p>
               {b.status === 'running' && <div className="mt-2 h-1.5 bg-surface-elevated rounded-full overflow-hidden"><div className="h-full bg-brand rounded-full" style={{ width: `${Math.round(b.completed_count / b.total_count * 100)}%` }} /></div>}
@@ -603,7 +603,7 @@ function CampaignLauncherTab() {
               <button key={a} onClick={() => { setAgentKey(a); setParsed(null) }}
                 className={`flex-1 p-3 rounded-lg border text-left transition-all ${agentKey === a ? 'border-brand/40 bg-brand/5' : 'border-separator hover:border-brand/20'}`}>
                 <div className="flex items-center gap-2 mb-0.5">
-                  <div className={`w-2 h-2 rounded-full ${live?.configured ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                  <div className={`w-2 h-2 rounded-full ${live?.configured ? 'bg-brand' : 'bg-brand-pale'}`} />
                   <span className="text-xs font-semibold text-content-primary capitalize">{a}</span>
                 </div>
                 <p className="text-[10px] text-content-tertiary">{a === 'cindy' ? 'Patient AR Collections' : 'Payer Follow-up'}</p>
@@ -627,9 +627,9 @@ function CampaignLauncherTab() {
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex items-center justify-between bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-4 py-3">
+              <div className="flex items-center justify-between bg-brand/5 border border-brand/20 rounded-lg px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <FileSpreadsheet size={18} className="text-emerald-500" />
+                  <FileSpreadsheet size={18} className="text-brand-dark" />
                   <div>
                     <p className="text-xs font-semibold text-content-primary">{parsed.fileName}</p>
                     <p className="text-[10px] text-content-secondary">{parsed.rows.length} contacts · {parsed.columns.length} columns{parsed.agentDetected && <span className="text-brand ml-1">· {parsed.agentDetected} format</span>}</p>
@@ -668,7 +668,7 @@ function CampaignLauncherTab() {
                           <td className="px-3 py-1.5 font-mono">{row.phone}</td>
                           {agentKey === 'cindy' ? (
                             <><td className="px-3 py-1.5">{[row.variables['patientfirstname'], row.variables['patientlastname']].filter(Boolean).join(' ') || '—'}</td>
-                            <td className="px-3 py-1.5 text-emerald-600 dark:text-emerald-400 font-medium">{row.variables['patientbalance'] ? `$${Number(row.variables['patientbalance']).toLocaleString()}` : '—'}</td>
+                            <td className="px-3 py-1.5 text-brand-dark dark:text-brand-dark font-medium">{row.variables['patientbalance'] ? `$${Number(row.variables['patientbalance']).toLocaleString()}` : '—'}</td>
                             <td className="px-3 py-1.5"><span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${row.variables['aginggroup']?.includes('180') ? 'bg-red-500/10 text-red-500' : 'bg-surface-elevated text-content-secondary'}`}>{row.variables['aginggroup'] || '—'}</span></td></>
                           ) : (
                             <><td className="px-3 py-1.5">{row.variables['Patient_Name'] || '—'}</td>
@@ -800,10 +800,10 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         <div className="w-16 h-1.5 bg-surface-elevated rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full ${s.successRate >= 70 ? 'bg-emerald-500' : s.successRate >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
+                          <div className={`h-full rounded-full ${s.successRate >= 70 ? 'bg-brand' : s.successRate >= 40 ? 'bg-brand-pale' : 'bg-red-500'}`}
                             style={{ width: `${s.successRate}%` }} />
                         </div>
-                        <span className={`text-[10px] font-medium ${s.successRate >= 70 ? 'text-emerald-500' : s.successRate >= 40 ? 'text-amber-500' : 'text-red-500'}`}>{s.successRate}%</span>
+                        <span className={`text-[10px] font-medium ${s.successRate >= 70 ? 'text-brand-dark' : s.successRate >= 40 ? 'text-brand-deep' : 'text-red-500'}`}>{s.successRate}%</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 font-mono text-xs">{formatDuration(s.avgDuration)}</td>
@@ -884,7 +884,7 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
                     <RefreshCw size={12} className="inline mr-1.5" />Regenerate
                   </button>
                   <button onClick={pushPlaybook} disabled={pushing}
-                    className="flex-1 bg-emerald-500 text-white rounded-lg py-2 text-sm font-semibold hover:bg-emerald-600 disabled:opacity-40 transition-colors">
+                    className="flex-1 bg-brand text-white rounded-lg py-2 text-sm font-semibold hover:bg-brand disabled:opacity-40 transition-colors">
                     {pushing ? 'Pushing to Chris…' : `Push to Chris's Prompt Live`}
                   </button>
                 </div>
@@ -985,7 +985,7 @@ function PromptEditorTab() {
             ))}
           </div>
           <div className="flex items-center gap-2">
-            {isDirty && <span className="text-[10px] text-amber-500 flex items-center gap-1"><AlertCircle size={11} />Unsaved changes</span>}
+            {isDirty && <span className="text-[10px] text-brand-deep flex items-center gap-1"><AlertCircle size={11} />Unsaved changes</span>}
             <button onClick={() => setShowVersions(v => !v)} className="text-[10px] text-content-tertiary hover:text-content-secondary flex items-center gap-1 transition-colors">
               <RotateCcw size={11} />History ({versions.length})
             </button>
@@ -1064,7 +1064,7 @@ function PromptEditorTab() {
             </div>
             <div className="flex gap-2">
               <button onClick={() => applySection(aiSuggestion)}
-                className="flex-1 bg-emerald-500 text-white rounded-lg py-2 text-xs font-semibold hover:bg-emerald-600 transition-colors">
+                className="flex-1 bg-brand text-white rounded-lg py-2 text-xs font-semibold hover:bg-brand transition-colors">
                 <Plus size={12} className="inline mr-1.5" />Append to Prompt
               </button>
               <button onClick={() => setAiSuggestion('')}

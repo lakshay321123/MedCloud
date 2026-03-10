@@ -15,7 +15,7 @@ export default function KPICard({ label, value, sub, trend, icon, accent }: KPIC
       </div>
       <p className="text-[32px] font-bold tracking-tight text-content-primary leading-none">{value === null ? '—' : value}</p>
       {sub && (
-        <p className={`text-[13px] font-medium mt-2 ${trend === 'up' ? 'text-emerald-500' : trend === 'down' ? 'text-red-500' : 'text-content-tertiary'}`}>
+        <p className={`text-[13px] font-medium mt-2 ${trend === 'up' ? 'text-brand-dark' : trend === 'down' ? 'text-red-500' : 'text-content-tertiary'}`}>
           {trend === 'up' ? '↑ ' : trend === 'down' ? '↓ ' : ''}{sub}
         </p>
       )}

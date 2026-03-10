@@ -31,11 +31,11 @@ const TYPE_LABELS: Record<string, string> = {
 const TYPE_COLORS: Record<string, string> = {
   '837P': 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
   '837I': 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
-  '835': 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  '270': 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  '271': 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  '276': 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
-  '277': 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+  '835': 'bg-brand/10 text-brand-dark dark:text-brand-dark',
+  '270': 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep',
+  '271': 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep',
+  '276': 'bg-blue-500/10 text-blue-700 dark:text-blue-700',
+  '277': 'bg-blue-500/10 text-blue-700 dark:text-blue-700',
   '999': 'bg-gray-500/10 text-gray-600 dark:text-gray-400',
   'DHA': 'bg-teal-500/10 text-teal-600 dark:text-teal-400',
 }
@@ -219,7 +219,7 @@ function EDIContent() {
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1 text-xs text-content-secondary">
-                        {tx.direction === 'outbound' ? <ArrowUpRight size={12} className="text-blue-500" /> : <ArrowDownLeft size={12} className="text-emerald-500" />}
+                        {tx.direction === 'outbound' ? <ArrowUpRight size={12} className="text-blue-500" /> : <ArrowDownLeft size={12} className="text-brand-dark" />}
                         {tx.direction}
                       </span>
                     </td>
@@ -337,7 +337,7 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
           {/* Meta */}
           <div className="grid grid-cols-2 gap-4">
             <DetailField label="Transaction ID" value={tx.id.slice(0, 8) + '…'} action={<button onClick={handleCopyId}><Copy size={12} className="text-content-tertiary hover:text-brand" /></button>} />
-            <DetailField label="Direction" value={tx.direction} icon={tx.direction === 'outbound' ? <ArrowUpRight size={12} className="text-blue-500" /> : <ArrowDownLeft size={12} className="text-emerald-500" />} />
+            <DetailField label="Direction" value={tx.direction} icon={tx.direction === 'outbound' ? <ArrowUpRight size={12} className="text-blue-500" /> : <ArrowDownLeft size={12} className="text-brand-dark" />} />
             <DetailField label="Clearinghouse" value={tx.clearinghouse || 'N/A'} />
             <DetailField label="Claims Count" value={String(tx.claim_count ?? 'N/A')} />
             <DetailField label="Submitted" value={tx.submitted_at ? new Date(tx.submitted_at).toLocaleString() : '—'} />
@@ -354,7 +354,7 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
 
           {/* Response */}
           {(tx.response_code || tx.response_detail) && (
-            <div className={`rounded-lg p-3 ${tx.status === 'rejected' || tx.status === 'error' ? 'bg-red-500/5 border border-red-500/20' : 'bg-emerald-500/5 border border-emerald-500/20'}`}>
+            <div className={`rounded-lg p-3 ${tx.status === 'rejected' || tx.status === 'error' ? 'bg-red-500/5 border border-red-500/20' : 'bg-brand/5 border border-brand/20'}`}>
               <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">Response</p>
               {tx.response_code && <p className="text-xs font-mono font-semibold text-content-primary">{tx.response_code}</p>}
               {tx.response_detail && <p className="text-xs text-content-secondary mt-1">{tx.response_detail}</p>}
@@ -381,7 +381,7 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
               )}
               {tx.response_at && (
                 <TimelineEntry label="Response Received" time={tx.response_at}
-                  icon={tx.status === 'accepted' || tx.status === 'received' ? <CheckCircle2 size={12} className="text-emerald-500" /> : <AlertTriangle size={12} className="text-red-500" />} />
+                  icon={tx.status === 'accepted' || tx.status === 'received' ? <CheckCircle2 size={12} className="text-brand-dark" /> : <AlertTriangle size={12} className="text-red-500" />} />
               )}
             </div>
           </div>

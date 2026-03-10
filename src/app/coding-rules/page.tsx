@@ -139,8 +139,8 @@ export default function CodingRulesPage() {
             <h3 className="text-sm font-semibold text-content-primary mb-4">{editingId ? 'Edit Rule' : 'New Coding Rule'}</h3>
 
             {/* Natural language input */}
-            <div className="mb-4 p-4 bg-purple-500/5 border border-purple-500/20 rounded-xl">
-              <label className="text-[11px] uppercase tracking-wider text-purple-500 font-semibold block mb-2">
+            <div className="mb-4 p-4 bg-blue-500/10 border border-purple-500/20 rounded-xl">
+              <label className="text-[11px] uppercase tracking-wider text-blue-700 font-semibold block mb-2">
                 <Zap size={12} className="inline mr-1" /> Write rule in plain English
               </label>
               <div className="flex gap-2">
@@ -153,7 +153,7 @@ export default function CodingRulesPage() {
                   <Zap size={13} /> Convert
                 </button>
               </div>
-              <p className="text-[10px] text-purple-400 mt-1">AI will interpret your English rule and fill in the structured fields below. Review and adjust before saving.</p>
+              <p className="text-[10px] text-blue-700 mt-1">AI will interpret your English rule and fill in the structured fields below. Review and adjust before saving.</p>
             </div>
 
             {/* Structured fields */}
@@ -268,7 +268,7 @@ export default function CodingRulesPage() {
                   <tr key={r.id} className="border-b border-separator last:border-0 hover:bg-surface-elevated transition-colors">
                     <td className="px-4 py-3">
                       <button onClick={() => toggleActive(r)}
-                        className={`w-8 h-4 rounded-full transition-colors ${r.is_active ? 'bg-emerald-500' : 'bg-gray-400'}`}>
+                        className={`w-8 h-4 rounded-full transition-colors ${r.is_active ? 'bg-brand' : 'bg-gray-400'}`}>
                         <div className={`w-3.5 h-3.5 rounded-full bg-white shadow transition-transform ${r.is_active ? 'translate-x-4' : 'translate-x-0.5'}`} />
                       </button>
                     </td>
@@ -280,7 +280,7 @@ export default function CodingRulesPage() {
                       <span className="font-mono text-content-tertiary">IF</span> {r.condition_field} <span className="text-brand">{r.condition_operator}</span> <span className="font-mono">&quot;{r.condition_value}&quot;</span>
                     </td>
                     <td className="px-4 py-3 text-xs">
-                      <span className="text-amber-500">→</span> {r.action_type}: <span className="font-mono text-brand">{r.action_value}</span>
+                      <span className="text-brand-deep">→</span> {r.action_type}: <span className="font-mono text-brand">{r.action_value}</span>
                     </td>
                     <td className="px-4 py-3 text-xs text-content-tertiary">{r.priority}</td>
                     <td className="px-4 py-3">

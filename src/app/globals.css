@@ -17,15 +17,15 @@
 
 /* ── LIGHT MODE (primary experience) ─── */
 .light {
-  --surface-primary: #F5F5F7;
+  --surface-primary: #D6EBF2;
   --surface-secondary: #FFFFFF;
-  --surface-elevated: #EBEBED;
-  --surface-overlay: rgba(255,255,255,0.85);
+  --surface-elevated: #EAF5FA;
+  --surface-overlay: rgba(255,255,255,0.92);
   --content-primary: #000000;
   --content-secondary: #3A3A3C;
-  --content-tertiary: #6E6E73;
+  --content-tertiary: #616161;
   --content-inverse: #FFFFFF;
-  --separator: rgba(0,0,0,0.12);
+  --separator: rgba(0,181,214,0.18);
 }
 
 /* ── DARK MODE ─── */

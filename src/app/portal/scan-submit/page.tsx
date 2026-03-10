@@ -256,10 +256,10 @@ export default function ScanSubmitPage() {
     <ModuleShell title={t("scan","title")} subtitle="Upload documents to Cosentus for processing">
       <div className="max-w-lg mx-auto">
         <div className="card p-10 text-center mb-6">
-          <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 size={36} className="text-emerald-500" />
+          <div className="w-16 h-16 bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 size={36} className="text-brand-dark" />
           </div>
-          <h2 className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">Submitted Successfully!</h2>
+          <h2 className="text-xl font-bold text-brand-dark dark:text-brand-dark mb-2">Submitted Successfully!</h2>
           <p className="text-sm text-content-secondary mb-1">Tracking ID: <span className="font-mono font-bold text-content-primary">{trackingId}</span></p>
           <p className="text-sm text-content-secondary mt-2">
             <span className="font-medium text-content-primary">{successCount} document{successCount !== 1 ? 's' : ''}</span> uploaded and linked to{' '}
@@ -280,7 +280,7 @@ export default function ScanSubmitPage() {
 
   return (
     <ModuleShell title={t("scan","title")} subtitle="Upload documents to Cosentus for processing">
-      <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
+      <div className="mb-4 bg-brand-pale0/10 border border-brand-light/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-brand-deep dark:text-brand-deep">
         <span className="text-lg shrink-0">📄</span>
         Scan & Submit connected — live document upload
       </div>
@@ -291,7 +291,7 @@ export default function ScanSubmitPage() {
           {([1, 2, 3] as Step[]).map(s => (
             <React.Fragment key={s}>
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap
-                ${step === s ? 'bg-brand text-white' : step > s ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-surface-elevated text-content-tertiary'}`}>
+                ${step === s ? 'bg-brand text-white' : step > s ? 'bg-brand/10 text-brand-dark dark:text-brand-dark' : 'bg-surface-elevated text-content-tertiary'}`}>
                 {step > s ? <CheckCircle2 size={12} /> : <span className="w-4 h-4 rounded-full border-2 border-current flex items-center justify-center text-[10px]">{s}</span>}
                 {s === 1 ? 'Select Patient' : s === 2 ? 'Upload Files' : 'Review & Confirm'}
               </div>
@@ -330,7 +330,7 @@ export default function ScanSubmitPage() {
                         <p className="text-[10px] text-content-secondary">{(selectedPatient as any).dob}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">✓ Selected</span>
+                        <span className="text-[10px] bg-brand/10 text-brand-dark dark:text-brand-dark px-2 py-0.5 rounded-full">✓ Selected</span>
                         <button onClick={() => setPatientId('')} className="text-content-tertiary hover:text-red-500"><X size={14} /></button>
                       </div>
                     </div>
@@ -452,7 +452,7 @@ export default function ScanSubmitPage() {
                   </div>
 
                   <button onClick={handleFinalSubmit} disabled={submitting || successCount === 0}
-                    className="w-full bg-emerald-500 text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors">
+                    className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-brand disabled:opacity-50 flex items-center justify-center gap-2 transition-colors">
                     {submitting
                       ? <><Loader2 size={14} className="animate-spin" /> Confirming…</>
                       : <><CheckCircle2 size={14} /> Confirm & Submit to Cosentus</>}
@@ -495,7 +495,7 @@ function FileReviewRow({ entry, onTypeChange }: { entry: FileEntry; onTypeChange
             {entry.status === 'uploading' && <span className="flex items-center gap-1 text-[10px] text-blue-500"><Loader2 size={10} className="animate-spin" />Uploading…</span>}
             {entry.status === 'classifying' && <span className="flex items-center gap-1 text-[10px] text-brand"><Loader2 size={10} className="animate-spin" />AI reading…</span>}
             {entry.status === 'done' && (
-              <span className={`text-[10px] font-medium ${(entry.aiConfidence || 0) >= 80 ? 'text-emerald-500' : (entry.aiConfidence || 0) >= 50 ? 'text-amber-500' : 'text-red-400'}`}>
+              <span className={`text-[10px] font-medium ${(entry.aiConfidence || 0) >= 80 ? 'text-brand-dark' : (entry.aiConfidence || 0) >= 50 ? 'text-brand-deep' : 'text-red-400'}`}>
                 {(entry.aiConfidence || 0) > 0 ? `AI: ${entry.aiConfidence}% confident` : '⚠ Review needed'}
               </span>
             )}

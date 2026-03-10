@@ -261,7 +261,7 @@ export default function DenialsPage() {
             <p className="text-[12px] font-semibold text-red-600">Appeal Deadlines Approaching</p>
             <div className="flex flex-wrap gap-2 mt-1.5">
               {appealDeadlines.slice(0, 5).map(a => (
-                <span key={a.denial_id} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${a.urgency === 'critical' ? 'bg-red-500/20 text-red-600' : a.urgency === 'high' ? 'bg-amber-500/20 text-amber-600' : 'bg-yellow-500/20 text-yellow-600'}`}>
+                <span key={a.denial_id} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${a.urgency === 'critical' ? 'bg-red-500/20 text-red-600' : a.urgency === 'high' ? 'bg-brand-pale0/20 text-brand-deep' : 'bg-brand-pale0/20 text-brand-deep'}`}>
                   {a.claim_number || a.denial_id.slice(0,8)} · {a.days_remaining}d left
                 </span>
               ))}
@@ -308,7 +308,7 @@ export default function DenialsPage() {
                 <td className="px-4 py-3">
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-pill ${
                     d.source === 'payment_posting' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' :
-                    d.source === 'claim_rejection' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
+                    d.source === 'claim_rejection' ? 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep' :
                     'bg-red-500/10 text-red-600 dark:text-red-400'
                   }`}>
                     {d.source === 'payment_posting' ? 'Payment Posting' : d.source === 'claim_rejection' ? 'Claim Rejection' : 'Payer Audit'}
@@ -316,7 +316,7 @@ export default function DenialsPage() {
                 </td>
                 <td className={`px-4 py-3 text-xs font-semibold ${
                   d.appealLevel === 'L1' ? 'text-brand' :
-                  d.appealLevel === 'L2' ? 'text-amber-600 dark:text-amber-400' :
+                  d.appealLevel === 'L2' ? 'text-brand-deep dark:text-brand-deep' :
                   d.appealLevel === 'L3' ? 'text-red-600 dark:text-red-400' : 'text-content-tertiary'
                 }`}>{d.appealLevel || '—'}</td>
                 <td className="px-4 py-3"><StatusBadge status={d.status} small /></td>
@@ -380,7 +380,7 @@ export default function DenialsPage() {
                 <button
                   onClick={() => generateAppealWithAI(selectedDenial)}
                   disabled={aiGenerating}
-                  className="flex-1 bg-purple-600/10 border border-purple-500/30 text-purple-600 dark:text-purple-400 rounded-btn py-2 text-sm font-medium flex items-center justify-center gap-2 hover:bg-purple-600/20 disabled:opacity-50 transition-colors">
+                  className="flex-1 bg-blue-500/10 border border-purple-500/30 text-blue-700 dark:text-blue-700 rounded-btn py-2 text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-500/10 disabled:opacity-50 transition-colors">
                   {aiGenerating ? (
                     <><span className="animate-spin inline-block w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full"/><span>Generating...</span></>
                   ) : (
@@ -434,7 +434,7 @@ export default function DenialsPage() {
               {US_PAYERS.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
             <button onClick={openNewTemplate}
-              className="flex items-center gap-1 text-xs bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-colors font-medium">
+              className="flex items-center gap-1 text-xs bg-blue-500/10 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-500/10 transition-colors font-medium">
               <Plus size={12} /> New Template
             </button>
           </div>
@@ -456,9 +456,9 @@ export default function DenialsPage() {
               </div>
               <div className="flex items-center gap-3 mt-1">
                 <div className="flex-1">
-                  <div className="w-full bg-surface rounded-full h-1.5"><div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${t.winRate}%` }} /></div>
+                  <div className="w-full bg-surface rounded-full h-1.5"><div className="bg-brand h-1.5 rounded-full" style={{ width: `${t.winRate}%` }} /></div>
                 </div>
-                <span className="text-[10px] text-emerald-500 font-medium">{t.winRate}% win</span>
+                <span className="text-[10px] text-brand-dark font-medium">{t.winRate}% win</span>
                 <span className="text-[10px] text-content-tertiary">{t.used}×</span>
               </div>
               <button onClick={() => applyTemplate(t)}
@@ -543,7 +543,7 @@ export default function DenialsPage() {
                   <span className="text-xs font-mono">{d.claim_number || d.denial_id.slice(0, 8)}</span>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded bg-brand/10 text-brand`}>{d.urgency}</span>
                 </div>
-                <span className={`text-xs font-medium ${d.days_remaining <= 3 ? 'text-red-500' : d.days_remaining <= 7 ? 'text-amber-500' : 'text-content-secondary'}`}>{d.days_remaining}d left</span>
+                <span className={`text-xs font-medium ${d.days_remaining <= 3 ? 'text-red-500' : d.days_remaining <= 7 ? 'text-brand-deep' : 'text-content-secondary'}`}>{d.days_remaining}d left</span>
               </div>
             ))}
           </div>

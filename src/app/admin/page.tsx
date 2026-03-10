@@ -9,11 +9,11 @@ import { Users, Building2, Activity, Shield, X, Search, Plus, Receipt, Clipboard
 
 const roleColors: Record<string,string> = {
   admin: 'bg-red-500/10 text-red-500',
-  director: 'bg-purple-500/10 text-purple-500',
+  director: 'bg-blue-500/10 text-blue-700',
   supervisor: 'bg-blue-500/10 text-blue-500',
   manager: 'bg-brand/10 text-brand',
-  coder: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  biller: 'bg-amber-500/10 text-amber-500',
+  coder: 'bg-brand/10 text-brand-dark dark:text-brand-dark',
+  biller: 'bg-brand-pale0/10 text-brand-deep',
   ar_team: 'bg-cyan-500/10 text-cyan-500',
   posting_team: 'bg-orange-500/10 text-orange-500',
   provider: 'bg-indigo-500/10 text-indigo-500',
@@ -22,15 +22,15 @@ const roleColors: Record<string,string> = {
 
 const pricingColors: Record<string,string> = {
   '% Revenue': 'bg-blue-500/10 text-blue-500',
-  'Per-Claim': 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  'Flat Fee': 'bg-amber-500/10 text-amber-500',
-  'Hybrid': 'bg-purple-500/10 text-purple-500',
+  'Per-Claim': 'bg-brand/10 text-brand-dark dark:text-brand-dark',
+  'Flat Fee': 'bg-brand-pale0/10 text-brand-deep',
+  'Hybrid': 'bg-blue-500/10 text-blue-700',
 }
 
 const actionColors: Record<string,string> = {
   VIEW: 'bg-gray-500/10 text-gray-400',
-  CREATE: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  UPDATE: 'bg-amber-500/10 text-amber-500',
+  CREATE: 'bg-brand/10 text-brand-dark dark:text-brand-dark',
+  UPDATE: 'bg-brand-pale0/10 text-brand-deep',
   DELETE: 'bg-red-500/10 text-red-500',
   EXPORT: 'bg-blue-500/10 text-blue-500',
 }
@@ -130,12 +130,12 @@ function UsersTab() {
               <td className="px-4 py-3 text-xs text-content-secondary">{u.email}</td>
               <td className="px-4 py-3"><span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${roleColors[u.role]??'bg-surface-elevated text-content-secondary'}`}>{u.role}</span></td>
               <td className="px-4 py-3 text-xs text-content-secondary">{u.clients}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${u.active?'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400':'bg-gray-500/10 text-gray-400'}`}>{u.active?'Active':'Disabled'}</span></td>
+              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${u.active?'bg-brand/10 text-brand-dark dark:text-brand-dark':'bg-gray-500/10 text-gray-400'}`}>{u.active?'Active':'Disabled'}</span></td>
               <td className="px-4 py-3 text-xs text-content-secondary">{u.lastLogin}</td>
               <td className="px-4 py-3 flex gap-1">
                 <button onClick={()=>setEditingUser(u)} className="text-[10px] text-brand hover:underline">Edit</button>
                 <span className="text-content-tertiary">·</span>
-                <button onClick={()=>handleToggleActive(u.email, u.active)} className={`text-[10px] hover:underline ${u.active ? 'text-red-500' : 'text-emerald-500'}`}>{u.active ? 'Disable' : 'Enable'}</button>
+                <button onClick={()=>handleToggleActive(u.email, u.active)} className={`text-[10px] hover:underline ${u.active ? 'text-red-500' : 'text-brand-dark'}`}>{u.active ? 'Disable' : 'Enable'}</button>
               </td>
             </tr>
           ))}</tbody>
@@ -245,7 +245,7 @@ function OrgsTab() {
               <td className="px-4 py-3 text-xs text-content-secondary">{o.ehr}</td>
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${pricingColors[o.pricing]??'bg-surface-elevated text-content-secondary'}`}>{o.pricing}</span></td>
               <td className="px-4 py-3 text-xs text-content-secondary">{o.since}</td>
-              <td className="px-4 py-3"><span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">Active</span></td>
+              <td className="px-4 py-3"><span className="text-[10px] bg-brand/10 text-brand-dark dark:text-brand-dark px-2 py-0.5 rounded-full">Active</span></td>
             </tr>
           ))}</tbody>
         </table>
@@ -333,10 +333,10 @@ function SystemHealthTab() {
           <div key={s.name} className="card p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-content-primary">{s.name}</span>
-              <span className={`w-2.5 h-2.5 rounded-full ${s.status==='operational'?'bg-emerald-500':s.status==='degraded'?'bg-amber-500 animate-pulse':'bg-red-500 animate-pulse'}`}/>
+              <span className={`w-2.5 h-2.5 rounded-full ${s.status==='operational'?'bg-brand':s.status==='degraded'?'bg-brand-pale animate-pulse':'bg-red-500 animate-pulse'}`}/>
             </div>
             <div className="flex items-center justify-between">
-              <span className={`text-[11px] font-medium ${s.status==='operational'?'text-emerald-600 dark:text-emerald-400':s.status==='degraded'?'text-amber-500':'text-red-500'}`}>
+              <span className={`text-[11px] font-medium ${s.status==='operational'?'text-brand-dark dark:text-brand-dark':s.status==='degraded'?'text-brand-deep':'text-red-500'}`}>
                 {s.status==='operational'?'Operational':s.status==='degraded'?'Degraded':'Down'}
               </span>
               <span className="text-[10px] text-content-tertiary">{s.ms}ms</span>
@@ -461,7 +461,7 @@ function InvoicesTab() {
               <td className="px-4 py-3 text-xs">{inv.client_name || '—'}</td>
               <td className="px-4 py-3 text-xs text-content-secondary">{inv.period_start?.slice(0,10)} → {inv.period_end?.slice(0,10)}</td>
               <td className="px-4 py-3 text-xs font-semibold">${Number(inv.total_amount || 0).toLocaleString()}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${({paid:'bg-emerald-500/10 text-emerald-500',sent:'bg-blue-500/10 text-blue-500'} as Record<string,string>)[inv.status ?? ''] || 'bg-amber-500/10 text-amber-500'}`}>{inv.status || 'draft'}</span></td>
+              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${({paid:'bg-brand/10 text-brand-dark',sent:'bg-blue-500/10 text-blue-500'} as Record<string,string>)[inv.status ?? ''] || 'bg-brand-pale0/10 text-brand-deep'}`}>{inv.status || 'draft'}</span></td>
             </tr>
           ))}</tbody>
         </table>
@@ -485,7 +485,7 @@ function OnboardingTab() {
         <div key={ob.id} className="card p-4 mb-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-semibold">{ob.client_name || ob.client_id?.slice(0,8)}</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full ${ob.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>{ob.status || 'in_progress'}</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full ${ob.status === 'completed' ? 'bg-brand/10 text-brand-dark' : 'bg-blue-500/10 text-blue-500'}`}>{ob.status || 'in_progress'}</span>
           </div>
           <div className="w-full bg-surface-elevated rounded-full h-2 mb-2">
             <div className="bg-brand h-2 rounded-full transition-all" style={{ width: `${ob.completion_pct || 0}%` }}/>
@@ -514,7 +514,7 @@ function PatientAccessTab() {
               <td className="px-4 py-3 text-xs">{r.request_type || 'records'}</td>
               <td className="px-4 py-3 text-xs text-content-secondary">{r.created_at?.slice(0,10)}</td>
               <td className="px-4 py-3 text-xs text-content-secondary">{r.deadline?.slice(0,10) || '—'}</td>
-              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${r.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' : r.status === 'overdue' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>{r.status || 'pending'}</span></td>
+              <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${r.status === 'completed' ? 'bg-brand/10 text-brand-dark' : r.status === 'overdue' ? 'bg-red-500/10 text-red-500' : 'bg-brand-pale0/10 text-brand-deep'}`}>{r.status || 'pending'}</span></td>
               <td className="px-4 py-3"><button onClick={() => toast.success('Marked complete — use patient access API')} className="text-[10px] text-brand hover:underline">Complete</button></td>
             </tr>
           ))}</tbody>
@@ -546,7 +546,7 @@ export default function AdminPage() {
 
   return (
     <ModuleShell title={t("admin","title")} subtitle={t("admin","subtitle")}>
-      <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
+      <div className="mb-4 bg-brand-pale0/10 border border-brand-light/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-brand-deep dark:text-brand-deep">
         <span className="text-lg shrink-0">⚙️</span>
         <div>
           Admin connected — audit log + user management live

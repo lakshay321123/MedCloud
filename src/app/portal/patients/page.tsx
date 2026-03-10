@@ -37,7 +37,7 @@ function apiPatientToDemoPatient(p: ApiPatient): DemoPatient {
   }
 }
 
-const completenessColor = (p: number) => p >= 100 ? 'bg-emerald-500' : p >= 75 ? 'bg-cyan-500' : p >= 50 ? 'bg-amber-500' : 'bg-red-500'
+const completenessColor = (p: number) => p >= 100 ? 'bg-brand' : p >= 75 ? 'bg-cyan-500' : p >= 50 ? 'bg-brand-pale' : 'bg-red-500'
 const ic = 'w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors'
 
 function SectionHeader({ title, badge, open, onToggle }: { title: string; badge?: string; open: boolean; onToggle: () => void }) {
@@ -819,7 +819,7 @@ export default function PatientsPage() {
               <td className="px-4 py-3 text-xs text-content-secondary font-mono">{toMRN(p.id)}</td>
               <td className="px-4 py-3 text-content-secondary text-xs">{formatDOB(p.dob)}</td>
               <td className="px-4 py-3 text-content-secondary">{p.phone}</td>
-              <td className="px-4 py-3 text-content-secondary text-xs">{p.insurance?.payer || <span className="text-amber-600 dark:text-amber-400">Not on file</span>}</td>
+              <td className="px-4 py-3 text-content-secondary text-xs">{p.insurance?.payer || <span className="text-brand-deep dark:text-brand-deep">Not on file</span>}</td>
               <td className="px-4 py-3"><div className="flex items-center gap-1.5"><div className="w-12 h-1.5 rounded-full bg-surface-elevated"><div className={`h-full rounded-full ${completenessColor(computeProfileComplete(p))}`} style={{ width: `${computeProfileComplete(p)}%` }}/></div><span className="text-[10px] text-content-secondary">{computeProfileComplete(p)}%</span></div></td>
               <td className="px-4 py-3"><StatusBadge status={p.status} small/></td>
             </tr>
@@ -837,9 +837,9 @@ export default function PatientsPage() {
           {['admin', 'manager', 'biller', 'ar_team'].includes(currentUser.role) && <button onClick={async () => { try { await api.post('/reports/batch-statements', {}); toast.success('Batch statements queued — check Documents when ready') } catch { toast.error('Failed to generate statements — try again') } }} className="text-xs bg-brand/10 text-brand px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors">Generate Batch Statements</button>}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-          {[{label:'Outstanding Balances',value:`$${(patients.length * 127).toLocaleString()}`,color:'text-amber-500'},
+          {[{label:'Outstanding Balances',value:`$${(patients.length * 127).toLocaleString()}`,color:'text-brand-deep'},
             {label:'Statements Sent',value:Math.round(patients.length * 0.6),color:'text-brand'},
-            {label:'Payment Plans Active',value:Math.round(patients.length * 0.15),color:'text-emerald-500'},
+            {label:'Payment Plans Active',value:Math.round(patients.length * 0.15),color:'text-brand-dark'},
             {label:'Avg Days to Collect',value:'34d',color:'text-content-primary'}
           ].map(k=>
             <div key={k.label} className="bg-surface-elevated rounded-lg p-3">

@@ -331,7 +331,7 @@ export default function PaymentPostingPage() {
   if (!selectedEra) {
     return (
       <ModuleShell title={t("posting","title")} subtitle="Process ERAs and post payments">
-        <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
+        <div className='mx-4 mb-4 px-4 py-2.5 bg-brand-pale0/10 border border-brand-light/30 rounded-lg flex items-center gap-2 text-xs text-brand-deep dark:text-brand-deep'>
           <AlertTriangle size={13} className='shrink-0' />
           Payment posting connected — processing live ERAs
         </div>
@@ -404,7 +404,7 @@ export default function PaymentPostingPage() {
                       </span>
                     ) : <span className="text-content-tertiary">—</span>}
                   </td>
-                  <td className={`px-4 py-3 ${r.exceptions > 0 ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-content-secondary'}`}>{r.exceptions}</td>
+                  <td className={`px-4 py-3 ${r.exceptions > 0 ? 'text-brand-deep dark:text-brand-deep font-semibold' : 'text-content-secondary'}`}>{r.exceptions}</td>
                 </tr>
               )
             })}</tbody>
@@ -559,7 +559,7 @@ export default function PaymentPostingPage() {
 
   return (
     <ModuleShell title={t("posting","title")} subtitle="Process ERAs and post payments">
-      <div className='mx-4 mb-4 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400'>
+      <div className='mx-4 mb-4 px-4 py-2.5 bg-brand-pale0/10 border border-brand-light/30 rounded-lg flex items-center gap-2 text-xs text-brand-deep dark:text-brand-deep'>
         <AlertTriangle size={13} className='shrink-0' />
         Payment posting connected — processing live ERAs
       </div>
@@ -609,7 +609,7 @@ export default function PaymentPostingPage() {
                 </td>
               </tr>
             ) : eraLines.map(row => {
-              const bg = row.denied > 0 ? 'bg-red-500/5' : row.action === 'review' ? 'bg-amber-500/5' : row.action === 'patient_bill' ? 'bg-blue-500/5' : ''
+              const bg = row.denied > 0 ? 'bg-red-500/5' : row.action === 'review' ? 'bg-brand-pale0/5' : row.action === 'patient_bill' ? 'bg-blue-500/5' : ''
               return <tr key={row.id} className={`border-b border-separator ${bg}`}>
                 <td className="px-3 py-2 text-[13px]">{row.patientName}</td>
                 <td className="px-3 py-2 font-mono" title={row.cptDesc}>{row.cpt}</td>
@@ -631,7 +631,7 @@ export default function PaymentPostingPage() {
                 ))}
                 <td className="px-3 py-2 font-mono text-[11px]">{row.adjCode}</td>
                 <td className="px-3 py-2 max-w-[180px] truncate" title={row.adjReason}>{row.adjReason}</td>
-                <td className="px-3 py-2">{row.notes ? <button onClick={() => setValue(row.id, 'notes', `${row.notes} (reviewed)`)} className="text-amber-600 dark:text-amber-400"><StickyNote size={14} /></button> : <button onClick={() => setValue(row.id, 'notes', 'Add note')} className="text-content-tertiary"><StickyNote size={14} /></button>}</td>
+                <td className="px-3 py-2">{row.notes ? <button onClick={() => setValue(row.id, 'notes', `${row.notes} (reviewed)`)} className="text-brand-deep dark:text-brand-deep"><StickyNote size={14} /></button> : <button onClick={() => setValue(row.id, 'notes', 'Add note')} className="text-content-tertiary"><StickyNote size={14} /></button>}</td>
                 <td className="px-3 py-2"><select value={row.action} onChange={e => setValue(row.id, 'action', e.target.value)} className="bg-surface-elevated border border-separator rounded-btn px-2 py-1">
                   <option value="post">✓ Post</option><option value="deny_route">❌ → Denials</option><option value="patient_bill">💳 → Patient Bill</option><option value="review">👁 Review</option><option value="posted">✅ Posted</option>
                 </select></td>
@@ -689,7 +689,7 @@ export default function PaymentPostingPage() {
       <div className="card p-4 mt-6">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold">Bank Deposit Reconciliation</h3>
-          <button onClick={() => { setDepositAmount(''); setDepositDate(new Date().toISOString().split('T')[0]); setShowDepositModal(true) }} className="text-xs bg-emerald-500/10 text-emerald-500 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-colors">Upload Statement</button>
+          <button onClick={() => { setDepositAmount(''); setDepositDate(new Date().toISOString().split('T')[0]); setShowDepositModal(true) }} className="text-xs bg-brand/10 text-brand-dark px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors">Upload Statement</button>
         </div>
         {showDepositModal && (
           <>
@@ -726,9 +726,9 @@ export default function PaymentPostingPage() {
         <div className="grid grid-cols-4 gap-3 mb-4">
           {[
             { l: 'ERAs Processed', v: String(eras.length), c: 'text-content-primary' },
-            { l: 'Total ERA Value', v: `$${eraStats.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, c: 'text-emerald-500' },
+            { l: 'Total ERA Value', v: `$${eraStats.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, c: 'text-brand-dark' },
             { l: 'Posted', v: String(eraStats.postedCount), c: 'text-brand' },
-            { l: 'Pending', v: String(eraStats.pendingCount), c: 'text-amber-500' },
+            { l: 'Pending', v: String(eraStats.pendingCount), c: 'text-brand-deep' },
           ].map(k =>
             <div key={k.l} className="bg-surface-elevated rounded-lg p-3 text-center">
               <p className={`text-lg font-bold ${k.c}`}>{k.v}</p>

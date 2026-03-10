@@ -35,8 +35,8 @@ const toastStyles: Record<ToastType, { bg: string; border: string; icon: React.R
   success: {
     bg: 'bg-surface-secondary',
     border: 'border-l-4 border-l-emerald-500 border border-separator',
-    icon: <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />,
-    bar: 'bg-emerald-500',
+    icon: <CheckCircle2 size={18} className="text-brand-dark shrink-0" />,
+    bar: 'bg-brand',
   },
   error: {
     bg: 'bg-surface-secondary',
@@ -47,8 +47,8 @@ const toastStyles: Record<ToastType, { bg: string; border: string; icon: React.R
   warning: {
     bg: 'bg-surface-secondary',
     border: 'border-l-4 border-l-amber-500 border border-separator',
-    icon: <AlertTriangle size={18} className="text-amber-500 shrink-0" />,
-    bar: 'bg-amber-500',
+    icon: <AlertTriangle size={18} className="text-brand-deep shrink-0" />,
+    bar: 'bg-brand-pale',
   },
   info: {
     bg: 'bg-surface-secondary',

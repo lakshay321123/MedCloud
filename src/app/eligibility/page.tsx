@@ -22,16 +22,16 @@ import {
 /* ── status helpers ──────────────────────────────────────────────────────── */
 
 const ELIG_STATUS: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  active:   { label: 'Active',   color: 'text-emerald-600 dark:text-emerald-400', icon: <CheckCircle2 size={12} /> },
+  active:   { label: 'Active',   color: 'text-brand-dark dark:text-brand-dark', icon: <CheckCircle2 size={12} /> },
   inactive: { label: 'Inactive', color: 'text-red-600 dark:text-red-400',         icon: <AlertTriangle size={12} /> },
-  pending:  { label: 'Pending',  color: 'text-amber-600 dark:text-amber-400',     icon: <Clock size={12} /> },
+  pending:  { label: 'Pending',  color: 'text-brand-deep dark:text-brand-deep',     icon: <Clock size={12} /> },
   unknown:  { label: 'Unknown',  color: 'text-content-secondary',                 icon: <Clock size={12} /> },
 }
 
 const PA_STATUS: Record<string, { label: string; cls: string }> = {
-  pending:   { label: 'Pending',   cls: 'bg-amber-500/10 text-amber-500' },
+  pending:   { label: 'Pending',   cls: 'bg-brand-pale0/10 text-brand-deep' },
   submitted: { label: 'Submitted', cls: 'bg-blue-500/10 text-blue-500' },
-  approved:  { label: 'Approved',  cls: 'bg-emerald-500/10 text-emerald-500' },
+  approved:  { label: 'Approved',  cls: 'bg-brand/10 text-brand-dark' },
   denied:    { label: 'Denied',    cls: 'bg-red-500/10 text-red-500' },
   cancelled: { label: 'Cancelled', cls: 'bg-gray-500/10 text-gray-500' },
 }
@@ -262,13 +262,13 @@ function EligibilityResultCard({ result, patient }: { result: ApiEligibilityChec
     <div className={`card p-5 border-l-4 ${isActive ? 'border-l-emerald-500' : 'border-l-red-500'}`}>
       <div className="flex items-center gap-3 mb-4">
         {isActive
-          ? <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center"><CheckCircle2 size={20} className="text-emerald-500" /></div>
+          ? <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center"><CheckCircle2 size={20} className="text-brand-dark" /></div>
           : <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center"><AlertTriangle size={20} className="text-red-500" /></div>}
         <div>
           <p className="text-sm font-semibold text-content-primary">
             {patient ? `${patient.first_name} ${patient.last_name}` : result.patient_name || 'Patient'}
           </p>
-          <p className={`text-xs font-medium ${isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+          <p className={`text-xs font-medium ${isActive ? 'text-brand-dark dark:text-brand-dark' : 'text-red-600 dark:text-red-400'}`}>
             Coverage {result.status === 'active' ? 'Active' : result.status || 'Unknown'}
             {result.network_status && ` · ${result.network_status}`}
           </p>
@@ -279,7 +279,7 @@ function EligibilityResultCard({ result, patient }: { result: ApiEligibilityChec
         <BenefitField label="Deductible Remaining" value={result.deductible != null ? `$${result.deductible}` : 'N/A'} icon={<CreditCard size={12} />} />
         <BenefitField label="Coinsurance" value={String(rd.coinsurance || rd.coinsurance_pct || 'N/A')} icon={<Activity size={12} />} />
         <BenefitField label="Prior Auth Required" value={result.prior_auth_required ? 'Yes' : 'No'}
-          icon={result.prior_auth_required ? <AlertTriangle size={12} className="text-amber-500" /> : <CheckCircle2 size={12} className="text-emerald-500" />} />
+          icon={result.prior_auth_required ? <AlertTriangle size={12} className="text-brand-deep" /> : <CheckCircle2 size={12} className="text-brand-dark" />} />
       </div>
       {(Boolean(rd.out_of_pocket_max) || Boolean(rd.plan_name)) && (
         <div className="mt-3 pt-3 border-t border-separator grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -352,9 +352,9 @@ function BatchCheckTab() {
           <div className="px-4 py-3 border-b border-separator flex items-center justify-between">
             <p className="text-xs font-medium text-content-primary">{results.length} patients checked</p>
             <div className="flex items-center gap-3 text-[11px]">
-              <span className="text-emerald-500">{results.filter(r => r.status === 'active').length} active</span>
+              <span className="text-brand-dark">{results.filter(r => r.status === 'active').length} active</span>
               <span className="text-red-500">{results.filter(r => r.status !== 'active').length} issues</span>
-              <span className="text-amber-500">{results.filter(r => r.prior_auth_required).length} need auth</span>
+              <span className="text-brand-deep">{results.filter(r => r.prior_auth_required).length} need auth</span>
               <button
                 onClick={() => {
                   const win = window.open('', '_blank')
@@ -411,7 +411,7 @@ function BatchCheckTab() {
                 <td className="px-4 py-2.5 text-content-secondary">{r.network_status || '—'}</td>
                 <td className="px-4 py-2.5">{r.copay != null ? `$${r.copay}` : '—'}</td>
                 <td className="px-4 py-2.5">{r.deductible != null ? `$${r.deductible}` : '—'}</td>
-                <td className={`px-4 py-2.5 ${r.prior_auth_required ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-content-secondary'}`}>
+                <td className={`px-4 py-2.5 ${r.prior_auth_required ? 'text-brand-deep dark:text-brand-deep font-medium' : 'text-content-secondary'}`}>
                   {r.prior_auth_required ? 'Required' : 'No'}</td>
               </tr>))}</tbody>
           </table>
@@ -487,7 +487,7 @@ function CheckHistoryTab({ checks, loading }: { checks: ApiEligibilityCheck[]; l
                     <td className="px-4 py-2.5 text-content-secondary">{c.network_status || '—'}</td>
                     <td className="px-4 py-2.5">{c.copay != null ? `$${c.copay}` : '—'}</td>
                     <td className="px-4 py-2.5">{c.deductible != null ? `$${c.deductible}` : '—'}</td>
-                    <td className={`px-4 py-2.5 ${c.prior_auth_required ? 'text-amber-500 font-medium' : 'text-content-secondary'}`}>
+                    <td className={`px-4 py-2.5 ${c.prior_auth_required ? 'text-brand-deep font-medium' : 'text-content-secondary'}`}>
                       {c.prior_auth_required ? 'Yes' : 'No'}</td>
                     <td className="px-4 py-2.5 text-content-tertiary">
                       {c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</td>
@@ -566,8 +566,8 @@ function PriorAuthTab({ auths, loading, onRefresh }: { auths: ApiPriorAuth[]; lo
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: 'Pending', value: kpis.pending, color: 'text-amber-500' },
-          { label: 'Approved', value: kpis.approved, color: 'text-emerald-500' },
+          { label: 'Pending', value: kpis.pending, color: 'text-brand-deep' },
+          { label: 'Approved', value: kpis.approved, color: 'text-brand-dark' },
           { label: 'Denied', value: kpis.denied, color: 'text-red-500' },
           { label: 'Avg Age of Approved', value: `${kpis.avgDays}d`, color: 'text-brand' },
         ].map(k => (
@@ -798,7 +798,7 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
             <div>
               <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-2">Diagnosis Codes</p>
               <div className="flex flex-wrap gap-1.5">
-                {pa.icd_codes.map(c => <span key={c} className="bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2 py-1 rounded text-[11px] font-mono">{c}</span>)}
+                {pa.icd_codes.map(c => <span key={c} className="bg-blue-500/10 text-blue-700 dark:text-blue-700 px-2 py-1 rounded text-[11px] font-mono">{c}</span>)}
               </div>
             </div>
           )}
@@ -810,9 +810,9 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
           )}
           {pa.approved_units && <DrawerField label="Approved Units" value={String(pa.approved_units)} icon={<Activity size={12} />} />}
           {pa.auth_number_payer && (
-            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3">
+            <div className="bg-brand/5 border border-brand/20 rounded-lg p-3">
               <p className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1">Payer Auth Number</p>
-              <p className="text-sm font-mono font-semibold text-emerald-600 dark:text-emerald-400">{pa.auth_number_payer}</p>
+              <p className="text-sm font-mono font-semibold text-brand-dark dark:text-brand-dark">{pa.auth_number_payer}</p>
             </div>
           )}
           {pa.clinical_rationale && (
@@ -832,7 +832,7 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
             <div className="flex flex-wrap gap-2">
               {(pa.status === 'pending' || pa.status === 'submitted') && (
                 <>
-                  <button onClick={() => handleStatusUpdate('approved')} className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition-colors">Mark Approved</button>
+                  <button onClick={() => handleStatusUpdate('approved')} className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-brand/10 text-brand-dark hover:bg-brand/20 transition-colors">Mark Approved</button>
                   <button onClick={() => handleStatusUpdate('denied')} className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-colors">Mark Denied</button>
                 </>
               )}

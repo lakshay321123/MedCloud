@@ -16,7 +16,7 @@ interface Integration {
 const integrations: Integration[] = [
   // Clearinghouses
   { id:'availity', name:'Availity', description:'Primary clearinghouse — claims, eligibility, ERA', initials:'AV', color:'bg-indigo-500', category:'Clearinghouses', status:'connected', lastSync:'5 min ago' },
-  { id:'dha', name:'DHA eClaim (UAE)', description:'UAE DOH claims gateway', initials:'DH', color:'bg-emerald-500', category:'Clearinghouses', status:'connected', lastSync:'14 min ago' },
+  { id:'dha', name:'DHA eClaim (UAE)', description:'UAE DOH claims gateway', initials:'DH', color:'bg-brand', category:'Clearinghouses', status:'connected', lastSync:'14 min ago' },
   { id:'eclinical', name:'eClinicalWorks', description:'EHR integration & patient data', initials:'EC', color:'bg-cyan-500', category:'EHR Systems', status:'pending' },
   // EHR Systems
   { id:'epic', name:'Epic FHIR', description:'Epic EHR FHIR R4 API', initials:'EP', color:'bg-violet-500', category:'EHR Systems', status:'not_configured' },
@@ -27,20 +27,20 @@ const integrations: Integration[] = [
   { id:'cloudfax', name:'Cloud Fax (SRFax)', description:'Inbound / outbound fax', initials:'CF', color:'bg-gray-500', category:'Communication', status:'error', errorMsg:'Auth failed — token expired' },
   { id:'email', name:'Email Ingest', description:'Automated email parsing', initials:'EM', color:'bg-sky-500', category:'Communication', status:'connected', lastSync:'8 min ago' },
   // Storage
-  { id:'s3', name:'AWS S3', description:'Document storage & backups', initials:'S3', color:'bg-amber-500', category:'Storage', status:'connected', lastSync:'2 min ago' },
+  { id:'s3', name:'AWS S3', description:'Document storage & backups', initials:'S3', color:'bg-brand-pale', category:'Storage', status:'connected', lastSync:'2 min ago' },
   { id:'sharepoint', name:'SharePoint', description:'Document collaboration', initials:'SP', color:'bg-blue-600', category:'Storage', status:'not_configured' },
   { id:'sftp', name:'SFTP Server', description:'EDI file transfer', initials:'FT', color:'bg-teal-500', category:'Storage', status:'not_configured' },
 ]
 
 const statusIcon = (s: string) => {
-  if (s==='connected') return <CheckCircle2 size={16} className="text-emerald-500 shrink-0"/>
+  if (s==='connected') return <CheckCircle2 size={16} className="text-brand-dark shrink-0"/>
   if (s==='error') return <AlertTriangle size={16} className="text-red-500 shrink-0"/>
-  if (s==='pending') return <Clock size={16} className="text-amber-500 shrink-0"/>
+  if (s==='pending') return <Clock size={16} className="text-brand-deep shrink-0"/>
   return <XCircle size={16} className="text-gray-500 shrink-0"/>
 }
 
 const statusLabel = (s: string) => ({ connected:'Connected ✓', error:'Error ✗', not_configured:'Not Configured', pending:'Pending Setup' }[s]??s)
-const statusColor = (s: string) => ({ connected:'text-emerald-600 dark:text-emerald-400', error:'text-red-500', pending:'text-amber-500', not_configured:'text-gray-400' }[s]??'text-gray-400')
+const statusColor = (s: string) => ({ connected:'text-brand-dark dark:text-brand-dark', error:'text-red-500', pending:'text-brand-deep', not_configured:'text-gray-400' }[s]??'text-gray-400')
 
 function ConfigModal({ integration, onClose }: { integration: Integration; onClose: () => void }) {
   const { toast } = useToast()
@@ -113,7 +113,7 @@ function LogDrawer({ integration, onClose }: { integration: Integration; onClose
                 <td className="px-4 py-2.5 font-mono text-[10px] text-content-secondary">{l.ts}</td>
                 <td className="px-4 py-2.5 text-[10px]">{l.dir}</td>
                 <td className="px-4 py-2.5">
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${l.status==='Success'?'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400':'bg-red-500/10 text-red-500'}`}>{l.status}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${l.status==='Success'?'bg-brand/10 text-brand-dark dark:text-brand-dark':'bg-red-500/10 text-red-500'}`}>{l.status}</span>
                 </td>
                 <td className="px-4 py-2.5 text-[10px]">{l.records}</td>
                 <td className="px-4 py-2.5 text-[10px] text-content-secondary">{l.duration}</td>
@@ -211,7 +211,7 @@ export default function IntegrationsPage() {
       <div className="card p-4 mt-4">
         <h3 className="text-sm font-semibold mb-3">Clearinghouse Status — Availity</h3>
         <div className="grid grid-cols-4 gap-3 mb-4 text-center">
-          {[{label:'Claims Sent Today',value:'234',color:'text-brand'},{label:'Accepted',value:'228',color:'text-emerald-500'},{label:'Rejected',value:'6',color:'text-red-500'},{label:'Acceptance Rate',value:'97.4%',color:'text-emerald-500'}].map(k=>
+          {[{label:'Claims Sent Today',value:'234',color:'text-brand'},{label:'Accepted',value:'228',color:'text-brand-dark'},{label:'Rejected',value:'6',color:'text-red-500'},{label:'Acceptance Rate',value:'97.4%',color:'text-brand-dark'}].map(k=>
             <div key={k.label} className="bg-surface-elevated rounded-lg p-3">
               <p className={`text-lg font-bold ${k.color}`}>{k.value}</p>
               <p className="text-[10px] text-content-tertiary">{k.label}</p>
@@ -224,7 +224,7 @@ export default function IntegrationsPage() {
               <span className="text-xs font-medium w-48">{edi.type}</span>
               <div className="flex items-center gap-4 text-[10px]">
                 <span className="text-content-secondary">{edi.sent} sent</span>
-                <span className="text-emerald-500">{edi.accepted} accepted</span>
+                <span className="text-brand-dark">{edi.accepted} accepted</span>
                 {edi.rejected > 0 && <span className="text-red-500">{edi.rejected} rejected</span>}
                 <span className="text-content-tertiary">{edi.last}</span>
               </div>
@@ -246,7 +246,7 @@ export default function IntegrationsPage() {
             <div key={p.payer} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2">
               <div className="flex items-center gap-3">
                 <span className="text-xs font-medium w-36">{p.payer}</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full ${p.status==='enrolled'?'bg-emerald-500/10 text-emerald-500':'bg-amber-500/10 text-amber-500'}`}>{p.status}</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full ${p.status==='enrolled'?'bg-brand/10 text-brand-dark':'bg-brand-pale0/10 text-brand-deep'}`}>{p.status}</span>
               </div>
               <div className="flex items-center gap-2">
                 {p.types.map(t=><span key={t} className="text-[9px] bg-surface px-1.5 py-0.5 rounded text-content-tertiary">{t}</span>)}

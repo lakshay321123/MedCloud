@@ -44,7 +44,7 @@ function Waveform({ active }: { active: boolean }) {
   return (
     <div className="flex items-center justify-center gap-1 h-12">
       {[0.4, 0.7, 1.0, 0.8, 0.5, 0.9, 0.6, 1.0, 0.75, 0.45, 0.85, 0.65].map((h, i) => (
-        <div key={i} className="w-1.5 bg-emerald-500 rounded-full transition-all"
+        <div key={i} className="w-1.5 bg-brand rounded-full transition-all"
           style={{
             height: active ? `${h * 100}%` : '15%',
             animation: active ? `wave ${0.8 + i * 0.1}s ease-in-out infinite alternate` : 'none',
@@ -454,7 +454,7 @@ function ProviderView() {
         </select>
       </div>
       <button onClick={() => { setUiState('recording'); setTimeout(startRecording, 300) }}
-        className="w-full bg-emerald-500 text-white rounded-lg py-3 text-sm font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2 transition-colors">
+        className="w-full bg-brand text-white rounded-lg py-3 text-sm font-semibold hover:bg-brand flex items-center justify-center gap-2 transition-colors">
         <Mic size={16} /> Start Recording — {selectedPatient.firstName}
       </button>
     </div>
@@ -485,7 +485,7 @@ function ProviderView() {
         <div className="pt-2 border-t border-separator">
           <button onClick={() => setShowMacros(!showMacros)}
             className="w-full flex items-center justify-between text-[11px] text-content-secondary hover:text-content-primary py-1">
-            <span className="flex items-center gap-1.5"><Zap size={11} className="text-amber-500" /> Voice Macros</span>
+            <span className="flex items-center gap-1.5"><Zap size={11} className="text-brand-deep" /> Voice Macros</span>
             <span className="text-[10px] text-content-tertiary">{showMacros ? '▲' : '▼'}</span>
           </button>
           {showMacros && (
@@ -518,7 +518,7 @@ function ProviderView() {
       {/* Right: live transcript */}
       <div className="col-span-2 card p-4 flex flex-col">
         <div className="flex items-center gap-2 mb-3">
-          {isListening ? <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" /> : <span className="w-2 h-2 bg-amber-500 rounded-full" />}
+          {isListening ? <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" /> : <span className="w-2 h-2 bg-brand-pale rounded-full" />}
           <span className="text-xs font-semibold text-red-500">{isListening ? 'RECORDING — Speak clearly' : 'Mic starting…'}</span>
           <span className="ml-auto flex items-center gap-2 text-[10px] text-content-tertiary">
             <span className="bg-brand/10 text-brand px-1.5 py-0.5 rounded">{selectedSpecialty}</span>
@@ -722,16 +722,16 @@ function ProviderView() {
                           <span className={`text-[11px] font-bold ${code.type === 'cpt' ? 'text-brand' : 'text-cyan-500'}`}>
                             {code.type === 'cpt' ? `CPT ${code.code}` : `ICD ${code.code}`}
                           </span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${code.confidence >= 90 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : code.confidence >= 75 ? 'bg-amber-500/10 text-amber-600' : 'bg-gray-500/10 text-gray-400'}`}>{code.confidence}%</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${code.confidence >= 90 ? 'bg-brand/10 text-brand-dark dark:text-brand-dark' : code.confidence >= 75 ? 'bg-brand-pale0/10 text-brand-deep' : 'bg-gray-500/10 text-gray-400'}`}>{code.confidence}%</span>
                           {code.is_primary && <span className="text-[10px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-full">Primary</span>}
-                          {manualCodes.some(m => m.code === code.code) && <span className="text-[10px] bg-purple-500/10 text-purple-500 px-1.5 py-0.5 rounded-full">Manual</span>}
-                          {code.modifiers?.map((m: string) => <span key={m} className="text-[10px] bg-purple-500/10 text-purple-500 px-1.5 py-0.5 rounded">-{m}</span>)}
+                          {manualCodes.some(m => m.code === code.code) && <span className="text-[10px] bg-blue-500/10 text-blue-700 px-1.5 py-0.5 rounded-full">Manual</span>}
+                          {code.modifiers?.map((m: string) => <span key={m} className="text-[10px] bg-blue-500/10 text-blue-700 px-1.5 py-0.5 rounded">-{m}</span>)}
                         </div>
                         <p className="text-xs">{code.desc}</p>
                         {code.reasoning && <p className="text-[10px] text-content-tertiary mt-0.5">↳ {code.reasoning}</p>}
                       </div>
                       <div className="flex gap-1 shrink-0">
-                        <button onClick={() => setKeptCodes(p => ({ ...p, [code.code]: true }))} className={`text-[10px] px-2 py-1 rounded border transition-colors ${keptCodes[code.code] !== false ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'border-separator text-content-secondary'}`}>Keep</button>
+                        <button onClick={() => setKeptCodes(p => ({ ...p, [code.code]: true }))} className={`text-[10px] px-2 py-1 rounded border transition-colors ${keptCodes[code.code] !== false ? 'bg-brand/10 text-brand-dark dark:text-brand-dark border-brand/20' : 'border-separator text-content-secondary'}`}>Keep</button>
                         <button onClick={() => setKeptCodes(p => ({ ...p, [code.code]: false }))} className={`text-[10px] px-2 py-1 rounded border transition-colors ${keptCodes[code.code] === false ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'border-separator text-content-secondary'}`}>Remove</button>
                       </div>
                     </div>
@@ -905,14 +905,14 @@ function ProviderView() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
         <div className="col-span-1 space-y-3">
           <button onClick={() => setUiState('select_patient')}
-            className="w-full bg-emerald-500 text-white rounded-lg py-3 text-sm font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2 transition-colors">
+            className="w-full bg-brand text-white rounded-lg py-3 text-sm font-semibold hover:bg-brand flex items-center justify-center gap-2 transition-colors">
             <Mic size={16} /> Start New Recording
           </button>
           {pending.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Pending Sign-off</h3>
-                <span className="text-[10px] bg-amber-500/15 text-amber-500 px-2 py-0.5 rounded-full">{pending.length}</span>
+                <span className="text-[10px] bg-brand-pale0/15 text-brand-deep px-2 py-0.5 rounded-full">{pending.length}</span>
               </div>
               {pending.map(v => (
                 <button key={v.id} onClick={() => openVisit(v)} className="w-full text-left card p-3 mb-2 hover:border-brand/30 transition-all">
@@ -942,8 +942,8 @@ function ProviderView() {
         </div>
         <div className="col-span-2 card flex items-center justify-center text-center p-12">
           <div className="max-w-xs">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
-              <Stethoscope size={32} className="text-emerald-500 opacity-60" />
+            <div className="w-16 h-16 rounded-full bg-brand/10 flex items-center justify-center mx-auto mb-4">
+              <Stethoscope size={32} className="text-brand-dark opacity-60" />
             </div>
             <p className="text-sm font-medium text-content-secondary mb-1">Real ambient AI documentation</p>
             <p className="text-xs text-content-tertiary">Live mic → transcript → Claude generates SOAP + ICD/CPT codes</p>
@@ -993,7 +993,7 @@ function CoderView() {
           <div className="flex-1 flex items-center justify-center text-content-secondary text-sm">Select a note to view</div>
         ) : (<>
         {selectedVisit.status === 'signed' && (
-          <div className="px-4 py-2.5 bg-emerald-500/10 border-b border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+          <div className="px-4 py-2.5 bg-brand/10 border-b border-brand/20 text-xs text-brand-dark dark:text-brand-dark flex items-center gap-2">
             <Check size={13} /> Signed by {selectedVisit.provider} on {selectedVisit.dos}
           </div>
         )}
@@ -1042,7 +1042,7 @@ export default function AIScribePage() {
   const { t } = useT()
   return (
     <ModuleShell title={t('scribe', 'title')} subtitle={isProvider ? t('scribe', 'subtitleProvider') : t('scribe', 'subtitleCoder')}>
-      <div className="mb-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-emerald-700 dark:text-emerald-400">
+      <div className="mb-4 bg-brand/10 border border-brand/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-brand-dark dark:text-brand-dark">
         <Mic size={15} className="shrink-0" />
         <div>
           <span className="font-semibold">Real AI Scribe</span> — Browser mic → live transcript → Claude generates SOAP + ICD/CPT codes instantly.
