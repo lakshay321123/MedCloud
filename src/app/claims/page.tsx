@@ -378,7 +378,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
     } else if (claim.status === 'denied') {
       toast.success('Routed to denial queue')
     } else if (claim.status === 'paid') {
-      toast.info('Opening payment details…')
+      router.push(`/payment-posting?claim=${claim.id}`)
     }
   }
 
