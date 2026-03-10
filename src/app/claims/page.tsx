@@ -14,7 +14,7 @@ import { api } from '@/lib/api-client'
 import { useClaims, useScrubClaim, useTransitionClaim, useGenerateEDI,
          useClaimLines, useAddClaimLine, useClaimDiagnoses, useAddClaimDiagnosis,
          useScrubRules, useUpdateClaim, useGenerate837I, useTriggerSecondaryClaim, useUnderpaymentCheck, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useSendMessage, useMessages, useAuditLog, useRequestUploadUrl, useCreateDocument, useClaimDocuments } from '@/lib/hooks'
-import type { ApiClaim } from '@/lib/hooks'
+import type { ApiClaim, ApiDocument } from '@/lib/hooks'
 import type { ClaimStatus } from '@/types'
 import { ErrorBanner } from '@/components/shared/ApiStates'
 import { sanitizeForPrompt } from '@/lib/ai-utils'
@@ -90,20 +90,20 @@ const POS_OPTIONS = [
 ]
 
 const STATUS_COLORS: Record<string, string> = {
-  draft: 'bg-gray-500/10 text-gray-400 border border-gray-500/20',
-  scrubbing: 'bg-brand text-white border border-brand/20 animate-pulse',
-  scrub_failed: 'bg-red-500/10 text-red-400 border border-red-500/20',
-  ready: 'bg-brand-pale0/10 text-brand-deep border border-brand-light/20',
-  submitted: 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20',
-  accepted: 'bg-brand text-white shadow-sm',
-  in_process: 'bg-brand/10 text-brand-dark border border-brand/20',
-  paid: 'bg-brand/10 text-brand-dark border border-brand/20',
-  partial_pay: 'bg-brand-pale0/10 text-brand-deep border border-brand-light/20',
-  denied: 'bg-red-500/10 text-red-400 border border-red-500/20',
-  appealed: 'bg-orange-500/10 text-orange-400 border border-orange-500/20',
-  corrected: 'bg-teal-500/10 text-teal-400 border border-teal-500/20',
-  write_off: 'bg-gray-500/10 text-gray-400 border border-gray-500/20 line-through',
-  void: 'bg-gray-500/10 text-gray-400 border border-gray-500/20 line-through opacity-60',
+  draft:        'bg-surface-elevated text-content-tertiary border border-separator',
+  scrubbing:    'bg-brand text-white border border-brand/20 animate-pulse',
+  scrub_failed: 'bg-brand-deep/10 text-brand-deep border border-brand-deep/20',
+  ready:        'bg-brand/10 text-brand-dark border border-brand/20',
+  submitted:    'bg-brand/15 text-brand-dark border border-brand/25',
+  accepted:     'bg-brand text-white shadow-sm',
+  in_process:   'bg-brand-pale0/15 text-brand-deep border border-brand-light/25',
+  paid:         'bg-brand-dark/10 text-brand-dark border border-brand-dark/20',
+  partial_pay:  'bg-brand-pale0/10 text-brand-deep border border-brand-light/20',
+  denied:       'bg-content-tertiary/10 text-content-secondary border border-separator',
+  appealed:     'bg-brand-pale0/10 text-brand-deep border border-brand-light/20',
+  corrected:    'bg-brand/10 text-brand-dark border border-brand/15',
+  write_off:    'bg-surface-elevated text-content-tertiary border border-separator line-through',
+  void:         'bg-surface-elevated text-content-tertiary border border-separator line-through opacity-60',
 }
 
 const ALL_STATUSES = ['draft','scrubbing','scrub_failed','ready','submitted','accepted','in_process','paid','partial_pay','denied','appealed','corrected','write_off','void'] as const
@@ -871,7 +871,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                 <p className="text-[13px] text-content-tertiary text-center py-8">No documents attached to this claim</p>
               ) : (
                 <div className="space-y-2">
-                  {claimDocs.map((doc: any) => (
+                  {claimDocs.map((doc: ApiDocument) => (
                     <div key={doc.id} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2.5 border border-separator">
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-medium text-content-primary truncate">{doc.file_name || 'Untitled'}</p>
@@ -1133,7 +1133,7 @@ export default function ClaimsPage() {
                   <label key={s} className="flex items-center gap-2 cursor-pointer group">
                     <input type="checkbox" checked={statusFilters.includes(s)} onChange={() => toggleStatus(s)}
                       className="rounded accent-brand w-3.5 h-3.5" />
-                    <span className={`w-2 h-2 rounded-full ${STATUS_COLORS[s]?.includes('emerald') ? 'bg-brand' : STATUS_COLORS[s]?.includes('red') ? 'bg-red-500' : STATUS_COLORS[s]?.includes('amber') ? 'bg-brand-pale' : STATUS_COLORS[s]?.includes('blue') ? 'bg-brand' : STATUS_COLORS[s]?.includes('cyan') ? 'bg-cyan-500' : STATUS_COLORS[s]?.includes('purple') ? 'bg-purple-500' : STATUS_COLORS[s]?.includes('orange') ? 'bg-orange-500' : STATUS_COLORS[s]?.includes('teal') ? 'bg-teal-500' : 'bg-gray-500'}`} />
+                    <span className={`w-2 h-2 rounded-full ${STATUS_COLORS[s]?.includes('emerald') ? 'bg-brand' : STATUS_COLORS[s]?.includes('brand-deep') ? 'bg-brand-deep' : STATUS_COLORS[s]?.includes('brand-dark') ? 'bg-brand-dark' : STATUS_COLORS[s]?.includes('blue') ? 'bg-brand' : STATUS_COLORS[s]?.includes('brand/15') ? 'bg-brand' : STATUS_COLORS[s]?.includes('secondary') ? 'bg-content-tertiary' : STATUS_COLORS[s]?.includes('pale0') ? 'bg-brand-deep' : STATUS_COLORS[s]?.includes('corrected') ? 'bg-brand' : 'bg-gray-500'}`} />
                     <span className="text-[12px] text-content-secondary group-hover:text-content-primary">{s.replace(/_/g, ' ')}</span>
                   </label>
                 ))}
