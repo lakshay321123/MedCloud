@@ -119,18 +119,16 @@ export default function LoginPage() {
           </form>
         </div>
 
-        {/* Bottom: Cosentus credit */}
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-gray-400">Powered by</span>
+        {/* Bottom: A Cosentus Division logo */}
+        <div className="flex items-center">
           <Image
-            src="/assets/logo-main.png"
-            alt="Cosentus"
-            width={80}
-            height={20}
-            className="h-5 w-auto object-contain opacity-50"
+            src="/assets/cosentus-division.png"
+            alt="A Cosentus Division"
+            width={148}
+            height={22}
+            className="object-contain opacity-40"
             style={{ mixBlendMode: 'multiply' }}
           />
-          <span className="text-[11px] text-gray-400">· {new Date().getFullYear()}</span>
         </div>
       </div>
 
