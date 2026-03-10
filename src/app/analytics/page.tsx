@@ -91,12 +91,14 @@ const aiFeatures = [
 
 const PAYER_COLORS: Record<string, string> = {
   UnitedHealthcare: '#00B5D6',
-  Medicare: '#8B5CF6',
-  Aetna: '#F59E0B',
-  Daman: '#10B981',
-  NAS: '#3B82F6',
-  'Self-Pay': '#6B7280',
-  BCBS: '#EF4444',
+  Medicare: '#047285',
+  Aetna: '#36C2DE',
+  Daman: '#68D1E6',
+  NAS: '#A1DEED',
+  Blue: '#014E5C',
+  'Self-Pay': '#616161',
+  BCBS: '#0095B8',
+  Cigna: '#D6EBF2',
 }
 
 // ─── Heatmap cell ─────────────────────────────────────────────────────────────
@@ -221,13 +223,13 @@ export default function AnalyticsPage() {
     })
     const result = Object.values(byClient).map(cl => {
       const rate = cl.billed > 0 ? Math.round((cl.paid / cl.billed) * 100) : 0
-      return { name: cl.name.split(' ')[0], rate, fill: rate >= 95 ? '#10B981' : rate >= 85 ? '#F59E0B' : '#EF4444' }
+      return { name: cl.name.split(' ')[0], rate, fill: rate >= 95 ? '#00B5D6' : rate >= 85 ? '#36C2DE' : '#047285' }
     })
     if (result.length === 0) return [
-      { name: 'Pacific Ortho', rate: 94, fill: '#F59E0B' },
-      { name: 'Irvine FP', rate: 97, fill: '#10B981' },
-      { name: 'Sunrise Cardio', rate: 88, fill: '#F59E0B' },
-      { name: 'Metro Internal', rate: 79, fill: '#EF4444' },
+      { name: 'Pacific Ortho', rate: 94, fill: '#36C2DE' },
+      { name: 'Irvine FP', rate: 97, fill: '#00B5D6' },
+      { name: 'Sunrise Cardio', rate: 88, fill: '#36C2DE' },
+      { name: 'Metro Internal', rate: 79, fill: '#047285' },
     ]
     return result
   }, [claims])
@@ -383,7 +385,7 @@ export default function AnalyticsPage() {
               <h3 className="text-[14px] font-semibold text-content-primary mb-4">Revenue Trend</h3>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={monthlyRevenue}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <YAxis tickFormatter={v => `$${v/1000}K`} tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <Tooltip formatter={(v: number | string | undefined) => [`$${(Number(v ?? 0)/1000).toFixed(0)}K`, 'Revenue']} contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
@@ -414,7 +416,7 @@ export default function AnalyticsPage() {
               <h3 className="text-[14px] font-semibold text-content-primary mb-4">Collection Rate by Client</h3>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={clientCollectionRates} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" horizontal={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" horizontal={false} />
                   <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#9CA3AF' }} width={65} />
                   <Tooltip formatter={(v: number | string | undefined) => [`${v ?? 0}%`, 'Collection Rate']} contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
@@ -430,12 +432,12 @@ export default function AnalyticsPage() {
               <h3 className="text-[14px] font-semibold text-content-primary mb-4">Denial Rate Trend</h3>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={denialTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <YAxis tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <Tooltip formatter={(v: number | string | undefined) => [`${v ?? 0}%`]} contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <ReferenceLine y={5} stroke="#F59E0B" strokeDasharray="4 4" label={{ value: 'Target 5%', position: 'insideTopRight', fontSize: 10, fill: '#F59E0B' }} />
+                  <ReferenceLine y={5} stroke="#A1DEED" strokeDasharray="4 4" label={{ value: 'Target 5%', position: 'insideTopRight', fontSize: 10, fill: '#616161' }} />
                   <Line type="monotone" dataKey="initial" name="Initial Denial Rate" stroke="#EF4444" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="net" name="Net Denial Rate" stroke="#00B5D6" strokeWidth={2} dot={false} />
                 </LineChart>
@@ -501,7 +503,7 @@ export default function AnalyticsPage() {
             <h3 className="text-[14px] font-semibold text-content-primary mb-4">Claims Processed Per Day (Last 14 Days)</h3>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={last14Days}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" vertical={false} />
                 <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9CA3AF' }} />
                 <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                 <Tooltip contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
@@ -635,12 +637,12 @@ export default function AnalyticsPage() {
                   { month: 'Feb', charges: 46300, collections: 41200 },
                   { month: 'Mar', charges: 48800, collections: 43500 },
                 ]}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <YAxis tickFormatter={v => `$${v/1000}K`} tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <Tooltip formatter={(v: number | string | undefined) => [`$${(Number(v ?? 0)/1000).toFixed(1)}K`]} contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Line type="monotone" dataKey="charges" name="Billed" stroke="#6366F1" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="charges" name="Billed" stroke="#047285" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="collections" name="Collected" stroke="#00B5D6" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
@@ -656,7 +658,7 @@ export default function AnalyticsPage() {
                   { cpt: '85025', count: 5, revenue: 225 },
                   { cpt: '99215', count: 3, revenue: 1245 },
                 ]} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" horizontal={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                   <YAxis dataKey="cpt" type="category" tick={{ fontSize: 11, fill: '#9CA3AF', fontFamily: 'monospace' }} width={50} />
                   <Tooltip formatter={(v: number | string | undefined) => [v ?? 0, 'Count']} contentStyle={{ background: '#1E2332', border: '1px solid #2D3146', borderRadius: 8, fontSize: 12 }} />

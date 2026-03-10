@@ -30,7 +30,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 const TYPE_COLORS: Record<string, string> = {
   '837P': 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  '837I': 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+  '837I': 'bg-brand/10 text-brand-dark',
   '835': 'bg-brand/10 text-brand-dark dark:text-brand-dark',
   '270': 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep',
   '271': 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep',
@@ -143,7 +143,7 @@ function EDIContent() {
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-3 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
               tab === t.key
-                ? 'bg-brand/10 text-brand border border-brand/30'
+                ? 'bg-brand text-white border border-brand'
                 : 'text-content-secondary border border-transparent hover:text-content-primary hover:bg-surface-elevated'
             }`}>
             {t.label} <span className="ml-1 opacity-60">({t.count})</span>

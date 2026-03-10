@@ -1,6 +1,5 @@
 'use client'
 import React, { useState } from 'react'
-import Image from 'next/image'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -133,13 +132,11 @@ export default function LoginPage() {
 
         {/* TOP-RIGHT: MedCloud logo */}
         <div className="flex justify-end px-10 pt-9">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/assets/logo-main.png"
             alt="MedCloud"
-            width={148}
-            height={33}
-            priority
-            className="h-[33px] w-auto object-contain"
+            className="h-9 w-auto object-contain"
             style={{ mixBlendMode: 'multiply' }}
           />
         </div>
@@ -263,12 +260,12 @@ export default function LoginPage() {
 
         {/* BOTTOM-RIGHT: A Cosentus Division */}
         <div className="flex justify-end px-10 pb-9">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/assets/cosentus-division.png"
             alt="A Cosentus Division"
-            width={150}
-            height={22}
-            className="object-contain"
+            className="h-6 w-auto object-contain"
+            style={{ mixBlendMode: 'multiply' }}
           />
         </div>
       </div>

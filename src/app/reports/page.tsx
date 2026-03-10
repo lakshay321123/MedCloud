@@ -38,7 +38,7 @@ const REPORT_TYPES = [
     description: 'Charts coded per coder, AI acceptance rate, avg time',
     icon: FileText,
     color: 'bg-blue-500/10 text-blue-700 border-purple-500/20',
-    dot: 'bg-purple-500',
+    dot: 'bg-brand',
   },
   {
     id: 'payer_performance',

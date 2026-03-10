@@ -139,7 +139,7 @@ export default function CodingRulesPage() {
             <h3 className="text-sm font-semibold text-content-primary mb-4">{editingId ? 'Edit Rule' : 'New Coding Rule'}</h3>
 
             {/* Natural language input */}
-            <div className="mb-4 p-4 bg-blue-500/10 border border-purple-500/20 rounded-xl">
+            <div className="mb-4 p-4 bg-blue-500/10 border border-brand/20 rounded-xl">
               <label className="text-[11px] uppercase tracking-wider text-blue-700 font-semibold block mb-2">
                 <Zap size={12} className="inline mr-1" /> Write rule in plain English
               </label>
@@ -147,9 +147,9 @@ export default function CodingRulesPage() {
                 <input value={form.english_rule} onChange={e => setForm(p => ({ ...p, english_rule: e.target.value }))}
                   onKeyDown={e => e.key === 'Enter' && convertEnglishToRule()}
                   placeholder='e.g. "For Aetna, always add modifier 25 when E/M is billed with injection" or "Never bill 99215 for this client"'
-                  className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-2.5 text-sm text-content-primary placeholder:text-content-tertiary focus:border-purple-500/40 outline-none" />
+                  className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-2.5 text-sm text-content-primary placeholder:text-content-tertiary focus:border-brand/40 outline-none" />
                 <button onClick={convertEnglishToRule} disabled={!form.english_rule}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-40 whitespace-nowrap flex items-center gap-1">
+                  className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-mid disabled:opacity-40 whitespace-nowrap flex items-center gap-1">
                   <Zap size={13} /> Convert
                 </button>
               </div>

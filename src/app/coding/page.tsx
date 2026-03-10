@@ -316,7 +316,7 @@ function InlineDocPreview({ patientId, label }: { patientId?: string; label?: st
             {label && <p className="text-xs font-bold text-brand uppercase tracking-wider">{label}</p>}
             <span className="text-xs text-content-tertiary ml-2">{docs.find(d => d.id === selectedDocId)?.file_name}</span>
             <button onClick={() => setFullscreen(false)}
-              className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors font-medium">
+              className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500/30 transition-colors font-medium">
               ✕ Exit Fullscreen
             </button>
           </div>
@@ -454,7 +454,7 @@ function CodingRulesPanel() {
                 {r.payer_name && <span className="text-content-tertiary ml-2">[{r.payer_name}]</span>}
                 <p className="text-[10px] text-content-tertiary">IF {r.condition_field} {r.condition_operator} &quot;{r.condition_value}&quot; → {r.action_type}: {r.action_value}</p>
               </div>
-              <button onClick={() => deleteRule(r.id)} className="text-[10px] text-red-500 hover:text-red-600">✕</button>
+              <button onClick={() => deleteRule(r.id)} className="text-[10px] text-red-500 hover:text-red-500">✕</button>
             </div>
           ))}
         </div>
@@ -1005,7 +1005,7 @@ export default function CodingPage() {
                       <p className="text-[12px] text-content-secondary">{item.provider} · NPI: {item.providerNpi}</p>
                     </div>
                     {item.priorAuthStatus === 'not_obtained' && (
-                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-2 py-1 text-[11px] text-red-600 font-semibold flex items-center gap-1">
+                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-2 py-1 text-[11px] text-red-500 font-semibold flex items-center gap-1">
                         <AlertTriangle size={11} /> AUTH REQUIRED — NOT ON FILE
                       </div>
                     )}
@@ -1069,8 +1069,8 @@ export default function CodingPage() {
                       onClick={() => setTab(tab === 'qa' ? 'note' : 'qa')}
                       className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-btn font-medium border transition-colors ${
                         tab === 'qa'
-                          ? 'bg-blue-500/10 border-purple-500/30 text-blue-700'
-                          : 'border-separator text-content-secondary hover:border-purple-500/40 hover:text-content-primary'
+                          ? 'bg-blue-500/10 border-brand/30 text-blue-700'
+                          : 'border-separator text-content-secondary hover:border-brand/40 hover:text-content-primary'
                       }`}
                     >
                       QA Audit
@@ -1286,7 +1286,7 @@ export default function CodingPage() {
                   <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-3 flex items-start gap-2">
                     <AlertTriangle size={14} className="text-red-500 mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-[13px] font-semibold text-red-600">AI Coding Unavailable</p>
+                      <p className="text-[13px] font-semibold text-red-500">AI Coding Unavailable</p>
                       <p className="text-[12px] text-content-secondary mt-0.5">Bedrock is temporarily unreachable. Use manual code entry below. This chart will be flagged for QA audit.</p>
                     </div>
                   </div>
@@ -1306,7 +1306,7 @@ export default function CodingPage() {
                   <>
                     {/* ── AI Generate panel ── */}
                     {!hasRealCodes && !aiCoding && (
-                      <div className="mb-4 rounded-xl border border-purple-500/30 bg-blue-500/10 p-4">
+                      <div className="mb-4 rounded-xl border border-brand/30 bg-blue-500/10 p-4">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-blue-700 text-base">✦</span>
                           <p className="text-[13px] font-semibold text-content-primary">AI Auto-Coding</p>
@@ -1321,13 +1321,13 @@ export default function CodingPage() {
                             {item?.visitNote?.assessment ? (
                               <button
                                 onClick={() => generateAICodes(item.visitNote.assessment, item.visitNote.plan, item.providerSpecialty || '')}
-                                className="w-full bg-purple-600 text-white rounded-lg py-2 text-[13px] font-medium flex items-center justify-center gap-2 hover:bg-purple-700 transition-colors">
+                                className="w-full bg-brand text-white rounded-lg py-2 text-[13px] font-medium flex items-center justify-center gap-2 hover:bg-brand-mid transition-colors">
                                 <span>✦</span> Generate Codes from Visit Note
                               </button>
                             ) : (
                               <button
                                 onClick={() => setShowQuickSoap(true)}
-                                className="w-full bg-blue-500/10 border border-purple-500/30 text-blue-700 dark:text-blue-700 rounded-lg py-2 text-[13px] font-medium flex items-center justify-center gap-2 hover:bg-blue-500/10 transition-colors">
+                                className="w-full bg-blue-500/10 border border-brand/30 text-blue-700 dark:text-blue-700 rounded-lg py-2 text-[13px] font-medium flex items-center justify-center gap-2 hover:bg-blue-500/10 transition-colors">
                                 <span>✦</span> Enter Clinical Info to Generate Codes
                               </button>
                             )}
@@ -1340,7 +1340,7 @@ export default function CodingPage() {
                                 value={quickSoap.specialty}
                                 onChange={e => setQuickSoap(p => ({ ...p, specialty: e.target.value }))}
                                 placeholder="e.g. Cardiology, Internal Medicine, Family Practice"
-                                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[12px] text-content-primary placeholder:text-content-tertiary focus:border-purple-500/40 outline-none"
+                                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[12px] text-content-primary placeholder:text-content-tertiary focus:border-brand/40 outline-none"
                               />
                             </div>
                             <div>
@@ -1350,7 +1350,7 @@ export default function CodingPage() {
                                 value={quickSoap.assessment}
                                 onChange={e => setQuickSoap(p => ({ ...p, assessment: e.target.value }))}
                                 placeholder="e.g. Type 2 diabetes mellitus with peripheral neuropathy, HTN, hyperlipidemia"
-                                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[12px] text-content-primary placeholder:text-content-tertiary focus:border-purple-500/40 outline-none resize-none"
+                                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[12px] text-content-primary placeholder:text-content-tertiary focus:border-brand/40 outline-none resize-none"
                               />
                             </div>
                             <div>
@@ -1360,7 +1360,7 @@ export default function CodingPage() {
                                 value={quickSoap.plan}
                                 onChange={e => setQuickSoap(p => ({ ...p, plan: e.target.value }))}
                                 placeholder="e.g. Follow-up in 3 months, A1C ordered, metformin dose adjustment, gabapentin added"
-                                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[12px] text-content-primary placeholder:text-content-tertiary focus:border-purple-500/40 outline-none resize-none"
+                                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[12px] text-content-primary placeholder:text-content-tertiary focus:border-brand/40 outline-none resize-none"
                               />
                             </div>
                             <div className="flex gap-2 pt-1">
@@ -1368,7 +1368,7 @@ export default function CodingPage() {
                               <button
                                 onClick={() => generateAICodes(quickSoap.assessment, quickSoap.plan, quickSoap.specialty)}
                                 disabled={!quickSoap.assessment.trim()}
-                                className="flex-1 bg-purple-600 text-white rounded-lg py-2 text-[12px] font-medium disabled:opacity-40 hover:bg-purple-700 transition-colors">
+                                className="flex-1 bg-brand text-white rounded-lg py-2 text-[12px] font-medium disabled:opacity-40 hover:bg-brand-mid transition-colors">
                                 ✦ Generate Codes
                               </button>
                             </div>
@@ -1379,8 +1379,8 @@ export default function CodingPage() {
 
                     {/* ── AI generating spinner ── */}
                     {aiCoding && (
-                      <div className="mb-4 rounded-xl border border-purple-500/20 bg-blue-500/10 p-5 flex flex-col items-center gap-3">
-                        <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                      <div className="mb-4 rounded-xl border border-brand/20 bg-blue-500/10 p-5 flex flex-col items-center gap-3">
+                        <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
                         <p className="text-[13px] text-blue-700 dark:text-blue-700 font-medium">Analyzing clinical documentation…</p>
                         <p className="text-[11px] text-content-tertiary">Generating ICD-10 + CPT codes</p>
                       </div>
@@ -1400,7 +1400,7 @@ export default function CodingPage() {
                             }
                           }}
                           placeholder="e.g. add modifier 25, use E11.65 instead, remove 36415..."
-                          className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-[11px] text-content-primary placeholder:text-content-tertiary focus:border-purple-500/40 outline-none"
+                          className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-[11px] text-content-primary placeholder:text-content-tertiary focus:border-brand/40 outline-none"
                         />
                         <button
                           onClick={() => {
@@ -1411,7 +1411,7 @@ export default function CodingPage() {
                               setCoderInstructions('')
                             }
                           }}
-                          className="text-[10px] px-3 py-1.5 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors whitespace-nowrap">
+                          className="text-[10px] px-3 py-1.5 rounded-lg bg-brand text-white hover:bg-brand-mid transition-colors whitespace-nowrap">
                           ✦ {coderInstructions ? 'Re-code' : 'Regenerate'}
                         </button>
                       </div>
@@ -1696,9 +1696,9 @@ export default function CodingPage() {
             <button
               onClick={generateCDIQuery}
               disabled={queryGenerating}
-              className="w-full mb-2 bg-blue-500/10 border border-purple-500/30 text-blue-700 dark:text-blue-700 rounded-btn py-1.5 text-[12px] font-medium flex items-center justify-center gap-2 hover:bg-blue-500/10 disabled:opacity-50 transition-colors">
+              className="w-full mb-2 bg-blue-500/10 border border-brand/30 text-blue-700 dark:text-blue-700 rounded-btn py-1.5 text-[12px] font-medium flex items-center justify-center gap-2 hover:bg-blue-500/10 disabled:opacity-50 transition-colors">
               {queryGenerating ? (
-                <><span className="animate-spin inline-block w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full"/><span>Generating...</span></>
+                <><span className="animate-spin inline-block w-3 h-3 border-2 border-brand border-t-transparent rounded-full"/><span>Generating...</span></>
               ) : (
                 <><span>✦</span><span>Generate CDI Query with AI</span></>
               )}

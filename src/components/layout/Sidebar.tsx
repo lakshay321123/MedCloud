@@ -16,16 +16,11 @@ export default function Sidebar() {
 
   return (
     <aside className={`${w} h-screen bg-white border-r border-separator flex flex-col transition-all duration-300 shrink-0 overflow-hidden`}>
-      {/* Top area — hamburger + role/region label */}
-      <div className="h-16 flex items-center px-4 gap-3 border-b border-separator bg-brand/5">
+      {/* Top area — hamburger only, no name text */}
+      <div className="h-16 flex items-center px-4 border-b border-separator bg-brand/5">
         <button onClick={toggleSidebar} className="p-1.5 rounded-btn hover:bg-brand/10 text-brand transition-colors">
           <Icons.Menu size={20} />
         </button>
-        {!sidebarCollapsed && (
-          <span className="font-bold text-black text-[14px] tracking-tight truncate">
-            {currentUser.name.split(' ')[0]}
-          </span>
-        )}
       </div>
 
       <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
@@ -58,14 +53,14 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* User strip at bottom */}
-      <div className={`border-t border-separator px-3 py-3 flex items-center gap-3 bg-brand/5 ${sidebarCollapsed ? 'justify-center' : ''}`}>
-        <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-white font-bold text-xs shrink-0">
+      {/* User strip — h-10 to match footer height */}
+      <div className={`h-10 border-t border-separator px-3 flex items-center gap-3 bg-brand/5 shrink-0 ${sidebarCollapsed ? 'justify-center' : ''}`}>
+        <div className="w-6 h-6 rounded-full bg-brand flex items-center justify-center text-white font-bold text-[10px] shrink-0">
           {currentUser.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
         </div>
         {!sidebarCollapsed && (
           <div className="flex flex-col leading-tight min-w-0">
-            <span className="text-[13px] font-bold text-black truncate">{currentUser.name}</span>
+            <span className="text-[12px] font-semibold text-black truncate">{currentUser.name}</span>
             <span className="text-[10px] text-content-tertiary capitalize">{currentUser.role.replace('_', ' ')}</span>
           </div>
         )}

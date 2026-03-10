@@ -15,15 +15,15 @@ interface Integration {
 
 const integrations: Integration[] = [
   // Clearinghouses
-  { id:'availity', name:'Availity', description:'Primary clearinghouse — claims, eligibility, ERA', initials:'AV', color:'bg-indigo-500', category:'Clearinghouses', status:'connected', lastSync:'5 min ago' },
+  { id:'availity', name:'Availity', description:'Primary clearinghouse — claims, eligibility, ERA', initials:'AV', color:'bg-brand', category:'Clearinghouses', status:'connected', lastSync:'5 min ago' },
   { id:'dha', name:'DHA eClaim (UAE)', description:'UAE DOH claims gateway', initials:'DH', color:'bg-brand', category:'Clearinghouses', status:'connected', lastSync:'14 min ago' },
   { id:'eclinical', name:'eClinicalWorks', description:'EHR integration & patient data', initials:'EC', color:'bg-cyan-500', category:'EHR Systems', status:'pending' },
   // EHR Systems
-  { id:'epic', name:'Epic FHIR', description:'Epic EHR FHIR R4 API', initials:'EP', color:'bg-violet-500', category:'EHR Systems', status:'not_configured' },
+  { id:'epic', name:'Epic FHIR', description:'Epic EHR FHIR R4 API', initials:'EP', color:'bg-brand-dark', category:'EHR Systems', status:'not_configured' },
   { id:'cerner', name:'Cerner HL7', description:'Cerner Millennium HL7 v2.x', initials:'CE', color:'bg-rose-500', category:'EHR Systems', status:'not_configured' },
   { id:'athena', name:'athenahealth', description:'Practice management & EHR', initials:'AT', color:'bg-orange-500', category:'EHR Systems', status:'not_configured' },
   // Communication
-  { id:'retell', name:'Retell AI', description:'Voice AI payer follow-up calls', initials:'RT', color:'bg-violet-500', category:'Communication', status:'connected', lastSync:'1 min ago' },
+  { id:'retell', name:'Retell AI', description:'Voice AI payer follow-up calls', initials:'RT', color:'bg-brand-mid', category:'Communication', status:'connected', lastSync:'1 min ago' },
   { id:'cloudfax', name:'Cloud Fax (SRFax)', description:'Inbound / outbound fax', initials:'CF', color:'bg-gray-500', category:'Communication', status:'error', errorMsg:'Auth failed — token expired' },
   { id:'email', name:'Email Ingest', description:'Automated email parsing', initials:'EM', color:'bg-sky-500', category:'Communication', status:'connected', lastSync:'8 min ago' },
   // Storage

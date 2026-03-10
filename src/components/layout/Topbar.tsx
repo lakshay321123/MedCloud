@@ -303,7 +303,7 @@ export default function Topbar() {
                 <div className="border-t border-separator py-1">
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 text-[13px] text-red-500 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-secondary text-[13px] text-content-secondary transition-colors"
                   >
                     <LogOut size={15} />
                     Log out
