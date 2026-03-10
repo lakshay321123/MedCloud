@@ -34,48 +34,43 @@ export default function LoginPage() {
     }
   }
 
+  const stats = [
+    { value: '99.3%', label: 'Coding Accuracy' },
+    { value: '25+', label: 'Years in RCM' },
+    { value: '1,000+', label: 'RCM Experts' },
+    { value: '< 35', label: 'Avg AR Days' },
+  ]
+
   return (
-    <div className="min-h-screen flex">
-      <div className="hidden lg:flex w-1/2 bg-black flex-col items-center justify-center p-12 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-5"
-          style={{ backgroundImage: 'radial-gradient(circle at 25% 25%, #00B5D6 0%, transparent 50%), radial-gradient(circle at 75% 75%, #00B5D6 0%, transparent 50%)' }}
-        />
-        <div className="relative z-10 text-center">
-          <div className="mb-8 flex justify-center">
-            <Image src="/Medcloud_logo_1_WHITE_1_1.png" alt="MedCloud" width={180} height={48} priority className="h-12 w-auto" />
-          </div>
-          <h2 className="text-3xl font-bold text-white mb-3">Revenue Cycle Intelligence</h2>
-          <p className="text-[#CCCCCC] text-base max-w-sm leading-relaxed">
-            AI-powered RCM platform. Faster claims, fewer denials, smarter collections.
-          </p>
-          <div className="mt-10 grid grid-cols-3 gap-6 text-center">
-            {[['98%', 'Clean Claim Rate'], ['< 2 days', 'Avg Posting Time'], ['40%', 'Denial Reduction']].map(([val, label]) => (
-              <div key={label}>
-                <div className="text-2xl font-bold text-[#00B5D6]">{val}</div>
-                <div className="text-xs text-[#CCCCCC] mt-1">{label}</div>
-              </div>
-            ))}
-          </div>
+    <div className="min-h-screen flex flex-row-reverse">
+
+      {/* ── RIGHT: Login form ── */}
+      <div className="flex-1 flex flex-col justify-between p-10 bg-white">
+        {/* Top-right: MedCloud logo */}
+        <div className="flex justify-end">
+          <Image
+            src="/assets/logo-main.png"
+            alt="MedCloud"
+            width={140}
+            height={36}
+            priority
+            className="h-9 w-auto object-contain"
+            style={{ mixBlendMode: 'multiply' }}
+          />
         </div>
-      </div>
 
-      <div className="flex-1 flex items-center justify-center p-8 bg-surface-primary">
-        <div className="w-full max-w-sm">
-          <div className="lg:hidden text-center mb-8">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-brand mb-3">
-              <span className="text-white font-bold text-lg">C</span>
-            </div>
-            <h1 className="text-xl font-bold text-content-primary">MedCloud</h1>
-          </div>
-
+        {/* Center: Form */}
+        <div className="w-full max-w-sm mx-auto">
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-content-primary">Welcome back</h2>
-            <p className="text-sm text-content-secondary mt-1">Sign in to your Cosentus account</p>
+            <h2 className="text-[28px] font-bold text-black tracking-tight">Welcome back</h2>
+            <p className="text-[14px] text-gray-500 mt-1.5">Sign in to your MedCloud account</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="text-xs font-medium text-content-secondary block mb-1.5">Email Address</label>
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
+                Email Address
+              </label>
               <input
                 type="email"
                 value={email}
@@ -83,26 +78,28 @@ export default function LoginPage() {
                 required
                 autoComplete="email"
                 autoFocus
-                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2.5 text-sm text-content-primary outline-none focus:border-brand/50 focus:ring-1 focus:ring-brand/20 transition-all"
+                className="w-full bg-[#F5FBFD] border border-[#A1DEED] rounded-xl px-4 py-3 text-[14px] text-black outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all placeholder:text-gray-400"
                 placeholder="you@cosentus.com"
               />
             </div>
 
             <div>
-              <label className="text-xs font-medium text-content-secondary block mb-1.5">Password</label>
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
+                Password
+              </label>
               <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
-                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2.5 text-sm text-content-primary outline-none focus:border-brand/50 focus:ring-1 focus:ring-brand/20 transition-all"
+                className="w-full bg-[#F5FBFD] border border-[#A1DEED] rounded-xl px-4 py-3 text-[14px] text-black outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all placeholder:text-gray-400"
                 placeholder="Enter your password"
               />
             </div>
 
             {error && (
-              <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5">
+              <div className="text-[13px] text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
                 {error}
               </div>
             )}
@@ -110,19 +107,81 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-[#36C2DE] transition-colors disabled:opacity-50 mt-2"
+              className="w-full bg-brand text-white rounded-xl py-3 text-[14px] font-bold hover:bg-brand-mid active:bg-brand-dark transition-colors disabled:opacity-50 mt-2 shadow-sm"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Signing in…
                 </span>
               ) : 'Sign In'}
             </button>
           </form>
+        </div>
 
-          <p className="text-center text-xs text-content-tertiary mt-8">
-            Cosentus AI · MedCloud Platform · {new Date().getFullYear()}
+        {/* Bottom: Cosentus credit */}
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-gray-400">Powered by</span>
+          <Image
+            src="/assets/logo-main.png"
+            alt="Cosentus"
+            width={80}
+            height={20}
+            className="h-5 w-auto object-contain opacity-50"
+            style={{ mixBlendMode: 'multiply' }}
+          />
+          <span className="text-[11px] text-gray-400">· {new Date().getFullYear()}</span>
+        </div>
+      </div>
+
+      {/* ── LEFT: Brand panel ── */}
+      <div className="hidden lg:flex w-[46%] bg-brand flex-col justify-between p-12 relative overflow-hidden shrink-0">
+        {/* Decorative circles */}
+        <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/5 pointer-events-none" />
+        <div className="absolute bottom-0 -right-16 w-72 h-72 rounded-full bg-white/5 pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-white/[0.03] pointer-events-none" />
+
+        {/* Top: logo */}
+        <div className="relative z-10">
+          <Image
+            src="/assets/logo-white.png"
+            alt="MedCloud"
+            width={160}
+            height={42}
+            priority
+            className="h-10 w-auto object-contain"
+            style={{ mixBlendMode: 'screen' }}
+          />
+        </div>
+
+        {/* Center: headline + tagline */}
+        <div className="relative z-10">
+          <h1 className="text-[40px] font-bold text-white leading-tight tracking-tight">
+            Revenue Cycle<br />Intelligence
+          </h1>
+          <p className="text-white/70 text-[16px] mt-4 leading-relaxed max-w-xs">
+            AI-powered RCM platform built on 25+ years of healthcare expertise. Faster claims, fewer denials, smarter collections.
+          </p>
+
+          {/* Stats grid */}
+          <div className="mt-10 grid grid-cols-2 gap-4">
+            {stats.map(({ value, label }) => (
+              <div key={label} className="bg-white/10 rounded-2xl px-5 py-4 backdrop-blur-sm">
+                <div className="text-[26px] font-bold text-white leading-none">{value}</div>
+                <div className="text-[12px] text-white/60 mt-1.5 font-medium">{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom: INC 5000 badge */}
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center shrink-0">
+            <span className="text-white text-[11px] font-bold">Inc</span>
+          </div>
+          <p className="text-white/50 text-[12px] leading-snug">
+            INC 5000 Fastest Growing Company · 3 consecutive years<br />
+            Great Places to Work® Certified
           </p>
         </div>
       </div>
