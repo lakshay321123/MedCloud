@@ -52,32 +52,39 @@ export default function LoginPage() {
       ═══════════════════════════════ */}
       <div
         className="hidden lg:flex w-[52%] shrink-0 flex-col justify-between relative overflow-hidden"
-        style={{
-          background: 'linear-gradient(145deg, #36C2DE 0%, #00B5D6 40%, #0095B8 100%)',
-        }}
+        style={{ background: '#00B5D6' }}
       >
-        {/* Atmospheric depth — layered radial glows */}
+        {/* Futuristic data grid — subtle horizontal scan lines */}
         <div
-          className="pointer-events-none absolute inset-0"
+          className="pointer-events-none absolute inset-0 opacity-[0.04]"
           style={{
-            background:
-              'radial-gradient(ellipse 70% 60% at 20% 20%, rgba(255,255,255,0.12) 0%, transparent 60%), ' +
-              'radial-gradient(ellipse 50% 50% at 80% 80%, rgba(0,80,120,0.25) 0%, transparent 60%)',
+            backgroundImage:
+              'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,1) 3px, rgba(255,255,255,1) 4px)',
           }}
         />
-        {/* Subtle geometric rings */}
-        <div className="pointer-events-none absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full border border-white/10" />
-        <div className="pointer-events-none absolute -bottom-20 -right-20 w-[340px] h-[340px] rounded-full border border-white/10" />
-        <div className="pointer-events-none absolute top-[-80px] left-[-80px] w-[360px] h-[360px] rounded-full border border-white/8" />
+        {/* Subtle vertical circuit traces */}
+        <div className="pointer-events-none absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage:
+              'linear-gradient(90deg, transparent 0%, transparent 20%, rgba(255,255,255,0.5) 20%, rgba(255,255,255,0.5) 20.2%, transparent 20.2%, transparent 45%, rgba(255,255,255,0.4) 45%, rgba(255,255,255,0.4) 45.15%, transparent 45.15%, transparent 72%, rgba(255,255,255,0.3) 72%, rgba(255,255,255,0.3) 72.1%, transparent 72.1%)',
+          }}
+        />
 
-        {/* Top spacer */}
-        <div />
+        {/* Top — AI status indicator */}
+        <div className="relative z-10 px-16 pt-12">
+          <div className="flex items-center gap-2.5">
+            <span className="w-[7px] h-[7px] rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.6)] animate-pulse" />
+            <span className="text-white/50 text-[11px] font-mono tracking-[0.15em] uppercase">
+              AI Engine Online
+            </span>
+          </div>
+        </div>
 
         {/* Main content */}
         <div className="relative z-10 px-16 pb-2">
           {/* Headline */}
-          <div className="mb-12">
-            <p className="text-white/60 text-[13px] font-semibold tracking-[0.18em] uppercase mb-4 letter-spacing">
+          <div className="mb-14">
+            <p className="text-white/50 text-[11px] font-mono tracking-[0.2em] uppercase mb-5">
               MedCloud by Cosentus
             </p>
             <h1
@@ -86,45 +93,40 @@ export default function LoginPage() {
             >
               Revenue Cycle<br />Intelligence
             </h1>
-            <p className="text-white/65 mt-5 text-[16px] leading-relaxed max-w-[340px]">
+            <p className="text-white/60 mt-5 text-[15px] leading-relaxed max-w-[340px]">
               AI-powered RCM built on 25+ years of healthcare expertise. Faster claims, fewer denials.
             </p>
           </div>
 
-          {/* Stats — Apple-style: clean numbers, thin dividers */}
-          <div className="grid grid-cols-2 gap-px bg-white/15 rounded-2xl overflow-hidden">
+          {/* Stats — clean, no box, just numbers with thin separator lines */}
+          <div className="grid grid-cols-4 gap-0">
             {stats.map(({ value, label }, i) => (
               <div
                 key={label}
-                className="bg-white/10 backdrop-blur-sm px-7 py-6 flex flex-col gap-1.5"
-                style={{
-                  borderRadius:
-                    i === 0 ? '16px 0 0 0' :
-                    i === 1 ? '0 16px 0 0' :
-                    i === 2 ? '0 0 0 16px' :
-                    '0 0 16px 0',
-                }}
+                className="flex flex-col gap-1.5 pr-6"
+                style={{ borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.15)' : 'none', paddingLeft: i > 0 ? '24px' : '0' }}
               >
-                <span className="text-white font-bold leading-none" style={{ fontSize: 'clamp(24px, 2.5vw, 32px)' }}>
+                <span className="text-white font-bold text-[26px] leading-none font-mono tabular-nums tracking-tight">
                   {value}
                 </span>
-                <span className="text-white/55 text-[12px] font-medium tracking-wide">{label}</span>
+                <span className="text-white/40 text-[10px] font-medium tracking-[0.08em] uppercase">{label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Bottom — INC badge */}
-        <div className="relative z-10 px-16 pb-10">
+        {/* Bottom — INC badge + version tag */}
+        <div className="relative z-10 px-16 pb-10 flex items-end justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0 backdrop-blur-sm">
-              <span className="text-white text-[11px] font-bold">Inc</span>
+            <div className="w-7 h-7 rounded-md bg-white/10 flex items-center justify-center shrink-0">
+              <span className="text-white/70 text-[10px] font-bold">Inc</span>
             </div>
-            <p className="text-white/45 text-[12px] leading-snug">
+            <p className="text-white/35 text-[11px] leading-snug">
               INC 5000 Fastest Growing · 3 consecutive years<br />
               Great Places to Work® Certified
             </p>
           </div>
+          <span className="text-white/20 text-[10px] font-mono">v2.0</span>
         </div>
       </div>
 
