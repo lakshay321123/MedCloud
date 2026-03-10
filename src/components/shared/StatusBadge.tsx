@@ -39,12 +39,12 @@ const styles: Record<string, { bg: string; text: string }> = {
   late: { bg: 'bg-brand-pale/50', text: 'text-brand-deep' },
   high: { bg: 'bg-brand-pale/50', text: 'text-brand-deep' },
   // ── Red / Error ──
-  denied: { bg: 'bg-red-500/10', text: 'text-red-600' },
-  no_show: { bg: 'bg-red-500/10', text: 'text-red-600' },
-  scrub_failed: { bg: 'bg-red-500/10', text: 'text-red-600' },
-  urgent: { bg: 'bg-red-500/10', text: 'text-red-600' },
-  error: { bg: 'bg-red-500/10', text: 'text-red-600' },
-  rejected: { bg: 'bg-red-500/10', text: 'text-red-600' },
+  denied: { bg: 'bg-content-tertiary/10', text: 'text-content-secondary' },
+  no_show: { bg: 'bg-content-tertiary/10', text: 'text-content-secondary' },
+  scrub_failed: { bg: 'bg-brand-deep/10', text: 'text-brand-deep' },
+  urgent: { bg: 'bg-brand-deep/10', text: 'text-brand-deep' },
+  error: { bg: 'bg-brand-deep/10', text: 'text-brand-deep' },
+  rejected: { bg: 'bg-brand-deep/10', text: 'text-brand-deep' },
   // ── Grey / Neutral ──
   booked: { bg: 'bg-gray-200/60', text: 'text-gray-600' },
   draft: { bg: 'bg-gray-200/60', text: 'text-gray-600' },
@@ -57,9 +57,9 @@ const styles: Record<string, { bg: string; text: string }> = {
 
 export default function StatusBadge({ status, small }: { status: string; small?: boolean }) {
   const s = styles[status] || styles.booked
-  const label = status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  const label = status.replace(/_/g, ' ')
   return (
-    <span className={`inline-flex items-center rounded-pill font-semibold whitespace-nowrap ${s.bg} ${s.text} ${small ? 'text-[10px] px-2 py-0.5' : 'text-[11px] px-2.5 py-1'}`}>
+    <span className={`inline-flex items-center rounded-lg font-medium whitespace-nowrap tracking-wide ${s.bg} ${s.text} ${small ? 'text-[11px] px-2 py-0.5' : 'text-[11px] px-2.5 py-1'}`}>
       {label}
     </span>
   )

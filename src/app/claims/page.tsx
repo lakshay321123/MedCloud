@@ -110,7 +110,7 @@ const ALL_STATUSES = ['draft','scrubbing','scrub_failed','ready','submitted','ac
 
 function ClaimStatusBadge({ status }: { status: string }) {
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${STATUS_COLORS[status] || 'bg-gray-500/10 text-gray-400'}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-medium tracking-wide ${STATUS_COLORS[status] || 'bg-surface-elevated text-content-tertiary'}`}>
       {status.replace(/_/g, ' ')}
     </span>
   )
