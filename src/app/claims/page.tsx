@@ -627,7 +627,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   {claim.status === 'denied' && (
                     <>
                       <button onClick={statusAction} className="w-full bg-brand-pale text-white rounded-btn py-2.5 text-[13px] font-medium">Route to Denials</button>
-                      <button onClick={() => handleTransition('appealed')} disabled={transitioning} className="w-full bg-orange-500 text-white rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{transitioning ? 'Appealing…' : 'Appeal Claim'}</button>
+                      <button onClick={() => handleTransition('appealed')} disabled={transitioning} className="w-full bg-brand-deep text-white rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{transitioning ? 'Appealing…' : 'Appeal Claim'}</button>
                     </>
                   )}
                   {claim.status === 'paid' && <button onClick={statusAction} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium">View Payment</button>}
@@ -672,7 +672,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   )}
                   {statusInquiryResult && (
                     <div className="mt-2">
-                      <p className="text-[11px] uppercase tracking-wider text-indigo-600 font-semibold mb-1">276 Claim Status Inquiry</p>
+                      <p className="text-[11px] uppercase tracking-wider text-brand-dark font-semibold mb-1">276 Claim Status Inquiry</p>
                       <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[10px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{statusInquiryResult}</pre>
                     </div>
                   )}

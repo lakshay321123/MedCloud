@@ -23,7 +23,7 @@ const typeIcon: Record<string, React.ReactNode> = {
   'Denial Letter': <XCircle size={14} className="text-red-500"/>,
   'Contract': <FileText size={14} className="text-brand"/>,
   'Credential': <File size={14} className="text-content-tertiary"/>,
-  'License':    <File size={14} className="text-indigo-400"/>,
+  'License':    <File size={14} className="text-brand"/>,
   'Referral':   <Send size={14} className="text-teal-500"/>,
   'Fax': <Send size={14} className="text-content-tertiary"/>,
 }

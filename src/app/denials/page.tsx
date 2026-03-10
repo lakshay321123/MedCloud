@@ -304,12 +304,12 @@ export default function DenialsPage() {
                 </td>
                 <td className="px-4 py-3">{d.patientName}</td>
                 <td className="px-4 py-3 text-xs text-content-secondary">{d.payer}</td>
-                <td className="px-4 py-3 text-xs text-red-600 dark:text-red-400">{d.denialReason}</td>
+                <td className="px-4 py-3 text-xs text-content-primary">{d.denialReason}</td>
                 <td className="px-4 py-3">
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-pill ${
                     d.source === 'payment_posting' ? 'bg-brand/10 text-brand-dark dark:text-brand' :
                     d.source === 'claim_rejection' ? 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep' :
-                    'bg-red-500/10 text-red-600 dark:text-red-400'
+                    'bg-brand-pale0/10 text-brand-deep'
                   }`}>
                     {d.source === 'payment_posting' ? 'Payment Posting' : d.source === 'claim_rejection' ? 'Claim Rejection' : 'Payer Audit'}
                   </span>
@@ -317,7 +317,7 @@ export default function DenialsPage() {
                 <td className={`px-4 py-3 text-xs font-semibold ${
                   d.appealLevel === 'L1' ? 'text-brand' :
                   d.appealLevel === 'L2' ? 'text-brand-deep dark:text-brand-deep' :
-                  d.appealLevel === 'L3' ? 'text-red-600 dark:text-red-400' : 'text-content-tertiary'
+                  d.appealLevel === 'L3' ? 'text-brand-deep dark:text-brand-deep' : 'text-content-tertiary'
                 }`}>{d.appealLevel || '—'}</td>
                 <td className="px-4 py-3"><StatusBadge status={d.status} small /></td>
               </tr>
@@ -332,7 +332,7 @@ export default function DenialsPage() {
               <p className="text-xs text-content-secondary mb-1">{selectedDenial.clientName} · {selectedDenial.payer} · DOS: {selectedDenial.dos}</p>
               <button onClick={() => router.push(`/claims?id=${selectedDenial.id}`)}
                 className="text-[11px] text-brand hover:underline mb-3 block">View Originating Claim →</button>
-              <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-2 mb-2 text-xs text-red-600 dark:text-red-400">Denial: {selectedDenial.denialReason}</div>
+              <div className="bg-brand/5 border border-brand/20 rounded-lg p-2 mb-2 text-xs text-content-primary">Denial: {selectedDenial.denialReason}</div>
               <div className="bg-surface-elevated border border-separator rounded-lg p-2 mb-3 text-xs text-content-secondary inline-flex items-center gap-1">
                 <AlertTriangle size={12} />Source: Routed from {selectedDenial.source}
               </div>
@@ -349,7 +349,7 @@ export default function DenialsPage() {
                     <button
                       key={doc.label}
                       onClick={() => router.push(doc.path)}
-                      className="bg-surface-elevated border border-separator rounded px-2 py-1 text-[10px] text-content-secondary flex items-center gap-1 hover:border-brand/30 hover:text-brand transition-colors cursor-pointer"
+                      className="bg-brand/5 border border-brand/20 rounded-btn px-2.5 py-1 text-[10px] font-medium text-brand-dark flex items-center gap-1 hover:bg-brand/10 hover:border-brand/40 transition-colors cursor-pointer"
                     >
                       <FileText size={10} />{doc.label}
                     </button>

@@ -135,7 +135,7 @@ function UsersTab() {
               <td className="px-4 py-3 flex gap-1">
                 <button onClick={()=>setEditingUser(u)} className="text-[10px] text-brand hover:underline">Edit</button>
                 <span className="text-content-tertiary">·</span>
-                <button onClick={()=>handleToggleActive(u.email, u.active)} className={`text-[10px] hover:underline ${u.active ? 'text-red-500' : 'text-brand-dark'}`}>{u.active ? 'Disable' : 'Enable'}</button>
+                <button onClick={()=>handleToggleActive(u.email, u.active)} className={`text-[10px] hover:underline ${u.active ? 'text-content-secondary hover:text-brand' : 'text-brand-dark'}`}>{u.active ? 'Disable' : 'Enable'}</button>
               </td>
             </tr>
           ))}</tbody>

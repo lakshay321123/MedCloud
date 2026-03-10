@@ -603,7 +603,7 @@ function ARDrawer({
                 </div>
               </div>
               <div className="flex gap-2 px-5 pb-5">
-                <button onClick={handleWriteoff} className="flex-1 bg-red-500 text-white rounded-btn py-2.5 text-[13px] font-medium">Submit for Approval</button>
+                <button onClick={handleWriteoff} className="flex-1 bg-brand-deep text-white rounded-btn py-2.5 text-[13px] font-medium">Submit for Approval</button>
                 <button onClick={() => setShowWriteoffModal(false)} className="px-4 py-2.5 bg-surface-elevated border border-separator rounded-btn text-[13px] text-content-secondary">Cancel</button>
               </div>
             </div>
@@ -835,7 +835,7 @@ export default function ARManagementPage() {
     { l: '0-30',   v: accounts.filter(a => a.age <= 30).reduce((s,a) => s+a.balance,0),  c: 'bg-brand' },
     { l: '31-60',  v: accounts.filter(a => a.age>30&&a.age<=60).reduce((s,a) => s+a.balance,0), c: 'bg-cyan-500' },
     { l: '61-90',  v: accounts.filter(a => a.age>60&&a.age<=90).reduce((s,a) => s+a.balance,0), c: 'bg-brand-pale' },
-    { l: '91-120', v: accounts.filter(a => a.age>90&&a.age<=120).reduce((s,a) => s+a.balance,0), c: 'bg-orange-500' },
+    { l: '91-120', v: accounts.filter(a => a.age>90&&a.age<=120).reduce((s,a) => s+a.balance,0), c: 'bg-brand-pale' },
     { l: '120+',   v: accounts.filter(a => a.age>120).reduce((s,a) => s+a.balance,0),  c: 'bg-red-500' },
   ]
   const computedMax = Math.max(...computedBuckets.map(b => b.v), 1)
@@ -897,7 +897,7 @@ export default function ARManagementPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-content-secondary">SLA escalation tracking — accounts approaching or past deadlines</p>
-            <button onClick={handleSlaCheck} disabled={checkingSLA} className="flex items-center gap-2 bg-red-500 text-white rounded-lg px-4 py-2 text-sm hover:bg-red-600 transition-colors disabled:opacity-50">{checkingSLA ? 'Checking…' : 'Run SLA Check'}</button>
+            <button onClick={handleSlaCheck} disabled={checkingSLA} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-dark transition-colors disabled:opacity-50">{checkingSLA ? 'Checking…' : 'Run SLA Check'}</button>
           </div>
           <div className="grid grid-cols-4 gap-3">
             <div className="card p-4 text-center"><p className="text-xl font-bold text-red-500">7</p><p className="text-[10px] text-content-tertiary mt-1">Past SLA</p></div>
