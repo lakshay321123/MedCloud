@@ -509,7 +509,7 @@ function ProviderView() {
           <button onClick={processNote} className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-deep transition-colors">
             <Sparkles size={13} /> Process Note
           </button>
-          <button onClick={() => { stopRecording(); setUiState('review_patient') }} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-separator text-content-secondary hover:text-content-primary text-xs transition-colors">
+          <button onClick={() => { stopRecording(); setUiState('review_patient') }} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-separator text-content-secondary hover:text-content-secondary text-xs transition-colors">
             <Square size={12} /> Stop
           </button>
         </div>
@@ -832,7 +832,7 @@ function ProviderView() {
                   } catch {
                     toast.warning('Draft saved locally')
                   }
-                }} className="px-4 py-2.5 rounded-lg border border-separator text-content-secondary text-sm transition-colors hover:border-brand/30 hover:text-content-primary">Save Draft</button>
+                }} className="px-4 py-2.5 rounded-lg border border-separator text-content-secondary text-sm transition-colors hover:border-brand/30 hover:text-content-secondary">Save Draft</button>
               </div>
             )}
           </div>
@@ -880,7 +880,7 @@ function ProviderView() {
                     <textarea value={referralLetter} onChange={e => setReferralLetter(e.target.value)} rows={14}
                       className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs font-mono resize-none outline-none focus:border-brand/40 leading-relaxed" />
                     <button onClick={() => { navigator.clipboard.writeText(referralLetter); toast.success('Copied to clipboard') }}
-                      className="mt-2 w-full border border-separator rounded-lg py-2 text-xs text-content-secondary hover:text-content-primary transition-colors">
+                      className="mt-2 w-full border border-separator rounded-lg py-2 text-xs text-content-secondary hover:text-content-secondary transition-colors">
                       Copy to Clipboard
                     </button>
                   </div>

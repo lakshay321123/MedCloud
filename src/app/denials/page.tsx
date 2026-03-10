@@ -430,7 +430,7 @@ export default function DenialsPage() {
           <div className="flex items-center gap-2">
             {/* Payer filter */}
             <select value={templateFilter} onChange={e => setTemplateFilter(e.target.value)}
-              className="bg-surface-elevated border border-separator rounded-lg px-2 py-1 text-xs text-content-primary outline-none focus:border-brand/40">
+              className="bg-surface-elevated border border-separator rounded-lg px-2 py-1 text-xs text-content-secondary outline-none focus:border-brand/40">
               {US_PAYERS.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
             <button onClick={openNewTemplate}
@@ -489,26 +489,26 @@ export default function DenialsPage() {
                   <label className="block text-xs text-content-secondary mb-1">Template Name *</label>
                   <input value={templateForm.name} onChange={e => setTemplateForm(f => ({ ...f, name: e.target.value }))}
                     placeholder="e.g. Medical Necessity — UHC"
-                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40" />
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40" />
                 </div>
                 <div>
                   <label className="block text-xs text-content-secondary mb-1">Payer</label>
                   <select value={templateForm.payer} onChange={e => setTemplateForm(f => ({ ...f, payer: e.target.value }))}
-                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40">
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40">
                     {US_PAYERS.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs text-content-secondary mb-1">Category</label>
                   <select value={templateForm.category} onChange={e => setTemplateForm(f => ({ ...f, category: e.target.value }))}
-                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40">
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40">
                     {TEMPLATE_CATS.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs text-content-secondary mb-1">Default Appeal Level</label>
                   <select value={templateForm.level} onChange={e => setTemplateForm(f => ({ ...f, level: e.target.value }))}
-                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40">
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40">
                     <option>L1</option><option>L2</option><option>L3</option>
                   </select>
                 </div>
@@ -519,7 +519,7 @@ export default function DenialsPage() {
                 <textarea value={templateForm.body} onChange={e => setTemplateForm(f => ({ ...f, body: e.target.value }))}
                   placeholder="Dear [PAYER] Appeals Department,&#10;&#10;RE: Appeal — Claim [CLAIM_NUMBER]&#10;Patient: [PATIENT_NAME]&#10;..."
                   rows={10}
-                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 font-mono resize-y" />
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary outline-none focus:border-brand/40 font-mono resize-y" />
               </div>
               <div className="flex gap-2 justify-end pt-1">
                 <button onClick={() => setShowTemplateModal(false)} className="px-4 py-2 text-sm text-content-secondary hover:text-content-primary transition-colors">Cancel</button>

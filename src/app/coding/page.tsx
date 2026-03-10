@@ -240,7 +240,7 @@ function AddCodeRow({ type, onAdd }: { type: 'ICD' | 'CPT'; onAdd: (code: string
         placeholder={`Search ${type} code or description...`}
         value={query}
         onChange={e => setQuery(e.target.value)}
-        className="w-full bg-surface-elevated border border-separator rounded px-2 py-1.5 text-[12px] focus:border-brand/40 outline-none text-content-primary"
+        className="w-full bg-surface-elevated border border-separator rounded px-2 py-1.5 text-[12px] focus:border-brand/40 outline-none text-content-secondary"
       />
       {query.length >= 2 && results.length > 0 && (
         <div className="mt-1 border border-separator rounded-lg overflow-hidden max-h-40 overflow-y-auto">
@@ -336,13 +336,13 @@ function InlineDocPreview({ patientId, label }: { patientId?: string; label?: st
           <div className="flex items-center gap-2 ml-auto shrink-0">
             {docs.length > 1 && (
               <select value={selectedDocId || ''} onChange={e => setSelectedDocId(e.target.value)}
-                className="bg-surface-elevated border border-separator rounded px-2 py-1 text-[11px] text-content-primary max-w-[180px]">
+                className="bg-surface-elevated border border-separator rounded px-2 py-1 text-[11px] text-content-secondary max-w-[180px]">
                 {docs.map(d => <option key={d.id} value={d.id}>{d.file_name}</option>)}
               </select>
             )}
             {docs.length === 1 && <span className="text-[10px] text-content-tertiary truncate max-w-[140px]">{docs[0].file_name}</span>}
             <button onClick={() => setFullscreen(true)}
-              className="text-[10px] px-2 py-1 rounded border border-separator text-content-secondary hover:text-content-primary hover:border-brand/40 transition-colors whitespace-nowrap">
+              className="text-[10px] px-2 py-1 rounded border border-separator text-content-secondary hover:text-content-secondary hover:border-brand/40 transition-colors whitespace-nowrap">
               ⛶ Fullscreen
             </button>
           </div>
@@ -405,34 +405,34 @@ function CodingRulesPanel() {
       <p className="text-[11px] text-content-tertiary">Rules are automatically applied by AI when generating codes. E.g. &quot;For Aetna, always add modifier 25 to E/M with injection&quot;</p>
       {showAdd && (
         <div className="space-y-2 p-3 bg-surface-elevated rounded-lg border border-separator">
-          <input value={form.rule_name} onChange={e => setForm(p => ({...p, rule_name: e.target.value}))} placeholder="Rule name (e.g. Aetna modifier 25)" className="w-full bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-primary" />
-          <input value={form.payer_name} onChange={e => setForm(p => ({...p, payer_name: e.target.value}))} placeholder="Payer (blank = all payers)" className="w-full bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-primary" />
+          <input value={form.rule_name} onChange={e => setForm(p => ({...p, rule_name: e.target.value}))} placeholder="Rule name (e.g. Aetna modifier 25)" className="w-full bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-secondary" />
+          <input value={form.payer_name} onChange={e => setForm(p => ({...p, payer_name: e.target.value}))} placeholder="Payer (blank = all payers)" className="w-full bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-secondary" />
           <div className="grid grid-cols-3 gap-2">
-            <select value={form.condition_field} onChange={e => setForm(p => ({...p, condition_field: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-primary">
+            <select value={form.condition_field} onChange={e => setForm(p => ({...p, condition_field: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-secondary">
               <option value="diagnosis">IF Diagnosis</option>
               <option value="cpt_code">IF CPT Code</option>
               <option value="specialty">IF Specialty</option>
               <option value="visit_type">IF Visit Type</option>
               <option value="age">IF Patient Age</option>
             </select>
-            <select value={form.condition_operator} onChange={e => setForm(p => ({...p, condition_operator: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-primary">
+            <select value={form.condition_operator} onChange={e => setForm(p => ({...p, condition_operator: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-secondary">
               <option value="contains">contains</option>
               <option value="equals">equals</option>
               <option value="starts_with">starts with</option>
               <option value="greater_than">&gt;</option>
               <option value="less_than">&lt;</option>
             </select>
-            <input value={form.condition_value} onChange={e => setForm(p => ({...p, condition_value: e.target.value}))} placeholder="Value" className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-primary" />
+            <input value={form.condition_value} onChange={e => setForm(p => ({...p, condition_value: e.target.value}))} placeholder="Value" className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-secondary" />
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <select value={form.action_type} onChange={e => setForm(p => ({...p, action_type: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-primary">
+            <select value={form.action_type} onChange={e => setForm(p => ({...p, action_type: e.target.value}))} className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-secondary">
               <option value="auto_code">→ Auto-code to</option>
               <option value="add_modifier">→ Add modifier</option>
               <option value="replace_code">→ Replace code</option>
               <option value="flag_review">→ Flag for review</option>
               <option value="deny_code">→ Never use code</option>
             </select>
-            <input value={form.action_value} onChange={e => setForm(p => ({...p, action_value: e.target.value}))} placeholder="e.g. 99214-25, E11.65" className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-primary" />
+            <input value={form.action_value} onChange={e => setForm(p => ({...p, action_value: e.target.value}))} placeholder="e.g. 99214-25, E11.65" className="bg-surface-default border border-separator rounded px-2 py-1.5 text-xs text-content-secondary" />
           </div>
           <div className="flex gap-2">
             <button onClick={() => setShowAdd(false)} className="flex-1 border border-separator rounded py-1.5 text-xs text-content-secondary">Cancel</button>
@@ -1340,7 +1340,7 @@ export default function CodingPage() {
                                 value={quickSoap.specialty}
                                 onChange={e => setQuickSoap(p => ({ ...p, specialty: e.target.value }))}
                                 placeholder="e.g. Cardiology, Internal Medicine, Family Practice"
-                                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[12px] text-content-primary placeholder:text-content-tertiary focus:border-brand/40 outline-none"
+                                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[12px] text-content-secondary placeholder:text-content-tertiary focus:border-brand/40 outline-none"
                               />
                             </div>
                             <div>
@@ -1350,7 +1350,7 @@ export default function CodingPage() {
                                 value={quickSoap.assessment}
                                 onChange={e => setQuickSoap(p => ({ ...p, assessment: e.target.value }))}
                                 placeholder="e.g. Type 2 diabetes mellitus with peripheral neuropathy, HTN, hyperlipidemia"
-                                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[12px] text-content-primary placeholder:text-content-tertiary focus:border-brand/40 outline-none resize-none"
+                                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[12px] text-content-secondary placeholder:text-content-tertiary focus:border-brand/40 outline-none resize-none"
                               />
                             </div>
                             <div>
@@ -1360,7 +1360,7 @@ export default function CodingPage() {
                                 value={quickSoap.plan}
                                 onChange={e => setQuickSoap(p => ({ ...p, plan: e.target.value }))}
                                 placeholder="e.g. Follow-up in 3 months, A1C ordered, metformin dose adjustment, gabapentin added"
-                                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[12px] text-content-primary placeholder:text-content-tertiary focus:border-brand/40 outline-none resize-none"
+                                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[12px] text-content-secondary placeholder:text-content-tertiary focus:border-brand/40 outline-none resize-none"
                               />
                             </div>
                             <div className="flex gap-2 pt-1">
@@ -1400,7 +1400,7 @@ export default function CodingPage() {
                             }
                           }}
                           placeholder="e.g. add modifier 25, use E11.65 instead, remove 36415..."
-                          className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-[11px] text-content-primary placeholder:text-content-tertiary focus:border-brand/40 outline-none"
+                          className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-[11px] text-content-secondary placeholder:text-content-tertiary focus:border-brand/40 outline-none"
                         />
                         <button
                           onClick={() => {
@@ -1481,7 +1481,7 @@ export default function CodingPage() {
                               <div className="mt-2 pl-6">
                                 <input autoFocus placeholder="Search ICD-10 code or description..." value={editSearch}
                                   onChange={e => setEditSearch(e.target.value)}
-                                  className="w-full bg-surface-elevated border border-separator rounded-lg px-2 py-1.5 text-[12px] text-content-primary focus:border-brand/40 outline-none" />
+                                  className="w-full bg-surface-elevated border border-separator rounded-lg px-2 py-1.5 text-[12px] text-content-secondary focus:border-brand/40 outline-none" />
                                 {editSearch.length >= 2 && (
                                   <div className="mt-1 border border-separator rounded-lg overflow-hidden">
                                     {getDemoIcdMatches(editSearch).map(result => (
@@ -1579,7 +1579,7 @@ export default function CodingPage() {
                               <div className="mt-2 pl-6">
                                 <input autoFocus placeholder="Search CPT code or description..." value={editSearch}
                                   onChange={e => setEditSearch(e.target.value)}
-                                  className="w-full bg-surface-elevated border border-separator rounded-lg px-2 py-1.5 text-[12px] text-content-primary focus:border-brand/40 outline-none" />
+                                  className="w-full bg-surface-elevated border border-separator rounded-lg px-2 py-1.5 text-[12px] text-content-secondary focus:border-brand/40 outline-none" />
                                 {editSearch.length >= 2 && (
                                   <div className="mt-1 border border-separator rounded-lg overflow-hidden">
                                     {getDemoCptMatches(editSearch).map(result => (
@@ -1708,7 +1708,7 @@ export default function CodingPage() {
               placeholder="Describe your question about this note's documentation..."
               value={queryText}
               onChange={e => setQueryText(e.target.value)}
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] resize-none focus:border-brand/40 outline-none text-content-primary"
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] resize-none focus:border-brand/40 outline-none text-content-secondary"
             />
             <div className="flex gap-2 mt-3">
               <button onClick={() => setShowQueryModal(false)} className="flex-1 border border-separator rounded-lg py-2 text-[13px] text-content-secondary">Cancel</button>
@@ -1741,7 +1741,7 @@ export default function CodingPage() {
             <select
               value={holdReason}
               onChange={e => setHoldReason(e.target.value)}
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-primary mb-4"
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary mb-4"
             >
               <option value="">Select reason...</option>
               {['Awaiting additional documentation', 'Awaiting doctor query response', 'Payer policy clarification needed', 'Supervisor review required', 'Duplicate chart — investigating'].map(r => (

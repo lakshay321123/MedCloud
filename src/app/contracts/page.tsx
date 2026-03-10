@@ -137,7 +137,7 @@ export default function ContractsPage() {
           <div className="relative">
             <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-content-tertiary" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search payer or client…"
-              className="w-full bg-surface-elevated rounded-btn pl-8 pr-3 py-2 text-[12px] text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-1 focus:ring-brand/30 border border-separator" />
+              className="w-full bg-surface-elevated rounded-btn pl-8 pr-3 py-2 text-[12px] text-content-secondary placeholder:text-content-tertiary focus:outline-none focus:ring-1 focus:ring-brand/30 border border-separator" />
           </div>
           <div className="flex-1 overflow-y-auto space-y-2">
             {filtered.map(c => (
@@ -205,7 +205,7 @@ export default function ContractsPage() {
                             <td className="py-2.5 pr-3">
                               {editingRow === row.cpt ? (
                                 <input defaultValue={row.contractedRate} autoFocus onBlur={() => setEditingRow(null)}
-                                  className="w-20 bg-surface-elevated border border-brand/40 rounded px-1.5 py-0.5 text-[12px] text-content-primary focus:outline-none" />
+                                  className="w-20 bg-surface-elevated border border-brand/40 rounded px-1.5 py-0.5 text-[12px] text-content-secondary focus:outline-none" />
                               ) : (
                                 <span className="text-content-primary font-medium">${row.contractedRate}</span>
                               )}
@@ -221,9 +221,9 @@ export default function ContractsPage() {
                         ))}
                         {addingCpt && (
                           <tr className="border-b border-separator bg-brand/5">
-                            <td className="py-2 pr-3"><input value={newCpt.cpt} onChange={e=>setNewCpt(p=>({...p,cpt:e.target.value}))} placeholder="99213" className="w-20 bg-surface-elevated border border-brand/40 rounded px-1.5 py-0.5 text-[12px] text-content-primary focus:outline-none font-mono"/></td>
-                            <td className="py-2 pr-3"><input value={newCpt.description} onChange={e=>setNewCpt(p=>({...p,description:e.target.value}))} placeholder="Description" className="w-full bg-surface-elevated border border-brand/40 rounded px-1.5 py-0.5 text-[12px] text-content-primary focus:outline-none"/></td>
-                            <td className="py-2 pr-3"><input value={newCpt.contractedRate} onChange={e=>setNewCpt(p=>({...p,contractedRate:e.target.value}))} placeholder="0.00" className="w-20 bg-surface-elevated border border-brand/40 rounded px-1.5 py-0.5 text-[12px] text-content-primary focus:outline-none"/></td>
+                            <td className="py-2 pr-3"><input value={newCpt.cpt} onChange={e=>setNewCpt(p=>({...p,cpt:e.target.value}))} placeholder="99213" className="w-20 bg-surface-elevated border border-brand/40 rounded px-1.5 py-0.5 text-[12px] text-content-secondary focus:outline-none font-mono"/></td>
+                            <td className="py-2 pr-3"><input value={newCpt.description} onChange={e=>setNewCpt(p=>({...p,description:e.target.value}))} placeholder="Description" className="w-full bg-surface-elevated border border-brand/40 rounded px-1.5 py-0.5 text-[12px] text-content-secondary focus:outline-none"/></td>
+                            <td className="py-2 pr-3"><input value={newCpt.contractedRate} onChange={e=>setNewCpt(p=>({...p,contractedRate:e.target.value}))} placeholder="0.00" className="w-20 bg-surface-elevated border border-brand/40 rounded px-1.5 py-0.5 text-[12px] text-content-secondary focus:outline-none"/></td>
                             <td colSpan={3} className="py-2 pr-3">
                               <div className="flex gap-2">
                                 <button

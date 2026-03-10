@@ -114,7 +114,7 @@ export default function CodingRulesPage() {
             <div>
               <label className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Client</label>
               <select value={filterClient} onChange={e => setFilterClient(e.target.value)}
-                className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary min-w-[200px]">
+                className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary min-w-[200px]">
                 <option value="">All Clients</option>
                 {clients.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
@@ -122,7 +122,7 @@ export default function CodingRulesPage() {
             <div>
               <label className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Payer</label>
               <input value={filterPayer} onChange={e => setFilterPayer(e.target.value)} placeholder="Filter by payer name..."
-                className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary min-w-[200px]" />
+                className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary min-w-[200px]" />
             </div>
             <div className="ml-auto">
               <button onClick={() => { setShowAdd(true); setEditingId(null) }}
@@ -147,7 +147,7 @@ export default function CodingRulesPage() {
                 <input value={form.english_rule} onChange={e => setForm(p => ({ ...p, english_rule: e.target.value }))}
                   onKeyDown={e => e.key === 'Enter' && convertEnglishToRule()}
                   placeholder='e.g. "For Aetna, always add modifier 25 when E/M is billed with injection" or "Never bill 99215 for this client"'
-                  className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-2.5 text-sm text-content-primary placeholder:text-content-tertiary focus:border-brand/40 outline-none" />
+                  className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-2.5 text-sm text-content-secondary placeholder:text-content-tertiary focus:border-brand/40 outline-none" />
                 <button onClick={convertEnglishToRule} disabled={!form.english_rule}
                   className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-mid disabled:opacity-40 whitespace-nowrap flex items-center gap-1">
                   <Zap size={13} /> Convert
@@ -190,7 +190,7 @@ export default function CodingRulesPage() {
               <p className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold mb-3">Condition → Action</p>
               <div className="grid grid-cols-3 gap-3 mb-3">
                 <select value={form.condition_field} onChange={e => setForm(p => ({ ...p, condition_field: e.target.value }))}
-                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary">
                   <option value="diagnosis">IF Diagnosis (ICD)</option>
                   <option value="cpt_code">IF CPT Code</option>
                   <option value="specialty">IF Provider Specialty</option>
@@ -201,7 +201,7 @@ export default function CodingRulesPage() {
                   <option value="em_level">IF E/M Level</option>
                 </select>
                 <select value={form.condition_operator} onChange={e => setForm(p => ({ ...p, condition_operator: e.target.value }))}
-                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary">
                   <option value="contains">contains</option>
                   <option value="equals">equals</option>
                   <option value="starts_with">starts with</option>
@@ -210,11 +210,11 @@ export default function CodingRulesPage() {
                   <option value="less_than">less than</option>
                 </select>
                 <input value={form.condition_value} onChange={e => setForm(p => ({ ...p, condition_value: e.target.value }))} placeholder="Value"
-                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" />
+                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <select value={form.action_type} onChange={e => setForm(p => ({ ...p, action_type: e.target.value }))}
-                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary">
                   <option value="auto_code">→ Auto-assign code</option>
                   <option value="add_modifier">→ Add modifier</option>
                   <option value="replace_code">→ Replace code with</option>
@@ -226,7 +226,7 @@ export default function CodingRulesPage() {
                 </select>
                 <input value={form.action_value} onChange={e => setForm(p => ({ ...p, action_value: e.target.value }))}
                   placeholder="e.g. 99214-25, E11.65, or custom instruction..."
-                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" />
+                  className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary" />
               </div>
             </div>
 

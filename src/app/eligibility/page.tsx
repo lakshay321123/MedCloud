@@ -202,7 +202,7 @@ function SingleCheckTab() {
           <div>
             <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Patient *</label>
             <select value={patientId} onChange={e => { setPatientId(e.target.value); setResult(null) }}
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary">
               <option value="">Select patient</option>
               {patients.map(p => (
                 <option key={p.id} value={p.id}>
@@ -220,17 +220,17 @@ function SingleCheckTab() {
           <div>
             <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Date of Service</label>
             <input type="date" value={dos} onChange={e => setDos(e.target.value)}
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary" />
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary" />
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Member ID</label>
             <input value={memberId} onChange={e => setMemberId(e.target.value)} placeholder="Auto-filled from patient"
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary" />
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary placeholder:text-content-tertiary" />
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Group Number</label>
             <input value={groupNumber} onChange={e => setGroupNumber(e.target.value)} placeholder="Optional"
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary" />
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary placeholder:text-content-tertiary" />
           </div>
           <div className="flex items-end">
             <button onClick={handleVerify} disabled={checking || !patientId || !payerId}
@@ -338,7 +338,7 @@ function BatchCheckTab() {
           <div>
             <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">Appointment Date</label>
             <input type="date" value={batchDate} onChange={e => setBatchDate(e.target.value)}
-              className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary" />
+              className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary" />
           </div>
           <button onClick={handleBatch} disabled={running}
             className="bg-brand text-white rounded-lg px-5 py-2 text-xs font-medium disabled:opacity-50 hover:bg-brand-deep transition-colors flex items-center gap-2">
@@ -393,7 +393,7 @@ function BatchCheckTab() {
                   win.focus()
                   setTimeout(() => { win.print(); win.close() }, 400)
                 }}
-                className="flex items-center gap-1 border border-separator text-content-secondary hover:text-content-primary rounded px-2.5 py-1 transition-colors">
+                className="flex items-center gap-1 border border-separator text-content-secondary hover:text-content-secondary rounded px-2.5 py-1 transition-colors">
                 <FileText size={11} /> Export PDF
               </button>
             </div>
@@ -452,10 +452,10 @@ function CheckHistoryTab({ checks, loading }: { checks: ApiEligibilityCheck[]; l
         <div className="relative flex-1 max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search patient name…"
-            className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
+            className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-xs text-content-secondary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
         </div>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary">
           <option value="">All statuses</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
@@ -582,10 +582,10 @@ function PriorAuthTab({ auths, loading, onRefresh }: { auths: ApiPriorAuth[]; lo
         <div className="relative flex-1 max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search auth #, patient, payer, CPT…"
-            className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
+            className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-xs text-content-secondary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
         </div>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary">
           <option value="">All statuses</option>
           <option value="pending">Pending</option><option value="submitted">Submitted</option>
           <option value="approved">Approved</option><option value="denied">Denied</option>
@@ -901,7 +901,7 @@ function LabeledSelect({ label, value, onChange, options }: { label: string; val
     <div>
       <label className="text-[10px] uppercase tracking-wider text-content-tertiary mb-1 block">{label}</label>
       <select value={value} onChange={e => onChange(e.target.value)}
-        className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
+        className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary">
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </div>

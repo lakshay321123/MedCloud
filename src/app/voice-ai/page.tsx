@@ -315,20 +315,20 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
       {/* Filters */}
       <div className="flex gap-2 flex-wrap">
         <select value={outcomeFilter} onChange={e => setOutcomeFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary">
           <option value="">All Outcomes</option>
           <option value="success">Resolved</option>
           <option value="failed">Failed</option>
         </select>
         <select value={payerFilter} onChange={e => setPayerFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary">
           <option value="">All Payers</option>
           {payers.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
         <input type="date" value={dateRange.start} onChange={e => setDateRange(d => ({ ...d, start: e.target.value }))}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary" />
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary" />
         <input type="date" value={dateRange.end} onChange={e => setDateRange(d => ({ ...d, end: e.target.value }))}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary" />
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary" />
         {(outcomeFilter || payerFilter || dateRange.start || dateRange.end) && (
           <button onClick={() => { setOutcomeFilter(''); setPayerFilter(''); setDateRange({ start: '', end: '' }) }}
             className="text-xs text-content-tertiary hover:text-red-500 px-2 transition-colors">✕ Clear</button>
@@ -508,12 +508,12 @@ function SingleCallForm({ agentKey, launchCall, singleLoading }: { agentKey: 'ci
             <div>
               <label className="block text-[10px] text-content-tertiary mb-0.5">Column Name</label>
               <input value={extraLabel} onChange={e => setExtraLabel(e.target.value)} placeholder="e.g. Auth_Number"
-                className="w-full bg-surface-elevated border border-separator rounded-lg px-2.5 py-1.5 text-xs text-content-primary outline-none focus:border-brand/40" />
+                className="w-full bg-surface-elevated border border-separator rounded-lg px-2.5 py-1.5 text-xs text-content-secondary outline-none focus:border-brand/40" />
             </div>
             <div>
               <label className="block text-[10px] text-content-tertiary mb-0.5">Value</label>
               <input value={extraValue} onChange={e => setExtraValue(e.target.value)} placeholder="e.g. AUTH-99182"
-                className="w-full bg-surface-elevated border border-separator rounded-lg px-2.5 py-1.5 text-xs text-content-primary outline-none focus:border-brand/40" />
+                className="w-full bg-surface-elevated border border-separator rounded-lg px-2.5 py-1.5 text-xs text-content-secondary outline-none focus:border-brand/40" />
             </div>
           </div>
         </div>
@@ -640,7 +640,7 @@ function CampaignLauncherTab() {
 
               {parsed.practiceNames.length > 1 && (
                 <select value={filterPractice} onChange={e => setFilterPractice(e.target.value)}
-                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary">
                   <option value="all">All Practices ({parsed.rows.length})</option>
                   {parsed.practiceNames.map(p => { const cnt = parsed.rows.filter(r => (r.variables['practicename'] ?? r.variables['Practice_Name'] ?? '') === p).length; return <option key={p} value={p}>{p} ({cnt})</option> })}
                 </select>
@@ -876,7 +876,7 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
                   <button onClick={() => setPlaybook('')} className="text-[10px] text-content-tertiary hover:text-content-secondary transition-colors">Discard</button>
                 </div>
                 <textarea value={playbook} onChange={e => setPlaybook(e.target.value)}
-                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-3 text-xs text-content-primary font-mono leading-relaxed resize-none outline-none focus:border-brand/40"
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-3 text-xs text-content-secondary font-mono leading-relaxed resize-none outline-none focus:border-brand/40"
                   rows={12} />
                 <div className="flex gap-2">
                   <button onClick={() => generatePlaybook(selectedPayer)} disabled={generating}
@@ -1018,7 +1018,7 @@ function PromptEditorTab() {
         ) : (
           <>
             <textarea value={localPrompt} onChange={e => setLocalPrompt(e.target.value)}
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-4 py-3 text-xs text-content-primary font-mono leading-relaxed resize-none outline-none focus:border-brand/40 h-[500px]"
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-4 py-3 text-xs text-content-secondary font-mono leading-relaxed resize-none outline-none focus:border-brand/40 h-[500px]"
               placeholder={`${activeAgent === 'chris' ? 'Chris' : 'Cindy'}'s prompt will load here from Retell…`} />
 
             <div className="flex gap-2">

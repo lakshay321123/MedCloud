@@ -110,7 +110,7 @@ function UsersTab() {
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary"/>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search users..."
-            className="bg-surface-elevated border border-separator rounded-lg pl-8 pr-3 py-1.5 text-xs text-content-primary w-60"/>
+            className="bg-surface-elevated border border-separator rounded-lg pl-8 pr-3 py-1.5 text-xs text-content-secondary w-60"/>
         </div>
         <button onClick={()=>setShowAdd(true)} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors">
           <Plus size={14}/> Add User
@@ -152,21 +152,21 @@ function UsersTab() {
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Full Name *</label>
-                <input value={newUser.name} onChange={e=>setNewUser(p=>({...p,name:e.target.value}))} placeholder="Jane Smith" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40"/>
+                <input value={newUser.name} onChange={e=>setNewUser(p=>({...p,name:e.target.value}))} placeholder="Jane Smith" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Email *</label>
-                <input value={newUser.email} onChange={e=>setNewUser(p=>({...p,email:e.target.value}))} placeholder="jane@cosentus.ai" type="email" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40"/>
+                <input value={newUser.email} onChange={e=>setNewUser(p=>({...p,email:e.target.value}))} placeholder="jane@cosentus.ai" type="email" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Role</label>
-                <select value={newUser.role} onChange={e=>setNewUser(p=>({...p,role:e.target.value}))} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40">
+                <select value={newUser.role} onChange={e=>setNewUser(p=>({...p,role:e.target.value}))} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40">
                   {Object.keys(roleColors).map(r=><option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Assign to Clients</label>
-                <input value={newUser.clients} onChange={e=>setNewUser(p=>({...p,clients:e.target.value}))} placeholder="IFP, GMC (or leave blank for All)" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40"/>
+                <input value={newUser.clients} onChange={e=>setNewUser(p=>({...p,clients:e.target.value}))} placeholder="IFP, GMC (or leave blank for All)" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <button onClick={handleCreateUser} disabled={creating}
                 className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors disabled:opacity-50">{creating ? 'Creating…' : 'Create User & Send Invite'}</button>
@@ -185,7 +185,7 @@ function UsersTab() {
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Full Name</label>
-                <input value={editingUser.name} onChange={e=>setEditingUser(u=>u?{...u,name:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40"/>
+                <input value={editingUser.name} onChange={e=>setEditingUser(u=>u?{...u,name:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Email</label>
@@ -193,13 +193,13 @@ function UsersTab() {
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Role</label>
-                <select value={editingUser.role} onChange={e=>setEditingUser(u=>u?{...u,role:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40">
+                <select value={editingUser.role} onChange={e=>setEditingUser(u=>u?{...u,role:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40">
                   {Object.keys(roleColors).map(r=><option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Assigned Clients</label>
-                <input value={editingUser.clients} onChange={e=>setEditingUser(u=>u?{...u,clients:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40"/>
+                <input value={editingUser.clients} onChange={e=>setEditingUser(u=>u?{...u,clients:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <button onClick={async ()=>{
                 // NOTE: MedCloud user management is via Cognito — role/group changes
@@ -265,7 +265,7 @@ function OrgsTab() {
                   placeholder="e.g. City Medical Group"
                   value={orgData.name}
                   onChange={e => setOrgData(p => ({ ...p, name: e.target.value }))}
-                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary"
                 />
               </div>
               <div>
@@ -274,7 +274,7 @@ function OrgsTab() {
                   placeholder="Jane Smith"
                   value={orgData.contact}
                   onChange={e => setOrgData(p => ({ ...p, contact: e.target.value }))}
-                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary"
                 />
               </div>
               <div>
@@ -283,7 +283,7 @@ function OrgsTab() {
                   placeholder="jane@org.com"
                   value={orgData.email}
                   onChange={e => setOrgData(p => ({ ...p, email: e.target.value }))}
-                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -292,7 +292,7 @@ function OrgsTab() {
                   <select
                     value={orgData.region}
                     onChange={e => setOrgData(p => ({ ...p, region: e.target.value }))}
-                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary">
                     <option value="us">🇺🇸 US</option><option value="uae">🇦🇪 UAE</option>
                   </select>
                 </div>
@@ -301,7 +301,7 @@ function OrgsTab() {
                   <select
                     value={orgData.pricing}
                     onChange={e => setOrgData(p => ({ ...p, pricing: e.target.value }))}
-                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary">
                     {['% Revenue','Per-Claim','Flat Fee','Hybrid'].map(p=><option key={p}>{p}</option>)}
                   </select>
                 </div>
@@ -392,14 +392,14 @@ function AuditLogTab() {
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary"/>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by user..."
-            className="bg-surface-elevated border border-separator rounded-lg pl-8 pr-3 py-1.5 text-xs text-content-primary w-48"/>
+            className="bg-surface-elevated border border-separator rounded-lg pl-8 pr-3 py-1.5 text-xs text-content-secondary w-48"/>
         </div>
         <select value={actionFilter} onChange={e=>setActionFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary">
           <option value="">All Actions</option>
           {['VIEW','CREATE','UPDATE','DELETE','EXPORT'].map(a=><option key={a}>{a}</option>)}
         </select>
-        <button onClick={()=>toast.info('Audit export queued. You will receive an email.')} className="ml-auto text-xs border border-separator text-content-secondary px-3 py-1.5 rounded-lg hover:text-content-primary transition-colors">
+        <button onClick={()=>toast.info('Audit export queued. You will receive an email.')} className="ml-auto text-xs border border-separator text-content-secondary px-3 py-1.5 rounded-lg hover:text-content-secondary transition-colors">
           Export
         </button>
       </div>

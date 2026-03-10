@@ -308,7 +308,7 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
               <span>📷 {isUAE ? 'Scan Emirates ID' : "Scan Driver's License"} to auto-fill demographics</span>
             </button>
             <div className="flex gap-2">
-              <button type="button" onClick={onClose} className="flex-1 bg-surface-elevated border border-separator rounded-lg py-2.5 text-sm text-content-secondary hover:text-content-primary transition-colors">Cancel</button>
+              <button type="button" onClick={onClose} className="flex-1 bg-surface-elevated border border-separator rounded-lg py-2.5 text-sm text-content-secondary hover:text-content-secondary transition-colors">Cancel</button>
               <button
                 type="button"
                 disabled={createPatient.loading}
@@ -399,7 +399,7 @@ function PatientMessagesTab({ patientId, clientId, patientName }: { patientId: s
         <input value={msgInput} onChange={e => setMsgInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && msgInput.trim()) handleSend() }}
           placeholder="Message back office about this patient…"
-          className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary placeholder:text-content-tertiary" />
+          className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary placeholder:text-content-tertiary" />
         <button onClick={handleSend} className="px-3 py-1.5 bg-brand text-white rounded-lg text-xs font-medium hover:bg-brand-deep transition-colors">Send</button>
       </div>
     </div>
@@ -789,7 +789,7 @@ export default function PatientsPage() {
       <div className="mb-4 relative max-w-sm">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary"/>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, phone, ID..."
-          className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-4 py-2 text-sm text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40 transition-colors"/>
+          className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-4 py-2 text-sm text-content-secondary placeholder:text-content-tertiary outline-none focus:border-brand/40 transition-colors"/>
       </div>
       <div className="card overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm min-w-[600px]">
           <thead><tr className="border-b border-separator text-xs text-content-secondary">

@@ -65,7 +65,7 @@ function ConfigModal({ integration, onClose }: { integration: Integration; onClo
             <div key={l}>
               <label className="text-xs text-content-secondary block mb-1">{l}</label>
               <input type={l==='API Key'?'password':'text'} placeholder={p}
-                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"/>
+                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary"/>
             </div>
           ))}
           <div className="flex items-center justify-between">
@@ -195,8 +195,8 @@ export default function IntegrationsPage() {
                 </div>
                 <div className="flex gap-1.5">
                   <button onClick={()=>setConfigFor(intg)} className="flex-1 text-[10px] font-medium border border-brand/30 text-brand py-1.5 rounded hover:bg-brand/10 transition-colors">Configure</button>
-                  {intg.status==='connected'&&<button onClick={()=>toast.info(`Testing ${intg.name}...`)} className="flex-1 text-[10px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-primary transition-colors">Test</button>}
-                  <button onClick={()=>setLogsFor(intg)} className="flex-1 text-[10px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-primary transition-colors">Logs</button>
+                  {intg.status==='connected'&&<button onClick={()=>toast.info(`Testing ${intg.name}...`)} className="flex-1 text-[10px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-secondary transition-colors">Test</button>}
+                  <button onClick={()=>setLogsFor(intg)} className="flex-1 text-[10px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-secondary transition-colors">Logs</button>
                 </div>
               </div>
             ))}

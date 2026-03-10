@@ -310,7 +310,7 @@ export default function ScanSubmitPage() {
                 <>
                   <input value={patientSearch} onChange={e => setPatientSearch(e.target.value)}
                     placeholder="Search patient by name…"
-                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2.5 text-sm text-content-primary placeholder:text-content-tertiary outline-none focus:border-brand/40" />
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2.5 text-sm text-content-secondary placeholder:text-content-tertiary outline-none focus:border-brand/40" />
                   {patientSearch && (
                     <div className="border border-separator rounded-lg overflow-hidden">
                       {(filteredPatients as any[]).slice(0, 6).map((p: any) => (
@@ -343,10 +343,10 @@ export default function ScanSubmitPage() {
               ) : (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className="text-xs text-content-secondary block mb-1">First Name *</label><input value={newPatient.firstName} onChange={e => setNewPatient(p => ({ ...p, firstName: e.target.value }))} placeholder="John" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" /></div>
-                    <div><label className="text-xs text-content-secondary block mb-1">Last Name *</label><input value={newPatient.lastName} onChange={e => setNewPatient(p => ({ ...p, lastName: e.target.value }))} placeholder="Smith" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" /></div>
-                    <div><label className="text-xs text-content-secondary block mb-1">Date of Birth</label><input type="date" value={newPatient.dob} onChange={e => setNewPatient(p => ({ ...p, dob: e.target.value }))} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" /></div>
-                    <div><label className="text-xs text-content-secondary block mb-1">Phone</label><input value={newPatient.phone} onChange={e => setNewPatient(p => ({ ...p, phone: e.target.value }))} placeholder="(949) 555-0100" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary" /></div>
+                    <div><label className="text-xs text-content-secondary block mb-1">First Name *</label><input value={newPatient.firstName} onChange={e => setNewPatient(p => ({ ...p, firstName: e.target.value }))} placeholder="John" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary" /></div>
+                    <div><label className="text-xs text-content-secondary block mb-1">Last Name *</label><input value={newPatient.lastName} onChange={e => setNewPatient(p => ({ ...p, lastName: e.target.value }))} placeholder="Smith" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary" /></div>
+                    <div><label className="text-xs text-content-secondary block mb-1">Date of Birth</label><input type="date" value={newPatient.dob} onChange={e => setNewPatient(p => ({ ...p, dob: e.target.value }))} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary" /></div>
+                    <div><label className="text-xs text-content-secondary block mb-1">Phone</label><input value={newPatient.phone} onChange={e => setNewPatient(p => ({ ...p, phone: e.target.value }))} placeholder="(949) 555-0100" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary" /></div>
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => { setPatientId('NEW'); setShowNewPatient(false) }} className="flex-1 bg-brand text-white rounded-lg py-2 text-sm font-medium hover:bg-brand-deep transition-colors">Use New Patient</button>
@@ -402,7 +402,7 @@ export default function ScanSubmitPage() {
                 </div>
               )}
               <div className="flex gap-3">
-                <button onClick={() => setStep(1)} className="px-4 py-2.5 border border-separator text-content-secondary rounded-lg text-sm hover:text-content-primary transition-colors">← Back</button>
+                <button onClick={() => setStep(1)} className="px-4 py-2.5 border border-separator text-content-secondary rounded-lg text-sm hover:text-content-secondary transition-colors">← Back</button>
                 <button onClick={uploadAndClassifyAll} disabled={files.length === 0}
                   className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-brand-deep disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors">
                   <Upload size={14} /> Upload & AI Tag ({files.length} file{files.length !== 1 ? 's' : ''}) →
@@ -443,7 +443,7 @@ export default function ScanSubmitPage() {
                 <>
                   <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
                     placeholder="Optional notes for the billing team…"
-                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary resize-none outline-none focus:border-brand/40" />
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary placeholder:text-content-tertiary resize-none outline-none focus:border-brand/40" />
 
                   <div className="bg-surface-elevated rounded-lg p-3 space-y-1.5 text-sm">
                     <div className="flex justify-between"><span className="text-content-secondary">Patient</span><span className="font-medium">{(selectedPatient as any)?.name || 'New Walk-in'}</span></div>

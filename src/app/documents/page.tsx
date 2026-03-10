@@ -173,7 +173,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
               </div>
             )}
             <input value={patientSearch} onChange={e=>setPatientSearch(e.target.value)} placeholder="Search patient name..."
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary mb-2"/>
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary placeholder:text-content-tertiary mb-2"/>
             {patientSearch.trim().length > 0 && (
               <div className="max-h-32 overflow-y-auto border border-separator rounded-lg mb-2">
                 {apiPatients.filter((p: any) => p.name.toLowerCase().includes(patientSearch.toLowerCase())).slice(0,5).map((p: any) => (
@@ -207,7 +207,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
       </div>
       <div className="p-4 border-t border-separator">
         <button onClick={handleDownload} disabled={downloading}
-          className="w-full flex items-center justify-center gap-2 border border-separator text-content-secondary hover:text-content-primary rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50">
+          className="w-full flex items-center justify-center gap-2 border border-separator text-content-secondary hover:text-content-secondary rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50">
           <Download size={14}/> {downloading ? 'Preparing…' : 'Download'}
         </button>
       </div>
@@ -262,7 +262,7 @@ function AllDocsTab() {
       <div className="relative mb-3">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary"/>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search documents, patients..."
-          className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary"/>
+          className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-sm text-content-secondary placeholder:text-content-tertiary"/>
       </div>
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         {types.map(t=>(
@@ -273,7 +273,7 @@ function AllDocsTab() {
         ))}
         <div className="ml-auto">
           <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}
-            className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
+            className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary">
             <option value="">All Statuses</option>
             {['Linked','Unlinked','Processing'].map(s=><option key={s} value={s}>{s}</option>)}
           </select>
@@ -392,7 +392,7 @@ function UnlinkedQueueTab() {
                 <div className="flex gap-2 items-center">
                   <div className="relative">
                     <input value={patientSearch[d.id]||''} onChange={e=>{setPatientSearch(p=>({...p,[d.id]:e.target.value})); setSelectedPatientIds(p=>({...p,[d.id]:''}))}}
-                      placeholder="Patient name..." className="bg-surface-elevated border border-separator rounded px-2 py-1 text-xs text-content-primary w-40"/>
+                      placeholder="Patient name..." className="bg-surface-elevated border border-separator rounded px-2 py-1 text-xs text-content-secondary w-40"/>
                     {(patientSearch[d.id]||'').length > 0 && !selectedPatientIds[d.id] && (
                       <div className="absolute top-full left-0 mt-1 z-50 bg-surface-secondary border border-separator rounded-lg shadow-xl max-h-28 overflow-y-auto w-48">
                         {ptList.filter((p:any)=>p.name.toLowerCase().includes((patientSearch[d.id]||'').toLowerCase())).slice(0,4).map((p:any)=>(
@@ -462,7 +462,7 @@ function FaxCenterTab() {
               <td className="px-4 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${statusStyle(f.status)}`}>{f.status}</span></td>
               <td className="px-4 py-3 text-xs text-brand">{f.document??'—'}</td>
               <td className="px-4 py-3 flex gap-1">
-                {f.document&&<button onClick={e=>{e.stopPropagation(); if (f.document?.startsWith('http')) { window.open(f.document, '_blank'); toast.info('Opening fax...') } else { toast.error('Invalid document link') }}} className="text-[10px] text-content-secondary hover:text-content-primary border border-separator px-2 py-1 rounded transition-colors">View</button>}
+                {f.document&&<button onClick={e=>{e.stopPropagation(); if (f.document?.startsWith('http')) { window.open(f.document, '_blank'); toast.info('Opening fax...') } else { toast.error('Invalid document link') }}} className="text-[10px] text-content-secondary hover:text-content-secondary border border-separator px-2 py-1 rounded transition-colors">View</button>}
                 {f.direction==='Inbound'&&<button onClick={e=>{e.stopPropagation();toast.info('Open fax in preview drawer to link to a patient')}} className="text-[10px] text-brand hover:underline px-2 py-1">Link</button>}
               </td>
             </tr>
@@ -507,19 +507,19 @@ function FaxCenterTab() {
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">To (fax number)</label>
-                <input value={faxTo} onChange={e => setFaxTo(e.target.value)} placeholder="e.g. 1-800-555-0001" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"/>
+                <input value={faxTo} onChange={e => setFaxTo(e.target.value)} placeholder="e.g. 1-800-555-0001" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary"/>
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">From</label>
-                <input value={faxFrom} onChange={e => setFaxFrom(e.target.value)} placeholder="Your fax line" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"/>
+                <input value={faxFrom} onChange={e => setFaxFrom(e.target.value)} placeholder="Your fax line" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary"/>
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Subject</label>
-                <input value={faxSubject} onChange={e => setFaxSubject(e.target.value)} placeholder="Re: Patient..." className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary"/>
+                <input value={faxSubject} onChange={e => setFaxSubject(e.target.value)} placeholder="Re: Patient..." className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary"/>
               </div>
               <div>
                 <label className="text-xs text-content-secondary block mb-1">Attach Document</label>
-                <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                <select className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary">
                   <option value="">Select document...</option>
                   <option value=''>No faxes available</option>
                 </select>

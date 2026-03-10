@@ -632,7 +632,7 @@ export default function PaymentPostingPage() {
                 <td className="px-3 py-2 font-mono text-[11px]">{row.adjCode}</td>
                 <td className="px-3 py-2 max-w-[180px] truncate" title={row.adjReason}>{row.adjReason}</td>
                 <td className="px-3 py-2">{row.notes ? <button onClick={() => setValue(row.id, 'notes', `${row.notes} (reviewed)`)} className="text-brand-deep dark:text-brand-deep"><StickyNote size={14} /></button> : <button onClick={() => setValue(row.id, 'notes', 'Add note')} className="text-content-tertiary"><StickyNote size={14} /></button>}</td>
-                <td className="px-3 py-2"><select value={row.action} onChange={e => setValue(row.id, 'action', e.target.value)} className="bg-surface-elevated border border-separator rounded-btn px-2 py-1 text-content-primary text-[13px]">
+                <td className="px-3 py-2"><select value={row.action} onChange={e => setValue(row.id, 'action', e.target.value)} className="bg-surface-elevated border border-separator rounded-btn px-2 py-1 text-content-secondary text-[13px]">
                   <option value="post">✓ Post</option><option value="deny_route">❌ → Denials</option><option value="patient_bill">💳 → Patient Bill</option><option value="review">👁 Review</option><option value="posted">✅ Posted</option>
                 </select></td>
               </tr>
@@ -702,11 +702,11 @@ export default function PaymentPostingPage() {
                 </div>
                 <div>
                   <label className="text-xs text-content-secondary block mb-1">Deposit Amount ($) *</label>
-                  <input type="number" step="0.01" min="0" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} placeholder="12345.67" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40" />
+                  <input type="number" step="0.01" min="0" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} placeholder="12345.67" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40" />
                 </div>
                 <div>
                   <label className="text-xs text-content-secondary block mb-1">Deposit Date *</label>
-                  <input type="date" value={depositDate} onChange={e => setDepositDate(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-brand/40" />
+                  <input type="date" value={depositDate} onChange={e => setDepositDate(e.target.value)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40" />
                 </div>
                 <button disabled={savingDeposit || !depositAmount || isNaN(parseFloat(depositAmount))} onClick={async () => {
                   if (!depositAmount || isNaN(parseFloat(depositAmount)) || !depositDate) return

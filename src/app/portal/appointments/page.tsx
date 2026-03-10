@@ -234,7 +234,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
               toast.success(`${appt.patientName} checked in`)
               onClose() 
             }}
-              className="flex-1 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 rounded-lg py-2.5 text-sm font-medium hover:bg-cyan-500/20 transition-colors">
+              className="flex-1 bg-brand/10 text-brand-dark border border-brand/20 rounded-lg py-2.5 text-sm font-medium hover:bg-brand/15 transition-colors">
               Check In
             </button>
           )}
@@ -418,10 +418,10 @@ export default function AppointmentsPage() {
                 {/* Actions */}
                 <div className="flex gap-1.5 mt-3 ml-[calc(3.5rem+9px)]">
                   <button onClick={() => setDrawerAppt(a)}
-                    className="text-[10px] px-2.5 py-1.5 border border-separator text-content-secondary rounded hover:text-content-primary transition-colors">View</button>
+                    className="text-[10px] px-2.5 py-1.5 border border-separator text-content-secondary rounded hover:text-content-secondary transition-colors">View</button>
                   {['booked','confirmed'].includes(currentStatus) && (
                     <button onClick={() => checkIn(a.id, a.patientName)}
-                      className="text-[10px] px-2.5 py-1.5 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 rounded hover:bg-cyan-500/20 transition-colors">Check In</button>
+                      className="text-[10px] px-2.5 py-1.5 bg-brand/10 text-brand-dark border border-brand/20 rounded hover:bg-brand/15 transition-colors">Check In</button>
                   )}
                   {['booked','confirmed'].includes(currentStatus) && (
                     <button onClick={() => markNoShow(a.id, a.patientName)}

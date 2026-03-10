@@ -447,7 +447,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
           <span className="ml-auto text-[15px] font-bold text-content-primary">${claim.billed.toLocaleString()}</span>
           {!editMode ? (
             <button onClick={() => setEditMode(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-surface-elevated border border-separator rounded-btn text-content-secondary hover:text-content-primary ml-2">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-surface-elevated border border-separator rounded-btn text-content-secondary hover:text-content-secondary ml-2">
               <Edit3 size={13} /> Edit
             </button>
           ) : (
@@ -457,7 +457,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                 <Save size={13} /> {savingEdit ? 'Saving…' : 'Save'}
               </button>
               <button onClick={() => setEditMode(false)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-surface-elevated border border-separator rounded-btn text-content-secondary hover:text-content-primary">
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-surface-elevated border border-separator rounded-btn text-content-secondary hover:text-content-secondary">
                 Cancel
               </button>
             </>
@@ -503,7 +503,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                     <label className="text-[11px] text-content-tertiary block mb-1.5">Place of Service</label>
                     <select value={editedClaim.placeOfService}
                       onChange={e => setEditedClaim(p => ({ ...p, placeOfService: e.target.value }))}
-                      className="w-full bg-surface-elevated border border-separator rounded-btn px-2.5 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40">
+                      className="w-full bg-surface-elevated border border-separator rounded-btn px-2.5 py-2 text-[13px] text-content-secondary focus:outline-none focus:border-brand/40">
                       {POS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </div>
@@ -615,12 +615,12 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                         </div>
                       )}
                       <button onClick={statusAction} disabled={transitioning} className="w-full bg-brand text-white rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{transitioning ? 'Submitting…' : 'Submit to Clearinghouse'}</button>
-                      <button onClick={handleGenerateEDI} disabled={generatingEDI} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generatingEDI ? 'Generating EDI…' : 'Generate 837P EDI'}</button>
+                      <button onClick={handleGenerateEDI} disabled={generatingEDI} className="w-full bg-surface-elevated border border-separator text-content-secondary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generatingEDI ? 'Generating EDI…' : 'Generate 837P EDI'}</button>
                     </>
                   )}
                   {(claim.status === 'submitted' || claim.status === 'in_process' || claim.status === 'accepted') && (
                     <>
-                      {claim.status === 'submitted' && <button onClick={handleGenerateEDI} disabled={generatingEDI} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generatingEDI ? 'Generating EDI…' : 'Generate 837P EDI'}</button>}
+                      {claim.status === 'submitted' && <button onClick={handleGenerateEDI} disabled={generatingEDI} className="w-full bg-surface-elevated border border-separator text-content-secondary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generatingEDI ? 'Generating EDI…' : 'Generate 837P EDI'}</button>}
                       <button onClick={handleStatusInquiry} disabled={generating276} className="w-full bg-brand/10 border border-brand/30 text-brand-dark rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generating276 ? 'Generating…' : '276 Status Inquiry'}</button>
                     </>
                   )}
@@ -630,14 +630,14 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                       <button onClick={() => handleTransition('appealed')} disabled={transitioning} className="w-full bg-brand-deep text-white rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{transitioning ? 'Appealing…' : 'Appeal Claim'}</button>
                     </>
                   )}
-                  {claim.status === 'paid' && <button onClick={statusAction} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium">View Payment</button>}
+                  {claim.status === 'paid' && <button onClick={statusAction} className="w-full bg-surface-elevated border border-separator text-content-secondary rounded-btn py-2.5 text-[13px] font-medium">View Payment</button>}
                   {(claim.status === 'paid' || claim.status === 'partial_pay') && (
                     <>
                       <button onClick={handleUnderpaymentCheck} disabled={checkingUnderpay} className="w-full bg-brand-pale0/10 border border-brand-light/30 text-brand-deep rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{checkingUnderpay ? 'Checking…' : 'Check Underpayment'}</button>
                       <button onClick={handleTriggerSecondary} disabled={triggeringSecondary} className="w-full bg-brand/10 border border-brand/20 text-brand-dark rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{triggeringSecondary ? 'Creating…' : 'File Secondary Claim'}</button>
                     </>
                   )}
-                  <button onClick={handleGenerate837I} disabled={generating837I} className="w-full bg-surface-elevated border border-separator text-content-primary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generating837I ? 'Generating…' : 'Generate 837I Institutional'}</button>
+                  <button onClick={handleGenerate837I} disabled={generating837I} className="w-full bg-surface-elevated border border-separator text-content-secondary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generating837I ? 'Generating…' : 'Generate 837I Institutional'}</button>
                   {ediOutput && (
                     <div className="mt-2">
                       <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-1">Generated 837P EDI</p>
@@ -937,7 +937,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                 <input value={msgInput} onChange={e => setMsgInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && sendMessage()}
                   placeholder="Type a message…"
-                  className="flex-1 bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
+                  className="flex-1 bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-secondary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
                 <button onClick={sendMessage} className="bg-brand text-white rounded-btn px-4 py-2 text-[13px]"><MessageCircle size={14} /></button>
               </div>
             </div>
@@ -1122,7 +1122,7 @@ export default function ClaimsPage() {
               <div className="relative">
                 <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-content-tertiary" />
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search patient, claim…"
-                  className="w-full bg-surface-elevated rounded-btn pl-8 pr-3 py-1.5 text-[12px] text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-1 focus:ring-brand/30" />
+                  className="w-full bg-surface-elevated rounded-btn pl-8 pr-3 py-1.5 text-[12px] text-content-secondary placeholder:text-content-tertiary focus:outline-none focus:ring-1 focus:ring-brand/30" />
               </div>
             </div>
 
@@ -1144,9 +1144,9 @@ export default function ClaimsPage() {
               <p className="text-[11px] uppercase tracking-wider font-semibold text-content-tertiary mb-2">Date of Service</p>
               <div className="space-y-2">
                 <input type="date" value={dosFrom} onChange={e => setDosFrom(e.target.value)}
-                  className="w-full bg-surface-elevated rounded-btn px-2 py-1.5 text-[12px] text-content-primary focus:outline-none focus:ring-1 focus:ring-brand/30" />
+                  className="w-full bg-surface-elevated rounded-btn px-2 py-1.5 text-[12px] text-content-secondary focus:outline-none focus:ring-1 focus:ring-brand/30" />
                 <input type="date" value={dosTo} onChange={e => setDosTo(e.target.value)}
-                  className="w-full bg-surface-elevated rounded-btn px-2 py-1.5 text-[12px] text-content-primary focus:outline-none focus:ring-1 focus:ring-brand/30" />
+                  className="w-full bg-surface-elevated rounded-btn px-2 py-1.5 text-[12px] text-content-secondary focus:outline-none focus:ring-1 focus:ring-brand/30" />
               </div>
             </div>
 
@@ -1187,7 +1187,7 @@ export default function ClaimsPage() {
                   URL.revokeObjectURL(url)
                   toast.success(`${selectedRows.length} claims exported`)
                 }}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-btn text-[12px] font-medium bg-surface-elevated text-content-secondary hover:text-content-primary">
+                className="flex items-center gap-1 px-3 py-1.5 rounded-btn text-[12px] font-medium bg-surface-elevated text-content-secondary hover:text-content-secondary">
                 <Download size={12} /> Export CSV
               </button>
               <button onClick={() => setSelectedRows([])} className="ml-auto text-content-tertiary hover:text-content-primary"><X size={14} /></button>
@@ -1377,7 +1377,7 @@ export default function ClaimsPage() {
                     else { toast.success(`837P EDI queued for ${readyClaims.length} claims`) }
                   } catch { toast.success(`837P EDI queued for ${readyClaims.length} claims`) }
                 } else { toast.success(`837P EDI queued for ${readyClaims.length} claims`) }
-              }} className="bg-surface-elevated text-content-primary rounded-lg px-4 py-2 text-xs border border-separator hover:border-brand/40 transition-colors">Generate 837P</button>
+              }} className="bg-surface-elevated text-content-secondary rounded-lg px-4 py-2 text-xs border border-separator hover:border-brand/40 transition-colors">Generate 837P</button>
             <button onClick={() => {
                 const urgent = timelyFilingData?.data?.filter(tf => tf.days_remaining <= 30) || []
                 if (urgent.length === 0) { toast.success('No filing deadlines within 30 days'); return }

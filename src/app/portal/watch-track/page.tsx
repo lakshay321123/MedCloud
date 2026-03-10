@@ -126,8 +126,8 @@ export default function WatchTrackPage() {
         <KPICard label={t('watch','avgDaysToPay')} value="22" icon={<Clock size={20}/>}/>
       </div>
       <div className="flex gap-2 mb-4">
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t("watch","searchClaims")} className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary max-w-xs"/>
-        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t("watch","searchClaims")} className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary max-w-xs"/>
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary">
           <option value="">All Statuses</option>
           {['submitted','in_process','paid','partial_pay','denied','appealed'].map(s=><option key={s} value={s}>{s.replace(/_/g,' ')}</option>)}
         </select>

@@ -162,16 +162,16 @@ function EDIContent() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search type, file, claim…"
-            className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
+            className="w-full bg-surface-elevated border border-separator rounded-lg pl-9 pr-3 py-2 text-xs text-content-secondary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40" />
         </div>
         <select value={dirFilter} onChange={e => setDirFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary">
           <option value="">All Directions</option>
           <option value="outbound">Outbound</option>
           <option value="inbound">Inbound</option>
         </select>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-primary">
+          className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary">
           <option value="">All Statuses</option>
           <option value="pending">Pending</option>
           <option value="sent">Sent</option>

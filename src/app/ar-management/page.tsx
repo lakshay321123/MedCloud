@@ -218,7 +218,7 @@ function LogCallModal({
             <div>
               <label className="text-[11px] text-content-tertiary block mb-1">Call Outcome *</label>
               <select value={outcome} onChange={e => setOutcome(e.target.value)}
-                className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40">
+                className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-secondary focus:outline-none focus:border-brand/40">
                 <option value="">Select outcome…</option>
                 {CALL_OUTCOMES.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
@@ -229,7 +229,7 @@ function LogCallModal({
               <div>
                 <label className="text-[11px] text-content-tertiary block mb-1">Payment Promised Date</label>
                 <input type="date" value={promisedDate} onChange={e => setPromisedDate(e.target.value)}
-                  className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40"/>
+                  className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
             )}
 
@@ -237,26 +237,26 @@ function LogCallModal({
               <div>
                 <label className="text-[11px] text-content-tertiary block mb-1">Reference #</label>
                 <input value={ref} onChange={e => setRef(e.target.value)} placeholder="REF-XXXX"
-                  className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] font-mono text-content-primary focus:outline-none focus:border-brand/40"/>
+                  className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] font-mono text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <div>
                 <label className="text-[11px] text-content-tertiary block mb-1">Rep Name</label>
                 <input value={rep} onChange={e => setRep(e.target.value)} placeholder="Payer rep name"
-                  className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40"/>
+                  className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
             </div>
 
             <div>
               <label className="text-[11px] text-content-tertiary block mb-1">Next Follow-up Date <span className="text-content-tertiary">(auto-suggested: +7 days)</span></label>
               <input type="date" value={followupDate} onChange={e => setFollowupDate(e.target.value)}
-                className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40"/>
+                className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-secondary focus:outline-none focus:border-brand/40"/>
             </div>
 
             <div>
               <label className="text-[11px] text-content-tertiary block mb-1">Notes</label>
               <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
                 placeholder="What did you discuss? Any commitments made?"
-                className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40 resize-none"/>
+                className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-secondary focus:outline-none focus:border-brand/40 resize-none"/>
             </div>
           </div>
           <div className="flex gap-2 px-5 pb-5">
@@ -400,7 +400,7 @@ function ARDrawer({
                   <Phone size={13} /> Voice AI
                 </button>
                 <button onClick={() => setShowCallModal(true)}
-                  className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-xs font-medium hover:text-content-primary transition-colors flex items-center justify-center gap-2">
+                  className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-xs font-medium hover:text-content-secondary transition-colors flex items-center justify-center gap-2">
                   <PhoneCall size={13} /> Log Manual Call
                 </button>
                 <button onClick={async () => {
@@ -419,7 +419,7 @@ function ARDrawer({
                     toast.success(`Follow-up saved for ${followUpDate}`)
                     onClose()
                   } catch { toast.error('Failed to save follow-up') }
-                }} className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-xs font-medium hover:text-content-primary transition-colors">
+                }} className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-xs font-medium hover:text-content-secondary transition-colors">
                   Save Follow-up
                 </button>
                 <button onClick={async () => {
@@ -531,7 +531,7 @@ function ARDrawer({
           {drawerTab === 'notes' && (
             <div className="space-y-3">
               <textarea rows={4} placeholder="Add a note…" value={followUpNote} onChange={e => setFollowUpNote(e.target.value)}
-                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-primary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40 resize-none" />
+                className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40 resize-none" />
               <button onClick={() => {
                 if (!followUpNote.trim()) return
                 toast.success('Note saved')
@@ -589,7 +589,7 @@ function ARDrawer({
                 <div>
                   <label className="text-[11px] text-content-tertiary block mb-1">Reason *</label>
                   <select value={writeoffReason} onChange={e => setWriteoffReason(e.target.value)}
-                    className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:border-brand/40">
+                    className="w-full bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-secondary focus:outline-none focus:border-brand/40">
                     <option value="">Select a reason…</option>
                     <option value="small_balance">Small balance (under threshold)</option>
                     <option value="timely_filing">Timely filing deadline passed</option>

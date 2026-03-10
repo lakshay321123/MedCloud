@@ -178,7 +178,7 @@ export default function MessagesPage() {
                 <div>
                   <label className="text-[11px] text-content-secondary mb-1 block">Type</label>
                   <select value={newEntityType} onChange={e => { setNewEntityType(e.target.value); setNewEntityId('') }}
-                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                    className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary">
                     {['general','patient','claim','appointment'].map(t => (
                       <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>
                     ))}
@@ -188,7 +188,7 @@ export default function MessagesPage() {
                   <div>
                     <label className="text-[11px] text-content-secondary mb-1 block">Patient</label>
                     <select value={newEntityId} onChange={e => setNewEntityId(e.target.value)}
-                      className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                      className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary">
                       <option value="">Select patient…</option>
                       {patients.map((p: any) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
                     </select>
@@ -198,7 +198,7 @@ export default function MessagesPage() {
                   <div>
                     <label className="text-[11px] text-content-secondary mb-1 block">Claim</label>
                     <select value={newEntityId} onChange={e => setNewEntityId(e.target.value)}
-                      className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary">
+                      className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary">
                       <option value="">Select claim…</option>
                       {claims.map((c: any) => <option key={c.id} value={c.id}>{c.claim_number} — {c.patient_name}</option>)}
                     </select>
@@ -209,13 +209,13 @@ export default function MessagesPage() {
                 <label className="text-[11px] text-content-secondary mb-1 block">Subject</label>
                 <input value={newSubject} onChange={e => setNewSubject(e.target.value)}
                   placeholder="Message subject…"
-                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary" />
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary placeholder:text-content-tertiary" />
               </div>
               <div>
                 <label className="text-[11px] text-content-secondary mb-1 block">Message</label>
                 <textarea value={newBody} onChange={e => setNewBody(e.target.value)} rows={4}
                   placeholder="Write your message…"
-                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary resize-none" />
+                  className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary placeholder:text-content-tertiary resize-none" />
               </div>
               <div className="flex justify-end gap-2 pt-1">
                 <button onClick={() => setComposing(false)} className="px-4 py-2 text-sm text-content-secondary hover:text-content-primary">Cancel</button>
@@ -234,7 +234,7 @@ export default function MessagesPage() {
         <div className={`card overflow-hidden flex flex-col ${selected ? 'hidden sm:flex' : 'flex'}`}>
           <div className="p-3 border-b border-separator">
             <select value={filter} onChange={e=>setFilter(e.target.value)}
-              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-primary">
+              className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-xs text-content-secondary">
               <option value="">All Types</option>
               {['patient','claim','submission','appointment','general'].map(t=>(
                 <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>
@@ -295,7 +295,7 @@ export default function MessagesPage() {
               <div className="p-3 border-t border-separator flex gap-2">
                 <button onClick={() => router.push('/documents')} title="Attach from Documents" className="text-content-secondary hover:text-content-primary p-2"><Paperclip size={16}/></button>
                 <input value={reply} onChange={e=>setReply(e.target.value)} placeholder="Type a message..."
-                  className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary"
+                  className="flex-1 bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary placeholder:text-content-tertiary"
                   onKeyDown={e => { if (e.key === 'Enter' && reply.trim()) handleSend() }}/>
                 <button onClick={handleSend} className="bg-brand text-white rounded-lg px-3 py-2 hover:bg-brand-deep"><Send size={16}/></button>
               </div>

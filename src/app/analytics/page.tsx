@@ -316,7 +316,7 @@ export default function AnalyticsPage() {
 
   return (
     <ModuleShell title={t("analytics","title")} subtitle={t("analytics","subtitle")}
-      actions={<button onClick={handleExportCSV} className="flex items-center gap-2 bg-surface-elevated text-content-primary border border-separator rounded-lg px-4 py-2 text-sm hover:bg-surface-secondary transition-colors"><Download size={14}/> Export CSV</button>}>
+      actions={<button onClick={handleExportCSV} className="flex items-center gap-2 bg-surface-elevated text-content-secondary border border-separator rounded-lg px-4 py-2 text-sm hover:bg-surface-secondary transition-colors"><Download size={14}/> Export CSV</button>}>
       <div className='mx-4 mb-4 px-4 py-2.5 bg-brand-pale0/10 border border-brand-light/30 rounded-lg flex items-center gap-2 text-xs text-brand-deep dark:text-brand-deep'>
         <AlertTriangle size={13} className='shrink-0' />
         Analytics connected — live financial reporting
@@ -324,7 +324,7 @@ export default function AnalyticsPage() {
       {/* Global filters */}
       <div className="flex items-center gap-3 mb-5">
         <select value={dateRange} onChange={e => setDateRange(e.target.value)}
-          className="bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-primary focus:outline-none focus:ring-1 focus:ring-brand/30">
+          className="bg-surface-elevated border border-separator rounded-btn px-3 py-2 text-[13px] text-content-secondary focus:outline-none focus:ring-1 focus:ring-brand/30">
           <option value="last30">{t('analytics','last30')}</option>
           <option value="last90">{t('analytics','last90')}</option>
           <option value="ytd">{t('analytics','ytd')}</option>
