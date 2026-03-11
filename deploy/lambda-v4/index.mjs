@@ -698,6 +698,76 @@ async function seedDemoData(orgId) {
       safeLog('info', 'Seeded 3 write-off requests');
     }
 
+    // ── Additional US claims with recent dates for analytics charts ─────────
+    const usClaimCount = await pool.query(`SELECT COUNT(*) FROM claims WHERE org_id=$1 AND submitted_at IS NOT NULL AND submitted_at > NOW() - INTERVAL '6 months'`, [_org]);
+    if (parseInt(usClaimCount.rows[0].count) < 15) {
+      const usClients = await pool.query(`SELECT id FROM clients WHERE org_id=$1 AND region='us' ORDER BY created_at`, [_org]);
+      const usPayers = await pool.query(`SELECT id, name FROM payers WHERE org_id=$1 AND region='us' ORDER BY created_at`, [_org]);
+      const usProviders = await pool.query(`SELECT id FROM providers WHERE org_id=$1 ORDER BY created_at LIMIT 3`, [_org]);
+      const usPatients = await pool.query(`SELECT id, first_name, last_name FROM patients WHERE org_id=$1 ORDER BY created_at LIMIT 15`, [_org]);
+
+      const _uc1 = usClients.rows[0]?.id; const _uc2 = usClients.rows[1]?.id || _uc1;
+      const _up = usPayers.rows.map(p => p.id); const _upr = usProviders.rows.map(p => p.id);
+      const _upt = usPatients.rows;
+      if (_uc1 && _up.length > 0 && _upr.length > 0 && _upt.length > 0) {
+        const statuses = ['paid','paid','paid','paid','paid','submitted','in_process','in_process','denied','denied','partial_pay','accepted','paid','paid','submitted'];
+        const cptCodes = ['99213','99214','99215','99203','99204','93000','80053','87880','71046','20610','99213','99214','96372','36415','99213'];
+        const amounts = [120,180,250,150,200,85,45,35,180,420,120,180,65,30,120];
+        for (let i = 0; i < 15; i++) {
+          const pt = _upt[i % _upt.length];
+          const month = i % 6; // Spread across Oct-Mar
+          const claimId = `d0000000-0000-0000-0000-00000000${(100 + i).toString().padStart(4, '0')}`;
+          await pool.query(`
+            INSERT INTO claims (id, org_id, client_id, patient_id, provider_id, payer_id, claim_number, status, claim_type, dos_from, dos_to, total_charges, billed_amount, submitted_at, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, '837P', $9, $9, $10, $10, $11, $11)
+            ON CONFLICT (id) DO NOTHING
+          `, [
+            claimId, _org, i < 8 ? _uc1 : _uc2, pt.id, _upr[i % _upr.length], _up[i % _up.length],
+            `CLM-2026-${(100 + i).toString().padStart(4, '0')}`, statuses[i],
+            new Date(2025, 9 + month, 5 + (i * 2) % 25).toISOString().split('T')[0],
+            amounts[i],
+            new Date(2025, 9 + month, 8 + (i * 2) % 25).toISOString(),
+          ]).catch(() => {});
+
+          // Add payments for paid claims
+          if (statuses[i] === 'paid' || statuses[i] === 'partial_pay') {
+            await pool.query(`
+              INSERT INTO payments (id, org_id, client_id, claim_id, payer_id, amount_paid, payment_date, check_number, status, created_at)
+              VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, 'posted', NOW())
+              ON CONFLICT DO NOTHING
+            `, [
+              _org, i < 8 ? _uc1 : _uc2, claimId, _up[i % _up.length],
+              statuses[i] === 'partial_pay' ? amounts[i] * 0.6 : amounts[i] * 0.92,
+              new Date(2025, 9 + month, 20 + (i % 8)).toISOString(),
+              `CHK-${30000 + i}`,
+            ]).catch(() => {});
+          }
+
+          // Add denials for denied claims
+          if (statuses[i] === 'denied') {
+            const denialReasons = ['CO-50 Medical necessity', 'CO-4 Missing modifier', 'PR-1 Deductible'];
+            await pool.query(`
+              INSERT INTO denials (id, org_id, client_id, claim_id, payer_id, denial_reason, denial_category, denied_amount, billed_amount, status, created_at)
+              VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $7, 'open', NOW())
+              ON CONFLICT DO NOTHING
+            `, [
+              _org, i < 8 ? _uc1 : _uc2, claimId, _up[i % _up.length],
+              denialReasons[i % denialReasons.length], i % 2 === 0 ? 'medical_necessity' : 'coding',
+              amounts[i],
+            ]).catch(() => {});
+          }
+
+          // Add claim lines
+          await pool.query(`
+            INSERT INTO claim_lines (id, org_id, claim_id, cpt_code, units, charge_amount, line_number)
+            VALUES (gen_random_uuid(), $1, $2, $3, 1, $4, 1)
+            ON CONFLICT DO NOTHING
+          `, [_org, claimId, cptCodes[i], amounts[i]]).catch(() => {});
+        }
+        safeLog('info', 'Seeded 15 additional US claims with payments and denials for analytics');
+      }
+    }
+
   } catch (e) {
     safeLog('error', 'Seed demo data error (non-fatal):', e.message);
   }
