@@ -114,10 +114,12 @@ function ExecutiveDashboard() {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 sm:gap-5">
         <div className="col-span-3 card p-6">
-          <h3 className="text-[15px] font-semibold text-content-primary mb-0.5">
-            {agingBuckets ? t('dashboard','arAgingBuckets') : t('dashboard','revenueTrend')}
-          </h3>
-          {agingBuckets && <p className="text-[11px] text-content-tertiary mb-2">Outstanding claim balances by age bucket</p>}
+          <div className="flex items-baseline gap-3 mb-2">
+            <h3 className="text-[15px] font-semibold text-content-primary">
+              {agingBuckets ? t('dashboard','arAgingBuckets') : t('dashboard','revenueTrend')}
+            </h3>
+            {agingBuckets && <p className="text-[11px] text-content-tertiary">Outstanding claim balances by age bucket</p>}
+          </div>
           <div className="flex items-end gap-3 h-36 px-2 mt-1">
             {agingBuckets
               ? agingBuckets.map((b, i) => (
@@ -216,7 +218,7 @@ function CoderDashboard() {
         <KPICard label={t('dashboard','codedToday')} value={4} icon={<CheckCircle2 size={20} />} trend="up" />
       </div>
       {(pastSLA ?? 0) > 0 && (
-        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-start gap-3">
+        <div className="bg-surface-elevated border border-separator rounded-xl p-4 flex items-start gap-3">
           <AlertTriangle size={16} className="text-black mt-0.5 shrink-0" />
           <div>
             <p className="text-[13px] font-semibold text-black">{(pastSLA ?? 0)} chart{(pastSLA ?? 0) > 1 ? 's' : ''} past 24-hour SLA</p>
@@ -255,7 +257,7 @@ function BillerDashboard() {
         <KPICard label={t('dashboard','chargeLagAlerts')} value={chargeLagCount} icon={<Clock size={20} />} />
       </div>
       {scrubFailed > 0 && (
-        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-surface-elevated border border-separator rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-start gap-3">
             <AlertTriangle size={16} className="text-black mt-0.5" />
             <div>
@@ -267,7 +269,7 @@ function BillerDashboard() {
         </div>
       )}
       {chargeLagCount > 0 && (
-        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-surface-elevated border border-separator rounded-xl p-4 flex items-center justify-between">
           <div>
             <p className="text-[13px] font-semibold text-black">{chargeLagCount} appointments completed 48h+ with no claim</p>
             <p className="text-[12px] text-content-secondary">Mar 1 — Dr. Martinez × 2, Dr. Patel × 1</p>
@@ -304,7 +306,7 @@ function ARDashboard() {
         <KPICard label={t('dashboard','accountsWorked')} value={12} icon={<CheckCircle2 size={20} />} />
       </div>
       {appealsNearDeadline > 0 && (
-        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-surface-elevated border border-separator rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-start gap-3">
             <AlertTriangle size={16} className="text-black mt-0.5" />
             <div>
@@ -343,7 +345,7 @@ function PostingDashboard() {
         <KPICard label={t('dashboard','postedToday')} value={24} icon={<CheckCircle2 size={20} />} />
       </div>
       {pastSLAERAs > 0 && (
-        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-surface-elevated border border-separator rounded-xl p-4 flex items-center justify-between">
           <p className="text-[13px] font-semibold text-black">{pastSLAERAs} ERA past 48-hour posting SLA — requires immediate action</p>
           <Link href="/payment-posting" className="text-[12px] text-brand font-medium">Post Now →</Link>
         </div>
@@ -373,7 +375,7 @@ function ProviderDashboard() {
         <KPICard label={t('dashboard','unsignedNotes')} value={unsignedNotes} icon={<Clock size={20} />} />
       </div>
       {(unsignedNotes ?? 0) > 0 && (
-        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-surface-elevated border border-separator rounded-xl p-4 flex items-center justify-between">
           <p className="text-[13px] font-semibold text-black">{(unsignedNotes ?? 0)} note{(unsignedNotes ?? 0) > 1 ? 's' : ''} unsigned for more than 24 hours</p>
           <Link href="/ai-scribe" className="text-[12px] text-brand font-medium">Sign Now →</Link>
         </div>
@@ -482,10 +484,10 @@ function SupervisorDashboard() {
       ) : (
         <div className="space-y-3">
           {exceptions.map((exc, i) => (
-            <div key={i} className={`rounded-xl p-4 border flex items-center justify-between ${exc.color === 'denied' ? 'bg-[#065E76]/10 border-[#065E76]/30' : 'bg-brand-pale0/10 border-brand-light/30'}`}>
+            <div key={i} className="rounded-xl p-4 border border-separator bg-surface-elevated flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className={`text-2xl font-bold ${exc.color === 'denied' ? 'text-[#065E76]' : 'text-black'}`}>{exc.count}</span>
-                <p className={`text-[13px] font-medium ${exc.color === 'denied' ? 'text-[#065E76]' : 'text-black'}`}>{exc.label}</p>
+                <span className="text-2xl font-bold text-black">{exc.count}</span>
+                <p className="text-[13px] font-medium text-black">{exc.label}</p>
               </div>
               <Link href={exc.href} className="text-[12px] text-brand font-medium shrink-0">Resolve →</Link>
             </div>
