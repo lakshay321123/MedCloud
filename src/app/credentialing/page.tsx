@@ -9,14 +9,7 @@ import { useCredentialing, useUpdateCredentialing, useCreateCredentialing, useCr
 import { useApp } from '@/lib/context'
 import { UAE_CLIENT_NAMES, US_CLIENT_NAMES } from '@/lib/utils/region'
 
-const providers = [
-  { id: 'PRV-001', name: 'Dr. Martinez', npi: '1234567890', client: 'Irvine Family Practice', license: '2027-06-30', malpractice: '2026-12-31', dea: '2027-03-15', caqh: 'Current', payers: 4, status: 'active' },
-  { id: 'PRV-002', name: 'Dr. Patel', npi: '0987654321', client: 'Patel Cardiology', license: '2027-09-30', malpractice: '2026-04-15', dea: '2027-01-20', caqh: 'Current', payers: 5, status: 'expiring' },
-  { id: 'PRV-003', name: 'Dr. Al Zaabi', npi: '1122334455', client: 'Gulf Medical Center', license: '2027-12-31', malpractice: '2026-11-30', dea: 'N/A', caqh: 'N/A', payers: 3, status: 'active' },
-  { id: 'PRV-004', name: 'Dr. Noor', npi: '5544332211', client: 'Dubai Wellness Clinic', license: '2026-05-31', malpractice: '2026-05-31', dea: 'N/A', caqh: 'N/A', payers: 2, status: 'expiring' },
-  { id: 'PRV-005', name: 'Dr. Williams', npi: '6677889900', client: 'Patel Cardiology', license: '2027-03-31', malpractice: '2026-09-30', dea: '2027-06-30', caqh: 'Due in 30d', payers: 3, status: 'active' },
-  { id: 'PRV-006', name: 'Dr. Amira Khalil', npi: 'Pending', client: 'Gulf Medical Center', license: 'Pending', malpractice: 'Pending', dea: 'N/A', caqh: 'N/A', payers: 0, status: 'onboarding' },
-]
+const providers: Array<{ id: string; name: string; npi: string; client: string; license: string; malpractice: string; dea: string; caqh: string; payers: number; status: string }> = []
 
 type Provider = typeof providers[0]
 

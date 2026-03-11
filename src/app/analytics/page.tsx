@@ -386,6 +386,7 @@ export default function AnalyticsPage() {
             {/* Revenue Trend */}
             <div className="card p-5">
               <h3 className="text-[14px] font-semibold text-content-primary mb-4">Revenue Trend</h3>
+              {monthlyRevenue.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={monthlyRevenue}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" />
@@ -395,6 +396,9 @@ export default function AnalyticsPage() {
                   <Line type="monotone" dataKey="revenue" stroke="#00B5D6" strokeWidth={2} dot={{ fill: '#00B5D6', r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
+              ) : (
+              <div className="flex items-center justify-center h-[200px] text-[13px] text-content-tertiary">Revenue trend will appear when claims have payment history</div>
+              )}
             </div>
 
             {/* Payer Mix */}
@@ -417,6 +421,7 @@ export default function AnalyticsPage() {
             {/* Collection Rate by Client */}
             <div className="card p-5">
               <h3 className="text-[14px] font-semibold text-content-primary mb-4">Collection Rate by Client</h3>
+              {clientCollectionRates.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={clientCollectionRates} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" horizontal={false} />
@@ -428,11 +433,15 @@ export default function AnalyticsPage() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              ) : (
+              <div className="flex items-center justify-center h-[200px] text-[13px] text-content-tertiary">Collection rates will appear when payments are posted</div>
+              )}
             </div>
 
             {/* Denial Rate Trend */}
             <div className="card p-5">
               <h3 className="text-[14px] font-semibold text-content-primary mb-4">Denial Rate Trend</h3>
+              {denialTrend.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={denialTrend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" />
@@ -445,6 +454,9 @@ export default function AnalyticsPage() {
                   <Line type="monotone" dataKey="net" name="Net Denial Rate" stroke="#00B5D6" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
+              ) : (
+              <div className="flex items-center justify-center h-[200px] text-[13px] text-content-tertiary">Denial trends will appear as claims are processed</div>
+              )}
             </div>
           </div>
         </div>
