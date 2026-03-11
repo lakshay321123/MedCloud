@@ -465,7 +465,7 @@ function CodingRulesPanel() {
 
 export default function CodingPage() {
   const router = useRouter()
-  const { selectedClient, currentUser } = useApp()
+  const { selectedClient, currentUser, clients } = useApp()
   const { t } = useT()
   const [reassignTarget, setReassignTarget] = useState<string | null>(null)
   const { toast } = useToast()
@@ -765,7 +765,7 @@ export default function CodingPage() {
     })
   }
 
-  const isUAEClient = uaeClientIds.includes(item?.clientId || '')
+  const isUAEClient = clients.some(c => c.id === (item?.clientId || '') && c.region === 'uae')
 
   const tabClass = (active: boolean) =>
     `px-3 py-2 text-[12px] font-medium ${active ? 'text-brand border-b-2 border-brand' : 'text-content-secondary'}`
