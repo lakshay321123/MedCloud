@@ -6,6 +6,18 @@ import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 import {
+  useEligibilityChecks, useBatchEligibility, usePriorAuths, useCreatePriorAuth,
+  useUpdatePriorAuth, usePatients, usePayers, useCreateTask,
+} from '@/lib/hooks'
+import { api } from '@/lib/api-client'
+import type { ApiEligibilityCheck, ApiPriorAuth, ApiPatient } from '@/lib/hooks'
+import { ErrorBanner } from '@/components/shared/ApiStates'
+// Region filtering handled by backend
+import {
+  ShieldCheck, AlertTriangle, CheckCircle2, Clock, Search, X, Plus,
+  RefreshCw, ChevronDown, ChevronUp, FileText, Phone, Calendar,
+  User, Building2, CreditCard, Activity, Eye, Save,
+} from 'lucide-react'
 
 // Format copay/deductible — handles both number and object shapes
 function fmtMoney(v: unknown): string {
@@ -19,19 +31,6 @@ function fmtMoney(v: unknown): string {
   }
   return '—'
 }
-
-  useEligibilityChecks, useBatchEligibility, usePriorAuths, useCreatePriorAuth,
-  useUpdatePriorAuth, usePatients, usePayers, useCreateTask,
-} from '@/lib/hooks'
-import { api } from '@/lib/api-client'
-import type { ApiEligibilityCheck, ApiPriorAuth, ApiPatient } from '@/lib/hooks'
-import { ErrorBanner } from '@/components/shared/ApiStates'
-// Region filtering handled by backend
-import {
-  ShieldCheck, AlertTriangle, CheckCircle2, Clock, Search, X, Plus,
-  RefreshCw, ChevronDown, ChevronUp, FileText, Phone, Calendar,
-  User, Building2, CreditCard, Activity, Eye, Save,
-} from 'lucide-react'
 
 /* ── status helpers ──────────────────────────────────────────────────────── */
 
