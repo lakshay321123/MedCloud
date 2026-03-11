@@ -146,7 +146,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .then(res => {
         const data = Array.isArray(res) ? res : res?.data || []
         const mapped: ClientOrg[] = data.map((c: { id: string; name: string; region: string; ehr_mode?: string }) => ({
-          id: c.id, name: c.name, region: c.region || 'us', ehr_mode: c.ehr_mode || 'external_ehr',
+          id: c.id, name: c.name, region: (c.region || 'us') as 'us' | 'uae', ehr_mode: (c.ehr_mode || 'external_ehr') as 'medcloud_ehr' | 'external_ehr',
         }))
         if (mapped.length > 0) setApiClients(mapped)
       })
