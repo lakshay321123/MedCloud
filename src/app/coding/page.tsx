@@ -14,7 +14,7 @@ import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import {
   BrainCircuit, CheckCircle2, Activity, Clock, MessageCircle, Mic, FileUp,
   ChevronDown, ChevronUp, Play, FileText, AlertTriangle, Plus, PauseCircle,
-  X, Receipt
+  X, Receipt, Zap
 } from 'lucide-react'
 
 // ── Demo code lookup tables ─────────────────────────────────────────────────
@@ -477,6 +477,7 @@ export default function CodingPage() {
     patientName: c.patient_name || 'Unknown Patient',
     clientId: c.client_id,
     clientName: c.client_name || '',
+    encounter_id: c.encounter_id || '',
     source: 'upload' as 'upload' | 'ai_scribe',
     dos: c.created_at ? c.created_at.split('T')[0] : '',
     provider: c.provider_name || '',
@@ -716,6 +717,7 @@ export default function CodingPage() {
   const [docOpen, setDocOpen] = useState<'note' | 'superbill' | 'split' | null>(null)
   const [queryText, setQueryText] = useState('')
   const [holdReason, setHoldReason] = useState('')
+  const [capturingCharges, setCapturingCharges] = useState(false)
 
   const item = queue.find(q => q.id === selected)
   const cachedCodes = item ? aiCodeCache[item.id] : null
@@ -1657,6 +1659,35 @@ export default function CodingPage() {
                     toast.success(`CPT ${code} added manually`)
                   }} />
                 </div>
+
+                {/* AI Charge Capture */}
+                {item?.encounter_id && (
+                  <button
+                    onClick={async () => {
+                      if (!item.encounter_id) return
+                      setCapturingCharges(true)
+                      try {
+                        const result = await api.post<any>(`/encounters/${item.encounter_id}/charge-capture`, {})
+                        if (result?.charges?.length > 0) {
+                          toast.success(`AI captured ${result.charges.length} charge(s) — $${result.total_estimated_charge?.toLocaleString() || '0'} estimated`)
+                        } else {
+                          toast.info('AI charge capture complete — no additional charges found')
+                        }
+                        if (result?.missing_documentation?.length > 0) {
+                          toast.warning(`Documentation gaps: ${result.missing_documentation.slice(0, 2).join('; ')}`)
+                        }
+                      } catch (err) {
+                        toast.error(`Charge capture failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+                      } finally {
+                        setCapturingCharges(false)
+                      }
+                    }}
+                    disabled={capturingCharges}
+                    className="w-full bg-brand-deep/10 text-brand-deep border border-brand-deep/20 rounded-btn px-3 py-2 text-[13px] font-medium inline-flex items-center justify-center gap-2 hover:bg-brand-deep/20 transition-colors disabled:opacity-50 mt-3 mb-1"
+                  >
+                    {capturingCharges ? <><Activity size={14} className="animate-spin" /> Capturing…</> : <><Zap size={14} /> AI Charge Capture</>}
+                  </button>
+                )}
 
                 {/* Action Buttons */}
                 <div className="flex gap-2 mt-4">

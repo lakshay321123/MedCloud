@@ -147,6 +147,7 @@ export interface ApiCodingItem {
   patient_id?: string
   provider_id?: string
   soap_note_id?: string
+  encounter_id?: string
   status?: string
   received_at?: string
   priority?: Priority
