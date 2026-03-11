@@ -1499,7 +1499,7 @@ async function orgQuery(orgId, sql, params = []) {
 
 // ─── Generic CRUD ──────────────────────────────────────────────────────────────
 // Tables that are org-level (no client_id column) — skip region filtering
-const ORG_LEVEL_TABLES = new Set(['users', 'payers', 'providers', 'organizations', 'audit_log', 'coding_rules', 'fee_schedules', 'scrub_rules', 'notifications', 'baa_tracking', 'credentialing', 'bank_deposits', 'invoice_configs', 'clients']);
+const ORG_LEVEL_TABLES = new Set(['users', 'payers', 'providers', 'organizations', 'audit_log', 'coding_rules', 'fee_schedules', 'scrub_rules', 'notifications', 'baa_tracking', 'credentialing', 'bank_deposits', 'invoice_configs', 'clients', 'eligibility_checks', 'documents', 'prior_auth_requests', 'era_files']);
 
 async function list(table, orgId, clientId, extra = '', regionClientIds = null) {
   let q = `SELECT * FROM ${table} WHERE org_id = $1`;
@@ -7005,7 +7005,7 @@ export const handler = async (event) => {
           LEFT JOIN patients p ON d.patient_id = p.id
           WHERE d.org_id = $1`;
         const params = [effectiveOrgId];
-        if (clientId) { params.push(clientId); q += ` AND d.client_id = $${params.length}`; }
+        if (clientId) { params.push(clientId); q += ` AND (d.client_id = $${params.length} OR d.client_id IS NULL)`; }
         if (qs.patient_id) { params.push(qs.patient_id); q += ` AND d.patient_id = $${params.length}`; }
         q += ' ORDER BY d.created_at DESC LIMIT 500';
         const rows = (await orgQuery(effectiveOrgId, q, params)).rows;
@@ -7989,7 +7989,7 @@ export const handler = async (event) => {
                  LEFT JOIN patients p ON ec.patient_id = p.id
                  WHERE ec.org_id = $1`;
         const params = [effectiveOrgId];
-        if (clientId) { params.push(clientId); q += ` AND ec.client_id = $${params.length}`; }
+        if (clientId) { params.push(clientId); q += ` AND (ec.client_id = $${params.length} OR ec.client_id IS NULL)`; }
         q += ' ORDER BY ec.created_at DESC';
         const rows = (await pool.query(q, params)).rows;
         return respond(200, { data: rows, meta: { total: rows.length } });

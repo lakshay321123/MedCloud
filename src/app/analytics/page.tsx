@@ -216,7 +216,7 @@ export default function AnalyticsPage() {
     })
     const result = Object.values(byClient).map(cl => {
       const rate = cl.billed > 0 ? Math.round((cl.paid / cl.billed) * 100) : 0
-      return { name: cl.name.split(' ')[0], rate, fill: rate >= 95 ? '#00B5D6' : rate >= 85 ? '#36C2DE' : '#047285' }
+      return { name: cl.name.split(' ')[0], rate, fill: '#065E76' }
     })
     if (result.length === 0) return []
     return result

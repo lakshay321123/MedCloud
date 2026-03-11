@@ -201,7 +201,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
                 <div><span className="text-content-tertiary block">Payer</span>{patient.insurance.payer}</div>
                 <div><span className="text-content-tertiary block">Member ID</span>{patient.insurance.memberId}</div>
                 <div><span className="text-content-tertiary block">Policy</span>{patient.insurance.policyNo}</div>
-                {patient.insurance.copay !== undefined && <div><span className="text-content-tertiary block">Copay</span>${patient.insurance.copay}</div>}
+                {patient.insurance.copay !== undefined && <div><span className="text-content-tertiary block">Copay</span>${typeof patient.insurance.copay === 'object' ? JSON.stringify(patient.insurance.copay) : patient.insurance.copay}</div>}
               </div>
               <button onClick={() => router.push(`/eligibility?patientId=${appt.patientId}`)}
                 className="mt-2 w-full flex items-center justify-center gap-2 bg-brand text-white border border-brand/20 rounded-lg py-2 text-[12px] font-medium hover:bg-brand/20 transition-colors">
