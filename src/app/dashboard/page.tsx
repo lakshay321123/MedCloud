@@ -114,11 +114,11 @@ function ExecutiveDashboard() {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 sm:gap-5">
         <div className="col-span-3 card p-6">
-          <div className="flex items-baseline gap-3 mb-2">
-            <h3 className="text-[15px] font-semibold text-content-primary">
+          <div className="mb-1">
+            <h3 className="text-[15px] font-semibold text-content-primary leading-tight">
               {agingBuckets ? t('dashboard','arAgingBuckets') : t('dashboard','revenueTrend')}
             </h3>
-            {agingBuckets && <p className="text-[11px] text-content-tertiary">Outstanding claim balances by age bucket</p>}
+            {agingBuckets && <p className="text-[11px] text-content-tertiary mt-0">Outstanding claim balances by age bucket</p>}
           </div>
           <div className="flex items-end gap-3 h-36 px-2 mt-1">
             {agingBuckets
