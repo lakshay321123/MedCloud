@@ -9,16 +9,14 @@ import type { ClaimStatus, AppointmentStatus, TaskStatus, Priority } from '@/typ
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function useClientParams(extra?: ApiListParams): ApiListParams {
-  const { selectedClient, orgId, currentUser } = useApp()
-  // For all roles: use selectedClient if available (scopes to a specific practice)
-  // Provider/client roles always belong to exactly one client — use selectedClient if set,
-  // otherwise omit client_id so Lambda returns all records for the org (not filtered to wrong UUID)
+  const { selectedClient, orgId, currentUser, country } = useApp()
   const rawClientId = selectedClient?.id
   const clientId = rawClientId && UUID_REGEX.test(rawClientId) ? rawClientId : undefined
-  void currentUser // suppress lint warning — role-based logic removed (see comment above)
+  void currentUser
   return {
     org_id: orgId,
     ...(clientId !== undefined ? { client_id: clientId } : {}),
+    ...(country && !clientId ? { region: country === 'usa' ? 'us' : 'uae' } : {}),
     ...extra,
   }
 }

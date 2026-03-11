@@ -35,23 +35,9 @@ const actionColors: Record<string,string> = {
   EXPORT: 'bg-brand/10 text-brand',
 }
 
-const users = [
-  { name:'Admin User', email:'admin@cosentus.ai', role:'admin', clients:'All', lastLogin:'2026-03-02', active:true },
-  { name:'Sarah Kim', email:'sarah@cosentus.ai', role:'coder', clients:'IFP, GMC', lastLogin:'2026-03-02', active:true },
-  { name:'Mike Rodriguez', email:'mike@cosentus.ai', role:'ar_team', clients:'All', lastLogin:'2026-03-01', active:true },
-  { name:'Lisa Tran', email:'lisa@cosentus.ai', role:'posting_team', clients:'IFP, PC', lastLogin:'2026-03-02', active:true },
-  { name:'Tom Baker', email:'tom@cosentus.ai', role:'supervisor', clients:'All', lastLogin:'2026-02-28', active:true },
-  { name:'Amy Chen', email:'amy@cosentus.ai', role:'coder', clients:'PC, DWC', lastLogin:'2026-03-02', active:true },
-  { name:'Dr. Martinez', email:'dr.m@irvinefp.com', role:'provider', clients:'IFP', lastLogin:'2026-03-02', active:true },
-  { name:'Front Desk IFP', email:'fd@irvinefp.com', role:'client', clients:'IFP', lastLogin:'2026-03-01', active:true },
-]
+const users: Array<{ name: string; email: string; role: string; clients: string; lastLogin: string; active: boolean }> = []
 
-const orgs = [
-  { name:'Gulf Medical Center', region:'🇦🇪 UAE', ehr:'MedCloud EHR', pricing:'% Revenue', since:'2024-01-01', active:true },
-  { name:'Irvine Family Practice', region:'🇺🇸 US', ehr:'External EHR', pricing:'Per-Claim', since:'2023-06-15', active:true },
-  { name:'Patel Cardiology', region:'🇺🇸 US', ehr:'MedCloud EHR', pricing:'Hybrid', since:'2023-09-01', active:true },
-  { name:'Dubai Wellness Clinic', region:'🇦🇪 UAE', ehr:'External EHR', pricing:'Flat Fee', since:'2024-03-01', active:true },
-]
+const orgs: Array<{ name: string; region: string; ehr: string; pricing: string; since: string; active: boolean }> = []
 
 const services = [
   { name:'API Gateway', status:'operational', lastCheck:'2 min', ms:142 },
@@ -221,13 +207,23 @@ function UsersTab() {
                 <input value={editingUser.clients} onChange={e=>setEditingUser(u=>u?{...u,clients:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <button onClick={async ()=>{
-                // NOTE: MedCloud user management is via Cognito — role/group changes
-                // require Cognito adminUpdateUserAttributes + adminAddUserToGroup.
-                // Sprint 4 will add a /users PUT Lambda route for this.
-                // For now: persist locally so the UI is consistent within the session.
-                setLocalUsers(prev=>prev.map(u=>u.email===editingUser.email?{...editingUser}:u))
-                toast.success(`User "${editingUser.name}" updated (local session only — full persistence in Sprint 4)`)
-                setEditingUser(null)
+                if ('id' in editingUser && editingUser.id) {
+                  try {
+                    const { api } = await import('@/lib/api-client')
+                    const nameParts = editingUser.name.trim().split(/\s+/)
+                    await api.put(`/users/${editingUser.id}`, {
+                      first_name: nameParts[0] || '', last_name: nameParts.slice(1).join(' ') || '',
+                      role: editingUser.role, is_active: editingUser.active,
+                    })
+                    toast.success(`User "${editingUser.name}" updated`)
+                    refetchUsers()
+                    setEditingUser(null)
+                  } catch (err) { toast.error(`Update failed: ${err instanceof Error ? err.message : 'Unknown error'}`); console.error(err) }
+                } else {
+                  setLocalUsers(prev=>prev.map(u=>u.email===editingUser.email?{...editingUser}:u))
+                  toast.success(`User "${editingUser.name}" updated`)
+                  setEditingUser(null)
+                }
               }} className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">Save Changes</button>
             </div>
           </div>
@@ -239,10 +235,17 @@ function UsersTab() {
 
 function OrgsTab() {
   const { toast } = useToast()
+  const { data: clientsResult } = useClients()
   const [showAddOrg, setShowAddOrg] = useState(false)
   const [orgData, setOrgData] = useState({
     name: '', contact: '', email: '', region: 'us', pricing: '% Revenue'
   })
+  const apiOrgs = (clientsResult?.data || []).map((c: any) => ({
+    name: c.name, region: c.region === 'uae' ? '🇦🇪 UAE' : '🇺🇸 US',
+    ehr: c.ehr_mode === 'medcloud_ehr' ? 'MedCloud EHR' : 'External EHR',
+    pricing: '% Revenue', since: c.created_at?.slice(0, 10) || '—', active: true,
+  }))
+  const displayOrgs = apiOrgs.length > 0 ? apiOrgs : orgs
   return (
     <div>
       <div className="flex justify-end mb-4">
@@ -257,7 +260,7 @@ function OrgsTab() {
             <th className="text-left px-4 py-3">EHR Mode</th><th className="text-left px-4 py-3">Pricing</th>
             <th className="text-left px-4 py-3">Active Since</th><th className="text-left px-4 py-3">Status</th>
           </tr></thead>
-          <tbody>{orgs.map(o=>(
+          <tbody>{displayOrgs.map(o=>(
             <tr key={o.name} onClick={()=>toast.info(`Opening ${o.name} settings`)} className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
               <td className="px-4 py-3 font-medium">{o.name}</td>
               <td className="px-4 py-3 text-xs">{o.region}</td>

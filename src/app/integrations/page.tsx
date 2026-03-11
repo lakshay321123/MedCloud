@@ -208,7 +208,15 @@ export default function IntegrationsPage() {
                 </div>
                 <div className="flex gap-1.5">
                   <button onClick={()=>setConfigFor(intg)} className="flex-1 text-[11px] font-medium border border-brand/30 text-brand py-1.5 rounded hover:bg-brand/10 transition-colors">Configure</button>
-                  {intg.status==='connected'&&<button onClick={()=>toast.info(`Testing ${intg.name}...`)} className="flex-1 text-[11px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-secondary transition-colors">Test</button>}
+                  {intg.status==='connected'&&<button onClick={async ()=>{
+                    toast.info(`Testing ${intg.name}...`)
+                    try {
+                      const { api } = await import('@/lib/api-client')
+                      const r = await api.get<{ status: string; database: string }>('/health', {})
+                      if (r?.status === 'healthy') toast.success(`${intg.name} — connection healthy (DB: ${r.database})`)
+                      else toast.success(`${intg.name} — responded`)
+                    } catch (err) { toast.error(`${intg.name} — connection test failed`); console.error(err) }
+                  }} className="flex-1 text-[11px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-secondary transition-colors">Test</button>}
                   <button onClick={()=>setLogsFor(intg)} className="flex-1 text-[11px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-secondary transition-colors">Logs</button>
                 </div>
               </div>

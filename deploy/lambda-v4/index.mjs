@@ -698,6 +698,76 @@ async function seedDemoData(orgId) {
       safeLog('info', 'Seeded 3 write-off requests');
     }
 
+    // ── Additional US claims with recent dates for analytics charts ─────────
+    const usClaimCount = await pool.query(`SELECT COUNT(*) FROM claims WHERE org_id=$1 AND submitted_at IS NOT NULL AND submitted_at > NOW() - INTERVAL '6 months'`, [_org]);
+    if (parseInt(usClaimCount.rows[0].count) < 15) {
+      const usClients = await pool.query(`SELECT id FROM clients WHERE org_id=$1 AND region='us' ORDER BY created_at`, [_org]);
+      const usPayers = await pool.query(`SELECT id, name FROM payers WHERE org_id=$1 AND region='us' ORDER BY created_at`, [_org]);
+      const usProviders = await pool.query(`SELECT id FROM providers WHERE org_id=$1 ORDER BY created_at LIMIT 3`, [_org]);
+      const usPatients = await pool.query(`SELECT id, first_name, last_name FROM patients WHERE org_id=$1 ORDER BY created_at LIMIT 15`, [_org]);
+
+      const _uc1 = usClients.rows[0]?.id; const _uc2 = usClients.rows[1]?.id || _uc1;
+      const _up = usPayers.rows.map(p => p.id); const _upr = usProviders.rows.map(p => p.id);
+      const _upt = usPatients.rows;
+      if (_uc1 && _up.length > 0 && _upr.length > 0 && _upt.length > 0) {
+        const statuses = ['paid','paid','paid','paid','paid','submitted','in_process','in_process','denied','denied','partial_pay','accepted','paid','paid','submitted'];
+        const cptCodes = ['99213','99214','99215','99203','99204','93000','80053','87880','71046','20610','99213','99214','96372','36415','99213'];
+        const amounts = [120,180,250,150,200,85,45,35,180,420,120,180,65,30,120];
+        for (let i = 0; i < 15; i++) {
+          const pt = _upt[i % _upt.length];
+          const month = i % 6; // Spread across Oct-Mar
+          const claimId = `d0000000-0000-0000-0000-00000000${(100 + i).toString().padStart(4, '0')}`;
+          await pool.query(`
+            INSERT INTO claims (id, org_id, client_id, patient_id, provider_id, payer_id, claim_number, status, claim_type, dos_from, dos_to, total_charges, billed_amount, submitted_at, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, '837P', $9, $9, $10, $10, $11, $11)
+            ON CONFLICT (id) DO NOTHING
+          `, [
+            claimId, _org, i < 8 ? _uc1 : _uc2, pt.id, _upr[i % _upr.length], _up[i % _up.length],
+            `CLM-2026-${(100 + i).toString().padStart(4, '0')}`, statuses[i],
+            new Date(2025, 9 + month, 5 + (i * 2) % 25).toISOString().split('T')[0],
+            amounts[i],
+            new Date(2025, 9 + month, 8 + (i * 2) % 25).toISOString(),
+          ]).catch(() => {});
+
+          // Add payments for paid claims
+          if (statuses[i] === 'paid' || statuses[i] === 'partial_pay') {
+            await pool.query(`
+              INSERT INTO payments (id, org_id, client_id, claim_id, payer_id, amount_paid, payment_date, check_number, status, created_at)
+              VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, 'posted', NOW())
+              ON CONFLICT DO NOTHING
+            `, [
+              _org, i < 8 ? _uc1 : _uc2, claimId, _up[i % _up.length],
+              statuses[i] === 'partial_pay' ? amounts[i] * 0.6 : amounts[i] * 0.92,
+              new Date(2025, 9 + month, 20 + (i % 8)).toISOString(),
+              `CHK-${30000 + i}`,
+            ]).catch(() => {});
+          }
+
+          // Add denials for denied claims
+          if (statuses[i] === 'denied') {
+            const denialReasons = ['CO-50 Medical necessity', 'CO-4 Missing modifier', 'PR-1 Deductible'];
+            await pool.query(`
+              INSERT INTO denials (id, org_id, client_id, claim_id, payer_id, denial_reason, denial_category, denied_amount, billed_amount, status, created_at)
+              VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $7, 'open', NOW())
+              ON CONFLICT DO NOTHING
+            `, [
+              _org, i < 8 ? _uc1 : _uc2, claimId, _up[i % _up.length],
+              denialReasons[i % denialReasons.length], i % 2 === 0 ? 'medical_necessity' : 'coding',
+              amounts[i],
+            ]).catch(() => {});
+          }
+
+          // Add claim lines
+          await pool.query(`
+            INSERT INTO claim_lines (id, org_id, claim_id, cpt_code, units, charge_amount, line_number)
+            VALUES (gen_random_uuid(), $1, $2, $3, 1, $4, 1)
+            ON CONFLICT DO NOTHING
+          `, [_org, claimId, cptCodes[i], amounts[i]]).catch(() => {});
+        }
+        safeLog('info', 'Seeded 15 additional US claims with payments and denials for analytics');
+      }
+    }
+
   } catch (e) {
     safeLog('error', 'Seed demo data error (non-fatal):', e.message);
   }
@@ -1272,14 +1342,17 @@ async function orgQuery(orgId, sql, params = []) {
 }
 
 // ─── Generic CRUD ──────────────────────────────────────────────────────────────
-async function list(table, orgId, clientId, extra = '') {
+async function list(table, orgId, clientId, extra = '', regionClientIds = null) {
   let q = `SELECT * FROM ${table} WHERE org_id = $1`;
   const params = [orgId];
   if (clientId) { params.push(clientId); q += ` AND client_id = $${params.length}`; }
+  else if (regionClientIds && regionClientIds.length > 0) {
+    const placeholders = regionClientIds.map((_, i) => `$${params.length + 1 + i}`).join(',');
+    params.push(...regionClientIds);
+    q += ` AND client_id IN (${placeholders})`;
+  }
   if (extra) q += ' ' + extra;
-  // Enforce default LIMIT if caller didn't specify one
   if (!/LIMIT/i.test(extra)) q += ' LIMIT 1000';
-  // Use orgQuery so SET LOCAL app.org_id activates Aurora RLS policies on PHI tables
   const rows = (await orgQuery(orgId, q, params)).rows;
   return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
 }
@@ -1359,7 +1432,7 @@ async function nextClaimNumber(orgId) {
 }
 
 // ─── Enriched Queries (all filter by client_id) ────────────────────────────────
-async function enrichedClaims(orgId, clientId) {
+async function enrichedClaims(orgId, clientId, regionClientIds = null) {
   let q = `SELECT c.*, p.first_name || ' ' || p.last_name AS patient_name,
            pr.first_name || ' ' || pr.last_name AS provider_name,
            py.name AS payer_name, cl.name AS client_name
@@ -1371,6 +1444,10 @@ async function enrichedClaims(orgId, clientId) {
            WHERE c.org_id = $1`;
   const params = [orgId];
   if (clientId) { params.push(clientId); q += ` AND c.client_id = $${params.length}`; }
+  else if (regionClientIds && regionClientIds.length > 0) {
+    const ph = regionClientIds.map((_, i) => `$${params.length + 1 + i}`).join(',');
+    params.push(...regionClientIds); q += ` AND c.client_id IN (${ph})`;
+  }
   q += ' ORDER BY c.created_at DESC';
   const rows = (await orgQuery(orgId, q, params)).rows;
 
@@ -1428,7 +1505,7 @@ async function enrichedPayments(orgId, clientId) {
   return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
 }
 
-async function enrichedCoding(orgId, clientId) {
+async function enrichedCoding(orgId, clientId, regionClientIds = null) {
   let q = `SELECT cq.*, p.first_name || ' ' || p.last_name AS patient_name,
            pr.first_name || ' ' || pr.last_name AS provider_name,
            cl.name AS client_name,
@@ -1446,18 +1523,26 @@ async function enrichedCoding(orgId, clientId) {
            WHERE cq.org_id = $1`;
   const params = [orgId];
   if (clientId) { params.push(clientId); q += ` AND cq.client_id = $${params.length}`; }
+  else if (regionClientIds && regionClientIds.length > 0) {
+    const ph = regionClientIds.map((_, i) => `$${params.length + 1 + i}`).join(',');
+    params.push(...regionClientIds); q += ` AND cq.client_id IN (${ph})`;
+  }
   q += ' ORDER BY cq.created_at DESC';
   const rows = (await orgQuery(orgId, q, params)).rows;
   return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
 }
 
-async function enrichedPatients(orgId, clientId) {
+async function enrichedPatients(orgId, clientId, regionClientIds = null) {
   let q = `SELECT p.*, cl.name AS client_name
            FROM patients p
            LEFT JOIN clients cl ON p.client_id = cl.id
            WHERE p.org_id = $1`;
   const params = [orgId];
   if (clientId) { params.push(clientId); q += ` AND p.client_id = $${params.length}`; }
+  else if (regionClientIds && regionClientIds.length > 0) {
+    const ph = regionClientIds.map((_, i) => `$${params.length + 1 + i}`).join(',');
+    params.push(...regionClientIds); q += ` AND p.client_id IN (${ph})`;
+  }
   q += ' ORDER BY p.last_name, p.first_name';
   const rows = (await orgQuery(orgId, q, params)).rows;
   return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
@@ -6685,7 +6770,24 @@ export const handler = async (event) => {
 
     const effectiveOrgId = validateUUID(rawOrgId, 'org_id');
     const userId = (rawUserId && UUID_RE.test(rawUserId)) ? rawUserId : null;
-    const clientId = (rawClientId && UUID_RE.test(rawClientId)) ? rawClientId : null;
+    let clientId = (rawClientId && UUID_RE.test(rawClientId)) ? rawClientId : null;
+
+    // Region filtering — when frontend sends region=us or region=uae without a specific client_id,
+    // resolve to the set of client IDs for that region so all downstream queries are scoped.
+    if (!clientId && qs.region && (qs.region === 'us' || qs.region === 'uae')) {
+      try {
+        const regionClients = await pool.query(
+          `SELECT id FROM clients WHERE org_id = $1 AND region = $2`,
+          [effectiveOrgId, qs.region]
+        );
+        if (regionClients.rows.length === 1) {
+          clientId = regionClients.rows[0].id;
+        } else if (regionClients.rows.length > 1) {
+          // Multiple clients in this region — store IDs for downstream IN-clause filtering
+          qs._regionClientIds = regionClients.rows.map(r => r.id);
+        }
+      } catch (e) { safeLog('warn', 'Region client lookup failed:', e.message); }
+    }
 
     // Parse path params (for /:id patterns)
     const pathParts = path.replace(/^\/+|\/+$/g, '').split('/');
@@ -6870,7 +6972,7 @@ export const handler = async (event) => {
         !path.includes('/transition') && !path.includes('/underpayment') && !path.includes('/predict-denial') &&
         !path.includes('/generate-276') && !path.includes('/parse-277') && !path.includes('/batch-submit') &&
         !path.includes('/timely-filing') && !path.includes('/generate-837i') && !path.includes('/secondary')) {
-      if (method === 'GET' && !pathParams.id) return respond(200, await enrichedClaims(effectiveOrgId, clientId));
+      if (method === 'GET' && !pathParams.id) return respond(200, await enrichedClaims(effectiveOrgId, clientId, qs._regionClientIds));
       if (method === 'GET' && pathParams.id) {
         // Enriched single claim — JOINs match the list endpoint (enrichedClaims)
         const cRow = await orgQuery(effectiveOrgId, `
@@ -7110,7 +7212,7 @@ export const handler = async (event) => {
     // ════ Coding Queue ═════════════════════════════════════════════════════
     if (path.includes('/coding') && !path.includes('/approve') && !path.includes('/query') &&
         !path.includes('/assign') && !path.includes('/ai-suggest') && !path.includes('/coding-qa')) {
-      if (method === 'GET' && !pathParams.id) return respond(200, await enrichedCoding(effectiveOrgId, clientId));
+      if (method === 'GET' && !pathParams.id) return respond(200, await enrichedCoding(effectiveOrgId, clientId, qs._regionClientIds));
       if (method === 'GET' && pathParams.id) {
         const c = await getById('coding_queue', pathParams.id);
         if (!c || c.org_id !== effectiveOrgId) return respond(404, { error: 'Coding item not found' });
@@ -7386,7 +7488,7 @@ export const handler = async (event) => {
 
     if (path.includes('/era-files') && !path.includes('/parse-835') && !path.includes('/reconcile') && !path.includes('/download')) {
       if (method === 'GET' && !pathParams.id) {
-        return respond(200, await list('era_files', effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
+        return respond(200, await list('era_files', effectiveOrgId, clientId, 'ORDER BY created_at DESC', qs._regionClientIds));
       }
       if (method === 'GET' && pathParams.id) {
         const e = await getById('era_files', pathParams.id);
@@ -7620,7 +7722,7 @@ export const handler = async (event) => {
 
     if (path.includes('/ar/call-log') && method === 'GET') {
       try {
-        return respond(200, await list('ar_call_log', effectiveOrgId, clientId, 'ORDER BY call_date DESC'));
+        return respond(200, await list('ar_call_log', effectiveOrgId, clientId, 'ORDER BY call_date DESC', qs._regionClientIds));
       } catch(e) {
         if (e.message?.includes('does not exist')) {
           // Create table and return empty
@@ -7730,7 +7832,7 @@ export const handler = async (event) => {
     if (path.includes('/edi-transactions')) {
       if (method === 'GET') {
         try {
-          return respond(200, await list('edi_transactions', effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
+          return respond(200, await list('edi_transactions', effectiveOrgId, clientId, 'ORDER BY created_at DESC', qs._regionClientIds));
         } catch (e) {
           if (e.message?.includes('does not exist')) {
             return respond(200, { data: [], meta: { total: 0 } });
@@ -7747,9 +7849,15 @@ export const handler = async (event) => {
     if (path.includes('/dashboard')) {
       // Each query has its own param array to avoid collision
       const pBase = [effectiveOrgId];
-      const cf = clientId ? ` AND client_id = $2` : '';
-      const cfJoin = clientId ? ` AND c.client_id = $2` : '';
-      const pClient = clientId ? [effectiveOrgId, clientId] : [effectiveOrgId];
+      let cf = ''; let cfJoin = ''; let pClient = [effectiveOrgId];
+      if (clientId) {
+        cf = ` AND client_id = $2`; cfJoin = ` AND c.client_id = $2`;
+        pClient = [effectiveOrgId, clientId];
+      } else if (qs._regionClientIds && qs._regionClientIds.length > 0) {
+        const ph = qs._regionClientIds.map((_, i) => `$${2 + i}`).join(',');
+        cf = ` AND client_id IN (${ph})`; cfJoin = ` AND c.client_id IN (${ph})`;
+        pClient = [effectiveOrgId, ...qs._regionClientIds];
+      }
 
       const [claims, denials, payments, tasks, eligibility] = await Promise.all([
         pool.query(`SELECT status, COUNT(*)::int as count, SUM(total_charges)::numeric as total FROM claims WHERE org_id = $1${cf} GROUP BY status`, pClient),
@@ -7820,7 +7928,7 @@ export const handler = async (event) => {
 
     // ════ Patients ═════════════════════════════════════════════════════════
     if (path.includes('/patients') && !path.includes('/hcc')) {
-      if (method === 'GET' && !pathParams.id) return respond(200, await enrichedPatients(effectiveOrgId, clientId));
+      if (method === 'GET' && !pathParams.id) return respond(200, await enrichedPatients(effectiveOrgId, clientId, qs._regionClientIds));
       if (method === 'GET' && pathParams.id) {
         const p = await getById('patients', pathParams.id);
         if (!p || p.org_id !== effectiveOrgId) return respond(404, { error: 'Patient not found' });
@@ -7977,7 +8085,7 @@ export const handler = async (event) => {
         if (method === 'GET' && !pathParams.id) {
           const limit = Math.min(parseInt(qs.limit) || 100, 1000);
           const offset = parseInt(qs.offset) || 0;
-          return respond(200, await list(table, effectiveOrgId, clientId, `ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`));
+          return respond(200, await list(table, effectiveOrgId, clientId, `ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`, qs._regionClientIds));
         }
         if (method === 'GET' && pathParams.id) {
           const r = await getById(table, pathParams.id);
@@ -8365,7 +8473,7 @@ export const handler = async (event) => {
       }
       if (method === 'GET' && !pathParams.id) {
         try {
-          return respond(200, await list('credit_balances', effectiveOrgId, clientId));
+          return respond(200, await list('credit_balances', effectiveOrgId, clientId, '', qs._regionClientIds));
         } catch(e) {
           if (e.message?.includes('does not exist')) {
             await pool.query(`CREATE TABLE IF NOT EXISTS credit_balances (
@@ -9366,7 +9474,7 @@ export const handler = async (event) => {
     // ════ PRIOR AUTH ════════════════════════════════════════════════════════════
     if (resource === 'prior-auth') {
       if (method === 'GET' && !pathParams.id) {
-        return respond(200, await list('prior_auth_requests', effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
+        return respond(200, await list('prior_auth_requests', effectiveOrgId, clientId, 'ORDER BY created_at DESC', qs._regionClientIds));
       }
       if (method === 'GET' && pathParams.id) {
         const r = await getById('prior_auth_requests', pathParams.id);
@@ -9453,7 +9561,7 @@ export const handler = async (event) => {
         return respond(201, enrollment);
       }
       if (method === 'GET' && !pathParams.id) {
-        return respond(200, await list('credentialing', effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
+        return respond(200, await list('credentialing', effectiveOrgId, clientId, 'ORDER BY created_at DESC', qs._regionClientIds));
       }
       if (method === 'GET' && pathParams.id) {
         const r = await getById('credentialing', pathParams.id);
@@ -9534,14 +9642,21 @@ export const handler = async (event) => {
         const period = qs.period || '30d';
         const daysMap = { '7d': 7, '30d': 30, '90d': 90, '180d': 180, '1y': 365 };
         const days = daysMap[period] || 30;
+        // Build region-aware params
+        let acf = ''; let acfJoin = ''; let aParams = [effectiveOrgId];
+        if (clientId) { acf = 'AND client_id = $2'; acfJoin = 'AND c.client_id = $2'; aParams = [effectiveOrgId, clientId]; }
+        else if (qs._regionClientIds && qs._regionClientIds.length > 0) {
+          const ph = qs._regionClientIds.map((_, i) => `$${2 + i}`).join(',');
+          acf = `AND client_id IN (${ph})`; acfJoin = `AND c.client_id IN (${ph})`;
+          aParams = [effectiveOrgId, ...qs._regionClientIds];
+        }
         // Revenue trend — claims billed per day
         const revenue = await orgQuery(effectiveOrgId, `
           SELECT DATE_TRUNC('day', dos_from) as date, SUM(total_charges::numeric) as billed,
                  COUNT(*) as claim_count
           FROM claims WHERE org_id = $1 AND dos_from >= NOW() - INTERVAL '${days} days'
-            ${clientId ? 'AND client_id = $2' : ''}
-          GROUP BY DATE_TRUNC('day', dos_from) ORDER BY date`,
-          clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+            ${acf}
+          GROUP BY DATE_TRUNC('day', dos_from) ORDER BY date`, aParams);
         // Denial rate trend
         const denialRate = await orgQuery(effectiveOrgId, `
           SELECT DATE_TRUNC('week', d.created_at) as week,
@@ -9552,10 +9667,9 @@ export const handler = async (event) => {
                    ELSE 0 END as rate_pct
           FROM claims c LEFT JOIN denials d ON d.claim_id = c.id
           WHERE c.org_id = $1 AND c.created_at >= NOW() - INTERVAL '${days} days'
-            ${clientId ? 'AND c.client_id = $2' : ''}
-          GROUP BY DATE_TRUNC('week', d.created_at) ORDER BY week`,
-          clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
-        // By payer — US payers only (filter by region)
+            ${acfJoin}
+          GROUP BY DATE_TRUNC('week', d.created_at) ORDER BY week`, aParams);
+        // By payer
         const byPayer = await orgQuery(effectiveOrgId, `
           SELECT py.name as payer_name, py.region,
                  COUNT(c.id) as claims, SUM(c.total_charges::numeric) as billed,
@@ -9563,9 +9677,8 @@ export const handler = async (event) => {
                  CASE WHEN COUNT(c.id) > 0 THEN ROUND(COUNT(d.id)::numeric/COUNT(c.id)::numeric*100,2) ELSE 0 END as denial_pct
           FROM claims c LEFT JOIN payers py ON py.id = c.payer_id
           LEFT JOIN denials d ON d.claim_id = c.id
-          WHERE c.org_id = $1 ${clientId ? 'AND c.client_id = $2' : ''}
-          GROUP BY py.name, py.region ORDER BY billed DESC LIMIT 20`,
-          clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+          WHERE c.org_id = $1 ${acfJoin}
+          GROUP BY py.name, py.region ORDER BY billed DESC LIMIT 20`, aParams);
         // Coding productivity
         const coding = await orgQuery(effectiveOrgId, `
           SELECT COALESCE(source, 'manual') as coding_method,

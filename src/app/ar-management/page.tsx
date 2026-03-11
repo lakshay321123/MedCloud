@@ -293,6 +293,7 @@ function ARDrawer({
   const { mutate: requestInfo, loading: requestingInfo } = useARRequestInfo()
   const { mutate: escalateClaim, loading: escalating } = useARescalate()
   const { mutate: sendStatement, loading: sendingStatement } = useARSendStatement()
+  const { mutate: requestWriteOff } = useRequestWriteOff()
 
   const tfDays = TF_DEADLINES[account.payer] || 180
   const dosDate = new Date(account.dos)
@@ -300,11 +301,23 @@ function ARDrawer({
   deadlineDate.setDate(deadlineDate.getDate() + tfDays)
   const daysUntilDeadline = Math.ceil((deadlineDate.getTime() - Date.now()) / 86400000)
 
-  const handleWriteoff = () => {
+  const handleWriteoff = async () => {
     if (!writeoffReason) { toast.error('Select a reason for write-off'); return }
-    toast.info('Write-off request submitted — pending supervisor approval')
-    setShowWriteoffModal(false)
-    setWriteoffReason('')
+    try {
+      const result = await requestWriteOff({
+        claim_id: account.id,
+        amount: account.balance,
+        reason: writeoffReason,
+        category: writeoffReason,
+      })
+      if (result) {
+        toast.success('Write-off request submitted — pending supervisor approval')
+        setShowWriteoffModal(false)
+        setWriteoffReason('')
+      } else {
+        toast.error('Write-off request failed — no response from server')
+      }
+    } catch (err) { toast.error(`Write-off failed: ${err instanceof Error ? err.message : 'Unknown error'}`); console.error(err) }
   }
 
   const TABS = [
@@ -623,14 +636,14 @@ function ARDrawer({
   )
 }
 
-function InboundCallPanel() {
+function InboundCallPanel({ accounts: accountsList }: { accounts: ARAccount[] }) {
   const { toast } = useToast()
   const { mutate: createTask } = useCreateTask()
   const [phoneSearch, setPhoneSearch] = useState('')
   const [found, setFound] = useState<ARAccount | null>(null)
 
   function lookUp() {
-    const m = initialAccounts.find(a => a.patient.toLowerCase().includes(phoneSearch.toLowerCase()))
+    const m = accountsList.find(a => a.patient.toLowerCase().includes(phoneSearch.toLowerCase()))
     m ? setFound(m) : toast.warning('No patient found')
   }
 
@@ -733,8 +746,8 @@ export default function ARManagementPage() {
       }
     }), [claimsResult])
 
-  const [accounts, setAccounts] = useState<ARAccount[]>(initialAccounts)
-  const [callHistory, setCallHistory] = useState<Record<string, CallLogEntry[]>>(initialCallHistory)
+  const [accounts, setAccounts] = useState<ARAccount[]>([])
+  const [callHistory, setCallHistory] = useState<Record<string, CallLogEntry[]>>({})
   const [selected, setSelected] = useState<ARAccount | null>(null)
   const [callMode, setCallMode] = useState<'accounts' | 'inbound' | 'credits' | 'sla'>('accounts')
 
@@ -872,7 +885,7 @@ export default function ARManagementPage() {
         ))}
       </div>
 
-      {callMode === 'inbound' ? <InboundCallPanel /> : callMode === 'credits' ? (
+      {callMode === 'inbound' ? <InboundCallPanel accounts={accounts} /> : callMode === 'credits' ? (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-content-secondary">Overpayments and credit balances requiring resolution</p>
