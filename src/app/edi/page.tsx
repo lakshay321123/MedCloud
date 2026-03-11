@@ -70,10 +70,7 @@ function EDIContent() {
     const raw = apiResult?.data || []
     return raw.filter(tx => {
       if (selectedClient && tx.client_id && tx.client_id !== selectedClient.id) return false
-      if (!selectedClient && tx.client_id) {
-        if (country === 'uae' && !UAE_ORG_IDS.includes(tx.client_id)) return false
-        if (country === 'usa' && !US_ORG_IDS.includes(tx.client_id)) return false
-      }
+      // Region filtering handled by backend via useClientParams
       return true
     })
   }, [apiResult, selectedClient, country])

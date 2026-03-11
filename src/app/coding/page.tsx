@@ -513,18 +513,10 @@ export default function CodingPage() {
     .filter((u: any) => u.role === 'coder' || u.role === 'coding_specialist')
     .map((u: any) => ({ id: u.id, name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email }))
 
-  // UAE org IDs
-  const uaeClientIds = UAE_ORG_IDS
-
   const queue = (() => {
     const base = apiMapped.length > 0 ? apiMapped : []
-    // Filter by region
-    const regionFiltered = base.filter(item => {
-      const isUAEClient = uaeClientIds.includes(item.clientId)
-      return country === 'uae' ? isUAEClient : !isUAEClient
-    })
-    // All roles see all items for their org/client — no role-based sub-sampling
-    return regionFiltered.filter(item => !selectedClient || item.clientId === selectedClient.id)
+    // Region filtering handled by backend via useClientParams
+    return base.filter(item => !selectedClient || item.clientId === selectedClient.id)
   })()
 
   const [selected, setSelected] = useState(queue[0]?.id || '')

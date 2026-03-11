@@ -1022,13 +1022,8 @@ export default function ClaimsPage() {
       : []
 
     return source.filter(c => {
-      // Region filter — only show claims matching current region
+      // Region filtering handled by backend via useClientParams region param
       if (selectedClient && c.clientId !== selectedClient.id) return false
-      if (!selectedClient && country) {
-        const clientRegion = getOrgRegion(c.clientId)
-        if (country === 'usa' && clientRegion === 'uae') return false
-        if (country === 'uae' && clientRegion === 'us') return false
-      }
       if (search && !c.patientName.toLowerCase().includes(search.toLowerCase()) && !c.id.toLowerCase().includes(search.toLowerCase())) return false
       if (statusFilters.length && !statusFilters.includes(c.status)) return false
       if (dosFrom && c.dos < dosFrom) return false

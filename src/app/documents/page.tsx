@@ -248,8 +248,7 @@ function AllDocsTab() {
   const filtered = apiDocs.filter(d => {
     if (d.clientId) {
       if (selectedClient && d.clientId !== selectedClient.id) return false
-      if (!selectedClient && country === 'uae' && !UAE_ORG_IDS.includes(d.clientId)) return false
-      if (!selectedClient && country === 'usa' && !US_ORG_IDS.includes(d.clientId)) return false
+      // Region filtering handled by backend via useClientParams
     }
     if (search && !d.name.toLowerCase().includes(search.toLowerCase()) && !d.patient.toLowerCase().includes(search.toLowerCase())) return false
     if (typeFilter.length > 0 && !typeFilter.includes(d.type)) return false

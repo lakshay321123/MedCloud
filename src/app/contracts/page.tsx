@@ -88,10 +88,9 @@ export default function ContractsPage() {
 
   const allContracts = filterPayersByCountry(
     apiContracts.filter(c => {
-      if (!c.clientId) return true  // payer_config is org-level, not per client — always show
+      if (!c.clientId) return true
       if (selectedClient) return c.clientId === selectedClient.id
-      if (country === 'uae') return UAE_ORG_IDS.includes(c.clientId)
-      if (country === 'usa') return US_ORG_IDS.includes(c.clientId)
+      // Region filtering handled by backend via useClientParams
       return true
     }),
     country

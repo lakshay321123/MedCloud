@@ -66,9 +66,9 @@ function EligibilityContent() {
   const eligChecksRaw = eligResult?.data || []
   const priorAuthsRaw = paResult?.data || []
 
-  // Apply region filter — prevents US+UAE data mixing when "All Clients" is selected
-  const eligChecks = filterByRegion(eligChecksRaw, currentUser?.organization_id || '', currentUser?.role || '', selectedClient?.id, country)
-  const priorAuths = filterByRegion(priorAuthsRaw, currentUser?.organization_id || '', currentUser?.role || '', selectedClient?.id, country)
+  // Region filtering handled by backend via useClientParams
+  const eligChecks = selectedClient ? eligChecksRaw.filter((c: any) => c.client_id === selectedClient.id) : eligChecksRaw
+  const priorAuths = selectedClient ? priorAuthsRaw.filter((c: any) => c.client_id === selectedClient.id) : priorAuthsRaw
 
   /* KPIs */
   const kpis = useMemo(() => {

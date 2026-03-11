@@ -156,8 +156,7 @@ export default function AnalyticsPage() {
     }))
     if (!apiClaims.length) return []
     if (selectedClient) return apiClaims.filter(c => c.clientId === selectedClient.id)
-    if (country === 'uae') return apiClaims.filter(c => (UAE_ORG_IDS as readonly string[]).includes(c.clientId))
-    if (country === 'usa') return apiClaims.filter(c => (US_ORG_IDS as readonly string[]).includes(c.clientId))
+    // Region filtering handled by backend via useClientParams
     return apiClaims
   }, [claimsApiResult, selectedClient, country])
 

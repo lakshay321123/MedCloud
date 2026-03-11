@@ -82,13 +82,10 @@ export default function DenialsPage() {
     rarc_description: d.rarc_description,
   })) || []
 
-  const denials: DenialRow[] = filterByRegion(
-    apiDenials,
-    currentUser.organization_id,
-    currentUser.role,
-    selectedClient?.id,
-    country
-  )
+  // Region filtering handled by backend via useClientParams
+  const denials: DenialRow[] = selectedClient
+    ? apiDenials.filter(d => d.clientId === selectedClient.id)
+    : apiDenials
 
   const [selected, setSelected] = useState(denials[0]?.id || '')
   const [appealLevel, setAppealLevel] = useState<'L1' | 'L2' | 'L3'>('L1')
