@@ -6858,7 +6858,12 @@ export const handler = async (event) => {
       if (method === 'GET' && pathParams.id) {
         // Enriched single claim — JOINs match the list endpoint (enrichedClaims)
         const cRow = await orgQuery(effectiveOrgId, `
-          SELECT c.*, p.first_name || ' ' || p.last_name AS patient_name,
+          SELECT c.id, c.org_id, c.client_id, c.patient_id, c.provider_id, c.payer_id,
+                 c.claim_number, c.status, c.claim_type, c.dos_from, c.dos_to,
+                 c.total_charges, c.billed_amount, c.allowed_amount, c.adjustment_amount,
+                 c.patient_responsibility, c.submitted_at, c.paid_at, c.next_action_date,
+                 c.timely_filing_deadline, c.timely_filing_risk, c.created_at, c.updated_at,
+                 p.first_name || ' ' || p.last_name AS patient_name,
                  pr.first_name || ' ' || pr.last_name AS provider_name,
                  py.name AS payer_name, cl.name AS client_name
           FROM claims c
@@ -9628,15 +9633,23 @@ export const handler = async (event) => {
     // ════ FEE SCHEDULES ══════════════════════════════════════════════════════════
     if (resource === 'fee-schedules') {
       if (method === 'GET' && !pathParams.id) {
-        const data = await orgQuery(effectiveOrgId, `
+        const params = clientId ? [effectiveOrgId, clientId] : [effectiveOrgId];
+        let query = `
           SELECT fs.*, py.name as payer_name
           FROM fee_schedules fs LEFT JOIN payers py ON py.id = fs.payer_id
           WHERE fs.org_id = $1 ${clientId ? 'AND fs.client_id = $2' : ''}
-            ${qs.payer_id ? `AND fs.payer_id = '${qs.payer_id.replace(/'/g, "''")}'` : ''}
-            ${qs.cpt_code ? `AND fs.cpt_code = '${qs.cpt_code.replace(/'/g, "''")}'` : ''}
-          ORDER BY fs.payer_id, fs.cpt_code LIMIT 1000`,
-          clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
-        return respond(200, { data: data.rows, meta: { total: data.rows.length, page: 1, limit: data.rows.length } });
+        `;
+        if (qs.payer_id) {
+          params.push(qs.payer_id);
+          query += ` AND fs.payer_id = $${params.length}`;
+        }
+        if (qs.cpt_code) {
+          params.push(qs.cpt_code);
+          query += ` AND fs.cpt_code = $${params.length}`;
+        }
+        query += ' ORDER BY fs.payer_id, fs.cpt_code LIMIT 1000';
+        const data = await orgQuery(effectiveOrgId, query, params);
+        return respond(200, { data: data.rows, meta: { total: data.rows.length, page: 1, limit: 1000 } });
       }
       if (method === 'POST' && !pathParams.id) {
         const fs = await create('fee_schedules', { ...body, client_id: clientId }, effectiveOrgId);
