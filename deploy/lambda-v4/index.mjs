@@ -1499,7 +1499,7 @@ async function orgQuery(orgId, sql, params = []) {
 
 // ─── Generic CRUD ──────────────────────────────────────────────────────────────
 // Tables that are org-level (no client_id column) — skip region filtering
-const ORG_LEVEL_TABLES = new Set(['users', 'payers', 'providers', 'organizations', 'audit_log', 'coding_rules', 'fee_schedules', 'scrub_rules', 'notifications', 'baa_tracking', 'credentialing', 'bank_deposits', 'invoice_configs']);
+const ORG_LEVEL_TABLES = new Set(['users', 'payers', 'providers', 'organizations', 'audit_log', 'coding_rules', 'fee_schedules', 'scrub_rules', 'notifications', 'baa_tracking', 'credentialing', 'bank_deposits', 'invoice_configs', 'clients']);
 
 async function list(table, orgId, clientId, extra = '', regionClientIds = null) {
   let q = `SELECT * FROM ${table} WHERE org_id = $1`;
@@ -1509,7 +1509,7 @@ async function list(table, orgId, clientId, extra = '', regionClientIds = null) 
   else if (regionClientIds && regionClientIds.length > 0 && !isOrgLevel) {
     const placeholders = regionClientIds.map((_, i) => `$${params.length + 1 + i}`).join(',');
     params.push(...regionClientIds);
-    q += ` AND client_id IN (${placeholders})`;
+    q += ` AND (client_id IN (${placeholders}) OR client_id IS NULL)`;
   }
   if (extra) q += ' ' + extra;
   if (!/LIMIT/i.test(extra)) q += ' LIMIT 1000';
@@ -1628,7 +1628,7 @@ async function enrichedClaims(orgId, clientId, regionClientIds = null) {
   return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
 }
 
-async function enrichedDenials(orgId, clientId) {
+async function enrichedDenials(orgId, clientId, regionClientIds = null) {
   let q = `SELECT d.*, c.client_id,
            p.first_name || ' ' || p.last_name AS patient_name,
            py.name AS payer_name, cl.name AS client_name,
@@ -1643,12 +1643,16 @@ async function enrichedDenials(orgId, clientId) {
            WHERE d.org_id = $1`;
   const params = [orgId];
   if (clientId) { params.push(clientId); q += ` AND c.client_id = $${params.length}`; }
+  else if (regionClientIds && regionClientIds.length > 0) {
+    const ph = regionClientIds.map((_, i) => `$${params.length + 1 + i}`).join(',');
+    params.push(...regionClientIds); q += ` AND c.client_id IN (${ph})`;
+  }
   q += ' ORDER BY d.created_at DESC';
   const rows = (await orgQuery(orgId, q, params)).rows;
   return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
 }
 
-async function enrichedPayments(orgId, clientId) {
+async function enrichedPayments(orgId, clientId, regionClientIds = null) {
   let q = `SELECT pm.*, c.claim_number, c.dos_from,
            p.first_name || ' ' || p.last_name AS patient_name,
            py.name AS payer_name, ef.file_name AS era_file_name
@@ -1660,6 +1664,10 @@ async function enrichedPayments(orgId, clientId) {
            WHERE pm.org_id = $1`;
   const params = [orgId];
   if (clientId) { params.push(clientId); q += ` AND pm.client_id = $${params.length}`; }
+  else if (regionClientIds && regionClientIds.length > 0) {
+    const ph = regionClientIds.map((_, i) => `$${params.length + 1 + i}`).join(',');
+    params.push(...regionClientIds); q += ` AND pm.client_id IN (${ph})`;
+  }
   q += ' ORDER BY pm.created_at DESC';
   const rows = (await orgQuery(orgId, q, params)).rows;
   return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
@@ -7324,7 +7332,7 @@ export const handler = async (event) => {
 
     // ════ Denials ═══════════════════════════════════════════════════════════
     if (path.includes('/denials') && !path.includes('/appeal') && !path.includes('/categorize') && !path.includes('/check-deadlines') && !path.includes('/batch-appeal')) {
-      if (method === 'GET' && !pathParams.id) return respond(200, await enrichedDenials(effectiveOrgId, clientId));
+      if (method === 'GET' && !pathParams.id) return respond(200, await enrichedDenials(effectiveOrgId, clientId, qs._regionClientIds));
       if (method === 'GET' && pathParams.id) {
         const d = await getById('denials', pathParams.id);
         if (!d || d.org_id !== effectiveOrgId) return respond(404, { error: 'Denial not found' });
@@ -7695,7 +7703,7 @@ export const handler = async (event) => {
     }
 
     if (path.includes('/payments')) {
-      if (method === 'GET' && !pathParams.id) return respond(200, await enrichedPayments(effectiveOrgId, clientId));
+      if (method === 'GET' && !pathParams.id) return respond(200, await enrichedPayments(effectiveOrgId, clientId, qs._regionClientIds));
       if (method === 'GET' && pathParams.id) {
         const p = await getById('payments', pathParams.id);
         if (!p || p.org_id !== effectiveOrgId) return respond(404, { error: 'Payment not found' });
@@ -8224,7 +8232,6 @@ export const handler = async (event) => {
       'users': 'users',
       'clients': 'clients',
       'encounters': 'encounters',
-      'tasks': 'tasks',
       'credentialing': 'credentialing',
       'integration-configs': 'integration_configs',
     };
@@ -9750,6 +9757,14 @@ export const handler = async (event) => {
       }
       if (method === 'GET' && !pathParams.id) {
         const params = clientId ? [effectiveOrgId, clientId] : [effectiveOrgId];
+        let clientFilter = '';
+        if (clientId) {
+          clientFilter = 'AND t.client_id = $2';
+        } else if (qs._regionClientIds && qs._regionClientIds.length > 0) {
+          const ph = qs._regionClientIds.map((_, i) => `$${params.length + 1 + i}`).join(',');
+          params.push(...qs._regionClientIds);
+          clientFilter = `AND (t.client_id IN (${ph}) OR t.client_id IS NULL)`;
+        }
         let statusFilter = '';
         if (qs.status) { params.push(qs.status); statusFilter = `AND t.status = $${params.length}`; }
         let assignedFilter = '';
@@ -9759,7 +9774,7 @@ export const handler = async (event) => {
                  EXTRACT(DAY FROM NOW() - t.created_at) as age_days,
                  CASE WHEN t.due_date < NOW() AND t.status NOT IN ('completed','cancelled') THEN TRUE ELSE FALSE END as overdue
           FROM tasks t
-          WHERE t.org_id = $1 ${clientId ? 'AND t.client_id = $2' : ''}
+          WHERE t.org_id = $1 ${clientFilter}
             ${statusFilter} ${assignedFilter}
           ORDER BY 
             CASE t.priority WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 ELSE 4 END,
