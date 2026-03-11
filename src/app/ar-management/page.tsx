@@ -305,7 +305,7 @@ function ARDrawer({
     if (!writeoffReason) { toast.error('Select a reason for write-off'); return }
     try {
       await requestWriteOff({
-        claim_id: account.claimId || account.id,
+        claim_id: account.id,
         amount: account.balance,
         reason: writeoffReason,
         category: writeoffReason,
