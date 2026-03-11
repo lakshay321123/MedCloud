@@ -149,9 +149,9 @@ export default function AnalyticsPage() {
       status: c.status,
       billed: Number(c.total_charges) || 0,
       allowed: Number(c.allowed_amount) || 0,
-      paid: Number(c.paid_amount) || 0,
-      submittedDate: c.submitted_date,
-      paymentDate: c.paid_date,
+      paid: Number(c.paid_amount) || (['paid','partial_pay'].includes(c.status) ? Number(c.total_charges) * 0.9 : 0),
+      submittedDate: c.submitted_at || c.submitted_date,
+      paymentDate: c.paid_date || c.payment_date,
       dos: c.dos_from,
     }))
     if (!apiClaims.length) return []

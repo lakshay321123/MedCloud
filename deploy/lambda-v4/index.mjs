@@ -8232,7 +8232,6 @@ export const handler = async (event) => {
       'users': 'users',
       'clients': 'clients',
       'encounters': 'encounters',
-      'credentialing': 'credentialing',
       'integration-configs': 'integration_configs',
     };
 
@@ -9728,7 +9727,15 @@ export const handler = async (event) => {
         return respond(201, enrollment);
       }
       if (method === 'GET' && !pathParams.id) {
-        return respond(200, await list('credentialing', effectiveOrgId, clientId, 'ORDER BY created_at DESC', qs._regionClientIds));
+        const credRows = await orgQuery(effectiveOrgId, `
+          SELECT cr.*, p.first_name || ' ' || p.last_name AS provider_name, p.npi, 
+                 p.specialty, cl.name AS client_name
+          FROM credentialing cr
+          LEFT JOIN providers p ON cr.provider_id = p.id
+          LEFT JOIN clients cl ON p.client_id = cl.id
+          WHERE cr.org_id = $1
+          ORDER BY cr.created_at DESC LIMIT 500`, [effectiveOrgId]);
+        return respond(200, { data: credRows.rows, meta: { total: credRows.rows.length, page: 1, limit: 500 } });
       }
       if (method === 'GET' && pathParams.id) {
         const r = await getById('credentialing', pathParams.id);
