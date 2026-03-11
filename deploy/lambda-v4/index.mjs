@@ -5788,6 +5788,7 @@ async function getMessages(orgId, userId, qs) {
   if (qs.is_internal === 'false') { q += ' AND m.is_internal = false'; }
   q += ' ORDER BY m.created_at DESC';
   if (qs.limit) { q += ` LIMIT $${p.length + 1}`; p.push(qs.limit); }
+  const r = await pool.query(q, p);
   // Count unread using explicit query (avoids fragile regex on getMessages main query)
   let unread = 0;
   if (userId) {
