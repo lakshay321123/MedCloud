@@ -7713,7 +7713,14 @@ export const handler = async (event) => {
     // ════ EDI Transactions ═════════════════════════════════════════════════
     if (path.includes('/edi-transactions')) {
       if (method === 'GET') {
-        try { return respond(200, await list('edi_transactions', effectiveOrgId, clientId, 'ORDER BY created_at DESC')); } catch(e) { if (e.message?.includes('does not exist')) return respond(200, []); throw e; }
+        try {
+          return respond(200, await list('edi_transactions', effectiveOrgId, clientId, 'ORDER BY created_at DESC'));
+        } catch (e) {
+          if (e.message?.includes('does not exist')) {
+            return respond(200, { data: [], meta: { total: 0 } });
+          }
+          throw e;
+        }
       }
       if (method === 'POST') {
         return respond(201, await create('edi_transactions', body, effectiveOrgId));

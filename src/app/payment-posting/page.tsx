@@ -10,7 +10,7 @@ import { UAE_ORG_IDS, US_ORG_IDS, filterByRegion, filterPayersByCountry } from '
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
-import { useERAFiles, useAutoPostPayments, useCreateERAFile, useCreateBankDeposit, useRequestUploadUrl, usePayments } from '@/lib/hooks'
+import { useERAFiles, useAutoPostPayments, useCreateERAFile, useCreateBankDeposit, useRequestUploadUrl, usePayments, useCreateDenial, useCreateTask } from '@/lib/hooks'
 import type { ApiBankDeposit } from '@/lib/hooks/useEntities'
 import { api } from '@/lib/api-client'
 
@@ -221,6 +221,8 @@ export default function PaymentPostingPage() {
   const { mutate: requestUploadUrl } = useRequestUploadUrl()
   const { mutate: autoPost } = useAutoPostPayments()
   const { mutate: createERAFile } = useCreateERAFile()
+  const { mutate: createDenial } = useCreateDenial()
+  const { mutate: createTask } = useCreateTask()
   const [applyingPayment, setApplyingPayment] = useState<string | null>(null)
   const [writingOff, setWritingOff] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -354,11 +356,29 @@ export default function PaymentPostingPage() {
               </p>
             </div>
             <button
-              onClick={() => {
-                setLineItems(prev => prev.map(row =>
-                  row.denied > 0 && row.action === 'post' ? { ...row, action: 'deny_route' } : row
-                ))
-                toast.success(`${silentDenials.length} silent denial(s) routed to AR queue`)
+              onClick={async () => {
+                const results = await Promise.allSettled(
+                  silentDenials.map(line => createDenial({
+                    claim_id: line.claimId || '',
+                    denial_reason: line.adjReason || 'Silent denial detected on ERA',
+                    denied_amount: line.denied || 0,
+                  }))
+                )
+                const successCount = results.filter(r => r.status === 'fulfilled').length
+                const failedCount = silentDenials.length - successCount
+
+                if (successCount > 0) {
+                  setLineItems(prev => prev.map(row =>
+                    row.denied > 0 && row.action === 'post' ? { ...row, action: 'deny_route' } : row
+                  ))
+                  toast.success(`${successCount} silent denial(s) routed to AR queue`)
+                }
+                if (failedCount > 0) {
+                  toast.error(`${failedCount} silent denial(s) failed to create`)
+                  results.forEach(r => { if (r.status === 'rejected') console.error('Failed to create denial:', r.reason) })
+                } else if (successCount === 0 && silentDenials.length > 0) {
+                  toast.error('No silent denials were routed — please try again')
+                }
               }}
               className="shrink-0 bg-[#065E76] text-white rounded-btn px-3 py-1.5 text-[12px] font-medium hover:bg-[#065E76]/80 transition-colors">
               Create AR Tasks
@@ -674,14 +694,61 @@ export default function PaymentPostingPage() {
         }} disabled={posting} className="bg-brand text-white rounded-btn px-4 py-2 text-[13px] disabled:opacity-60">
           {posting ? 'Posting…' : 'Post All Approved'}
         </button>
-        <button onClick={() => {
+        <button onClick={async () => {
           const denied = eraLines.filter(l => l.action === 'deny_route')
           if (denied.length === 0) { toast.warning('No lines marked for denial routing'); return }
-          toast.success(`${denied.length} denial(s) routed to AR queue`)
+
+          const results = await Promise.allSettled(
+            denied.map(async (line) => {
+              await createDenial({
+                claim_id: line.claimId || '',
+                denial_reason: line.adjReason || 'Denied on ERA',
+                denied_amount: line.denied || 0,
+                source_era_id: selectedEra || '',
+              })
+              await createTask({
+                title: `AR Follow-up: Denied ${line.cpt || 'claim'} — $${line.denied}`,
+                description: `ERA denial routed from Payment Posting. Reason: ${line.adjReason || 'See ERA'}`,
+                task_type: 'ar_follow_up',
+                priority: 'high',
+                status: 'open' as const,
+              })
+            })
+          )
+          const successCount = results.filter(r => r.status === 'fulfilled').length
+          const failedCount = denied.length - successCount
+
+          if (successCount > 0) toast.success(`${successCount} denial(s) routed to AR queue`)
+          if (failedCount > 0) {
+            toast.error(`${failedCount} denial(s) failed to route — check console`)
+            results.forEach((r, i) => { if (r.status === 'rejected') console.error(`Failed to route denial for claim ${denied[i].claimId}:`, r.reason) })
+          } else if (successCount === 0) {
+            toast.error('Failed to route denials — check claim IDs')
+          }
         }} className="bg-surface-elevated text-content-secondary border border-separator rounded-btn px-4 py-2 text-[13px] hover:border-brand/30 hover:text-brand-dark transition-colors">Route Denials to AR</button>
-        <button onClick={() => {
+        <button onClick={async () => {
           const patBal = eraLines.filter(l => l.action === 'patient_bill')
-          toast.success(`${patBal.length || 2} patient statement(s) queued for delivery`)
+          if (patBal.length === 0) { toast.warning('No lines marked for patient billing'); return }
+
+          const results = await Promise.allSettled(
+            patBal.map(line => createTask({
+              title: `Patient Statement: ${line.patientName} — $${line.patBalance.toFixed(2)}`,
+              description: `Patient responsibility from ERA. CPT: ${line.cpt}, DOS: ${line.dos}, Balance: $${line.patBalance.toFixed(2)}`,
+              task_type: 'patient_statement',
+              priority: 'medium',
+              status: 'open' as const,
+            }))
+          )
+          const successCount = results.filter(r => r.status === 'fulfilled').length
+          const failedCount = patBal.length - successCount
+
+          if (successCount > 0) toast.success(`${successCount} patient statement task(s) created`)
+          if (failedCount > 0) {
+            toast.error(`${failedCount} statement task(s) failed — check console`)
+            results.forEach((r, i) => { if (r.status === 'rejected') console.error(`Failed to create statement for ${patBal[i].patientName}:`, r.reason) })
+          } else if (successCount === 0) {
+            toast.error('Failed to create statement tasks')
+          }
         }} className="bg-brand/10 text-brand-dark border border-brand/20 rounded-btn px-4 py-2 text-[13px] inline-flex items-center gap-1 hover:bg-brand/20 transition-colors"><FileText size={14} />Generate Patient Statements</button>
       </div>
 
