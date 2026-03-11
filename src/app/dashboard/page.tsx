@@ -120,7 +120,7 @@ function ExecutiveDashboard() {
             </h3>
             {agingBuckets && <span className="text-[11px] text-content-tertiary">Outstanding claim balances by age bucket</span>}
           </div>
-          <div className="flex items-end gap-3 h-36 px-2 mt-5">
+          <div className="flex items-end gap-3 h-36 px-2 mt-8">
             {agingBuckets
               ? agingBuckets.map((b, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
