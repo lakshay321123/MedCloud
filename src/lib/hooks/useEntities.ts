@@ -2018,3 +2018,11 @@ export function useUsers(extra?: ApiListParams) {
   const params = useClientParams(extra)
   return useApi<ApiListResponse<ApiUser>>('/users', params)
 }
+
+export function useCreateUser() {
+  return useMutation<ApiUser, Partial<ApiUser>>('post', '/users')
+}
+
+export function useUpdateUser(id: string) {
+  return useMutation<ApiUser, Partial<ApiUser>>('put', `/users/${id}`)
+}
