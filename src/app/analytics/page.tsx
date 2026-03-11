@@ -150,8 +150,8 @@ export default function AnalyticsPage() {
       billed: Number(c.total_charges) || 0,
       allowed: Number(c.allowed_amount) || 0,
       paid: Number(c.paid_amount) || (['paid','partial_pay'].includes(c.status) ? Number(c.total_charges) * 0.9 : 0),
-      submittedDate: c.submitted_at || c.submitted_date,
-      paymentDate: c.paid_date || c.payment_date,
+      submittedDate: c.submitted_date || (c as any).submitted_at,
+      paymentDate: c.paid_date || (c as any).payment_date,
       dos: c.dos_from,
     }))
     if (!apiClaims.length) return []
