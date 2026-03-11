@@ -114,10 +114,12 @@ function ExecutiveDashboard() {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 sm:gap-5">
         <div className="col-span-3 card p-6">
-          <h3 className="text-[15px] font-semibold text-content-primary mb-0.5">
-            {agingBuckets ? t('dashboard','arAgingBuckets') : t('dashboard','revenueTrend')}
-          </h3>
-          {agingBuckets && <p className="text-[11px] text-content-tertiary mb-2">Outstanding claim balances by age bucket</p>}
+          <div className="flex items-baseline justify-between mb-2">
+            <h3 className="text-[15px] font-semibold text-content-primary">
+              {agingBuckets ? t('dashboard','arAgingBuckets') : t('dashboard','revenueTrend')}
+            </h3>
+            {agingBuckets && <p className="text-[11px] text-content-tertiary">Outstanding claim balances by age bucket</p>}
+          </div>
           <div className="flex items-end gap-3 h-36 px-2 mt-1">
             {agingBuckets
               ? agingBuckets.map((b, i) => (

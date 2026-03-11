@@ -25,7 +25,7 @@ function KPITooltip({ formula }: { formula: string }) {
     <span className="relative inline-flex ml-1" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
       <Info size={12} className="text-content-tertiary cursor-help" />
       {show && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-[240px] bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[11px] text-content-secondary shadow-xl whitespace-normal pointer-events-none">
+        <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 w-[240px] bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[11px] text-black shadow-xl whitespace-normal pointer-events-none">
           {formula}
         </span>
       )}
@@ -535,16 +535,16 @@ export default function AnalyticsPage() {
               <div key={f.name} className="card p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-brand">{f.icon}</span>
-                  <p className="text-[13px] font-semibold text-content-primary">{f.name}</p>
+                  <p className="text-[13px] font-semibold text-black">{f.name}</p>
                 </div>
-                <p className="text-[24px] font-bold text-content-primary">{f.metric}</p>
-                <p className="text-[11px] text-content-tertiary mb-2">{f.metricLabel}</p>
+                <p className="text-[24px] font-bold text-[#00B5D6]">{f.metric}</p>
+                <p className="text-[11px] text-black mb-2">{f.metricLabel}</p>
                 <div className="h-1.5 bg-surface-elevated rounded-full mb-3">
                   <div className="h-full bg-brand rounded-full transition-all duration-700" style={{ width: `${f.barPct}%` }} />
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[11px] text-content-secondary">{f.uses}</span>
-                  <span className={`text-[11px] font-medium ${f.trend.startsWith('↑') ? 'text-brand-dark' : f.trend.startsWith('↓') ? 'text-[#065E76]' : 'text-content-tertiary'}`}>{f.trend}</span>
+                  <span className="text-[11px] text-black">{f.uses}</span>
+                  <span className={`text-[11px] font-medium ${f.trend.startsWith('↑') ? 'text-[#00B5D6]' : f.trend.startsWith('↓') ? 'text-[#065E76]' : 'text-black'}`}>{f.trend}</span>
                 </div>
               </div>
             ))}

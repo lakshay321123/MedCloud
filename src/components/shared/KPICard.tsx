@@ -35,7 +35,7 @@ export default function KPICard({ label, value, sub, trend, icon }: KPICardProps
         <p className={`text-[12px] font-medium mt-2.5 flex items-center gap-1 ${
           trend === 'up'   ? 'text-[#00B5D6]'  :
           trend === 'down' ? 'text-[#065E76]'   :
-          'text-content-tertiary'
+          'text-black'
         }`}>
           {trend === 'up' && <span className="text-[10px]">↑</span>}
           {trend === 'down' && <span className="text-[10px]">↓</span>}
