@@ -293,6 +293,7 @@ function ARDrawer({
   const { mutate: requestInfo, loading: requestingInfo } = useARRequestInfo()
   const { mutate: escalateClaim, loading: escalating } = useARescalate()
   const { mutate: sendStatement, loading: sendingStatement } = useARSendStatement()
+  const { mutate: requestWriteOff } = useRequestWriteOff()
 
   const tfDays = TF_DEADLINES[account.payer] || 180
   const dosDate = new Date(account.dos)
@@ -300,9 +301,17 @@ function ARDrawer({
   deadlineDate.setDate(deadlineDate.getDate() + tfDays)
   const daysUntilDeadline = Math.ceil((deadlineDate.getTime() - Date.now()) / 86400000)
 
-  const handleWriteoff = () => {
+  const handleWriteoff = async () => {
     if (!writeoffReason) { toast.error('Select a reason for write-off'); return }
-    toast.info('Write-off request submitted — pending supervisor approval')
+    try {
+      await requestWriteOff({
+        claim_id: account.claimId || account.id,
+        amount: account.balance,
+        reason: writeoffReason,
+        category: writeoffReason,
+      })
+      toast.success('Write-off request submitted — pending supervisor approval')
+    } catch (err) { toast.error(`Write-off failed: ${err instanceof Error ? err.message : 'Unknown error'}`); console.error(err) }
     setShowWriteoffModal(false)
     setWriteoffReason('')
   }

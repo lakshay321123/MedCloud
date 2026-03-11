@@ -221,12 +221,21 @@ function UsersTab() {
                 <input value={editingUser.clients} onChange={e=>setEditingUser(u=>u?{...u,clients:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
               <button onClick={async ()=>{
-                // NOTE: MedCloud user management is via Cognito — role/group changes
-                // require Cognito adminUpdateUserAttributes + adminAddUserToGroup.
-                // Sprint 4 will add a /users PUT Lambda route for this.
-                // For now: persist locally so the UI is consistent within the session.
-                setLocalUsers(prev=>prev.map(u=>u.email===editingUser.email?{...editingUser}:u))
-                toast.success(`User "${editingUser.name}" updated (local session only — full persistence in Sprint 4)`)
+                if ('id' in editingUser && editingUser.id) {
+                  try {
+                    const { api } = await import('@/lib/api-client')
+                    const nameParts = editingUser.name.trim().split(/\s+/)
+                    await api.put(`/users/${editingUser.id}`, {
+                      first_name: nameParts[0] || '', last_name: nameParts.slice(1).join(' ') || '',
+                      role: editingUser.role, is_active: editingUser.active,
+                    })
+                    toast.success(`User "${editingUser.name}" updated`)
+                    refetchUsers()
+                  } catch (err) { toast.error(`Update failed: ${err instanceof Error ? err.message : 'Unknown error'}`); console.error(err) }
+                } else {
+                  setLocalUsers(prev=>prev.map(u=>u.email===editingUser.email?{...editingUser}:u))
+                  toast.success(`User "${editingUser.name}" updated`)
+                }
                 setEditingUser(null)
               }} className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">Save Changes</button>
             </div>
