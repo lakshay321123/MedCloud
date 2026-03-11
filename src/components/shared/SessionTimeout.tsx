@@ -57,7 +57,7 @@ export default function SessionTimeout() {
       <div className="bg-surface-default rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-separator">
         <h3 className="text-lg font-bold text-content-primary mb-2">Session Expiring</h3>
         <p className="text-sm text-content-secondary mb-4">
-          Your session will expire in <span className="font-bold text-red-500">{secondsLeft}s</span> due to inactivity.
+          Your session will expire in <span className="font-bold text-[#065E76]">{secondsLeft}s</span> due to inactivity.
           This is required by HIPAA to protect patient data.
         </p>
         <button onClick={resetTimer}

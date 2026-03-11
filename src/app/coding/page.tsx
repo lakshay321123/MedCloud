@@ -347,7 +347,7 @@ function InlineDocPreview({ patientId, label }: { patientId?: string; label?: st
             </button>
           </div>
         </div>
-      {error && <p className="text-[11px] text-red-500 text-center py-2">{error}</p>}
+      {error && <p className="text-[11px] text-[#065E76] text-center py-2">{error}</p>}
       {previewUrl ? (
         isPdf ? (
           <iframe src={previewUrl} className="flex-1 w-full rounded-lg border border-separator min-h-[300px]" title="Document Preview" />
@@ -454,7 +454,7 @@ function CodingRulesPanel() {
                 {r.payer_name && <span className="text-content-tertiary ml-2">[{r.payer_name}]</span>}
                 <p className="text-[11px] text-content-tertiary">IF {r.condition_field} {r.condition_operator} &quot;{r.condition_value}&quot; → {r.action_type}: {r.action_value}</p>
               </div>
-              <button onClick={() => deleteRule(r.id)} className="text-[11px] text-red-500 hover:text-red-500">✕</button>
+              <button onClick={() => deleteRule(r.id)} className="text-[11px] text-[#065E76] hover:text-[#065E76]">✕</button>
             </div>
           ))}
         </div>
@@ -1007,7 +1007,7 @@ export default function CodingPage() {
                       <p className="text-[12px] text-content-secondary">{item.provider} · NPI: {item.providerNpi}</p>
                     </div>
                     {item.priorAuthStatus === 'not_obtained' && (
-                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-2 py-1 text-[11px] text-red-500 font-semibold flex items-center gap-1">
+                      <div className="bg-[#065E76]/10 border border-[#065E76]/30 rounded-lg px-2 py-1 text-[11px] text-[#065E76] font-semibold flex items-center gap-1">
                         <AlertTriangle size={11} /> AUTH REQUIRED — NOT ON FILE
                       </div>
                     )}
@@ -1285,10 +1285,10 @@ export default function CodingPage() {
 
                 {/* AI Unavailable Banner */}
                 {aiUnavailable && (
-                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-3 flex items-start gap-2">
-                    <AlertTriangle size={14} className="text-red-500 mt-0.5 shrink-0" />
+                  <div className="bg-[#065E76]/10 border border-[#065E76]/30 rounded-lg p-3 mb-3 flex items-start gap-2">
+                    <AlertTriangle size={14} className="text-[#065E76] mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-[13px] font-semibold text-red-500">AI Coding Unavailable</p>
+                      <p className="text-[13px] font-semibold text-[#065E76]">AI Coding Unavailable</p>
                       <p className="text-[12px] text-content-secondary mt-0.5">Bedrock is temporarily unreachable. Use manual code entry below. This chart will be flagged for QA audit.</p>
                     </div>
                   </div>
@@ -1298,7 +1298,7 @@ export default function CodingPage() {
                 {process.env.NODE_ENV === 'development' && (
                   <button
                     onClick={() => setAiUnavailable(p => !p)}
-                    className={`text-[11px] px-2 py-0.5 rounded border mb-2 ${aiUnavailable ? 'border-red-500/40 text-red-500 bg-red-500/10' : 'border-separator text-content-tertiary'}`}
+                    className={`text-[11px] px-2 py-0.5 rounded border mb-2 ${aiUnavailable ? 'border-[#065E76]/40 text-[#065E76] bg-[#065E76]/10' : 'border-separator text-content-tertiary'}`}
                   >
                     {aiUnavailable ? '🔴 AI Unavailable (simulated)' : 'Simulate AI Failure'}
                   </button>
@@ -1455,10 +1455,10 @@ export default function CodingPage() {
                               </span>
                               {code.is_hcc && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-brand/10 text-brand-dark font-bold uppercase tracking-wider">HCC</span>}
                               <span className="text-[12px] text-content-secondary flex-1">{code.desc}</span>
-                              <span className={`text-[12px] font-semibold ${(code.confidence ?? 0) >= 90 ? 'text-brand-dark' : (code.confidence ?? 0) >= 70 ? 'text-brand-deep' : 'text-red-500'}`}>{code.confidence ?? 0}%</span>
+                              <span className={`text-[12px] font-semibold ${(code.confidence ?? 0) >= 90 ? 'text-brand-dark' : (code.confidence ?? 0) >= 70 ? 'text-brand-deep' : 'text-[#065E76]'}`}>{code.confidence ?? 0}%</span>
                               {code.reasoning && <button onClick={() => setExpanded(p => ({ ...p, [key]: !p[key] }))} className="text-content-tertiary">{expanded[key] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button>}
                               <button onClick={() => { setEditingCode(editingCode === key ? null : key); setEditSearch('') }} className="text-[11px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-brand/40 hover:text-brand transition-colors">Edit</button>
-                              <button onClick={() => setRemovingCode(removingCode === key ? null : key)} className="text-[11px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-red-500/40 hover:text-red-500 transition-colors">Remove</button>
+                              <button onClick={() => setRemovingCode(removingCode === key ? null : key)} className="text-[11px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-[#065E76]/40 hover:text-[#065E76] transition-colors">Remove</button>
                               {isLowConfidence && !isForcedReview && (
                                 <button onClick={() => { setForcedReviewCodes(prev => { const s = new Set(Array.from(prev)); s.add(key); return s }); toast.info('Marked as manually reviewed') }} className="text-[11px] px-1.5 py-0.5 rounded bg-brand-pale0/20 text-brand-deep font-semibold">Confirm</button>
                               )}
@@ -1513,7 +1513,7 @@ export default function CodingPage() {
                         <span className="text-[12px] font-mono font-semibold text-brand">{mc.code}</span>
                         <span className="text-[12px] text-content-secondary flex-1">{mc.description}</span>
                         <span className="text-[11px] text-content-tertiary">Manual</span>
-                        <button onClick={() => setManualCodes(p => p.filter(m => m.key !== mc.key))} className="text-[11px] text-red-500">Remove</button>
+                        <button onClick={() => setManualCodes(p => p.filter(m => m.key !== mc.key))} className="text-[11px] text-[#065E76]">Remove</button>
                       </div>
                     ))}
 
@@ -1553,10 +1553,10 @@ export default function CodingPage() {
                               </span>
                               {code.modifiers?.map(mod => <span key={mod} className="text-[11px] px-1.5 py-0.5 rounded-pill bg-brand/10 text-brand">Mod {mod}</span>)}
                               <span className="text-[12px] text-content-secondary flex-1">{code.desc}</span>
-                              <span className={`text-[12px] font-semibold ${(code.confidence ?? 0) >= 90 ? 'text-brand-dark' : (code.confidence ?? 0) >= 70 ? 'text-brand-deep' : 'text-red-500'}`}>{code.confidence ?? 0}%</span>
+                              <span className={`text-[12px] font-semibold ${(code.confidence ?? 0) >= 90 ? 'text-brand-dark' : (code.confidence ?? 0) >= 70 ? 'text-brand-deep' : 'text-[#065E76]'}`}>{code.confidence ?? 0}%</span>
                               {code.reasoning && <button onClick={() => setExpanded(p => ({ ...p, [key]: !p[key] }))} className="text-content-tertiary">{expanded[key] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button>}
                               <button onClick={() => { setEditingCode(editingCode === key ? null : key); setEditSearch('') }} className="text-[11px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-brand/40 hover:text-brand transition-colors">Edit</button>
-                              <button onClick={() => setRemovingCode(removingCode === key ? null : key)} className="text-[11px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-red-500/40 hover:text-red-500 transition-colors">Remove</button>
+                              <button onClick={() => setRemovingCode(removingCode === key ? null : key)} className="text-[11px] px-1.5 py-0.5 rounded border border-separator text-content-secondary hover:border-[#065E76]/40 hover:text-[#065E76] transition-colors">Remove</button>
                               {isLowConfidence && !isForcedReview && (
                                 <button onClick={() => { setForcedReviewCodes(prev => { const s = new Set(Array.from(prev)); s.add(key); return s }); toast.info('Marked as manually reviewed') }} className="text-[11px] px-1.5 py-0.5 rounded bg-brand-pale0/20 text-brand-deep font-semibold">Confirm</button>
                               )}
@@ -1611,7 +1611,7 @@ export default function CodingPage() {
                         <span className="text-[12px] font-mono font-semibold text-brand">{mc.code}</span>
                         <span className="text-[12px] text-content-secondary flex-1">{mc.description}</span>
                         <span className="text-[11px] text-content-tertiary">Manual</span>
-                        <button onClick={() => setManualCodes(p => p.filter(m => m.key !== mc.key))} className="text-[11px] text-red-500">Remove</button>
+                        <button onClick={() => setManualCodes(p => p.filter(m => m.key !== mc.key))} className="text-[11px] text-[#065E76]">Remove</button>
                       </div>
                     ))}
 

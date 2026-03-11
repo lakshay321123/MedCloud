@@ -71,7 +71,7 @@ const payerHassle: Record<string, { score: number; color: string }> = {
   UnitedHealthcare: { score: 42, color: 'text-brand-deep' },
   Medicare: { score: 28, color: 'text-brand-dark' },
   Aetna: { score: 58, color: 'text-brand-deep' },
-  Daman: { score: 71, color: 'text-red-400' },
+  Daman: { score: 71, color: 'text-[#065E76]' },
   NAS: { score: 35, color: 'text-brand-dark' },
   'Self-Pay': { score: 15, color: 'text-brand-dark' },
   BCBS: { score: 45, color: 'text-brand-deep' },
@@ -104,9 +104,9 @@ const PAYER_COLORS: Record<string, string> = {
 
 // ─── Heatmap cell ─────────────────────────────────────────────────────────────
 function HeatCell({ value }: { value: number }) {
-  const bg = value === 0 ? 'bg-surface-elevated' : value <= 3 ? 'bg-red-500/20' : value <= 7 ? 'bg-red-500/40' : 'bg-red-500/70'
+  const bg = value === 0 ? 'bg-surface-elevated' : value <= 3 ? 'bg-[#065E76]/20' : value <= 7 ? 'bg-[#065E76]/40' : 'bg-[#065E76]/70'
   return (
-    <td className={`px-3 py-2 text-center text-[12px] ${bg} ${value > 0 ? 'text-red-300' : 'text-content-tertiary'}`}>
+    <td className={`px-3 py-2 text-center text-[12px] ${bg} ${value > 0 ? 'text-[#065E76]' : 'text-content-tertiary'}`}>
       {value || '—'}
     </td>
   )
@@ -544,7 +544,7 @@ export default function AnalyticsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-[11px] text-content-secondary">{f.uses}</span>
-                  <span className={`text-[11px] font-medium ${f.trend.startsWith('↑') ? 'text-brand-dark' : f.trend.startsWith('↓') ? 'text-red-400' : 'text-content-tertiary'}`}>{f.trend}</span>
+                  <span className={`text-[11px] font-medium ${f.trend.startsWith('↑') ? 'text-brand-dark' : f.trend.startsWith('↓') ? 'text-[#065E76]' : 'text-content-tertiary'}`}>{f.trend}</span>
                 </div>
               </div>
             ))}
@@ -577,7 +577,7 @@ export default function AnalyticsPage() {
                     <td className="px-4 py-2.5">${p.billed.toLocaleString()}</td>
                     <td className="px-4 py-2.5 text-brand-dark">${p.paid.toLocaleString()}</td>
                     <td className="px-4 py-2.5">
-                      <span className={parseInt(p.denialRate) > 10 ? 'text-red-400' : parseInt(p.denialRate) > 5 ? 'text-brand-deep' : 'text-brand-dark'}>
+                      <span className={parseInt(p.denialRate) > 10 ? 'text-[#065E76]' : parseInt(p.denialRate) > 5 ? 'text-brand-deep' : 'text-brand-dark'}>
                         {p.denialRate}%
                       </span>
                     </td>
@@ -681,7 +681,7 @@ export default function AnalyticsPage() {
                   { label: 'Paid', count: claims.filter(c=>c.status==='paid').length || 18, color: 'bg-brand' },
                   { label: 'Submitted', count: claims.filter(c=>c.status==='submitted').length || 9, color: 'bg-brand' },
                   { label: 'Ready', count: claims.filter(c=>c.status==='ready').length || 5, color: 'bg-brand' },
-                  { label: 'Denied', count: claims.filter(c=>c.status==='denied').length || 3, color: 'bg-red-500' },
+                  { label: 'Denied', count: claims.filter(c=>c.status==='denied').length || 3, color: 'bg-[#065E76]' },
                   { label: 'In Process', count: claims.filter(c=>c.status==='in_process').length || 2, color: 'bg-brand-pale' },
                 ].map(s => (
                   <div key={s.label} className="flex items-center gap-2">
@@ -697,10 +697,10 @@ export default function AnalyticsPage() {
               <h3 className="text-[14px] font-semibold text-content-primary mb-3">Documentation Alerts</h3>
               <div className="space-y-2.5">
                 {[
-                  { label: 'Missing diagnosis linkage', count: 2, color: 'text-red-500' },
+                  { label: 'Missing diagnosis linkage', count: 2, color: 'text-[#065E76]' },
                   { label: 'Incomplete SOAP notes', count: 1, color: 'text-brand-deep' },
                   { label: 'Unsigned encounters', count: 3, color: 'text-brand-deep' },
-                  { label: 'E/M level mismatch', count: 1, color: 'text-red-500' },
+                  { label: 'E/M level mismatch', count: 1, color: 'text-[#065E76]' },
                   { label: 'Missing modifier', count: 0, color: 'text-brand-dark' },
                 ].map(a => (
                   <div key={a.label} className="flex items-center justify-between">

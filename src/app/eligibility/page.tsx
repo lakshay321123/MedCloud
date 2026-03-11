@@ -23,7 +23,7 @@ import {
 
 const ELIG_STATUS: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   active:   { label: 'Active',   color: 'text-brand-dark dark:text-brand-dark', icon: <CheckCircle2 size={12} /> },
-  inactive: { label: 'Inactive', color: 'text-red-600 dark:text-red-400',         icon: <AlertTriangle size={12} /> },
+  inactive: { label: 'Inactive', color: 'text-[#065E76] dark:text-[#065E76]',         icon: <AlertTriangle size={12} /> },
   pending:  { label: 'Pending',  color: 'text-brand-deep dark:text-brand-deep',     icon: <Clock size={12} /> },
   unknown:  { label: 'Unknown',  color: 'text-content-secondary',                 icon: <Clock size={12} /> },
 }
@@ -32,7 +32,7 @@ const PA_STATUS: Record<string, { label: string; cls: string }> = {
   pending:   { label: 'Pending',   cls: 'bg-brand-pale0/10 text-brand-deep' },
   submitted: { label: 'Submitted', cls: 'bg-brand/10 text-brand' },
   approved:  { label: 'Approved',  cls: 'bg-brand/10 text-brand-dark' },
-  denied:    { label: 'Denied',    cls: 'bg-red-500/10 text-red-500' },
+  denied:    { label: 'Denied',    cls: 'bg-[#065E76]/10 text-[#065E76]' },
   cancelled: { label: 'Cancelled', cls: 'bg-gray-500/10 text-content-tertiary' },
 }
 
@@ -259,16 +259,16 @@ function EligibilityResultCard({ result, patient }: { result: ApiEligibilityChec
   const isActive = result.status === 'active'
   const rd = typeof result.result === 'object' && result.result !== null ? result.result as Record<string, unknown> : {}
   return (
-    <div className={`card p-5 border-l-4 ${isActive ? 'border-l-emerald-500' : 'border-l-red-500'}`}>
+    <div className={`card p-5 border-l-4 ${isActive ? 'border-l-emerald-500' : 'border-l-[#065E76]'}`}>
       <div className="flex items-center gap-3 mb-4">
         {isActive
           ? <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center"><CheckCircle2 size={20} className="text-brand-dark" /></div>
-          : <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center"><AlertTriangle size={20} className="text-red-500" /></div>}
+          : <div className="w-10 h-10 rounded-full bg-[#065E76]/10 flex items-center justify-center"><AlertTriangle size={20} className="text-[#065E76]" /></div>}
         <div>
           <p className="text-sm font-semibold text-content-primary">
             {patient ? `${patient.first_name} ${patient.last_name}` : result.patient_name || 'Patient'}
           </p>
-          <p className={`text-[13px] font-medium ${isActive ? 'text-brand-dark dark:text-brand-dark' : 'text-red-600 dark:text-red-400'}`}>
+          <p className={`text-[13px] font-medium ${isActive ? 'text-brand-dark dark:text-brand-dark' : 'text-[#065E76] dark:text-[#065E76]'}`}>
             Coverage {result.status === 'active' ? 'Active' : result.status || 'Unknown'}
             {result.network_status && ` · ${result.network_status}`}
           </p>
@@ -353,7 +353,7 @@ function BatchCheckTab() {
             <p className="text-[13px] font-medium text-content-primary">{results.length} patients checked</p>
             <div className="flex items-center gap-3 text-[11px]">
               <span className="text-brand-dark">{results.filter(r => r.status === 'active').length} active</span>
-              <span className="text-red-500">{results.filter(r => r.status !== 'active').length} issues</span>
+              <span className="text-[#065E76]">{results.filter(r => r.status !== 'active').length} issues</span>
               <span className="text-brand-deep">{results.filter(r => r.prior_auth_required).length} need auth</span>
               <button
                 onClick={() => {
@@ -568,7 +568,7 @@ function PriorAuthTab({ auths, loading, onRefresh }: { auths: ApiPriorAuth[]; lo
         {[
           { label: 'Pending', value: kpis.pending, color: 'text-brand-deep' },
           { label: 'Approved', value: kpis.approved, color: 'text-brand-dark' },
-          { label: 'Denied', value: kpis.denied, color: 'text-red-500' },
+          { label: 'Denied', value: kpis.denied, color: 'text-[#065E76]' },
           { label: 'Avg Age of Approved', value: `${kpis.avgDays}d`, color: 'text-brand' },
         ].map(k => (
           <div key={k.label} className="card p-4 text-center">
@@ -626,7 +626,7 @@ function PriorAuthTab({ auths, loading, onRefresh }: { auths: ApiPriorAuth[]; lo
                     </div>
                   </td>
                   <td className="px-4 py-2.5">
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${pa.urgency === 'urgent' ? 'bg-red-500/10 text-red-500' : 'bg-gray-500/10 text-content-secondary'}`}>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${pa.urgency === 'urgent' ? 'bg-[#065E76]/10 text-[#065E76]' : 'bg-gray-500/10 text-content-secondary'}`}>
                       {pa.urgency || 'routine'}
                     </span>
                   </td>
@@ -785,7 +785,7 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
             <DrawerField label="Payer" value={pa.payer_name || '—'} icon={<Building2 size={12} />} />
             <DrawerField label="Provider" value={pa.provider_name || '—'} icon={<User size={12} />} />
             <DrawerField label="Urgency" value={pa.urgency || 'routine'}
-              icon={pa.urgency === 'urgent' ? <AlertTriangle size={12} className="text-red-500" /> : <Clock size={12} />} />
+              icon={pa.urgency === 'urgent' ? <AlertTriangle size={12} className="text-[#065E76]" /> : <Clock size={12} />} />
           </div>
           <div>
             <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-2">Procedure Codes</p>
@@ -833,7 +833,7 @@ function PriorAuthDrawer({ pa, onClose, onUpdate }: { pa: ApiPriorAuth; onClose:
               {(pa.status === 'pending' || pa.status === 'submitted') && (
                 <>
                   <button onClick={() => handleStatusUpdate('approved')} className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-brand/10 text-brand-dark hover:bg-brand/20 transition-colors">Mark Approved</button>
-                  <button onClick={() => handleStatusUpdate('denied')} className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-colors">Mark Denied</button>
+                  <button onClick={() => handleStatusUpdate('denied')} className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-[#065E76]/10 text-[#065E76] hover:bg-[#065E76]/20 transition-colors">Mark Denied</button>
                 </>
               )}
               {pa.status === 'denied' && (

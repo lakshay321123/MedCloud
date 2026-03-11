@@ -1,62 +1,91 @@
 'use client'
 import React from 'react'
 
+/*
+ * StatusBadge — uses the 6-color Pantone palette ONLY:
+ *   Submitted:    #000000  (black)
+ *   Denied:       #065E76  (dark teal)
+ *   Appealed:     #00B5D6  (brand cyan)
+ *   In Process:   #616161  (gray)
+ *   Partial Paid: outline  (white bg, border)
+ *   Paid:         #D6EBF2  (brand ghost)
+ *
+ * NO RED ANYWHERE.
+ */
+
 const styles: Record<string, { bg: string; text: string }> = {
-  // ── Positive / Complete → brand teal ──
-  completed: { bg: 'bg-brand/10', text: 'text-brand-dark' },
-  paid: { bg: 'bg-brand/10', text: 'text-brand-dark' },
-  active: { bg: 'bg-brand/10', text: 'text-brand-dark' },
-  resolved: { bg: 'bg-brand/10', text: 'text-brand-dark' },
-  signed: { bg: 'bg-brand/10', text: 'text-brand-dark' },
-  healthy: { bg: 'bg-brand/10', text: 'text-brand-dark' },
-  parsed: { bg: 'bg-brand/10', text: 'text-brand-dark' },
-  // ── Brand lighter ──
-  checked_in: { bg: 'bg-brand/15', text: 'text-brand' },
-  ready: { bg: 'bg-brand/15', text: 'text-brand' },
-  accepted: { bg: 'bg-brand/15', text: 'text-brand' },
-  claim_submitted: { bg: 'bg-brand/15', text: 'text-brand' },
-  walk_in: { bg: 'bg-brand/15', text: 'text-brand' },
-  // ── Blue ──
-  confirmed: { bg: 'bg-brand/10', text: 'text-brand-dark' },
-  submitted: { bg: 'bg-brand/10', text: 'text-brand-dark' },
-  open: { bg: 'bg-brand/10', text: 'text-brand-dark' },
-  received: { bg: 'bg-brand/10', text: 'text-brand-dark' },
-  onboarding: { bg: 'bg-brand/10', text: 'text-brand-dark' },
-  sent: { bg: 'bg-brand/10', text: 'text-brand-dark' },
-  appealed: { bg: 'bg-brand/10', text: 'text-brand-dark' },
-  rescheduled: { bg: 'bg-brand/10', text: 'text-brand-dark' },
-  // ── Pending / In-progress → pale brand ──
-  in_progress: { bg: 'bg-brand-pale/50', text: 'text-brand-deep' },
-  scrubbing: { bg: 'bg-brand-pale/50', text: 'text-brand-deep' },
-  in_process: { bg: 'bg-brand-pale/50', text: 'text-brand-deep' },
-  pending_signoff: { bg: 'bg-brand-pale/50', text: 'text-brand-deep' },
-  in_coding: { bg: 'bg-brand-pale/50', text: 'text-brand-deep' },
-  medium: { bg: 'bg-brand-pale/50', text: 'text-brand-deep' },
-  expiring: { bg: 'bg-brand-pale/50', text: 'text-brand-deep' },
-  warning: { bg: 'bg-brand-pale/50', text: 'text-brand-deep' },
-  blocked: { bg: 'bg-brand-pale/50', text: 'text-brand-deep' },
-  partial_pay: { bg: 'bg-brand-pale/50', text: 'text-brand-deep' },
-  late: { bg: 'bg-brand-pale/50', text: 'text-brand-deep' },
-  high: { bg: 'bg-brand-pale/50', text: 'text-brand-deep' },
-  // ── Red / Error ──
-  denied: { bg: 'bg-content-tertiary/10', text: 'text-content-secondary' },
-  no_show: { bg: 'bg-content-tertiary/10', text: 'text-content-secondary' },
-  scrub_failed: { bg: 'bg-brand-ghost/60 border border-brand-mid/30 border-l-[3px] border-l-brand-mid', text: 'text-brand-deep font-semibold' },
-  urgent: { bg: 'bg-brand-ghost/60 border border-brand-mid/30 border-l-[3px] border-l-brand-mid', text: 'text-brand-deep font-semibold' },
-  error: { bg: 'bg-brand-ghost/60 border border-brand-mid/30 border-l-[3px] border-l-brand-mid', text: 'text-brand-deep font-semibold' },
-  rejected: { bg: 'bg-brand-ghost/60 border border-brand-mid/30 border-l-[3px] border-l-brand-mid', text: 'text-brand-deep font-semibold' },
-  // ── Grey / Neutral ──
-  booked: { bg: 'bg-gray-200/60', text: 'text-gray-600' },
-  draft: { bg: 'bg-gray-200/60', text: 'text-gray-600' },
-  cancelled: { bg: 'bg-gray-200/60', text: 'text-gray-500' },
-  inactive: { bg: 'bg-gray-200/60', text: 'text-gray-500' },
-  corrected: { bg: 'bg-gray-200/60', text: 'text-gray-600' },
-  write_off: { bg: 'bg-gray-200/60', text: 'text-gray-500' },
-  low: { bg: 'bg-gray-200/60', text: 'text-gray-600' },
+  // ── Paid / Completed (#D6EBF2 bg, #065E76 text) ──────────────────────
+  paid:            { bg: 'bg-[#D6EBF2]', text: 'text-[#065E76]' },
+  completed:       { bg: 'bg-[#D6EBF2]', text: 'text-[#065E76]' },
+  active:          { bg: 'bg-[#D6EBF2]', text: 'text-[#065E76]' },
+  resolved:        { bg: 'bg-[#D6EBF2]', text: 'text-[#065E76]' },
+  signed:          { bg: 'bg-[#D6EBF2]', text: 'text-[#065E76]' },
+  healthy:         { bg: 'bg-[#D6EBF2]', text: 'text-[#065E76]' },
+  parsed:          { bg: 'bg-[#D6EBF2]', text: 'text-[#065E76]' },
+  accepted:        { bg: 'bg-[#D6EBF2]', text: 'text-[#065E76]' },
+  ready:           { bg: 'bg-[#D6EBF2]', text: 'text-[#065E76]' },
+  checked_in:      { bg: 'bg-[#D6EBF2]', text: 'text-[#065E76]' },
+  confirmed:       { bg: 'bg-[#D6EBF2]', text: 'text-[#065E76]' },
+  walk_in:         { bg: 'bg-[#D6EBF2]', text: 'text-[#065E76]' },
+  approved:        { bg: 'bg-[#D6EBF2]', text: 'text-[#065E76]' },
+  posted:          { bg: 'bg-[#D6EBF2]', text: 'text-[#065E76]' },
+  connected:       { bg: 'bg-[#D6EBF2]', text: 'text-[#065E76]' },
+  operational:     { bg: 'bg-[#D6EBF2]', text: 'text-[#065E76]' },
+
+  // ── Partial Paid / Outline (white bg, border) ────────────────────────
+  partial_pay:     { bg: 'bg-white border border-[#CCCCCC]', text: 'text-[#616161]' },
+  corrected:       { bg: 'bg-white border border-[#CCCCCC]', text: 'text-[#616161]' },
+  write_off:       { bg: 'bg-white border border-[#CCCCCC]', text: 'text-[#616161]' },
+
+  // ── In Process / Neutral (#616161) ───────────────────────────────────
+  draft:           { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },
+  booked:          { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },
+  open:            { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },
+  received:        { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },
+  pending:         { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },
+  medium:          { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },
+  low:             { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },
+  cancelled:       { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },
+  inactive:        { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },
+  degraded:        { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },
+  pending_review:  { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },
+
+  // ── Appealed / Active (#00B5D6) ──────────────────────────────────────
+  appealed:        { bg: 'bg-[#00B5D6]/10', text: 'text-[#00B5D6]' },
+  in_progress:     { bg: 'bg-[#00B5D6]/10', text: 'text-[#00B5D6]' },
+  scrubbing:       { bg: 'bg-[#00B5D6]/10', text: 'text-[#00B5D6]' },
+  in_process:      { bg: 'bg-[#00B5D6]/10', text: 'text-[#00B5D6]' },
+  in_coding:       { bg: 'bg-[#00B5D6]/10', text: 'text-[#00B5D6]' },
+  pending_signoff: { bg: 'bg-[#00B5D6]/10', text: 'text-[#00B5D6]' },
+  rescheduled:     { bg: 'bg-[#00B5D6]/10', text: 'text-[#00B5D6]' },
+  expiring:        { bg: 'bg-[#00B5D6]/10', text: 'text-[#00B5D6]' },
+  warning:         { bg: 'bg-[#00B5D6]/10', text: 'text-[#00B5D6]' },
+  blocked:         { bg: 'bg-[#00B5D6]/10', text: 'text-[#00B5D6]' },
+  late:            { bg: 'bg-[#00B5D6]/10', text: 'text-[#00B5D6]' },
+  in_review:       { bg: 'bg-[#00B5D6]/10', text: 'text-[#00B5D6]' },
+  recredentialing: { bg: 'bg-[#00B5D6]/10', text: 'text-[#00B5D6]' },
+  processing:      { bg: 'bg-[#00B5D6]/10', text: 'text-[#00B5D6]' },
+
+  // ── Submitted / Sent (#000000) ───────────────────────────────────────
+  submitted:       { bg: 'bg-black/8', text: 'text-black' },
+  sent:            { bg: 'bg-black/8', text: 'text-black' },
+  claim_submitted: { bg: 'bg-black/8', text: 'text-black' },
+  onboarding:      { bg: 'bg-black/8', text: 'text-black' },
+
+  // ── Denied / Error (#065E76) ─────────────────────────────────────────
+  denied:          { bg: 'bg-[#065E76]/10', text: 'text-[#065E76] font-semibold' },
+  rejected:        { bg: 'bg-[#065E76]/10', text: 'text-[#065E76] font-semibold' },
+  scrub_failed:    { bg: 'bg-[#065E76]/10 border-l-[3px] border-l-[#065E76]', text: 'text-[#065E76] font-semibold' },
+  error:           { bg: 'bg-[#065E76]/10', text: 'text-[#065E76] font-semibold' },
+  urgent:          { bg: 'bg-[#065E76]/10', text: 'text-[#065E76] font-semibold' },
+  high:            { bg: 'bg-[#065E76]/10', text: 'text-[#065E76] font-semibold' },
+  no_show:         { bg: 'bg-[#065E76]/10', text: 'text-[#065E76] font-semibold' },
+  failed:          { bg: 'bg-[#065E76]/10', text: 'text-[#065E76] font-semibold' },
+  expired:         { bg: 'bg-[#065E76]/10', text: 'text-[#065E76] font-semibold' },
 }
 
 export default function StatusBadge({ status, small }: { status: string; small?: boolean }) {
-  const s = styles[status] || styles.booked
+  const s = styles[status] || styles.draft
   const label = status.replace(/_/g, ' ')
   return (
     <span className={`inline-flex items-center rounded-lg font-medium whitespace-nowrap tracking-wide ${s.bg} ${s.text} ${small ? 'text-[11px] px-2 py-0.5' : 'text-[11px] px-2.5 py-1'}`}>

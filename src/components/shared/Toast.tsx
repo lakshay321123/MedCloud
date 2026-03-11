@@ -40,9 +40,9 @@ const toastStyles: Record<ToastType, { bg: string; border: string; icon: React.R
   },
   error: {
     bg: 'bg-surface-secondary',
-    border: 'border-l-4 border-l-red-500 border border-separator',
-    icon: <XCircle size={18} className="text-red-500 shrink-0" />,
-    bar: 'bg-red-500',
+    border: 'border-l-4 border-l-[#065E76] border border-separator',
+    icon: <XCircle size={18} className="text-[#065E76] shrink-0" />,
+    bar: 'bg-[#065E76]',
   },
   warning: {
     bg: 'bg-surface-secondary',

@@ -168,7 +168,7 @@ export default function Topbar() {
             >
               <Bell size={18} />
               {displayUnread > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-black rounded-full text-[9px] text-white font-bold flex items-center justify-center">
                   {displayUnread > 9 ? '9+' : displayUnread}
                 </span>
               )}
@@ -183,7 +183,7 @@ export default function Topbar() {
                   {notifications.length === 0 ? (
                     <div className="px-4 py-8 text-center text-sm text-gray-400">All caught up ✓</div>
                   ) : notifications.map((n) => {
-                    const dotColor = n.type === 'urgent' || n.type === 'critical' ? 'bg-red-500' : n.type === 'warning' ? 'bg-brand-light' : 'bg-brand'
+                    const dotColor = n.type === 'urgent' || n.type === 'critical' ? 'bg-[#065E76]' : n.type === 'warning' ? 'bg-brand-light' : 'bg-brand'
                     const timeAgo = (() => {
                       const diff = Date.now() - new Date(n.created_at).getTime()
                       if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`

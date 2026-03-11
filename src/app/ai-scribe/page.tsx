@@ -420,8 +420,8 @@ function ProviderView() {
         </div>
       </div>
       {(selectedPatient.allergies?.length ?? 0) > 0 && (
-        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
-          <div className="text-xs font-semibold text-red-500 mb-1">⚠ Allergies</div>
+        <div className="bg-[#065E76]/5 border border-[#065E76]/20 rounded-lg p-3">
+          <div className="text-xs font-semibold text-[#065E76] mb-1">⚠ Allergies</div>
           <div className="text-sm">{selectedPatient.allergies!.join(', ')}</div>
         </div>
       )}
@@ -476,10 +476,10 @@ function ProviderView() {
         </div>
         {selectedPatient && <>
           <div><span className="text-content-tertiary">DOB: </span>{formatDOB(selectedPatient.dob)}</div>
-          <div><span className="text-red-400">Allergies: </span><span className="text-red-500">{selectedPatient.allergies?.join(', ') || 'NKDA'}</span></div>
+          <div><span className="text-[#065E76]">Allergies: </span><span className="text-[#065E76]">{selectedPatient.allergies?.join(', ') || 'NKDA'}</span></div>
           <div className="text-content-tertiary">Meds: <span className="text-content-secondary">{selectedPatient.medications?.join(', ') || '—'}</span></div>
         </>}
-        {aiError && <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded text-red-500 text-[11px]"><AlertTriangle size={10} className="inline mr-1" />{aiError}</div>}
+        {aiError && <div className="mt-2 p-2 bg-[#065E76]/10 border border-[#065E76]/20 rounded text-[#065E76] text-[11px]"><AlertTriangle size={10} className="inline mr-1" />{aiError}</div>}
 
         {/* Voice macros toggle */}
         <div className="pt-2 border-t border-separator">
@@ -518,8 +518,8 @@ function ProviderView() {
       {/* Right: live transcript */}
       <div className="col-span-2 card p-4 flex flex-col">
         <div className="flex items-center gap-2 mb-3">
-          {isListening ? <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" /> : <span className="w-2 h-2 bg-brand-pale rounded-full" />}
-          <span className="text-xs font-semibold text-red-500">{isListening ? 'RECORDING — Speak clearly' : 'Mic starting…'}</span>
+          {isListening ? <span className="w-2 h-2 bg-[#065E76] rounded-full animate-pulse" /> : <span className="w-2 h-2 bg-brand-pale rounded-full" />}
+          <span className="text-xs font-semibold text-[#065E76]">{isListening ? 'RECORDING — Speak clearly' : 'Mic starting…'}</span>
           <span className="ml-auto flex items-center gap-2 text-[11px] text-content-tertiary">
             <span className="bg-brand/10 text-brand px-1.5 py-0.5 rounded">{selectedSpecialty}</span>
             <button onClick={() => setIsTranscriptEditable(p => !p)} className="hover:text-content-primary flex items-center gap-0.5">
@@ -543,7 +543,7 @@ function ProviderView() {
         {transcript && (
           <div className="mt-2 pt-2 border-t border-separator flex items-center justify-between">
             <span className="text-[11px] text-content-tertiary">{transcript.split(' ').filter(Boolean).length} words</span>
-            <button onClick={() => { setTranscript(''); transcriptRef.current = '' }} className="text-[11px] text-content-tertiary hover:text-red-500">Clear</button>
+            <button onClick={() => { setTranscript(''); transcriptRef.current = '' }} className="text-[11px] text-content-tertiary hover:text-[#065E76]">Clear</button>
           </div>
         )}
       </div>
@@ -732,7 +732,7 @@ function ProviderView() {
                       </div>
                       <div className="flex gap-1 shrink-0">
                         <button onClick={() => setKeptCodes(p => ({ ...p, [code.code]: true }))} className={`text-[11px] px-2 py-1 rounded border transition-colors ${keptCodes[code.code] !== false ? 'bg-brand/10 text-brand-dark dark:text-brand-dark border-brand/20' : 'border-separator text-content-secondary'}`}>Keep</button>
-                        <button onClick={() => setKeptCodes(p => ({ ...p, [code.code]: false }))} className={`text-[11px] px-2 py-1 rounded border transition-colors ${keptCodes[code.code] === false ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'border-separator text-content-secondary'}`}>Remove</button>
+                        <button onClick={() => setKeptCodes(p => ({ ...p, [code.code]: false }))} className={`text-[11px] px-2 py-1 rounded border transition-colors ${keptCodes[code.code] === false ? 'bg-[#065E76]/10 text-[#065E76] border-[#065E76]/20' : 'border-separator text-content-secondary'}`}>Remove</button>
                       </div>
                     </div>
                   </div>

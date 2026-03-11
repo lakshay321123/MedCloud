@@ -81,7 +81,7 @@ function ExecutiveDashboard() {
 
   const recentClaimsActivity = metrics?.recent_claims?.slice(0, 5).map(c => ({
     t: `Claim #${c.claim_number} — ${c.first_name} ${c.last_name} ($${Number(c.total_charges || 0).toLocaleString()})`,
-    c: c.status === 'paid' ? 'text-brand-dark dark:text-brand-dark' : c.status === 'denied' ? 'text-red-500' : 'text-brand',
+    c: c.status === 'paid' ? 'text-brand-dark dark:text-brand-dark' : c.status === 'denied' ? 'text-[#065E76]' : 'text-brand',
     ago: timeAgo(c.dos_from),
     href: '/claims',
   }))
@@ -428,7 +428,7 @@ function ClientDashboard() {
             onClick={() => router.push('/tasks')}
             className="bg-brand/10 border border-brand/20 rounded-lg px-3 py-2 flex items-center gap-2 hover:bg-brand/15 transition-colors cursor-pointer"
           >
-            <AlertTriangle size={14} className="text-red-500" />
+            <AlertTriangle size={14} className="text-[#065E76]" />
             <span className="text-[13px] text-brand-deep font-semibold">{actionNeeded} items need your attention →</span>
           </button>
         )}
@@ -460,8 +460,8 @@ function SupervisorDashboard() {
   const unpostedERAs = 2
 
   const exceptions = [
-    { count: chartsPastSLA, label: 'Charts past 24h coding SLA', href: '/coding', color: 'red' },
-    { count: scrubErrors, label: 'Claims with unresolved scrub errors', href: '/claims', color: 'red' },
+    { count: chartsPastSLA, label: 'Charts past 24h coding SLA', href: '/coding', color: 'denied' },
+    { count: scrubErrors, label: 'Claims with unresolved scrub errors', href: '/claims', color: 'denied' },
     { count: unassignedDenials, label: 'Denials received — unassigned', href: '/denials', color: 'blue' },
     { count: unpostedERAs, label: 'ERAs unposted > 36h', href: '/payment-posting', color: 'blue' },
     { count: 2, label: 'Appeal response windows closing < 5 days', href: '/denials', color: 'blue' },
@@ -482,10 +482,10 @@ function SupervisorDashboard() {
       ) : (
         <div className="space-y-3">
           {exceptions.map((exc, i) => (
-            <div key={i} className={`rounded-xl p-4 border flex items-center justify-between ${exc.color === 'red' ? 'bg-red-500/10 border-red-500/30' : 'bg-brand-pale0/10 border-brand-light/30'}`}>
+            <div key={i} className={`rounded-xl p-4 border flex items-center justify-between ${exc.color === 'denied' ? 'bg-[#065E76]/10 border-[#065E76]/30' : 'bg-brand-pale0/10 border-brand-light/30'}`}>
               <div className="flex items-center gap-3">
-                <span className={`text-2xl font-bold ${exc.color === 'red' ? 'text-red-500' : 'text-brand-deep'}`}>{exc.count}</span>
-                <p className={`text-[13px] font-medium ${exc.color === 'red' ? 'text-red-600' : 'text-brand-deep'}`}>{exc.label}</p>
+                <span className={`text-2xl font-bold ${exc.color === 'denied' ? 'text-[#065E76]' : 'text-brand-deep'}`}>{exc.count}</span>
+                <p className={`text-[13px] font-medium ${exc.color === 'denied' ? 'text-[#065E76]' : 'text-brand-deep'}`}>{exc.label}</p>
               </div>
               <Link href={exc.href} className="text-[12px] text-brand font-medium shrink-0">Resolve →</Link>
             </div>

@@ -17,13 +17,13 @@ export function ErrorBanner({
 }) {
   if (!error) return null
   return (
-    <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl p-4">
-      <AlertTriangle size={18} className="text-red-500 shrink-0" />
+    <div className="flex items-center gap-3 bg-[#065E76]/10 border border-[#065E76]/20 rounded-xl p-4">
+      <AlertTriangle size={18} className="text-[#065E76] shrink-0" />
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-semibold text-red-600 dark:text-red-400">
+        <p className="text-[13px] font-semibold text-[#065E76]">
           Failed to load data
         </p>
-        <p className="text-[12px] text-red-500/80 truncate">
+        <p className="text-[12px] text-[#065E76]/80 truncate">
           {error.message || 'An unexpected error occurred'}
         </p>
       </div>

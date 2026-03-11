@@ -157,7 +157,7 @@ export default function TasksPage() {
     setPendingStatus(null)
   }, [selected])
 
-  const slaColor = (s: string) => s === 'green' ? 'bg-brand' : s === 'yellow' ? 'bg-brand-pale' : 'bg-red-500'
+  const slaColor = (s: string) => s === 'green' ? 'bg-brand' : s === 'yellow' ? 'bg-brand-pale' : 'bg-[#065E76]'
 
   const rawTasks = taskList
   const displayTasks = rawTasks.filter(t => {

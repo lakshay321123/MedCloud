@@ -13,7 +13,7 @@ import { Scale, Search, AlertTriangle, Edit2, Plus } from 'lucide-react'
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
   active: { label: 'Active', className: 'bg-brand/10 text-brand-dark border border-brand/20' },
   expiring_soon: { label: 'Expiring Soon', className: 'bg-brand-pale0/10 text-brand-deep border border-brand-light/20' },
-  expired: { label: 'Expired', className: 'bg-red-500/10 text-red-400 border border-red-500/20' },
+  expired: { label: 'Expired', className: 'bg-[#065E76]/10 text-[#065E76] border border-[#065E76]/20' },
   negotiating: { label: 'Negotiating', className: 'bg-brand/10 text-brand-dark border border-purple-500/20' },
 }
 
@@ -289,7 +289,7 @@ export default function ContractsPage() {
                               <td className="py-2.5 pr-3 font-mono">{u.cpt_code}</td>
                               <td className="py-2.5 pr-3 text-content-primary">${Number(u.expected_amount || 0).toFixed(2)}</td>
                               <td className="py-2.5 pr-3 text-content-primary">${Number(u.paid_amount || 0).toFixed(2)}</td>
-                              <td className="py-2.5 pr-3 text-red-400 font-medium">−${Math.abs(Number(u.variance) || 0).toFixed(2)}</td>
+                              <td className="py-2.5 pr-3 text-[#065E76] font-medium">−${Math.abs(Number(u.variance) || 0).toFixed(2)}</td>
                               <td className="py-2.5 pr-3">
                                 <span className={`text-[11px] px-1.5 py-0.5 rounded ${u.status === 'resolved' ? 'bg-brand/10 text-brand-dark' : 'bg-brand-pale0/10 text-brand-deep'}`}>{u.status || 'open'}</span>
                               </td>

@@ -169,8 +169,8 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
           {(isProvider || staffRoles.includes(currentUserRole)) && patient && (
             <>
               {patient.allergies && patient.allergies.length > 0 && (
-                <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 text-xs">
-                  <div className="font-semibold text-red-600 dark:text-red-400 mb-1">⚠ Allergies</div>
+                <div className="bg-[#065E76]/5 border border-[#065E76]/20 rounded-lg p-3 text-xs">
+                  <div className="font-semibold text-[#065E76] dark:text-[#065E76] mb-1">⚠ Allergies</div>
                   <div>{patient.allergies.join(', ')}</div>
                 </div>
               )}
@@ -244,7 +244,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
               toast.warning(`${appt.patientName} marked no-show`)
               onClose()
             }}
-              className="flex-1 border border-separator rounded-lg py-2.5 text-sm text-content-secondary hover:text-red-500 hover:border-red-500/30 transition-colors">
+              className="flex-1 border border-separator rounded-lg py-2.5 text-sm text-content-secondary hover:text-[#065E76] hover:border-[#065E76]/30 transition-colors">
               No Show
             </button>
           )}
@@ -383,7 +383,7 @@ export default function AppointmentsPage() {
             return (
               <div key={a.id} className={`card p-4 transition-all ${
                 isCheckedIn ? 'border-cyan-500/30 bg-cyan-500/5' :
-                isNoShow ? 'opacity-50 border-red-500/20' : ''
+                isNoShow ? 'opacity-50 border-[#065E76]/20' : ''
               }`}>
                 {/* Top row: time + patient */}
                 <div className="flex items-start gap-3">

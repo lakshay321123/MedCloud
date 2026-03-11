@@ -26,7 +26,7 @@ function StatusDot({ status }: { status: RetellCall['call_status'] }) {
     ongoing: 'bg-brand animate-pulse',
     registered: 'bg-blue-500 animate-pulse',
     ended: 'bg-gray-400',
-    error: 'bg-red-500',
+    error: 'bg-[#065E76]',
   }
   return <span className={`inline-block w-2.5 h-2.5 rounded-full ${map[status] ?? 'bg-gray-400'}`} />
 }
@@ -34,7 +34,7 @@ function StatusDot({ status }: { status: RetellCall['call_status'] }) {
 function SentimentBadge({ sentiment }: { sentiment?: string }) {
   if (!sentiment || sentiment === 'Unknown') return null
   const c = sentiment === 'Positive' ? 'bg-brand/10 text-brand-dark dark:text-brand-dark'
-    : sentiment === 'Negative' ? 'bg-red-500/10 text-red-500'
+    : sentiment === 'Negative' ? 'bg-[#065E76]/10 text-[#065E76]'
     : 'bg-gray-500/10 text-content-secondary'
   return <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${c}`}>{sentiment}</span>
 }
@@ -78,7 +78,7 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
             <span className={`text-sm font-semibold ${statusColor}`}>{statusLabel}</span>
             <AgentBadge agent={call._agent_name} />
             {analysis?.call_successful === true && <CheckCircle size={13} className="text-brand-dark" />}
-            {analysis?.call_successful === false && <XCircle size={13} className="text-red-500" />}
+            {analysis?.call_successful === false && <XCircle size={13} className="text-[#065E76]" />}
           </div>
           <p className="text-[13px] text-content-secondary font-mono">{call.to_number}</p>
           {vars['patient_name'] && <p className="text-[11px] text-content-tertiary mt-0.5">{vars['patient_name']}</p>}
@@ -331,7 +331,7 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
           className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-[13px] text-content-secondary" />
         {(outcomeFilter || payerFilter || dateRange.start || dateRange.end) && (
           <button onClick={() => { setOutcomeFilter(''); setPayerFilter(''); setDateRange({ start: '', end: '' }) }}
-            className="text-[13px] text-content-tertiary hover:text-red-500 px-2 transition-colors">✕ Clear</button>
+            className="text-[13px] text-content-tertiary hover:text-[#065E76] px-2 transition-colors">✕ Clear</button>
         )}
         <span className="ml-auto text-xs text-content-tertiary self-center">{filtered.length} calls</span>
       </div>
@@ -390,7 +390,7 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
                         {call.call_analysis?.call_successful === true
                           ? <span className="text-[11px] px-2 py-0.5 rounded-full bg-brand/10 text-brand-dark dark:text-brand-dark font-medium">Resolved</span>
                           : call.call_analysis?.call_successful === false
-                          ? <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 font-medium">Failed</span>
+                          ? <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#065E76]/10 text-[#065E76] font-medium">Failed</span>
                           : isIncomplete
                           ? <span className="text-[11px] px-2 py-0.5 rounded-full bg-brand-pale0/10 text-brand-deep font-medium">Incomplete</span>
                           : <span className="text-[11px] text-content-tertiary">—</span>}
@@ -635,7 +635,7 @@ function CampaignLauncherTab() {
                     <p className="text-[11px] text-content-secondary">{parsed.rows.length} contacts · {parsed.columns.length} columns{parsed.agentDetected && <span className="text-brand ml-1">· {parsed.agentDetected} format</span>}</p>
                   </div>
                 </div>
-                <button onClick={() => setParsed(null)} className="p-1 hover:bg-surface-elevated rounded text-content-tertiary hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                <button onClick={() => setParsed(null)} className="p-1 hover:bg-surface-elevated rounded text-content-tertiary hover:text-[#065E76] transition-colors"><Trash2 size={14} /></button>
               </div>
 
               {parsed.practiceNames.length > 1 && (
@@ -669,7 +669,7 @@ function CampaignLauncherTab() {
                           {agentKey === 'cindy' ? (
                             <><td className="px-3 py-1.5">{[row.variables['patientfirstname'], row.variables['patientlastname']].filter(Boolean).join(' ') || '—'}</td>
                             <td className="px-3 py-1.5 text-brand-dark dark:text-brand-dark font-medium">{row.variables['patientbalance'] ? `$${Number(row.variables['patientbalance']).toLocaleString()}` : '—'}</td>
-                            <td className="px-3 py-1.5"><span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${row.variables['aginggroup']?.includes('180') ? 'bg-red-500/10 text-red-500' : 'bg-surface-elevated text-content-secondary'}`}>{row.variables['aginggroup'] || '—'}</span></td></>
+                            <td className="px-3 py-1.5"><span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${row.variables['aginggroup']?.includes('180') ? 'bg-[#065E76]/10 text-[#065E76]' : 'bg-surface-elevated text-content-secondary'}`}>{row.variables['aginggroup'] || '—'}</span></td></>
                           ) : (
                             <><td className="px-3 py-1.5">{row.variables['Patient_Name'] || '—'}</td>
                             <td className="px-3 py-1.5">{row.variables['Primary_Carrier_Name'] || '—'}</td>
@@ -800,10 +800,10 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         <div className="w-16 h-1.5 bg-surface-elevated rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full ${s.successRate >= 70 ? 'bg-brand' : s.successRate >= 40 ? 'bg-brand-pale' : 'bg-red-500'}`}
+                          <div className={`h-full rounded-full ${s.successRate >= 70 ? 'bg-brand' : s.successRate >= 40 ? 'bg-brand-pale' : 'bg-[#065E76]'}`}
                             style={{ width: `${s.successRate}%` }} />
                         </div>
-                        <span className={`text-[11px] font-medium ${s.successRate >= 70 ? 'text-brand-dark' : s.successRate >= 40 ? 'text-brand-deep' : 'text-red-500'}`}>{s.successRate}%</span>
+                        <span className={`text-[11px] font-medium ${s.successRate >= 70 ? 'text-brand-dark' : s.successRate >= 40 ? 'text-brand-deep' : 'text-[#065E76]'}`}>{s.successRate}%</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 font-mono text-xs">{formatDuration(s.avgDuration)}</td>
@@ -834,7 +834,7 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
               </div>
               <div className="flex items-center gap-2">
                 {selectedPayer.successRate < 50 && (
-                  <span className="flex items-center gap-1 text-[11px] text-red-500 bg-red-500/10 px-2 py-1 rounded-full">
+                  <span className="flex items-center gap-1 text-[11px] text-[#065E76] bg-[#065E76]/10 px-2 py-1 rounded-full">
                     <AlertCircle size={11} />Needs playbook
                   </span>
                 )}
@@ -847,7 +847,7 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
               <div className="space-y-2 max-h-32 overflow-y-auto">
                 {selectedPayer.calls.filter(c => c.call_analysis?.call_successful === false).slice(0, 5).map(c => (
                   <div key={c.call_id} className="text-[13px] text-content-secondary bg-surface-elevated rounded p-2">
-                    <span className="text-red-500 font-medium mr-2">✗</span>
+                    <span className="text-[#065E76] font-medium mr-2">✗</span>
                     {c.call_analysis?.call_summary ?? c.disconnection_reason ?? 'No summary'}
                   </div>
                 ))}
@@ -1010,8 +1010,8 @@ function PromptEditorTab() {
         {promptLoading ? (
           <div className="card p-12 text-center text-sm text-content-tertiary">Loading prompt from Retell…</div>
         ) : promptError ? (
-          <div className="card p-6 border-red-500/20 bg-red-500/5">
-            <p className="text-[13px] font-semibold text-red-500 mb-1">Failed to load prompt</p>
+          <div className="card p-6 border-[#065E76]/20 bg-[#065E76]/5">
+            <p className="text-[13px] font-semibold text-[#065E76] mb-1">Failed to load prompt</p>
             <p className="text-[13px] text-content-secondary font-mono break-all">{promptError}</p>
             <button onClick={refetchPrompt} className="mt-3 text-xs text-brand hover:underline">Retry</button>
           </div>

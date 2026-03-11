@@ -559,10 +559,10 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                 <div className="space-y-2">
                   <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold">Scrub Errors</p>
                   {claim.scrubErrors.map(e => (
-                    <div key={e.ruleId} className="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
+                    <div key={e.ruleId} className="bg-[#065E76]/5 border border-[#065E76]/20 rounded-lg p-3">
                       <div className="flex items-center gap-2 mb-1">
-                        <AlertTriangle size={13} className="text-red-500" />
-                        <span className="text-[13px] font-semibold text-red-500">{e.name}</span>
+                        <AlertTriangle size={13} className="text-[#065E76]" />
+                        <span className="text-[13px] font-semibold text-[#065E76]">{e.name}</span>
                         <span className="text-[11px] text-content-tertiary ml-auto">Rule #{e.ruleId}</span>
                       </div>
                       <p className="text-[12px] text-content-secondary mb-1">{e.description}</p>
@@ -590,19 +590,19 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                       )}
                       {denialRisk && (
                         <div className={`rounded-lg border p-3 mb-1 ${
-                          denialRisk.risk === 'high' ? 'bg-red-500/10 border-red-500/30' :
+                          denialRisk.risk === 'high' ? 'bg-[#065E76]/10 border-[#065E76]/30' :
                           denialRisk.risk === 'medium' ? 'bg-brand-pale0/10 border-brand-light/30' :
                           'bg-brand/10 border-brand/30'}`}>
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-[12px] font-semibold text-content-primary flex items-center gap-1.5">
                               <span>✦</span>
                               Denial Risk: <span className={
-                                denialRisk.risk === 'high' ? 'text-red-500' :
+                                denialRisk.risk === 'high' ? 'text-[#065E76]' :
                                 denialRisk.risk === 'medium' ? 'text-brand-deep' : 'text-brand-dark'
                               }>{denialRisk.risk.toUpperCase()}</span>
                             </span>
                             <span className={`text-[13px] font-bold ${
-                              denialRisk.risk === 'high' ? 'text-red-500' :
+                              denialRisk.risk === 'high' ? 'text-[#065E76]' :
                               denialRisk.risk === 'medium' ? 'text-brand-deep' : 'text-brand-dark'
                             }`}>{denialRisk.probability}%</span>
                           </div>
@@ -655,7 +655,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   {underpayResult && (
                     <div className="mt-2 p-3 bg-brand-pale0/5 border border-brand-light/20 rounded-lg">
                       <p className="text-[11px] uppercase tracking-wider text-brand-deep font-semibold mb-1">Underpayment Analysis</p>
-                      <p className="text-[13px] font-semibold text-content-primary">Total Underpaid: <span className={underpayResult.total_underpaid > 0 ? 'text-red-500' : 'text-brand-dark'}>${underpayResult.total_underpaid.toFixed(2)}</span></p>
+                      <p className="text-[13px] font-semibold text-content-primary">Total Underpaid: <span className={underpayResult.total_underpaid > 0 ? 'text-[#065E76]' : 'text-brand-dark'}>${underpayResult.total_underpaid.toFixed(2)}</span></p>
                       {underpayResult.underpayments?.map((u, i) => (
                         <div key={i} className="flex justify-between text-[11px] text-content-secondary mt-1">
                           <span>{u.cpt_code}</span>
@@ -810,15 +810,15 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                       <p className="text-[13px] font-semibold text-content-primary uppercase tracking-wider">AI Scrub Results</p>
                       <div className="flex gap-2 text-[11px]">
                         <span className="text-brand-dark">{scrubResults.filter(r => r.passed).length} passed</span>
-                        <span className="text-red-500">{scrubResults.filter(r => !r.passed && r.severity === 'error').length} errors</span>
+                        <span className="text-[#065E76]">{scrubResults.filter(r => !r.passed && r.severity === 'error').length} errors</span>
                         <span className="text-brand-deep">{scrubResults.filter(r => !r.passed && r.severity === 'warning').length} warnings</span>
                       </div>
                     </div>
                     {scrubResults.filter(r => !r.passed).length > 0 && (
                       <div className="space-y-1">
                         {scrubResults.filter(r => !r.passed).map(r => (
-                          <div key={r.rule_code} className={`flex items-start gap-2 px-3 py-2 rounded-lg ${r.severity === 'error' ? 'bg-red-500/10 border border-red-500/20' : 'bg-brand-pale0/10 border border-brand-light/20'}`}>
-                            <span className={`text-[11px] font-mono mt-0.5 shrink-0 ${r.severity === 'error' ? 'text-red-500' : 'text-brand-deep'}`}>{r.severity === 'error' ? '✕' : '⚠'}</span>
+                          <div key={r.rule_code} className={`flex items-start gap-2 px-3 py-2 rounded-lg ${r.severity === 'error' ? 'bg-[#065E76]/10 border border-[#065E76]/20' : 'bg-brand-pale0/10 border border-brand-light/20'}`}>
+                            <span className={`text-[11px] font-mono mt-0.5 shrink-0 ${r.severity === 'error' ? 'text-[#065E76]' : 'text-brand-deep'}`}>{r.severity === 'error' ? '✕' : '⚠'}</span>
                             <div>
                               <p className="text-[12px] text-content-primary font-medium">{r.rule_name}</p>
                               <p className="text-[11px] text-content-tertiary">{r.message}</p>
@@ -1096,13 +1096,13 @@ export default function ClaimsPage() {
 
       {/* Timely Filing Alerts */}
       {timelyFilingData?.data && timelyFilingData.data.filter(tf => tf.days_remaining <= 14).length > 0 && (
-        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 flex items-start gap-3">
-          <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
+        <div className="bg-[#065E76]/5 border border-[#065E76]/20 rounded-lg p-3 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-[#065E76] shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="text-[12px] font-semibold text-red-600">Timely Filing Deadlines Approaching</p>
+            <p className="text-[12px] font-semibold text-[#065E76]">Timely Filing Deadlines Approaching</p>
             <div className="flex flex-wrap gap-2 mt-1.5">
               {timelyFilingData.data.filter(tf => tf.days_remaining <= 14).slice(0, 5).map(tf => (
-                <span key={tf.claim_id} className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${tf.days_remaining <= 3 ? 'bg-red-500/20 text-red-600' : tf.days_remaining <= 7 ? 'bg-brand-pale0/20 text-brand-deep' : 'bg-brand-pale0/20 text-brand-deep'}`}>
+                <span key={tf.claim_id} className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${tf.days_remaining <= 3 ? 'bg-[#065E76]/20 text-[#065E76]' : tf.days_remaining <= 7 ? 'bg-brand-pale0/20 text-brand-deep' : 'bg-brand-pale0/20 text-brand-deep'}`}>
                   {tf.claim_number || tf.claim_id.slice(0,8)} · {tf.days_remaining}d left · {tf.payer_name || 'Unknown'}
                 </span>
               ))}
@@ -1258,8 +1258,8 @@ export default function ClaimsPage() {
                         {c.id}
                         {c.daysTilDeadline !== undefined && c.daysTilDeadline < 15 && (
                           <span className="relative group">
-                            <span className="w-2 h-2 bg-red-500 rounded-full inline-block" />
-                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-surface-elevated border border-separator text-[11px] text-red-400 px-2 py-1 rounded whitespace-nowrap z-50">
+                            <span className="w-2 h-2 bg-[#065E76] rounded-full inline-block" />
+                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-surface-elevated border border-separator text-[11px] text-[#065E76] px-2 py-1 rounded whitespace-nowrap z-50">
                               {c.daysTilDeadline}d until timely filing deadline
                             </span>
                           </span>
@@ -1307,9 +1307,9 @@ export default function ClaimsPage() {
                             ] as Array<{ label: string; variant: 'default' | 'destructive' | 'destructive-confirm' | 'cancel'; action: () => void }>).map(item => (
                               <button key={item.label} onClick={item.action}
                                 className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-elevated ${
-                                  item.variant === 'destructive-confirm' ? 'text-red-500 font-semibold' :
+                                  item.variant === 'destructive-confirm' ? 'text-[#065E76] font-semibold' :
                                   item.variant === 'cancel'              ? 'text-content-tertiary' :
-                                  item.variant === 'destructive'         ? 'text-red-400' :
+                                  item.variant === 'destructive'         ? 'text-[#065E76]' :
                                   'text-content-primary'
                                 }`}>
                                 {item.label}
@@ -1389,7 +1389,7 @@ export default function ClaimsPage() {
         <div className="grid grid-cols-4 gap-3 text-center">
           {[{label:'Ready to Submit',value:allClaims.filter(c=>c.status==='ready').length,color:'text-brand'},
             {label:'Pending Response',value:allClaims.filter(c=>c.status==='submitted').length,color:'text-brand-deep'},
-            {label:'Filing Deadline <7d',value:timelyFilingData?.data?.filter(tf=>tf.days_remaining<=7).length ?? 0,color:'text-red-500'},
+            {label:'Filing Deadline <7d',value:timelyFilingData?.data?.filter(tf=>tf.days_remaining<=7).length ?? 0,color:'text-[#065E76]'},
             {label:'EDI Transactions Today',value:allClaims.filter(c=>c.status==='submitted'||c.status==='accepted').length,color:'text-brand-dark'}].map(k=>
             <div key={k.label} className="bg-surface-elevated rounded-lg p-3">
               <p className={`text-lg font-bold ${k.color}`}>{k.value}</p>

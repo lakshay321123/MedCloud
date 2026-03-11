@@ -21,8 +21,8 @@ const REPORT_TYPES = [
     label: 'Denial Analysis',
     description: 'Denials by CARC category, payer, and provider with trend',
     icon: Shield,
-    color: 'bg-red-500/10 text-red-500 border-red-500/20',
-    dot: 'bg-red-500',
+    color: 'bg-[#065E76]/10 text-[#065E76] border-[#065E76]/20',
+    dot: 'bg-[#065E76]',
   },
   {
     id: 'payment_summary',

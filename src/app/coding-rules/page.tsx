@@ -288,7 +288,7 @@ export default function CodingRulesPage() {
                         <button onClick={() => { setForm({ rule_name: r.rule_name, payer_name: r.payer_name || '', client_id: r.client_id || '', condition_field: r.condition_field, condition_operator: r.condition_operator, condition_value: r.condition_value, action_type: r.action_type, action_value: r.action_value, priority: r.priority, english_rule: '' }); setEditingId(r.id); setShowAdd(true) }}
                           className="p-1 rounded hover:bg-surface-elevated text-content-secondary"><Edit3 size={13} /></button>
                         <button onClick={() => deleteRule(r.id)}
-                          className="p-1 rounded hover:bg-red-500/10 text-content-tertiary hover:text-red-500"><Trash2 size={13} /></button>
+                          className="p-1 rounded hover:bg-[#065E76]/10 text-content-tertiary hover:text-[#065E76]"><Trash2 size={13} /></button>
                       </div>
                     </td>
                   </tr>

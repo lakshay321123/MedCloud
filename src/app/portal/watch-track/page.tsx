@@ -178,7 +178,7 @@ export default function WatchTrackPage() {
                         <p className="text-content-tertiary uppercase tracking-wider mb-2 font-semibold">Status</p>
                         <div className="space-y-2">
                           <StatusBadge status={c.status} small/>
-                          {c.status==='denied'&&<p className="text-red-600 dark:text-red-400 flex items-center gap-1"><AlertTriangle size={12}/>Denial — contact billing team</p>}
+                          {c.status==='denied'&&<p className="text-[#065E76] dark:text-[#065E76] flex items-center gap-1"><AlertTriangle size={12}/>Denial — contact billing team</p>}
                         </div>
                       </div>
                     </div>

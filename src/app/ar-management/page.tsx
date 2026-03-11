@@ -82,7 +82,7 @@ const initialCallHistory: Record<string, CallLogEntry[]> = {
 }
 
 const sourceInfo: Record<string, { color: string; label: string }> = {
-  denied_claim: { color: 'bg-red-500/10 text-red-600 dark:text-red-400', label: 'Denied Claim' },
+  denied_claim: { color: 'bg-[#065E76]/10 text-[#065E76] dark:text-[#065E76]', label: 'Denied Claim' },
   underpayment: { color: 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep', label: 'Underpayment' },
   patient_balance: { color: 'bg-brand/10 text-brand-dark dark:text-brand', label: 'Patient Balance' },
   timely_filing_risk: { color: 'bg-brand/10 text-brand-dark dark:text-brand-dark', label: 'Timely Filing Risk' },
@@ -369,10 +369,10 @@ function ARDrawer({
               )}
 
               {/* Timely filing */}
-              <div className={`flex items-start gap-2 rounded-lg p-3 text-[12px] ${daysUntilDeadline < 30 ? 'bg-red-500/10 border border-red-500/20' : daysUntilDeadline < 60 ? 'bg-brand-pale0/10 border border-brand-light/20' : 'bg-surface-elevated'}`}>
-                <AlertTriangle size={13} className={`mt-0.5 shrink-0 ${daysUntilDeadline < 30 ? 'text-red-500' : daysUntilDeadline < 60 ? 'text-brand-deep' : 'text-content-tertiary'}`} />
+              <div className={`flex items-start gap-2 rounded-lg p-3 text-[12px] ${daysUntilDeadline < 30 ? 'bg-[#065E76]/10 border border-[#065E76]/20' : daysUntilDeadline < 60 ? 'bg-brand-pale0/10 border border-brand-light/20' : 'bg-surface-elevated'}`}>
+                <AlertTriangle size={13} className={`mt-0.5 shrink-0 ${daysUntilDeadline < 30 ? 'text-[#065E76]' : daysUntilDeadline < 60 ? 'text-brand-deep' : 'text-content-tertiary'}`} />
                 <div>
-                  <p className={`font-medium ${daysUntilDeadline < 30 ? 'text-red-500' : daysUntilDeadline < 60 ? 'text-brand-deep dark:text-brand-deep' : 'text-content-secondary'}`}>
+                  <p className={`font-medium ${daysUntilDeadline < 30 ? 'text-[#065E76]' : daysUntilDeadline < 60 ? 'text-brand-deep dark:text-brand-deep' : 'text-content-secondary'}`}>
                     Timely Filing: {deadlineDate.toISOString().split('T')[0]}
                   </p>
                   <p className="text-content-tertiary">{daysUntilDeadline > 0 ? `${daysUntilDeadline} days remaining` : 'DEADLINE PASSED'} ({tfDays}d window)</p>
@@ -445,7 +445,7 @@ function ARDrawer({
                   Route to Appeals
                 </button>
                 <button onClick={() => setShowWriteoffModal(true)}
-                  className="col-span-2 bg-red-500/10 text-red-500 rounded-lg py-2.5 text-[13px] font-medium hover:bg-red-500/20 transition-colors">
+                  className="col-span-2 bg-[#065E76]/10 text-[#065E76] rounded-lg py-2.5 text-[13px] font-medium hover:bg-[#065E76]/20 transition-colors">
                   Request Write-off
                 </button>
                 <button
@@ -845,7 +845,7 @@ export default function ARManagementPage() {
     { l: '31-60',  v: accounts.filter(a => a.age>30&&a.age<=60).reduce((s,a) => s+a.balance,0), c: 'bg-cyan-500' },
     { l: '61-90',  v: accounts.filter(a => a.age>60&&a.age<=90).reduce((s,a) => s+a.balance,0), c: 'bg-brand-pale' },
     { l: '91-120', v: accounts.filter(a => a.age>90&&a.age<=120).reduce((s,a) => s+a.balance,0), c: 'bg-brand-pale' },
-    { l: '120+',   v: accounts.filter(a => a.age>120).reduce((s,a) => s+a.balance,0),  c: 'bg-red-500' },
+    { l: '120+',   v: accounts.filter(a => a.age>120).reduce((s,a) => s+a.balance,0),  c: 'bg-[#065E76]' },
   ]
   const computedMax = Math.max(...computedBuckets.map(b => b.v), 1)
   const workedToday = (Object.values(callHistory).flat() as CallLogEntry[])
@@ -909,7 +909,7 @@ export default function ARManagementPage() {
             <button onClick={handleSlaCheck} disabled={checkingSLA} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-dark transition-colors disabled:opacity-50">{checkingSLA ? 'Checking…' : 'Run SLA Check'}</button>
           </div>
           <div className="grid grid-cols-4 gap-3">
-            <div className="card p-4 text-center"><p className="text-xl font-bold text-red-500">7</p><p className="text-[11px] text-content-tertiary mt-1">Past SLA</p></div>
+            <div className="card p-4 text-center"><p className="text-xl font-bold text-[#065E76]">7</p><p className="text-[11px] text-content-tertiary mt-1">Past SLA</p></div>
             <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-deep">12</p><p className="text-[11px] text-content-tertiary mt-1">At Risk</p></div>
             <div className="card p-4 text-center"><p className="text-xl font-bold text-brand-dark">94.2%</p><p className="text-[11px] text-content-tertiary mt-1">SLA Compliance</p></div>
             <div className="card p-4 text-center"><p className="text-xl font-bold text-brand">48h</p><p className="text-[11px] text-content-tertiary mt-1">Avg Resolution</p></div>
@@ -924,7 +924,7 @@ export default function ARManagementPage() {
                     <td className="px-4 py-3 text-xs">{s.client}</td>
                     <td className="px-4 py-3 text-[13px] text-content-secondary">{s.sla}</td>
                     <td className="px-4 py-3 text-[13px] font-semibold">{s.days}d</td>
-                    <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full ${s.priority==='critical'?'bg-red-500/10 text-red-500':s.priority==='high'?'bg-brand-pale0/10 text-brand-deep':'bg-brand/10 text-brand'}`}>{s.priority}</span></td>
+                    <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full ${s.priority==='critical'?'bg-[#065E76]/10 text-[#065E76]':s.priority==='high'?'bg-brand-pale0/10 text-brand-deep':'bg-brand/10 text-brand'}`}>{s.priority}</span></td>
                     <td className="px-4 py-3 text-xs">{s.assignee}</td>
                   </tr>
                 ))}
@@ -940,10 +940,10 @@ export default function ARManagementPage() {
               </div>
               <div className="space-y-2">
                 {slaResult.map(r => (
-                  <div key={r.task_id} className="flex items-center justify-between bg-red-500/5 border border-red-500/20 rounded-lg px-3 py-2">
+                  <div key={r.task_id} className="flex items-center justify-between bg-[#065E76]/5 border border-[#065E76]/20 rounded-lg px-3 py-2">
                     <div>
                       <p className="text-[13px] font-medium text-content-primary">{r.title}</p>
-                      <p className="text-[11px] text-red-400 mt-0.5">{Math.round(r.hours_overdue)}h overdue · Escalation level {r.escalation_level}</p>
+                      <p className="text-[11px] text-[#065E76] mt-0.5">{Math.round(r.hours_overdue)}h overdue · Escalation level {r.escalation_level}</p>
                     </div>
                     <button onClick={async () => {
                       try {
@@ -951,7 +951,7 @@ export default function ARManagementPage() {
                         toast.success(`Escalation task created for ${r.task_id}`)
                       } catch { toast.error('Failed to create escalation task') }
                     }}
-                      className="text-[11px] px-2 py-1 bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 transition-colors whitespace-nowrap">
+                      className="text-[11px] px-2 py-1 bg-[#065E76]/10 text-[#065E76] rounded hover:bg-[#065E76]/20 transition-colors whitespace-nowrap">
                       Send Escalation
                     </button>
                   </div>
@@ -1007,7 +1007,7 @@ export default function ARManagementPage() {
                 <td className="px-4 py-3 text-right font-mono">{a.balance > 0 ? `$${a.balance}` : <span className="text-brand-dark dark:text-brand-dark">Paid</span>}</td>
                 <td className="px-4 py-3 text-right text-xs">{a.age}d</td>
                 <td className="px-4 py-3 text-xs">
-                  <span className={`font-medium ${tf < 0 ? 'text-red-500' : tf < 30 ? 'text-red-500' : tf < 60 ? 'text-brand-deep' : 'text-content-secondary'}`}>
+                  <span className={`font-medium ${tf < 0 ? 'text-[#065E76]' : tf < 30 ? 'text-[#065E76]' : tf < 60 ? 'text-brand-deep' : 'text-content-secondary'}`}>
                     {tf < 0 ? 'PASSED' : `${tf}d`}
                   </span>
                 </td>
