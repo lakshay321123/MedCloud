@@ -72,11 +72,11 @@ function ExecutiveDashboard() {
   const router = useRouter()
   const { data: metrics, loading } = useDashboardMetrics()
 
-  const totalClaims = Number(metrics?.total_claims) || 3847
-  const totalPatients = Number(metrics?.total_patients) || 12450
+  const totalClaims = Number(metrics?.total_claims) || 0
+  const totalPatients = Number(metrics?.total_patients) || 0
   const openDenials = Number(metrics?.open_denials) || 0
-  const totalCollectionsMtd = Number(metrics?.total_collections_mtd) || 2400000
-  const denialRate = totalClaims > 0 ? ((openDenials / totalClaims) * 100).toFixed(1) : '4.2'
+  const totalCollectionsMtd = Number(metrics?.total_collections_mtd) || 0
+  const denialRate = totalClaims > 0 ? ((openDenials / totalClaims) * 100).toFixed(1) : '0'
   const agingData = metrics?.ar_aging
 
   const recentClaimsActivity = metrics?.recent_claims?.slice(0, 5).map(c => ({
@@ -459,14 +459,13 @@ function SupervisorDashboard() {
   const scrubFailed = metrics?.claims_by_status?.find(s => s.status === 'scrub_failed') ? Number(metrics.claims_by_status.find(s => s.status === 'scrub_failed')!.count) : 0
   const scrubErrors = scrubFailed  // reuse from above
   const unassignedDenials = Number(metrics?.open_denials) || 0
-  const unpostedERAs = 2
+  const unpostedERAs = 0
 
   const exceptions = [
     { count: chartsPastSLA, label: 'Charts past 24h coding SLA', href: '/coding', color: 'denied' },
     { count: scrubErrors, label: 'Claims with unresolved scrub errors', href: '/claims', color: 'denied' },
     { count: unassignedDenials, label: 'Denials received — unassigned', href: '/denials', color: 'blue' },
     { count: unpostedERAs, label: 'ERAs unposted > 36h', href: '/payment-posting', color: 'blue' },
-    { count: 2, label: 'Appeal response windows closing < 5 days', href: '/denials', color: 'blue' },
   ].filter(e => (e.count ?? 0) > 0)
 
   return (

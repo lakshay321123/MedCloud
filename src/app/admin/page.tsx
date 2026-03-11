@@ -37,12 +37,7 @@ const actionColors: Record<string,string> = {
 
 const users: Array<{ name: string; email: string; role: string; clients: string; lastLogin: string; active: boolean }> = []
 
-const orgs = [
-  { name:'Gulf Medical Center', region:'🇦🇪 UAE', ehr:'MedCloud EHR', pricing:'% Revenue', since:'2024-01-01', active:true },
-  { name:'Irvine Family Practice', region:'🇺🇸 US', ehr:'External EHR', pricing:'Per-Claim', since:'2023-06-15', active:true },
-  { name:'Patel Cardiology', region:'🇺🇸 US', ehr:'MedCloud EHR', pricing:'Hybrid', since:'2023-09-01', active:true },
-  { name:'Dubai Wellness Clinic', region:'🇦🇪 UAE', ehr:'External EHR', pricing:'Flat Fee', since:'2024-03-01', active:true },
-]
+const orgs: Array<{ name: string; region: string; ehr: string; pricing: string; since: string; active: boolean }> = []
 
 const services = [
   { name:'API Gateway', status:'operational', lastCheck:'2 min', ms:142 },
@@ -240,10 +235,17 @@ function UsersTab() {
 
 function OrgsTab() {
   const { toast } = useToast()
+  const { data: clientsResult } = useClients()
   const [showAddOrg, setShowAddOrg] = useState(false)
   const [orgData, setOrgData] = useState({
     name: '', contact: '', email: '', region: 'us', pricing: '% Revenue'
   })
+  const apiOrgs = (clientsResult?.data || []).map((c: any) => ({
+    name: c.name, region: c.region === 'uae' ? '🇦🇪 UAE' : '🇺🇸 US',
+    ehr: c.ehr_mode === 'medcloud_ehr' ? 'MedCloud EHR' : 'External EHR',
+    pricing: '% Revenue', since: c.created_at?.slice(0, 10) || '—', active: true,
+  }))
+  const displayOrgs = apiOrgs.length > 0 ? apiOrgs : orgs
   return (
     <div>
       <div className="flex justify-end mb-4">
@@ -258,7 +260,7 @@ function OrgsTab() {
             <th className="text-left px-4 py-3">EHR Mode</th><th className="text-left px-4 py-3">Pricing</th>
             <th className="text-left px-4 py-3">Active Since</th><th className="text-left px-4 py-3">Status</th>
           </tr></thead>
-          <tbody>{orgs.map(o=>(
+          <tbody>{displayOrgs.map(o=>(
             <tr key={o.name} onClick={()=>toast.info(`Opening ${o.name} settings`)} className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
               <td className="px-4 py-3 font-medium">{o.name}</td>
               <td className="px-4 py-3 text-xs">{o.region}</td>
