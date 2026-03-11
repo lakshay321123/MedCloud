@@ -698,73 +698,229 @@ async function seedDemoData(orgId) {
       safeLog('info', 'Seeded 3 write-off requests');
     }
 
-    // ── Additional US claims with recent dates for analytics charts ─────────
-    const usClaimCount = await pool.query(`SELECT COUNT(*) FROM claims WHERE org_id=$1 AND submitted_at IS NOT NULL AND submitted_at > NOW() - INTERVAL '6 months'`, [_org]);
-    if (parseInt(usClaimCount.rows[0].count) < 15) {
-      const usClients = await pool.query(`SELECT id FROM clients WHERE org_id=$1 AND region='us' ORDER BY created_at`, [_org]);
-      const usPayers = await pool.query(`SELECT id, name FROM payers WHERE org_id=$1 AND region='us' ORDER BY created_at`, [_org]);
-      const usProviders = await pool.query(`SELECT id FROM providers WHERE org_id=$1 ORDER BY created_at LIMIT 3`, [_org]);
-      const usPatients = await pool.query(`SELECT id, first_name, last_name FROM patients WHERE org_id=$1 ORDER BY created_at LIMIT 15`, [_org]);
+    // ══════════════════════════════════════════════════════════════════════════
+    // COHESIVE US DEMO DATA — Same patients flow through every module
+    // 5 patient journeys: Appointment → Encounter → SOAP → Coding → Claim → Payment/Denial → AR
+    // ══════════════════════════════════════════════════════════════════════════
+    const cohesiveCheck = await pool.query(`SELECT COUNT(*) FROM claims WHERE org_id=$1 AND claim_number LIKE 'CLM-2026-D%'`, [_org]);
+    if (parseInt(cohesiveCheck.rows[0].count) < 5) {
+      const allClients = await pool.query(`SELECT id, name, region FROM clients WHERE org_id=$1 ORDER BY created_at`, [_org]);
+      const allPayers = await pool.query(`SELECT id, name FROM payers WHERE org_id=$1 ORDER BY created_at LIMIT 10`, [_org]);
+      const allProviders = await pool.query(`SELECT id, first_name, last_name, specialty, npi FROM providers WHERE org_id=$1 ORDER BY created_at LIMIT 5`, [_org]);
+      const allPatients = await pool.query(`SELECT id, first_name, last_name, dob, gender, client_id FROM patients WHERE org_id=$1 ORDER BY created_at LIMIT 25`, [_org]);
 
-      const _uc1 = usClients.rows[0]?.id; const _uc2 = usClients.rows[1]?.id || _uc1;
-      const _up = usPayers.rows.map(p => p.id); const _upr = usProviders.rows.map(p => p.id);
-      const _upt = usPatients.rows;
-      if (_uc1 && _up.length > 0 && _upr.length > 0 && _upt.length > 0) {
-        const statuses = ['paid','paid','paid','paid','paid','submitted','in_process','in_process','denied','denied','partial_pay','accepted','paid','paid','submitted'];
-        const cptCodes = ['99213','99214','99215','99203','99204','93000','80053','87880','71046','20610','99213','99214','96372','36415','99213'];
-        const amounts = [120,180,250,150,200,85,45,35,180,420,120,180,65,30,120];
-        for (let i = 0; i < 15; i++) {
-          const pt = _upt[i % _upt.length];
-          const month = i % 6; // Spread across Oct-Mar
-          const claimId = `d0000000-0000-0000-0000-00000000${(100 + i).toString().padStart(4, '0')}`;
-          await pool.query(`
-            INSERT INTO claims (id, org_id, client_id, patient_id, provider_id, payer_id, claim_number, status, claim_type, dos_from, dos_to, total_charges, billed_amount, submitted_at, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, '837P', $9, $9, $10, $10, $11, $11)
-            ON CONFLICT (id) DO NOTHING
-          `, [
-            claimId, _org, i < 8 ? _uc1 : _uc2, pt.id, _upr[i % _upr.length], _up[i % _up.length],
-            `CLM-2026-${(100 + i).toString().padStart(4, '0')}`, statuses[i],
-            new Date(2025, 9 + month, 5 + (i * 2) % 25).toISOString().split('T')[0],
-            amounts[i],
-            new Date(2025, 9 + month, 8 + (i * 2) % 25).toISOString(),
-          ]).catch(() => {});
+      const usClients = allClients.rows.filter(c => c.region === 'us');
+      const usPayers = allPayers.rows;
+      const usProviders = allProviders.rows;
+      const usPatients = allPatients.rows.filter(p => usClients.some(c => c.id === p.client_id));
+      const uc1 = usClients[0]?.id; const uc2 = usClients[1]?.id || uc1;
 
-          // Add payments for paid claims
-          if (statuses[i] === 'paid' || statuses[i] === 'partial_pay') {
-            await pool.query(`
-              INSERT INTO payments (id, org_id, client_id, claim_id, payer_id, amount_paid, payment_date, check_number, status, created_at)
-              VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, 'posted', NOW())
-              ON CONFLICT DO NOTHING
-            `, [
-              _org, i < 8 ? _uc1 : _uc2, claimId, _up[i % _up.length],
-              statuses[i] === 'partial_pay' ? amounts[i] * 0.6 : amounts[i] * 0.92,
-              new Date(2025, 9 + month, 20 + (i % 8)).toISOString(),
-              `CHK-${30000 + i}`,
-            ]).catch(() => {});
+      if (uc1 && usPayers.length > 0 && usProviders.length > 0 && usPatients.length >= 3) {
+        safeLog('info', 'Seeding cohesive US demo data...');
+
+        // ── 5 Patient Journeys ──────────────────────────────────────────────
+        const journeys = [
+          { // Journey 1: Cardiology follow-up → Paid
+            pt: usPatients[0], client: uc2, payer: usPayers[0]?.id, provider: usProviders[0]?.id,
+            dos: '2026-02-15', type: 'Cardiology Follow-up',
+            soap: { s: 'Patient reports occasional palpitations, especially at night. Denies syncope. Taking metoprolol 50mg daily as prescribed. Tolerating well, no side effects.', o: 'BP 138/82, HR 72 regular. Lungs clear. Heart: RRR, no murmurs. ECG shows normal sinus rhythm. Prior Holter showed paroxysmal AFib.', a: 'Paroxysmal atrial fibrillation, well-controlled on current regimen. Hypertension, stage 1. CHA2DS2-VASc score 3 — anticoagulation indicated.', p: 'Continue metoprolol 50mg daily. Continue Eliquis 5mg BID. Order echocardiogram to assess LV function. Follow-up in 3 months. Call if palpitations worsen or any bleeding.' },
+            icd: ['I48.0', 'I10'], cpt: ['99214', '93000'], em: '99214', charges: 265, claimStatus: 'paid', paidPct: 0.92,
+          },
+          { // Journey 2: Diabetes management → Partial pay → AR follow-up
+            pt: usPatients[1], client: uc1, payer: usPayers[1]?.id || usPayers[0]?.id, provider: usProviders[1]?.id || usProviders[0]?.id,
+            dos: '2026-02-20', type: 'Diabetes Follow-up',
+            soap: { s: '58F returns for diabetes follow-up. A1C received at 8.2%, up from 7.4% six months ago. Reports difficulty with diet compliance. Nocturia x3/night. Taking metformin 1000mg BID.', o: 'BP 142/88, BMI 32.4. Foot exam: monofilament intact bilaterally, no ulcers. Fundoscopic exam deferred (seen by ophthalmology last month). Labs: A1C 8.2%, fasting glucose 186, Cr 1.1, eGFR 72.', a: 'Type 2 diabetes mellitus with hyperglycemia — worsening control. Obesity. Hypertension, uncontrolled. Early CKD stage 2.', p: 'Add glipizide 5mg daily before breakfast. Continue metformin 1000mg BID. Refer to nutritionist. Recheck A1C in 3 months. Order CMP, lipid panel, urine microalbumin. Start lisinopril 10mg for BP + renal protection.' },
+            icd: ['E11.65', 'I10', 'E66.01', 'N18.2'], cpt: ['99214', '83036', '80053'], em: '99214', charges: 310, claimStatus: 'partial_pay', paidPct: 0.58,
+          },
+          { // Journey 3: Knee pain → Injection → Denied → Appeal
+            pt: usPatients[2], client: uc1, payer: usPayers[2]?.id || usPayers[0]?.id, provider: usProviders[2]?.id || usProviders[0]?.id,
+            dos: '2026-01-28', type: 'Orthopedic Visit',
+            soap: { s: '55M presents with right knee pain x6 months, worsening with stairs and prolonged standing. Failed 6 weeks of PT. Tried OTC NSAIDs with minimal relief. No locking or giving way.', o: 'Right knee: mild effusion, crepitus with ROM, reduced flexion to 110°. Valgus/varus stable. McMurray negative. X-ray: medial joint space narrowing grade 2, osteophytes. Left knee normal.', a: 'Primary osteoarthritis, right knee, moderate. Failed conservative management.', p: 'Cortisone injection right knee performed today — 40mg triamcinolone with 5ml 1% lidocaine under sterile technique. Discussed options including viscosupplementation and eventual TKA. PT referral for quad strengthening. Follow-up 6 weeks.' },
+            icd: ['M17.11', 'M25.561'], cpt: ['99213', '20610'], em: '99213', charges: 420, claimStatus: 'denied', denialReason: 'CO-50 Not medically necessary — documentation insufficient',
+          },
+          { // Journey 4: Annual wellness → Submitted (in process)
+            pt: usPatients[3] || usPatients[0], client: uc2, payer: usPayers[3]?.id || usPayers[0]?.id, provider: usProviders[0]?.id,
+            dos: '2026-03-04', type: 'Annual Wellness Visit',
+            soap: { s: 'Medicare patient presents for subsequent annual wellness visit. No acute complaints. Compliant with medications. Mammogram and colonoscopy up to date. Flu vaccine received in October.', o: 'BP 118/76, BMI 24.2, HR 68. General appearance: well-nourished, well-appearing. Cognitive screen (Mini-Cog): 5/5. PHQ-2: negative. Fall risk: low. Functional status: independent in all ADLs.', a: 'Annual wellness visit — all preventive screenings current. Well-controlled hypertension. Hyperlipidemia on statin.', p: 'Continue current medications: atorvastatin 20mg, lisinopril 10mg. Schedule follow-up AWV in 12 months. Shingrix vaccine due — administered today. Advance care planning discussed (16 minutes documented).' },
+            icd: ['Z00.00', 'I10', 'E78.5'], cpt: ['G0439', '99213', '90750'], em: 'G0439', charges: 285, claimStatus: 'submitted',
+          },
+          { // Journey 5: Acute URI → Rapid strep → Paid
+            pt: usPatients[4] || usPatients[1], client: uc1, payer: usPayers[0]?.id, provider: usProviders[1]?.id || usProviders[0]?.id,
+            dos: '2026-03-08', type: 'Sick Visit',
+            soap: { s: '32F presents with sore throat x3 days, low-grade fever (100.4°F at home), mild nasal congestion. No cough, no dysphagia. No sick contacts at work but daughter had strep last week. NKDA. No medications.', o: 'Temp 99.8°F, BP 112/72, HR 78. Oropharynx: tonsillar erythema with white exudate bilaterally. Tender anterior cervical lymphadenopathy. Lungs clear. Centor score: 4. Rapid strep: POSITIVE.', a: 'Acute streptococcal pharyngitis (Group A).', p: 'Amoxicillin 500mg TID x10 days. Ibuprofen 400mg PRN for pain/fever. Push fluids, rest. Return if worsening or no improvement in 48 hours. Discussed contagion — stay home 24h after starting antibiotics.' },
+            icd: ['J02.0', 'R50.9'], cpt: ['99213', '87880'], em: '99213', charges: 155, claimStatus: 'paid', paidPct: 0.95,
+          },
+        ];
+
+        // ── Additional claims for analytics volume (Oct 2025 - Mar 2026) ──────
+        const monthlyBulk = [
+          { month: 9, count: 8, paidPct: 0.85, deniedPct: 0.10 },  // Oct
+          { month: 10, count: 10, paidPct: 0.88, deniedPct: 0.08 }, // Nov
+          { month: 11, count: 9, paidPct: 0.82, deniedPct: 0.12 },  // Dec
+          { month: 0, count: 12, paidPct: 0.90, deniedPct: 0.06 },  // Jan
+          { month: 1, count: 14, paidPct: 0.87, deniedPct: 0.09 },  // Feb
+          { month: 2, count: 11, paidPct: 0.91, deniedPct: 0.05 },  // Mar
+        ];
+
+        // Seed the 5 journey claims with full SOAP + coding + encounters
+        let jIdx = 0;
+        for (const j of journeys) {
+          jIdx++;
+          const claimId = `d0000000-0000-0000-0000-0000000d0${jIdx.toString().padStart(3, '0')}`;
+          const encId = `e0000000-0000-0000-0000-0000000e0${jIdx.toString().padStart(3, '0')}`;
+          const soapId = `f0000000-0000-0000-0000-0000000f0${jIdx.toString().padStart(3, '0')}`;
+          const codingId = `a1000000-0000-0000-0000-000000a10${jIdx.toString().padStart(3, '0')}`;
+
+          // Encounter
+          await pool.query(`INSERT INTO encounters (id, org_id, client_id, patient_id, provider_id, encounter_date, encounter_type, chief_complaint, status, created_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'completed',NOW()) ON CONFLICT (id) DO NOTHING`,
+            [encId, _org, j.client, j.pt.id, j.provider, j.dos, j.type, j.soap.s.split('.')[0]]).catch(()=>{});
+
+          // SOAP Note
+          await pool.query(`INSERT INTO soap_notes (id, org_id, client_id, encounter_id, patient_id, provider_id, dos, subjective, objective, assessment, plan, em_level, ai_generated, signed, signed_at, created_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,true,true,NOW(),NOW()) ON CONFLICT (id) DO NOTHING`,
+            [soapId, _org, j.client, encId, j.pt.id, j.provider, j.dos, j.soap.s, j.soap.o, j.soap.a, j.soap.p, j.em]).catch(()=>{});
+
+          // Coding queue item
+          await pool.query(`INSERT INTO coding_queue (id, org_id, client_id, patient_id, provider_id, encounter_id, soap_note_id, status, priority, received_at, source, created_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'medium',NOW(),'ai_scribe',NOW()) ON CONFLICT (id) DO NOTHING`,
+            [codingId, _org, j.client, j.pt.id, j.provider, encId, soapId, j.claimStatus === 'paid' || j.claimStatus === 'partial_pay' ? 'approved' : j.claimStatus === 'denied' ? 'approved' : 'pending']).catch(()=>{});
+
+          // Claim
+          await pool.query(`INSERT INTO claims (id, org_id, client_id, patient_id, provider_id, payer_id, claim_number, status, claim_type, dos_from, dos_to, total_charges, billed_amount, submitted_at, created_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'837P',$9,$9,$10,$10,$11,$11) ON CONFLICT (id) DO NOTHING`,
+            [claimId, _org, j.client, j.pt.id, j.provider, j.payer, `CLM-2026-D${jIdx.toString().padStart(3, '0')}`, j.claimStatus, j.dos, j.charges, new Date(j.dos + 'T12:00:00Z').toISOString()]).catch(()=>{});
+
+          // Claim lines
+          for (let li = 0; li < j.cpt.length; li++) {
+            await pool.query(`INSERT INTO claim_lines (id, org_id, claim_id, cpt_code, units, charge_amount, line_number)
+              VALUES (gen_random_uuid(),$1,$2,$3,1,$4,$5) ON CONFLICT DO NOTHING`,
+              [_org, claimId, j.cpt[li], Math.round(j.charges / j.cpt.length), li + 1]).catch(()=>{});
           }
 
-          // Add denials for denied claims
-          if (statuses[i] === 'denied') {
-            const denialReasons = ['CO-50 Medical necessity', 'CO-4 Missing modifier', 'PR-1 Deductible'];
-            await pool.query(`
-              INSERT INTO denials (id, org_id, client_id, claim_id, payer_id, denial_reason, denial_category, denied_amount, billed_amount, status, created_at)
-              VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $7, 'open', NOW())
-              ON CONFLICT DO NOTHING
-            `, [
-              _org, i < 8 ? _uc1 : _uc2, claimId, _up[i % _up.length],
-              denialReasons[i % denialReasons.length], i % 2 === 0 ? 'medical_necessity' : 'coding',
-              amounts[i],
-            ]).catch(() => {});
+          // Claim diagnoses
+          for (let di = 0; di < j.icd.length; di++) {
+            await pool.query(`INSERT INTO claim_diagnoses (id, org_id, claim_id, icd_code, sequence)
+              VALUES (gen_random_uuid(),$1,$2,$3,$4) ON CONFLICT DO NOTHING`,
+              [_org, claimId, j.icd[di], di + 1]).catch(()=>{});
           }
 
-          // Add claim lines
-          await pool.query(`
-            INSERT INTO claim_lines (id, org_id, claim_id, cpt_code, units, charge_amount, line_number)
-            VALUES (gen_random_uuid(), $1, $2, $3, 1, $4, 1)
-            ON CONFLICT DO NOTHING
-          `, [_org, claimId, cptCodes[i], amounts[i]]).catch(() => {});
+          // Payment (for paid/partial_pay)
+          if (j.paidPct) {
+            await pool.query(`INSERT INTO payments (id, org_id, client_id, claim_id, payer_id, amount_paid, payment_date, check_number, status, created_at)
+              VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,'posted',NOW()) ON CONFLICT DO NOTHING`,
+              [_org, j.client, claimId, j.payer, Math.round(j.charges * j.paidPct * 100) / 100,
+               new Date(new Date(j.dos).getTime() + 21 * 86400000).toISOString().split('T')[0],
+               `CHK-${40000 + jIdx}`]).catch(()=>{});
+          }
+
+          // Denial
+          if (j.denialReason) {
+            const denialId = `b2000000-0000-0000-0000-000000b20${jIdx.toString().padStart(3, '0')}`;
+            await pool.query(`INSERT INTO denials (id, org_id, client_id, claim_id, payer_id, denial_reason, denial_category, denied_amount, billed_amount, status, carc_code, rarc_code, created_at)
+              VALUES ($1,$2,$3,$4,$5,$6,'medical_necessity',$7,$7,'open','CO-50','N656',NOW()) ON CONFLICT (id) DO NOTHING`,
+              [denialId, _org, j.client, claimId, j.payer, j.denialReason, j.charges]).catch(()=>{});
+
+            // Task for denial follow-up
+            await pool.query(`INSERT INTO tasks (id, org_id, client_id, title, description, status, priority, task_type, due_date, created_at)
+              VALUES (gen_random_uuid(),$1,$2,$3,$4,'pending','high','denial_follow_up',NOW()+INTERVAL '5 days',NOW()) ON CONFLICT DO NOTHING`,
+              [_org, j.client, `Appeal denial for ${j.pt.first_name} ${j.pt.last_name} — ${j.denialReason.split(' — ')[0]}`,
+               `Claim ${`CLM-2026-D${jIdx.toString().padStart(3, '0')}`}: ${j.icd[0]} denied. ${j.denialReason}. Review documentation and submit L1 appeal.`]).catch(()=>{});
+          }
+
+          // AR call log for partial pay
+          if (j.claimStatus === 'partial_pay') {
+            await pool.query(`INSERT INTO ar_call_log (id, org_id, client_id, claim_id, call_date, call_type, call_result, contact_name, notes, reference_number, follow_up_date, created_at)
+              VALUES (gen_random_uuid(),$1,$2,$3,NOW()-INTERVAL '3 days','manual','payment_promised','Claims Dept Rep','Called payer re: underpayment. Rep confirmed additional $${Math.round(j.charges * (1 - j.paidPct))} will be paid within 30 days per contract rate. Ref provided.','REF-${40000 + jIdx}',NOW()+INTERVAL '25 days',NOW()) ON CONFLICT DO NOTHING`,
+              [_org, j.client, claimId]).catch(()=>{});
+          }
+
+          // Appointment
+          await pool.query(`INSERT INTO appointments (id, org_id, client_id, patient_id, provider_id, appointment_date, appointment_type, status, created_at)
+            VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,'completed',NOW()) ON CONFLICT DO NOTHING`,
+            [_org, j.client, j.pt.id, j.provider, j.dos + 'T09:00:00Z', j.type]).catch(()=>{});
         }
-        safeLog('info', 'Seeded 15 additional US claims with payments and denials for analytics');
+
+        safeLog('info', `Seeded 5 cohesive patient journeys with encounters, SOAP, coding, claims, payments, denials, tasks`);
+
+        // ── Bulk monthly claims for analytics charts ─────────────────────────
+        let bulkIdx = 0;
+        const bulkCpts = ['99213','99214','99215','99203','99204','93000','80053','87880','71046','20610','96372','36415','90471','G0439','99213'];
+        const bulkAmounts = [120,180,250,150,200,85,45,35,180,420,65,30,45,285,120];
+        for (const m of monthlyBulk) {
+          const yr = m.month >= 9 ? 2025 : 2026;
+          for (let c = 0; c < m.count; c++) {
+            bulkIdx++;
+            const pt = usPatients[bulkIdx % usPatients.length];
+            if (!pt) continue;
+            const cIdx = bulkIdx % bulkCpts.length;
+            const amt = bulkAmounts[cIdx];
+            const day = 1 + (bulkIdx * 3) % 27;
+            const dosDate = new Date(yr, m.month, day);
+            const claimId = `d0000000-0000-0000-0000-0000000b${bulkIdx.toString().padStart(4, '0')}`;
+            const isPaid = Math.random() < m.paidPct;
+            const isDenied = !isPaid && Math.random() < (m.deniedPct / (1 - m.paidPct));
+            const status = isPaid ? 'paid' : isDenied ? 'denied' : (Math.random() < 0.5 ? 'submitted' : 'in_process');
+
+            await pool.query(`INSERT INTO claims (id, org_id, client_id, patient_id, provider_id, payer_id, claim_number, status, claim_type, dos_from, dos_to, total_charges, billed_amount, submitted_at, created_at)
+              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'837P',$9,$9,$10,$10,$11,$11) ON CONFLICT (id) DO NOTHING`,
+              [claimId, _org, bulkIdx % 3 === 0 ? uc2 : uc1, pt.id, usProviders[bulkIdx % usProviders.length]?.id || usProviders[0]?.id,
+               usPayers[bulkIdx % usPayers.length]?.id || usPayers[0]?.id,
+               `CLM-2026-B${bulkIdx.toString().padStart(3, '0')}`, status,
+               dosDate.toISOString().split('T')[0], amt,
+               new Date(dosDate.getTime() + 3 * 86400000).toISOString()]).catch(()=>{});
+
+            await pool.query(`INSERT INTO claim_lines (id, org_id, claim_id, cpt_code, units, charge_amount, line_number)
+              VALUES (gen_random_uuid(),$1,$2,$3,1,$4,1) ON CONFLICT DO NOTHING`,
+              [_org, claimId, bulkCpts[cIdx], amt]).catch(()=>{});
+
+            if (isPaid) {
+              await pool.query(`INSERT INTO payments (id, org_id, client_id, claim_id, payer_id, amount_paid, payment_date, check_number, status, created_at)
+                VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,'posted',NOW()) ON CONFLICT DO NOTHING`,
+                [_org, bulkIdx % 3 === 0 ? uc2 : uc1, claimId, usPayers[bulkIdx % usPayers.length]?.id || usPayers[0]?.id,
+                 Math.round(amt * (0.85 + Math.random() * 0.12) * 100) / 100,
+                 new Date(dosDate.getTime() + (14 + Math.floor(Math.random() * 21)) * 86400000).toISOString().split('T')[0],
+                 `CHK-${50000 + bulkIdx}`]).catch(()=>{});
+            }
+            if (isDenied) {
+              const reasons = ['CO-50 Medical necessity','CO-4 Missing modifier','CO-16 Missing information','PR-1 Deductible','CO-97 Bundled procedure'];
+              const cats = ['medical_necessity','coding','missing_info','patient_responsibility','bundling'];
+              const rIdx = bulkIdx % reasons.length;
+              await pool.query(`INSERT INTO denials (id, org_id, client_id, claim_id, payer_id, denial_reason, denial_category, denied_amount, billed_amount, status, created_at)
+                VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$7,'open',NOW()) ON CONFLICT DO NOTHING`,
+                [_org, bulkIdx % 3 === 0 ? uc2 : uc1, claimId, usPayers[bulkIdx % usPayers.length]?.id || usPayers[0]?.id,
+                 reasons[rIdx], cats[rIdx], amt]).catch(()=>{});
+            }
+          }
+        }
+        safeLog('info', `Seeded ${bulkIdx} additional monthly US claims for analytics charts`);
+
+        // ── Credentialing records for US providers ─────────────────────────────
+        for (let pi = 0; pi < Math.min(usProviders.length, 3); pi++) {
+          const prov = usProviders[pi];
+          await pool.query(`INSERT INTO credentialing (id, org_id, client_id, provider_id, provider_name, status, credential_type, expiry_date, payer_enrollment_count, created_at)
+            VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$8,NOW()) ON CONFLICT DO NOTHING`,
+            [_org, pi % 2 === 0 ? uc1 : uc2, prov.id, `${prov.first_name} ${prov.last_name}`,
+             pi === 0 ? 'active' : pi === 1 ? 'expiring' : 'active',
+             'initial_credentialing',
+             new Date(Date.now() + (pi === 1 ? 45 : 365) * 86400000).toISOString().split('T')[0],
+             3 + pi]).catch(()=>{});
+        }
+
+        // ── Tasks for various workflow items ──────────────────────────────────
+        const taskItems = [
+          { title: 'Follow up on underpayment — Sarah Johnson claim', desc: 'Payer promised additional payment. Verify received within 30 days.', type: 'ar_follow_up', priority: 'high', status: 'pending' },
+          { title: 'Credential renewal — Dr. Patel malpractice expiring', desc: 'Malpractice insurance expires in 45 days. Contact carrier for renewal docs.', type: 'credentialing', priority: 'urgent', status: 'pending' },
+          { title: 'Code audit — 5 charts due for QA review', desc: 'Monthly coding accuracy audit. Pull 5 random charts for review per compliance policy.', type: 'coding_qa', priority: 'medium', status: 'in_progress' },
+          { title: 'Patient statement batch — 12 balances > 60 days', desc: 'Generate and mail patient responsibility statements for balances over 60 days.', type: 'patient_statement', priority: 'medium', status: 'pending' },
+          { title: 'ERA reconciliation — 3 unposted ERAs', desc: 'Three ERA files received but not auto-posted due to mismatch. Manual review needed.', type: 'era_posting', priority: 'high', status: 'pending' },
+        ];
+        for (const t of taskItems) {
+          await pool.query(`INSERT INTO tasks (id, org_id, client_id, title, description, status, priority, task_type, due_date, created_at)
+            VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,NOW()+INTERVAL '7 days',NOW()) ON CONFLICT DO NOTHING`,
+            [_org, uc1, t.title, t.desc, t.status, t.priority, t.type]).catch(()=>{});
+        }
+        safeLog('info', 'Seeded credentialing records and workflow tasks');
       }
     }
 
