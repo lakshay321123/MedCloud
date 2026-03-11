@@ -80,9 +80,9 @@ function UsersTab() {
   const [search, setSearch] = useState('')
   const { data: apiUserResult, refetch: refetchUsers } = useUsers({ limit: 100 })
   const { mutate: createUserAPI } = useCreateUser()
-  const apiUsers = (apiUserResult?.data || []).map((u: any) => ({
-    name: u.name || u.email, email: u.email, role: u.role || 'coder',
-    clients: u.client_names || 'All', lastLogin: u.last_login || u.updated_at?.slice(0, 10) || 'Never',
+  const apiUsers = (apiUserResult?.data || []).map((u) => ({
+    name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email, email: u.email, role: u.role || 'coder',
+    clients: 'All', lastLogin: u.created_at?.slice(0, 10) || 'Never',
     active: u.is_active !== false, id: u.id,
   }))
   const [localUsers, setLocalUsers] = useState(users)
@@ -98,7 +98,8 @@ function UsersTab() {
     if (displayUsers.find(u => u.email === newUser.email)) { toast.error('User with this email already exists'); return }
     setCreating(true)
     try {
-      const result = await createUserAPI({ name: newUser.name, email: newUser.email, role: newUser.role, is_active: true })
+      const nameParts = newUser.name.trim().split(/\s+/)
+      const result = await createUserAPI({ first_name: nameParts[0] || '', last_name: nameParts.slice(1).join(' ') || '', email: newUser.email, role: newUser.role, is_active: true })
       if (result) { toast.success(`User "${newUser.name}" created successfully`); refetchUsers() }
       else { toast.error('Failed to create user') }
     } catch (err) { toast.error(`Failed: ${err instanceof Error ? err.message : 'Unknown error'}`) }
