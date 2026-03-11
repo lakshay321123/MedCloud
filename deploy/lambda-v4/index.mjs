@@ -204,6 +204,18 @@ async function runSchemaMigration() {
       ALTER TABLE ar_call_log ADD COLUMN IF NOT EXISTS follow_up_action TEXT;
 
       -- ── claims: fix status CHECK constraint to include all valid statuses ─────
+      -- ── integration_configs: persist integration hub settings ────────────────
+      CREATE TABLE IF NOT EXISTS integration_configs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        org_id UUID NOT NULL, client_id UUID,
+        integration_id VARCHAR(100) NOT NULL,
+        integration_name VARCHAR(200),
+        config JSONB DEFAULT '{}',
+        status VARCHAR(50) DEFAULT 'connected',
+        last_sync TIMESTAMPTZ DEFAULT NOW(),
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
       -- Drop old constraint (if it exists) and recreate with full list
       ALTER TABLE claims DROP CONSTRAINT IF EXISTS claims_status_check;
       ALTER TABLE claims ADD CONSTRAINT claims_status_check CHECK (status IN (
@@ -7943,6 +7955,7 @@ export const handler = async (event) => {
       'encounters': 'encounters',
       'tasks': 'tasks',
       'credentialing': 'credentialing',
+      'integration-configs': 'integration_configs',
     };
 
     // Sub-routes that should NOT be caught by generic CRUD
