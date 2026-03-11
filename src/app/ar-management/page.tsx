@@ -632,14 +632,14 @@ function ARDrawer({
   )
 }
 
-function InboundCallPanel() {
+function InboundCallPanel({ accounts: accountsList }: { accounts: ARAccount[] }) {
   const { toast } = useToast()
   const { mutate: createTask } = useCreateTask()
   const [phoneSearch, setPhoneSearch] = useState('')
   const [found, setFound] = useState<ARAccount | null>(null)
 
   function lookUp() {
-    const m = initialAccounts.find(a => a.patient.toLowerCase().includes(phoneSearch.toLowerCase()))
+    const m = accountsList.find(a => a.patient.toLowerCase().includes(phoneSearch.toLowerCase()))
     m ? setFound(m) : toast.warning('No patient found')
   }
 
@@ -742,8 +742,8 @@ export default function ARManagementPage() {
       }
     }), [claimsResult])
 
-  const [accounts, setAccounts] = useState<ARAccount[]>(initialAccounts)
-  const [callHistory, setCallHistory] = useState<Record<string, CallLogEntry[]>>(initialCallHistory)
+  const [accounts, setAccounts] = useState<ARAccount[]>([])
+  const [callHistory, setCallHistory] = useState<Record<string, CallLogEntry[]>>({})
   const [selected, setSelected] = useState<ARAccount | null>(null)
   const [callMode, setCallMode] = useState<'accounts' | 'inbound' | 'credits' | 'sla'>('accounts')
 
@@ -881,7 +881,7 @@ export default function ARManagementPage() {
         ))}
       </div>
 
-      {callMode === 'inbound' ? <InboundCallPanel /> : callMode === 'credits' ? (
+      {callMode === 'inbound' ? <InboundCallPanel accounts={accounts} /> : callMode === 'credits' ? (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-content-secondary">Overpayments and credit balances requiring resolution</p>

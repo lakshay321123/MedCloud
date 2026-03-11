@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react'
 import { Theme, Language, UserRole, User, ClientOrg, PortalType } from '@/types'
-import { demoClients } from '@/lib/demo-data'
+import { api } from '@/lib/api-client'
 
 const facilityRoles: UserRole[] = ['provider', 'client']
 const backofficeRoles: UserRole[] = ['admin', 'director', 'supervisor', 'manager', 'coder', 'biller', 'ar_team', 'posting_team']
@@ -102,6 +102,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User>(SERVER_DEFAULT_USER)
   const [selectedClient, setSelectedClientState] = useState<ClientOrg | null>(null)
   const [country, setCountryState] = useState<'uae' | 'usa' | null>(null)
+  const [apiClients, setApiClients] = useState<ClientOrg[]>([])
   const [portalType, setPortalTypeState] = useState<PortalType | null>(null)
   const [isScribeRecording, setIsScribeRecording] = useState(false)
   // TODO: Sprint 2 — derive orgId from Cognito JWT claims after authentication
@@ -140,14 +141,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Fetch real clients from API
+  useEffect(() => {
+    api.get<{ data: Array<{ id: string; name: string; region: string; ehr_mode?: string }> }>('/clients')
+      .then(res => {
+        const data = Array.isArray(res) ? res : res?.data || []
+        const mapped: ClientOrg[] = data.map((c: any) => ({
+          id: c.id, name: c.name, region: c.region || 'us', ehr_mode: c.ehr_mode || 'external_ehr',
+        }))
+        if (mapped.length > 0) setApiClients(mapped)
+      })
+      .catch(() => {})
+  }, [])
+
   const direction = getDirection(language)
 
-  // Filter clients by logged-in region
+  // Filter clients by logged-in region — uses real API data
   const clients = useMemo(() => {
-    if (!country) return demoClients
+    if (apiClients.length === 0) return []
+    if (!country) return apiClients
     const region = country === 'usa' ? 'us' : 'uae'
-    return demoClients.filter(c => c.region === region)
-  }, [country])
+    return apiClients.filter(c => c.region === region)
+  }, [country, apiClients])
 
   // Clear selectedClient if it doesn't match current region
   useEffect(() => {

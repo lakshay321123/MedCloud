@@ -43,8 +43,16 @@ export default function CodingRulesPage() {
   })
 
   useEffect(() => {
+    const priorityMap: Record<string, number> = { urgent: 1, high: 2, medium: 50, normal: 50, low: 75 }
     api.get<{ data: CodingRule[] }>('/coding-rules')
-      .then(r => { setRules(r.data || []); setLoading(false) })
+      .then(r => {
+        const data = (r.data || []).map(rule => ({
+          ...rule,
+          priority: typeof rule.priority === 'number' ? rule.priority : (priorityMap[String(rule.priority)] ?? 100),
+        }))
+        setRules(data)
+        setLoading(false)
+      })
       .catch(() => setLoading(false))
   }, [])
 

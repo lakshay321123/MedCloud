@@ -35,16 +35,7 @@ const actionColors: Record<string,string> = {
   EXPORT: 'bg-brand/10 text-brand',
 }
 
-const users = [
-  { name:'Admin User', email:'admin@cosentus.ai', role:'admin', clients:'All', lastLogin:'2026-03-02', active:true },
-  { name:'Sarah Kim', email:'sarah@cosentus.ai', role:'coder', clients:'IFP, GMC', lastLogin:'2026-03-02', active:true },
-  { name:'Mike Rodriguez', email:'mike@cosentus.ai', role:'ar_team', clients:'All', lastLogin:'2026-03-01', active:true },
-  { name:'Lisa Tran', email:'lisa@cosentus.ai', role:'posting_team', clients:'IFP, PC', lastLogin:'2026-03-02', active:true },
-  { name:'Tom Baker', email:'tom@cosentus.ai', role:'supervisor', clients:'All', lastLogin:'2026-02-28', active:true },
-  { name:'Amy Chen', email:'amy@cosentus.ai', role:'coder', clients:'PC, DWC', lastLogin:'2026-03-02', active:true },
-  { name:'Dr. Martinez', email:'dr.m@irvinefp.com', role:'provider', clients:'IFP', lastLogin:'2026-03-02', active:true },
-  { name:'Front Desk IFP', email:'fd@irvinefp.com', role:'client', clients:'IFP', lastLogin:'2026-03-01', active:true },
-]
+const users: Array<{ name: string; email: string; role: string; clients: string; lastLogin: string; active: boolean }> = []
 
 const orgs = [
   { name:'Gulf Medical Center', region:'🇦🇪 UAE', ehr:'MedCloud EHR', pricing:'% Revenue', since:'2024-01-01', active:true },

@@ -1,4 +1,12 @@
-import { demoClients } from '@/lib/demo-data'
+// Client registry — minimal static lookup for region/name resolution.
+// Source of truth is the DB (GET /clients), but region logic needs sync access.
+const CLIENT_REGISTRY: Array<{ id: string; name: string; region: 'us' | 'uae' }> = [
+  { id: 'c0000000-0000-0000-0000-000000000101', name: 'Gulf Medical Center', region: 'uae' },
+  { id: 'c0000000-0000-0000-0000-000000000102', name: 'Irvine Medical Group', region: 'us' },
+  { id: 'c0000000-0000-0000-0000-000000000103', name: 'Patel Cardiology Associates', region: 'us' },
+  { id: 'c0000000-0000-0000-0000-000000000104', name: 'Dubai Wellness Clinic', region: 'uae' },
+  { id: 'c0000000-0000-0000-0000-000000000105', name: 'Cosentus Demo', region: 'us' },
+]
 
 export type RegionType = 'us' | 'uae'
 
@@ -8,7 +16,7 @@ export const UAE_CLIENT_NAMES = ['Gulf Medical Center', 'Dubai Wellness Clinic']
 export const US_CLIENT_NAMES  = ['Irvine Family Practice', 'Patel Cardiology'] as const
 
 export function getOrgRegion(orgId: string): RegionType {
-  return (demoClients.find(c => c.id === orgId)?.region as RegionType) ?? 'us'
+  return (CLIENT_REGISTRY.find(c => c.id === orgId)?.region as RegionType) ?? 'us'
 }
 
 /**
@@ -41,7 +49,7 @@ export function filterByRegion<T extends { clientId?: string; client_id?: string
 
   if (country) {
     const region = country === 'uae' ? 'uae' : 'us'
-    const regionOrgIds = new Set(demoClients.filter(c => c.region === region).map(c => c.id))
+    const regionOrgIds = new Set(CLIENT_REGISTRY.filter(c => c.region === region).map(c => c.id))
     return data.filter(item => {
       const cid = item.clientId ?? item.client_id
       return !cid || regionOrgIds.has(cid)

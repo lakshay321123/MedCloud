@@ -34,16 +34,8 @@ function KPITooltip({ formula }: { formula: string }) {
 }
 
 // Static fallback trend data — used when DB has < 2 months of claims
-const FALLBACK_REVENUE = [
-  { month: 'Oct', revenue: 280000 }, { month: 'Nov', revenue: 310000 },
-  { month: 'Dec', revenue: 295000 }, { month: 'Jan', revenue: 340000 },
-  { month: 'Feb', revenue: 380000 }, { month: 'Mar', revenue: 420000 },
-]
-const FALLBACK_DENIAL = [
-  { month: 'Oct', initial: 7.2, net: 4.1 }, { month: 'Nov', initial: 6.8, net: 3.9 },
-  { month: 'Dec', initial: 8.1, net: 4.8 }, { month: 'Jan', initial: 6.2, net: 3.5 },
-  { month: 'Feb', initial: 5.8, net: 3.2 }, { month: 'Mar', initial: 5.1, net: 2.9 },
-]
+const FALLBACK_REVENUE: Array<{ month: string; revenue: number }> = []
+const FALLBACK_DENIAL: Array<{ month: string; initial: number; net: number }> = []
 
 // Deterministic daily claim counts — no Math.random(), consistent on every render
 const claimsByDay: Record<number, number> = {
@@ -227,12 +219,7 @@ export default function AnalyticsPage() {
       const rate = cl.billed > 0 ? Math.round((cl.paid / cl.billed) * 100) : 0
       return { name: cl.name.split(' ')[0], rate, fill: rate >= 95 ? '#00B5D6' : rate >= 85 ? '#36C2DE' : '#047285' }
     })
-    if (result.length === 0) return [
-      { name: 'Pacific Ortho', rate: 94, fill: '#36C2DE' },
-      { name: 'Irvine FP', rate: 97, fill: '#00B5D6' },
-      { name: 'Sunrise Cardio', rate: 88, fill: '#36C2DE' },
-      { name: 'Metro Internal', rate: 79, fill: '#047285' },
-    ]
+    if (result.length === 0) return []
     return result
   }, [claims])
 
