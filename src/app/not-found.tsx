@@ -4,7 +4,7 @@ import Link from 'next/link'
 export default function NotFound() {
   return (
     <div className="min-h-screen bg-surface-primary flex flex-col items-center justify-center gap-6 text-center px-4">
-      <div className="text-[13px] font-bold tracking-widest text-brand uppercase">MedCloud</div>
+      <div className="text-[13px] font-bold tracking-widest text-brand">MedCloud</div>
       <div className="text-[96px] font-black text-brand leading-none">404</div>
       <h1 className="text-[24px] font-bold text-content-primary">Page not found</h1>
       <p className="text-[14px] text-content-secondary max-w-sm">

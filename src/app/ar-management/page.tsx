@@ -471,7 +471,7 @@ function ARDrawer({
                       onClose()
                     } catch { toast.error('Failed to escalate claim') }
                   }}
-                  className="bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-lg py-2.5 text-[13px] font-medium hover:bg-orange-500/20 transition-colors disabled:opacity-50">
+                  className="bg-[#065E76]/10 text-[#065E76] rounded-lg py-2.5 text-[13px] font-medium hover:bg-[#065E76]/20 transition-colors disabled:opacity-50">
                   {escalating ? 'Escalating…' : 'Escalate'}
                 </button>
                 <button

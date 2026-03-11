@@ -30,17 +30,17 @@ const typeIcon: Record<string, React.ReactNode> = {
 
 const sourceBadge = (s: string) => {
   const map: Record<string,string> = {
-    'Portal Upload':'bg-brand/10 text-brand','Email Ingest':'bg-brand/10 text-brand',
-    'Fax':'bg-brand-pale0/10 text-brand-deep','Manual Upload':'bg-surface-elevated text-content-secondary',
-    'Textract Scan':'bg-brand/10 text-brand-dark',
+    'Portal Upload':'bg-[#D6EBF2] text-[#065E76]','Email Ingest':'bg-[#D6EBF2] text-[#065E76]',
+    'Fax':'bg-[#616161]/10 text-[#616161]','Manual Upload':'bg-[#616161]/10 text-[#616161]',
+    'Textract Scan':'bg-[#00B5D6]/10 text-[#00B5D6]',
   }
   return map[s] ?? 'bg-surface-elevated text-content-secondary'
 }
 
 const statusBadge = (s: string) => {
-  if (s==='Linked') return 'bg-brand/10 text-brand-dark dark:text-brand-dark'
-  if (s==='Unlinked') return 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep'
-  return 'bg-brand/10 text-brand'
+  if (s==='Linked') return 'bg-[#D6EBF2] text-[#065E76]'
+  if (s==='Unlinked') return 'bg-[#616161]/10 text-[#616161]'
+  return 'bg-[#00B5D6]/10 text-[#00B5D6]'
 }
 
 function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () => void }) {
@@ -135,7 +135,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
         {/* Quick Code Entry for Superbill / Clinical Note */}
         {(doc.type === 'Superbill' || doc.type === 'Clinical Note') && (
           <div className="mx-4 mb-4 card p-4">
-            <div className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-3">Quick Code Entry</div>
+            <div className="text-[11px] font-semibold text-content-secondary tracking-wider mb-3">Quick Code Entry</div>
             <div className="space-y-2">
               {[
                 { label: 'CPT Code(s)', placeholder: 'e.g. 99214, 93000' },
@@ -165,7 +165,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
         {/* Link to patient section */}
         {!doc.patientId && (
           <div className="mx-4 mb-4 card p-4">
-            <h4 className="text-[13px] font-semibold text-content-secondary uppercase tracking-wider mb-3">Link to Patient</h4>
+            <h4 className="text-[13px] font-semibold text-content-secondary tracking-wider mb-3">Link to Patient</h4>
             {doc.aiConfidence && (
               <div className="bg-brand/10 border border-brand/20 rounded-lg p-2 mb-3 text-[11px] text-brand flex items-center gap-2">
                 <span>AI Classification: {doc.type}</span>

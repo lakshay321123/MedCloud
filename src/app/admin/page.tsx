@@ -15,7 +15,7 @@ const roleColors: Record<string,string> = {
   coder: 'bg-brand/10 text-brand-dark dark:text-brand-dark',
   biller: 'bg-brand-pale0/10 text-brand-deep',
   ar_team: 'bg-cyan-500/10 text-cyan-500',
-  posting_team: 'bg-orange-500/10 text-orange-500',
+  posting_team: 'bg-[#616161]/10 text-[#616161]',
   provider: 'bg-brand/10 text-brand-dark',
   client: 'bg-gray-500/10 text-gray-400',
 }
@@ -347,7 +347,7 @@ function SystemHealthTab() {
       </div>
       <div className="card overflow-hidden">
         <div className="px-4 py-3 border-b border-separator">
-          <h3 className="text-[13px] font-semibold text-content-secondary uppercase tracking-wider">Queue Depths</h3>
+          <h3 className="text-[13px] font-semibold text-content-secondary tracking-wider">Queue Depths</h3>
         </div>
         <table className="w-full text-sm">
           <thead><tr className="border-b border-separator text-[13px] text-content-secondary">

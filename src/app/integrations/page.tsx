@@ -17,19 +17,19 @@ const integrations: Integration[] = [
   // Clearinghouses
   { id:'availity', name:'Availity', description:'Primary clearinghouse — claims, eligibility, ERA', initials:'AV', color:'bg-brand', category:'Clearinghouses', status:'connected', lastSync:'5 min ago' },
   { id:'dha', name:'DHA eClaim (UAE)', description:'UAE DOH claims gateway', initials:'DH', color:'bg-brand', category:'Clearinghouses', status:'connected', lastSync:'14 min ago' },
-  { id:'eclinical', name:'eClinicalWorks', description:'EHR integration & patient data', initials:'EC', color:'bg-cyan-500', category:'EHR Systems', status:'pending' },
+  { id:'eclinical', name:'eClinicalWorks', description:'EHR integration & patient data', initials:'EC', color:'bg-[#00B5D6]', category:'EHR Systems', status:'pending' },
   // EHR Systems
   { id:'epic', name:'Epic FHIR', description:'Epic EHR FHIR R4 API', initials:'EP', color:'bg-brand-dark', category:'EHR Systems', status:'not_configured' },
-  { id:'cerner', name:'Cerner HL7', description:'Cerner Millennium HL7 v2.x', initials:'CE', color:'bg-rose-500', category:'EHR Systems', status:'not_configured' },
-  { id:'athena', name:'athenahealth', description:'Practice management & EHR', initials:'AT', color:'bg-orange-500', category:'EHR Systems', status:'not_configured' },
+  { id:'cerner', name:'Cerner HL7', description:'Cerner Millennium HL7 v2.x', initials:'CE', color:'bg-[#065E76]', category:'EHR Systems', status:'not_configured' },
+  { id:'athena', name:'athenahealth', description:'Practice management & EHR', initials:'AT', color:'bg-[#616161]', category:'EHR Systems', status:'not_configured' },
   // Communication
   { id:'retell', name:'Retell AI', description:'Voice AI payer follow-up calls', initials:'RT', color:'bg-brand-mid', category:'Communication', status:'connected', lastSync:'1 min ago' },
   { id:'cloudfax', name:'Cloud Fax (SRFax)', description:'Inbound / outbound fax', initials:'CF', color:'bg-gray-500', category:'Communication', status:'error', errorMsg:'Auth failed — token expired' },
-  { id:'email', name:'Email Ingest', description:'Automated email parsing', initials:'EM', color:'bg-sky-500', category:'Communication', status:'connected', lastSync:'8 min ago' },
+  { id:'email', name:'Email Ingest', description:'Automated email parsing', initials:'EM', color:'bg-[#00B5D6]', category:'Communication', status:'connected', lastSync:'8 min ago' },
   // Storage
   { id:'s3', name:'AWS S3', description:'Document storage & backups', initials:'S3', color:'bg-brand-pale', category:'Storage', status:'connected', lastSync:'2 min ago' },
-  { id:'sharepoint', name:'SharePoint', description:'Document collaboration', initials:'SP', color:'bg-blue-600', category:'Storage', status:'not_configured' },
-  { id:'sftp', name:'SFTP Server', description:'EDI file transfer', initials:'FT', color:'bg-teal-500', category:'Storage', status:'not_configured' },
+  { id:'sharepoint', name:'SharePoint', description:'Document collaboration', initials:'SP', color:'bg-[#065E76]', category:'Storage', status:'not_configured' },
+  { id:'sftp', name:'SFTP Server', description:'EDI file transfer', initials:'FT', color:'bg-[#00B5D6]', category:'Storage', status:'not_configured' },
 ]
 
 const statusIcon = (s: string) => {
@@ -174,7 +174,7 @@ export default function IntegrationsPage() {
 
       {categories.map(cat=>(
         <div key={cat} className="mb-6">
-          <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">{cat}</h3>
+          <h3 className="text-xs font-semibold text-content-secondary tracking-wider mb-3">{cat}</h3>
           <div className="grid grid-cols-3 gap-4">
             {integrations.filter(i=>i.category===cat).map(intg=>(
               <div key={intg.id} className="card p-4 hover:border-brand/30 transition-all">

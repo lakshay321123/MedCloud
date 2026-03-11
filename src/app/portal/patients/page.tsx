@@ -43,7 +43,7 @@ const ic = 'w-full bg-surface-elevated border border-separator rounded-lg px-3 p
 function SectionHeader({ title, badge, open, onToggle }: { title: string; badge?: string; open: boolean; onToggle: () => void }) {
   return (
     <button type="button" onClick={onToggle}
-      className="w-full flex items-center justify-between py-2.5 text-[13px] font-semibold text-content-secondary uppercase tracking-wide hover:text-content-primary transition-colors">
+      className="w-full flex items-center justify-between py-2.5 text-[13px] font-semibold text-content-secondary tracking-wide hover:text-content-primary transition-colors">
       <div className="flex items-center gap-2">
         <span>{title}</span>
         {badge && <span className="text-[11px] font-normal text-content-tertiary normal-case">{badge}</span>}
@@ -94,7 +94,7 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
 
           {/* ── DEMOGRAPHICS ── */}
           <div className="space-y-3">
-            <div className="text-[13px] font-semibold text-content-secondary uppercase tracking-wide">Demographics</div>
+            <div className="text-[13px] font-semibold text-content-secondary tracking-wide">Demographics</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div><label className="text-[13px] text-content-secondary block mb-1">First Name <span className="text-[#065E76]">*</span></label>
                 <input className={ic} placeholder="First name" value={form.firstName} onChange={e => upd('firstName', e.target.value)} /></div>

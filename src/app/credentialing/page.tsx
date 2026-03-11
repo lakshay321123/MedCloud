@@ -188,7 +188,7 @@ export default function CredentialingPage() {
           ))}
         </div>
         <div className="space-y-2">
-          <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider">Upcoming Expirations</h4>
+          <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider">Upcoming Expirations</h4>
           {[{name:'Dr. Patel',item:'Malpractice Insurance',date:'2026-04-15',days:42},
             {name:'Dr. Martinez',item:'State License',date:'2026-05-10',days:67},
             {name:'Dr. Williams',item:'CAQH Attestation',date:'2026-04-01',days:28}

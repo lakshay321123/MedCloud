@@ -15,7 +15,7 @@ export default function KPICard({ label, value, sub, trend, icon }: KPICardProps
     <div className="card kpi-card p-5 group cursor-default">
       <div className="flex items-start justify-between mb-3">
         {/* Label — black, not gray. Title Case applied. */}
-        <p className="text-[12px] font-semibold text-black uppercase tracking-[0.04em] leading-none">
+        <p className="text-[12px] font-semibold text-black tracking-[0.04em] leading-none">
           {label}
         </p>
         {icon && (

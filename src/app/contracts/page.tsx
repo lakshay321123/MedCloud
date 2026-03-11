@@ -192,7 +192,7 @@ export default function ContractsPage() {
                 {tab === 'fee' && (
                   <div>
                     <table className="w-full text-[12px]">
-                      <thead><tr className="border-b border-separator text-[11px] text-content-tertiary uppercase tracking-wider">
+                      <thead><tr className="border-b border-separator text-[11px] text-content-tertiary tracking-wider">
                         {['CPT Code', 'Description', 'Contracted Rate', 'Medicare %', 'Effective Date', ''].map(h => (
                           <th key={h} className="text-left py-2 pr-3">{h}</th>
                         ))}
@@ -276,7 +276,7 @@ export default function ContractsPage() {
                       <p className="text-[13px] text-content-tertiary text-center py-12">No underpayments detected — auto-posting compares paid vs contracted rates</p>
                     ) : (
                       <table className="w-full text-[12px]">
-                        <thead><tr className="border-b border-separator text-[11px] text-content-tertiary uppercase tracking-wider">
+                        <thead><tr className="border-b border-separator text-[11px] text-content-tertiary tracking-wider">
                           {['Claim','Patient','CPT','Expected','Paid','Variance','Status','Action'].map(h => (
                             <th key={h} className="text-left py-2 pr-3">{h}</th>
                           ))}

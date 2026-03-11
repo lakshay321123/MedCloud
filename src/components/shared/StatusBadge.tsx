@@ -42,7 +42,7 @@ const styles: Record<string, { bg: string; text: string }> = {
   booked:          { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },
   open:            { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },
   received:        { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },
-  pending:         { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },
+  pending:         { bg: 'bg-black', text: 'text-white' },
   medium:          { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },
   low:             { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },
   cancelled:       { bg: 'bg-[#616161]/10', text: 'text-[#616161]' },

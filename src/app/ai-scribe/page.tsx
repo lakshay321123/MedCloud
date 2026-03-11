@@ -427,7 +427,7 @@ function ProviderView() {
       )}
       {(selectedPatient.medications?.length ?? 0) > 0 && (
         <div className="card p-4">
-          <div className="text-xs font-semibold text-content-secondary mb-2 uppercase tracking-wide">Medications</div>
+          <div className="text-xs font-semibold text-content-secondary mb-2 tracking-wide">Medications</div>
           <ul className="text-sm space-y-1">{selectedPatient.medications!.map((m: string, i: number) => <li key={i}>• {m}</li>)}</ul>
         </div>
       )}
@@ -436,7 +436,7 @@ function ProviderView() {
         const priorVisits = visits.filter(v => v.patientId === selectedPatientId)
         return priorVisits.length > 0 ? (
           <div className="card p-4">
-            <div className="text-xs font-semibold text-content-secondary mb-2 uppercase tracking-wide flex items-center gap-2"><History size={12} /> Prior Visits ({priorVisits.length})</div>
+            <div className="text-xs font-semibold text-content-secondary mb-2 tracking-wide flex items-center gap-2"><History size={12} /> Prior Visits ({priorVisits.length})</div>
             {priorVisits.slice(0, 2).map(v => (
               <div key={v.id} className="py-1.5 border-b border-separator last:border-0">
                 <div className="text-xs font-medium">{v.dos} · {v.encounterType}</div>
@@ -447,7 +447,7 @@ function ProviderView() {
         ) : null
       })()}
       <div className="card p-4">
-        <label className="text-xs font-semibold text-content-secondary uppercase tracking-wider block mb-2">Specialty</label>
+        <label className="text-xs font-semibold text-content-secondary tracking-wider block mb-2">Specialty</label>
         <select value={selectedSpecialty} onChange={e => setSelectedSpecialty(e.target.value)}
           className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm outline-none focus:border-brand/40">
           {SPECIALTIES.map(s => <option key={s}>{s}</option>)}
@@ -492,7 +492,7 @@ function ProviderView() {
             <div className="mt-1.5 space-y-2">
               {macroCategories.map(cat => (
                 <div key={cat}>
-                  <div className="text-[11px] text-content-tertiary uppercase tracking-wider mb-1">{cat}</div>
+                  <div className="text-[11px] text-content-tertiary tracking-wider mb-1">{cat}</div>
                   {VOICE_MACROS.filter(m => m.category === cat).map(m => (
                     <button key={m.label} onClick={() => insertMacro(m.text)}
                       className="w-full text-left text-[11px] bg-surface-elevated hover:bg-brand/5 border border-separator hover:border-brand/20 rounded px-2 py-1.5 mb-1 transition-colors">
@@ -616,7 +616,7 @@ function ProviderView() {
                 </div>
                 {aiResult?.avs_summary && (
                   <div className="p-3 border-t border-separator bg-brand/5">
-                    <div className="text-[11px] font-semibold text-brand uppercase tracking-wider mb-1"><Clipboard size={10} className="inline mr-1" />After-Visit Summary</div>
+                    <div className="text-[11px] font-semibold text-brand tracking-wider mb-1"><Clipboard size={10} className="inline mr-1" />After-Visit Summary</div>
                     <p className="text-xs text-content-secondary leading-relaxed">{aiResult.avs_summary}</p>
                   </div>
                 )}
@@ -637,13 +637,13 @@ function ProviderView() {
                     <div className="text-[11px] text-content-tertiary mb-2">{v.encounterType} · {v.provider}</div>
                     {v.soap.a && (
                       <div className="bg-surface-elevated rounded p-2 mb-1.5">
-                        <div className="text-[9px] font-bold text-content-secondary uppercase tracking-wider mb-0.5">Assessment</div>
+                        <div className="text-[9px] font-bold text-content-secondary tracking-wider mb-0.5">Assessment</div>
                         <div className="text-[11px] leading-relaxed">{v.soap.a}</div>
                       </div>
                     )}
                     {v.soap.p && (
                       <div className="bg-surface-elevated rounded p-2">
-                        <div className="text-[9px] font-bold text-content-secondary uppercase tracking-wider mb-0.5">Plan</div>
+                        <div className="text-[9px] font-bold text-content-secondary tracking-wider mb-0.5">Plan</div>
                         <div className="text-[11px] leading-relaxed line-clamp-3">{v.soap.p}</div>
                       </div>
                     )}
@@ -692,7 +692,7 @@ function ProviderView() {
               {(['s', 'o', 'a', 'p'] as const).map(k => (
                 <div key={k}>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-bold text-content-secondary uppercase tracking-wider">
+                    <label className="text-[11px] font-bold text-content-secondary tracking-wider">
                       {k === 's' ? 'S — Subjective' : k === 'o' ? 'O — Objective' : k === 'a' ? 'A — Assessment' : 'P — Plan'}
                     </label>
                     <button onClick={() => refineSection(k)} disabled={refiningSections[k]}
@@ -711,7 +711,7 @@ function ProviderView() {
               <div className="border-t border-separator pt-3">
                 <div className="flex items-center gap-2 mb-2">
                   <BrainCircuit size={14} className="text-brand" />
-                  <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider">AI Generated Codes</h4>
+                  <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider">AI Generated Codes</h4>
                   {aiResult?.em_rationale && <span className="ml-auto text-[11px] text-content-tertiary">{aiResult.em_rationale}</span>}
                 </div>
                 {allCodes.map((code, i) => (
@@ -851,14 +851,14 @@ function ProviderView() {
               </div>
               <div className="p-5 flex-1 overflow-y-auto space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-content-secondary uppercase tracking-wider block mb-1.5">Specialist Type</label>
+                  <label className="text-xs font-semibold text-content-secondary tracking-wider block mb-1.5">Specialist Type</label>
                   <select value={selectedSpecialist} onChange={e => setSelectedSpecialist(e.target.value)}
                     className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm outline-none focus:border-brand/40">
                     {SPECIALISTS.map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-content-secondary uppercase tracking-wider block mb-1.5">Reason for Referral</label>
+                  <label className="text-xs font-semibold text-content-secondary tracking-wider block mb-1.5">Reason for Referral</label>
                   <textarea value={referralReason} onChange={e => setReferralReason(e.target.value)} rows={3} placeholder="e.g. Persistent back pain with radiculopathy, recommend MRI and specialist evaluation"
                     className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm resize-none outline-none focus:border-brand/40" />
                 </div>
@@ -871,7 +871,7 @@ function ProviderView() {
                 {referralLetter && (
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Referral Letter</label>
+                      <label className="text-xs font-semibold text-content-secondary tracking-wider">Referral Letter</label>
                       <button onClick={generateReferral} disabled={generatingReferral}
                         className="text-[11px] text-brand hover:underline flex items-center gap-1 disabled:opacity-50">
                         <RefreshCw size={10} /> Regenerate
@@ -911,7 +911,7 @@ function ProviderView() {
           {pending.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Pending Sign-off</h3>
+                <h3 className="text-xs font-semibold text-content-secondary tracking-wider">Pending Sign-off</h3>
                 <span className="text-[11px] bg-brand-pale0/15 text-brand-deep px-2 py-0.5 rounded-full">{pending.length}</span>
               </div>
               {pending.map(v => (
@@ -927,7 +927,7 @@ function ProviderView() {
           )}
           {completed.length > 0 && (
             <div>
-              <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider mb-2">Completed</h3>
+              <h3 className="text-xs font-semibold text-content-secondary tracking-wider mb-2">Completed</h3>
               {completed.map(v => (
                 <button key={v.id} onClick={() => openVisit(v)} className="w-full text-left card p-3 mb-2 hover:border-brand/30 opacity-70 transition-all">
                   <div className="flex items-center justify-between mb-1">
@@ -974,7 +974,7 @@ function CoderView() {
   return (
     <div className="flex flex-col md:grid md:grid-cols-3 md:gap-5 md:h-[calc(100vh-280px)] gap-4">
       <div className="card overflow-auto">
-        <div className="px-3 py-2 border-b border-separator text-xs font-semibold text-content-secondary uppercase tracking-wider">Signed Notes — Read Only</div>
+        <div className="px-3 py-2 border-b border-separator text-xs font-semibold text-content-secondary tracking-wider">Signed Notes — Read Only</div>
         {coderVisits.length === 0 && (
           <div className="p-6 text-center text-content-secondary text-sm">No signed notes yet</div>
         )}
@@ -1004,7 +1004,7 @@ function CoderView() {
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {(['s', 'o', 'a', 'p'] as const).map(k => (
             <div key={k}>
-              <div className="text-[11px] font-bold text-content-secondary uppercase tracking-wider mb-1">
+              <div className="text-[11px] font-bold text-content-secondary tracking-wider mb-1">
                 {k === 's' ? 'S — Subjective' : k === 'o' ? 'O — Objective' : k === 'a' ? 'A — Assessment' : 'P — Plan'}
               </div>
               <div className="text-sm bg-surface-elevated rounded-lg p-3 leading-relaxed">{selectedVisit.soap[k]}</div>
@@ -1013,7 +1013,7 @@ function CoderView() {
           <div className="border-t border-separator pt-3">
             <div className="flex items-center gap-2 mb-2">
               <BrainCircuit size={14} className="text-brand" />
-              <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider">AI Codes</h4>
+              <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider">AI Codes</h4>
             </div>
             <div className="flex flex-wrap gap-2">
               {selectedVisit.suggestedCodes.map((c, i) => (

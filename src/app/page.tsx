@@ -46,15 +46,8 @@ export default function LoginPage() {
       ═══════════════════════════════ */}
       <div className="flex-1 flex flex-col bg-white">
 
-        {/* TOP-LEFT: MedCloud color logo */}
-        <div className="flex justify-start px-10 pt-9">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={LOGO_MEDCLOUD_COLOR}
-            alt="MedCloud"
-            className="h-9 w-auto object-contain"
-          />
-        </div>
+        {/* No logo on login side per design brief */}
+        <div className="px-10 pt-9" />
 
         {/* CENTER: Form — vertically + horizontally centered */}
         <div className="flex-1 flex items-center justify-center px-10 py-12">
@@ -77,7 +70,7 @@ export default function LoginPage() {
 
               {/* Email */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#999] uppercase tracking-[0.08em] block">
+                <label className="text-[11px] font-semibold text-[#999] tracking-[0.08em] block">
                   Email Address
                 </label>
                 <input
@@ -109,7 +102,7 @@ export default function LoginPage() {
 
               {/* Password */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#999] uppercase tracking-[0.08em] block">
+                <label className="text-[11px] font-semibold text-[#999] tracking-[0.08em] block">
                   Password
                 </label>
                 <input
@@ -173,15 +166,8 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* BOTTOM-LEFT: A Cosentus Division (black on white) */}
-        <div className="flex justify-start px-10 pb-9">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={LOGO_COSENTUS_DIV_BLACK}
-            alt="A Cosentus Division"
-            className="h-[13px] w-auto object-contain opacity-60"
-          />
-        </div>
+        {/* No logo on login side per design brief */}
+        <div className="px-10 pb-9" />
       </div>
 
       {/* ═══════════════════════════════
@@ -203,12 +189,13 @@ export default function LoginPage() {
         </div>
 
         {/* Bottom: A Cosentus Division — white text on blue */}
-        <div className="pb-10">
-          <p className="text-center">
-            <span className="text-white/70 text-[14px] font-normal tracking-wide">A </span>
-            <span className="text-white/90 text-[18px] font-black tracking-wider uppercase">Cosentus</span>
-            <span className="text-white/70 text-[14px] font-normal tracking-wide"> Division</span>
-          </p>
+        <div className="pb-10 flex justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={LOGO_COSENTUS_DIV_BLACK}
+            alt="A Cosentus Division"
+            className="h-[16px] w-auto object-contain"
+          />
         </div>
       </div>
     </div>

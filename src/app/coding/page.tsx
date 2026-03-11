@@ -313,7 +313,7 @@ function InlineDocPreview({ patientId, label }: { patientId?: string; label?: st
       {fullscreen && previewUrl && (
         <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" onClick={e => { if (e.target === e.currentTarget) setFullscreen(false) }}>
           <div className="flex gap-2 items-center justify-between p-3 bg-surface-secondary border-b border-separator pb-1">
-            {label && <p className="text-xs font-bold text-brand uppercase tracking-wider">{label}</p>}
+            {label && <p className="text-xs font-bold text-brand tracking-wider">{label}</p>}
             <span className="text-xs text-content-tertiary ml-2">{docs.find(d => d.id === selectedDocId)?.file_name}</span>
             <button onClick={() => setFullscreen(false)}
               className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-surface-elevated text-content-secondary hover:bg-brand/10 hover:text-brand border border-separator transition-colors font-medium">
@@ -332,7 +332,7 @@ function InlineDocPreview({ patientId, label }: { patientId?: string; label?: st
       {/* Inline preview — always stable, never remounts */}
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-          {label && <p className="text-[11px] uppercase tracking-widest text-brand font-bold shrink-0">{label}</p>}
+          {label && <p className="text-[11px] tracking-widest text-brand font-bold shrink-0">{label}</p>}
           <div className="flex items-center gap-2 ml-auto shrink-0">
             {docs.length > 1 && (
               <select value={selectedDocId || ''} onChange={e => setSelectedDocId(e.target.value)}
@@ -399,7 +399,7 @@ function CodingRulesPanel() {
   return (
     <div className="p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-[13px] font-semibold text-content-secondary uppercase tracking-wider">Payer Coding Rules</h4>
+        <h4 className="text-[13px] font-semibold text-content-secondary tracking-wider">Payer Coding Rules</h4>
         <button onClick={() => setShowAdd(!showAdd)} className="text-[11px] px-2 py-1 rounded bg-brand text-white">+ Add Rule</button>
       </div>
       <p className="text-[11px] text-content-tertiary">Rules are automatically applied by AI when generating codes. E.g. &quot;For Aetna, always add modifier 25 to E/M with injection&quot;</p>
@@ -887,7 +887,7 @@ export default function CodingPage() {
         <div className="col-span-2">
           <div className="card p-3 h-full flex flex-col">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-[11px] font-semibold uppercase text-content-tertiary tracking-wider">Coding Queue ({queue.length})</h3>
+            <h3 className="text-[11px] font-semibold text-content-tertiary tracking-wider">Coding Queue ({queue.length})</h3>
             {queue.length > 1 && (
               <button
                 onClick={async () => {
@@ -1126,7 +1126,7 @@ export default function CodingPage() {
                   {tab === 'qa' && (
                     <div className="p-4 space-y-3">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-[13px] font-semibold text-content-secondary uppercase tracking-wider">QA Coding Audit</h4>
+                        <h4 className="text-[13px] font-semibold text-content-secondary tracking-wider">QA Coding Audit</h4>
                       </div>
                       <div className="flex flex-col items-center justify-center py-10 text-center">
                         <div className="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center mb-3">
@@ -1191,7 +1191,7 @@ export default function CodingPage() {
                           )}
                           {(['subjective', 'objective', 'assessment', 'plan'] as const).map(section => (
                             <div key={section} className="pb-3 border-b border-separator last:border-0">
-                              <p className="text-[11px] uppercase tracking-widest text-content-tertiary font-bold mb-1.5">{section}</p>
+                              <p className="text-[11px] tracking-widest text-content-tertiary font-bold mb-1.5">{section}</p>
                               <p className="text-[13px] text-content-secondary leading-relaxed whitespace-pre-line">
                                 {item.visitNote[section] || <span className="italic text-content-tertiary text-[12px]">No documentation yet — attach a visit note or type above to begin coding</span>}
                               </p>
@@ -1205,7 +1205,7 @@ export default function CodingPage() {
                           <InlineDocPreview patientId={item.patientId} label="Superbill / Uploaded Document" />
                           {item.superbillCpt && item.superbillCpt.length > 0 && (
                             <div className="space-y-2 mt-3 border-t border-separator pt-3">
-                              <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold">Codes on Superbill</p>
+                              <p className="text-[11px] tracking-wider text-content-tertiary font-semibold">Codes on Superbill</p>
                               {item.superbillCpt.map(code => (
                                 <div key={code} className="flex items-center justify-between px-3 py-2 bg-surface-elevated rounded-lg border border-separator">
                                   <span className="font-mono text-[13px] text-content-primary">{code}</span>
@@ -1225,10 +1225,10 @@ export default function CodingPage() {
                         <div className="grid grid-cols-2 gap-3 h-full">
                           {/* Left: Visit Note */}
                           <div className="overflow-y-auto border-r border-separator pr-3 space-y-3">
-                            <p className="text-[11px] uppercase tracking-widest text-brand font-bold">Visit Note</p>
+                            <p className="text-[11px] tracking-widest text-brand font-bold">Visit Note</p>
                             {(['subjective', 'objective', 'assessment', 'plan'] as const).map(section => (
                               <div key={section} className="pb-2 border-b border-separator last:border-0">
-                                <p className="text-[9px] uppercase tracking-widest text-content-tertiary font-bold mb-1">{section}</p>
+                                <p className="text-[9px] tracking-widest text-content-tertiary font-bold mb-1">{section}</p>
                                 <p className="text-[12px] text-content-secondary leading-relaxed whitespace-pre-line">
                                   {item.visitNote[section] || <span className="italic text-content-tertiary text-[11px]">—</span>}
                                 </p>
@@ -1240,7 +1240,7 @@ export default function CodingPage() {
                             <InlineDocPreview patientId={item.patientId} label="Document Preview" />
                             {item.superbillCpt && item.superbillCpt.length > 0 ? (
                               <div className="space-y-1.5">
-                                <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold">Superbill Codes</p>
+                                <p className="text-[11px] tracking-wider text-content-tertiary font-semibold">Superbill Codes</p>
                                 {item.superbillCpt.map(code => (
                                   <div key={code} className="flex items-center justify-between px-2 py-1.5 bg-surface-elevated rounded border border-separator">
                                     <span className="font-mono text-[11px] text-content-primary">{code}</span>
@@ -1337,7 +1337,7 @@ export default function CodingPage() {
                         ) : (
                           <div className="space-y-2">
                             <div>
-                              <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Specialty</label>
+                              <label className="text-[11px] tracking-wider text-content-tertiary font-semibold block mb-1">Specialty</label>
                               <input
                                 value={quickSoap.specialty}
                                 onChange={e => setQuickSoap(p => ({ ...p, specialty: e.target.value }))}
@@ -1346,7 +1346,7 @@ export default function CodingPage() {
                               />
                             </div>
                             <div>
-                              <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Assessment / Diagnoses</label>
+                              <label className="text-[11px] tracking-wider text-content-tertiary font-semibold block mb-1">Assessment / Diagnoses</label>
                               <textarea
                                 rows={3}
                                 value={quickSoap.assessment}
@@ -1356,7 +1356,7 @@ export default function CodingPage() {
                               />
                             </div>
                             <div>
-                              <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Plan / Procedures</label>
+                              <label className="text-[11px] tracking-wider text-content-tertiary font-semibold block mb-1">Plan / Procedures</label>
                               <textarea
                                 rows={2}
                                 value={quickSoap.plan}
@@ -1420,7 +1420,7 @@ export default function CodingPage() {
                     )}
 
                     {/* ICD Codes */}
-                    <h4 className="text-[11px] uppercase tracking-wider font-semibold text-content-tertiary mb-2 flex items-center gap-2">Diagnosis Codes (ICD-10) <span className="ai-dot" title="AI Suggested" /></h4>
+                    <h4 className="text-[11px] tracking-wider font-semibold text-content-tertiary mb-2 flex items-center gap-2">Diagnosis Codes (ICD-10) <span className="ai-dot" title="AI Suggested" /></h4>
                     <div className="space-y-2 mb-3">
                       {activeCodes.icd.map(code => {
                         const key = `icd-${code.code}`
@@ -1453,7 +1453,7 @@ export default function CodingPage() {
                               <span className="text-[12px] font-mono font-semibold text-content-primary">
                                 {isEdited ? codeOverrides[key].newCode : code.code}
                               </span>
-                              {code.is_hcc && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-brand/10 text-brand-dark font-bold uppercase tracking-wider">HCC</span>}
+                              {code.is_hcc && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-brand/10 text-brand-dark font-bold tracking-wider">HCC</span>}
                               <span className="text-[12px] text-content-secondary flex-1">{code.desc}</span>
                               <span className={`text-[12px] font-semibold ${(code.confidence ?? 0) >= 90 ? 'text-brand-dark' : (code.confidence ?? 0) >= 70 ? 'text-brand-deep' : 'text-[#065E76]'}`}>{code.confidence ?? 0}%</span>
                               {code.reasoning && <button onClick={() => setExpanded(p => ({ ...p, [key]: !p[key] }))} className="text-content-tertiary">{expanded[key] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button>}
@@ -1518,7 +1518,7 @@ export default function CodingPage() {
                     ))}
 
                     {/* CPT Codes */}
-                    <h4 className="text-[11px] uppercase tracking-wider font-semibold text-content-tertiary mb-2 mt-3 flex items-center gap-2">Procedure Codes (CPT) <span className="ai-dot" title="AI Suggested" /></h4>
+                    <h4 className="text-[11px] tracking-wider font-semibold text-content-tertiary mb-2 mt-3 flex items-center gap-2">Procedure Codes (CPT) <span className="ai-dot" title="AI Suggested" /></h4>
                     <div className="space-y-2 mb-3">
                       {activeCodes.cpt.map(code => {
                         const key = `cpt-${code.code}`
@@ -1618,7 +1618,7 @@ export default function CodingPage() {
                     {/* Superbill comparison */}
                     {item.hasSuperbill && (
                       <div className="bg-surface-elevated rounded-card p-3 mb-3 border border-separator">
-                        <h4 className="text-[11px] uppercase tracking-wider font-semibold text-content-tertiary mb-1">Superbill Comparison</h4>
+                        <h4 className="text-[11px] tracking-wider font-semibold text-content-tertiary mb-1">Superbill Comparison</h4>
                         <p className="text-[12px] text-content-secondary">Superbill codes: <span className="font-mono">{item.superbillCpt?.join(', ')}</span></p>
                         {allMatch ? (
                           <p className="text-[12px] text-brand-dark dark:text-brand-dark mt-1">✓ All codes match</p>
@@ -1635,7 +1635,7 @@ export default function CodingPage() {
 
                 {/* Manual Add Sections — always shown */}
                 <div className="mt-2">
-                  <p className="text-[11px] text-content-tertiary uppercase tracking-wider font-semibold mb-1">
+                  <p className="text-[11px] text-content-tertiary tracking-wider font-semibold mb-1">
                     {aiUnavailable ? 'Enter ICD-10 codes manually:' : 'Additional ICD-10 codes:'}
                   </p>
                   <AddCodeRow type="ICD" onAdd={(code, description) => {
@@ -1647,7 +1647,7 @@ export default function CodingPage() {
                 </div>
 
                 <div className="mt-3">
-                  <p className="text-[11px] text-content-tertiary uppercase tracking-wider font-semibold mb-1">
+                  <p className="text-[11px] text-content-tertiary tracking-wider font-semibold mb-1">
                     {aiUnavailable ? 'Enter CPT codes manually:' : 'Additional CPT codes:'}
                   </p>
                   <AddCodeRow type="CPT" onAdd={(code, description) => {

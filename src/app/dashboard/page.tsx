@@ -114,15 +114,15 @@ function ExecutiveDashboard() {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 sm:gap-5">
         <div className="col-span-3 card p-6">
-          <h3 className="text-[15px] font-semibold text-content-primary mb-2">
+          <h3 className="text-[15px] font-semibold text-content-primary mb-0.5">
             {agingBuckets ? t('dashboard','arAgingBuckets') : t('dashboard','revenueTrend')}
           </h3>
-          {agingBuckets && <p className="text-[11px] text-content-tertiary mb-3">Outstanding claim balances by age bucket</p>}
+          {agingBuckets && <p className="text-[11px] text-content-tertiary mb-2">Outstanding claim balances by age bucket</p>}
           <div className="flex items-end gap-3 h-36 px-2 mt-1">
             {agingBuckets
               ? agingBuckets.map((b, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-                    <span className="text-[11px] font-medium text-content-secondary truncate w-full text-center">{b.value > 0 ? b.value.toLocaleString() : '—'}</span>
+                    <span className="text-[13px] font-medium text-content-secondary truncate w-full text-center">{b.value > 0 ? b.value.toLocaleString() : '—'}</span>
                     <div className="w-full rounded-lg relative overflow-hidden" style={{ height: `${Math.max((b.value / maxAgingVal) * 120, b.value > 0 ? 8 : 2)}px` }}>
                       <div className="absolute inset-0 bg-gradient-to-t from-brand-dark to-brand rounded-lg" />
                     </div>

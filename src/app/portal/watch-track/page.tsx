@@ -158,7 +158,7 @@ export default function WatchTrackPage() {
                   <td colSpan={9} className="px-8 py-4">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 text-xs">
                       <div>
-                        <p className="text-content-tertiary uppercase tracking-wider mb-2 font-semibold">Claim Detail</p>
+                        <p className="text-content-tertiary tracking-wider mb-2 font-semibold">Claim Detail</p>
                         <div className="space-y-1">
                           <p><span className="text-content-secondary">CPT Codes:</span> <span className="font-mono">{(c.cptCodes??[]).join(', ')||'—'}</span></p>
                           <p><span className="text-content-secondary">ICD Codes:</span> <span className="font-mono">{(c.icdCodes??[]).join(', ')||'—'}</span></p>
@@ -167,7 +167,7 @@ export default function WatchTrackPage() {
                         </div>
                       </div>
                       <div>
-                        <p className="text-content-tertiary uppercase tracking-wider mb-2 font-semibold">Payer Info</p>
+                        <p className="text-content-tertiary tracking-wider mb-2 font-semibold">Payer Info</p>
                         <div className="space-y-1">
                           <p><span className="text-content-secondary">Payer:</span> {c.payer}</p>
                           <p><span className="text-content-secondary">Age:</span> {c.age} days</p>
@@ -175,7 +175,7 @@ export default function WatchTrackPage() {
                         </div>
                       </div>
                       <div>
-                        <p className="text-content-tertiary uppercase tracking-wider mb-2 font-semibold">Status</p>
+                        <p className="text-content-tertiary tracking-wider mb-2 font-semibold">Status</p>
                         <div className="space-y-2">
                           <StatusBadge status={c.status} small/>
                           {c.status==='denied'&&<p className="text-[#065E76] dark:text-[#065E76] flex items-center gap-1"><AlertTriangle size={12}/>Denial — contact billing team</p>}

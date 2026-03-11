@@ -105,13 +105,13 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
 
         {analysis?.call_summary && (
           <div className="p-4 border-b border-separator">
-            <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">AI Summary</h4>
+            <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-2">AI Summary</h4>
             <p className="text-[13px] text-content-primary leading-relaxed">{analysis.call_summary}</p>
           </div>
         )}
 
         <div className="p-4 border-b border-separator">
-          <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">Transcript</h4>
+          <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-2">Transcript</h4>
           <div ref={transcriptRef} className="bg-surface-elevated rounded-lg p-3 h-52 overflow-y-auto text-[11px] space-y-2">
             {lines.length > 0 ? lines.map((line, i) => (
               <div key={i} className="flex gap-2">
@@ -129,7 +129,7 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
 
         {Object.keys(vars).length > 0 && (
           <div className="p-4 border-b border-separator">
-            <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">Call Context</h4>
+            <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-2">Call Context</h4>
             <div className="space-y-1.5 max-h-32 overflow-y-auto">
               {Object.entries(vars).slice(0, 15).map(([k, v]) => (
                 <div key={k} className="flex justify-between text-xs gap-2">
@@ -143,7 +143,7 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
 
         {call.disconnection_reason && (
           <div className="p-4">
-            <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-1">Disconnection</h4>
+            <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-1">Disconnection</h4>
             <p className="text-[13px] text-content-secondary">{call.disconnection_reason}</p>
           </div>
         )}
@@ -340,7 +340,7 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
       {debugInfo && (
         <div className="card p-4 border-brand-light/30">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] font-semibold text-brand-deep uppercase tracking-wider">API Debug Response</p>
+            <p className="text-[11px] font-semibold text-brand-deep tracking-wider">API Debug Response</p>
             <button onClick={() => setDebugInfo(null)} className="text-[11px] text-content-tertiary hover:text-content-secondary">✕</button>
           </div>
           <pre className="text-[11px] text-content-secondary font-mono bg-surface-elevated p-3 rounded-lg overflow-auto max-h-48 whitespace-pre-wrap">
@@ -569,7 +569,7 @@ function CampaignLauncherTab() {
   return (
     <div className="grid grid-cols-5 gap-5">
       <div className="col-span-2 space-y-3">
-        <h3 className="text-[13px] font-semibold text-content-secondary uppercase tracking-wider">Past Campaigns {fallback && <span className="text-brand-deep normal-case font-normal">(demo)</span>}</h3>
+        <h3 className="text-[13px] font-semibold text-content-secondary tracking-wider">Past Campaigns {fallback && <span className="text-brand-deep normal-case font-normal">(demo)</span>}</h3>
         {batchLoading ? <div className="text-xs text-content-tertiary p-4">Loading…</div>
           : batches.length === 0 ? <div className="card p-6 text-center text-xs text-content-tertiary">No campaigns yet</div>
           : batches.map(b => (
@@ -648,7 +648,7 @@ function CampaignLauncherTab() {
 
               <div className="border border-separator rounded-lg overflow-hidden">
                 <div className="px-3 py-2 bg-surface-elevated border-b border-separator flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-content-secondary uppercase tracking-wide">Preview — {filteredRows.length} calls</span>
+                  <span className="text-[11px] font-semibold text-content-secondary tracking-wide">Preview — {filteredRows.length} calls</span>
                   <Eye size={12} className="text-content-tertiary" />
                 </div>
                 <div className="max-h-40 overflow-y-auto">
@@ -777,7 +777,7 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
     <div className="grid grid-cols-5 gap-5">
       {/* Payer table */}
       <div className="col-span-2">
-        <h3 className="text-[13px] font-semibold text-content-secondary uppercase tracking-wider mb-3">Payer Performance — Chris</h3>
+        <h3 className="text-[13px] font-semibold text-content-secondary tracking-wider mb-3">Payer Performance — Chris</h3>
         {stats.length === 0 ? (
           <div className="card p-8 text-center text-xs text-content-tertiary">
             No call data yet — launch Chris campaigns to see payer analytics
@@ -843,7 +843,7 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
 
             {/* Sample failures */}
             <div className="card p-4">
-              <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-3">Recent Failures</h4>
+              <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-3">Recent Failures</h4>
               <div className="space-y-2 max-h-32 overflow-y-auto">
                 {selectedPayer.calls.filter(c => c.call_analysis?.call_successful === false).slice(0, 5).map(c => (
                   <div key={c.call_id} className="text-[13px] text-content-secondary bg-surface-elevated rounded p-2">
@@ -872,7 +872,7 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider">Generated Playbook</h4>
+                  <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider">Generated Playbook</h4>
                   <button onClick={() => setPlaybook('')} className="text-[11px] text-content-tertiary hover:text-content-secondary transition-colors">Discard</button>
                 </div>
                 <textarea value={playbook} onChange={e => setPlaybook(e.target.value)}
@@ -996,7 +996,7 @@ function PromptEditorTab() {
         {/* Version history dropdown */}
         {showVersions && versions.length > 0 && (
           <div className="card p-3 space-y-1.5">
-            <p className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">Version History</p>
+            <p className="text-[11px] font-semibold text-content-secondary tracking-wider mb-2">Version History</p>
             {versions.map((v, i) => (
               <div key={i} className="flex items-center justify-between bg-surface-elevated rounded p-2">
                 <span className="text-[13px] text-content-secondary">{v.label}</span>
@@ -1039,7 +1039,7 @@ function PromptEditorTab() {
       {/* Right: AI optimizer */}
       <div className="col-span-2 space-y-4">
         <div>
-          <h3 className="text-[13px] font-semibold text-content-secondary uppercase tracking-wider mb-1">AI Prompt Optimizer</h3>
+          <h3 className="text-[13px] font-semibold text-content-secondary tracking-wider mb-1">AI Prompt Optimizer</h3>
           <p className="text-[11px] text-content-tertiary">Reads {activeAgent === 'chris' ? 'Chris' : 'Cindy'}'s last 100 calls and suggests specific prompt improvements based on failure patterns</p>
         </div>
 
@@ -1084,7 +1084,7 @@ function PromptEditorTab() {
         )}
 
         <div className="card p-4 space-y-2">
-          <p className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider">Quick Actions</p>
+          <p className="text-[11px] font-semibold text-content-secondary tracking-wider">Quick Actions</p>
           {[
             { label: 'Add Payer Playbooks', desc: 'Go to Payer Intelligence tab', action: null },
             { label: 'View Retell Dashboard', desc: 'Open agent in Retell', action: () => window.open('https://app.retellai.com', '_blank') },

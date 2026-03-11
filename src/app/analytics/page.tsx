@@ -443,7 +443,7 @@ export default function AnalyticsPage() {
                   <Tooltip formatter={(v: number | string | undefined) => [`${v ?? 0}%`]} contentStyle={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 12, color: '#3A3A3C', boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }} itemStyle={{ color: '#3A3A3C' }} labelStyle={{ color: '#1D1D1F', fontWeight: 600 }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <ReferenceLine y={5} stroke="#A1DEED" strokeDasharray="4 4" label={{ value: 'Target 5%', position: 'insideTopRight', fontSize: 10, fill: '#616161' }} />
-                  <Line type="monotone" dataKey="initial" name="Initial Denial Rate" stroke="#EF4444" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="initial" name="Initial Denial Rate" stroke="#065E76" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="net" name="Net Denial Rate" stroke="#00B5D6" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
@@ -475,7 +475,7 @@ export default function AnalyticsPage() {
               <h3 className="text-[14px] font-semibold text-content-primary">Staff Productivity</h3>
             </div>
             <table className="w-full text-[12px]">
-              <thead><tr className="border-b border-separator text-[11px] text-content-tertiary uppercase tracking-wider">
+              <thead><tr className="border-b border-separator text-[11px] text-content-tertiary tracking-wider">
                 {['Name','Role','Claims Today','AI Accept %','Avg Min/Claim','Accuracy','SLA %'].map(h => (
                   <th key={h} className="text-left px-4 py-2.5">{h}</th>
                 ))}
@@ -561,7 +561,7 @@ export default function AnalyticsPage() {
               <h3 className="text-[14px] font-semibold text-content-primary">Payer Performance</h3>
             </div>
             <table className="w-full text-[12px]">
-              <thead><tr className="border-b border-separator text-[11px] text-content-tertiary uppercase tracking-wider">
+              <thead><tr className="border-b border-separator text-[11px] text-content-tertiary tracking-wider">
                 {['Payer','Claims','Billed','Paid','Denial Rate','Avg Days to Pay','PHI Score'].map(h => (
                   <th key={h} className="text-left px-4 py-2.5">{h}</th>
                 ))}
@@ -596,7 +596,7 @@ export default function AnalyticsPage() {
           <div className="card overflow-hidden">
             <div className="px-5 py-4 border-b border-separator">
               <h3 className="text-[14px] font-semibold text-content-primary">Denial by Payer + Category</h3>
-              <p className="text-[11px] text-content-tertiary mt-0.5">Darker red = more denials in that category</p>
+              <p className="text-[11px] text-content-tertiary mt-0.5">Darker shade = more denials in that category</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-[11px]">

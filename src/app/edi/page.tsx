@@ -347,7 +347,7 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
           {/* File Name */}
           {tx.file_name && (
             <div className="bg-surface-elevated rounded-lg p-3">
-              <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1">File Name</p>
+              <p className="text-[11px] tracking-wider text-content-tertiary mb-1">File Name</p>
               <p className="text-xs font-mono text-content-primary">{tx.file_name}</p>
             </div>
           )}
@@ -355,7 +355,7 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
           {/* Response */}
           {(tx.response_code || tx.response_detail) && (
             <div className={`rounded-lg p-3 ${tx.status === 'rejected' || tx.status === 'error' ? 'bg-[#065E76]/5 border border-[#065E76]/20' : 'bg-brand/5 border border-brand/20'}`}>
-              <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1">Response</p>
+              <p className="text-[11px] tracking-wider text-content-tertiary mb-1">Response</p>
               {tx.response_code && <p className="text-xs font-mono font-semibold text-content-primary">{tx.response_code}</p>}
               {tx.response_detail && <p className="text-xs text-content-secondary mt-1">{tx.response_detail}</p>}
             </div>
@@ -364,14 +364,14 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
           {/* Claim Link */}
           {tx.claim_id && (
             <div className="bg-surface-elevated rounded-lg p-3">
-              <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1">Linked Claim</p>
+              <p className="text-[11px] tracking-wider text-content-tertiary mb-1">Linked Claim</p>
               <p className="text-xs font-mono text-brand">{tx.claim_id.slice(0, 8)}…</p>
             </div>
           )}
 
           {/* Timeline */}
           <div>
-            <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-2">Timeline</p>
+            <p className="text-[11px] tracking-wider text-content-tertiary mb-2">Timeline</p>
             <div className="space-y-2">
               {tx.created_at && (
                 <TimelineEntry label="Created" time={tx.created_at} icon={<Clock size={12} />} />
@@ -398,7 +398,7 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
 function DetailField({ label, value, icon, action }: { label: string; value: string; icon?: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-0.5">{label}</p>
+      <p className="text-[11px] tracking-wider text-content-tertiary mb-0.5">{label}</p>
       <div className="flex items-center gap-1.5">
         {icon}
         <span className="text-xs text-content-primary font-medium">{value}</span>

@@ -155,7 +155,7 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
           {/* Demographics */}
           {patient && (
             <div className="bg-surface-elevated rounded-lg p-3 space-y-2">
-              <div className="text-[13px] font-semibold text-content-secondary uppercase tracking-wide mb-2">Patient Demographics</div>
+              <div className="text-[13px] font-semibold text-content-secondary tracking-wide mb-2">Patient Demographics</div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div><span className="text-content-tertiary block">DOB</span>{formatDOB(patient.dob)}</div>
                 <div><span className="text-content-tertiary block">Gender</span>{patient.gender || '—'}</div>
