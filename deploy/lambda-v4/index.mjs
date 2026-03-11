@@ -1498,11 +1498,15 @@ async function orgQuery(orgId, sql, params = []) {
 }
 
 // ─── Generic CRUD ──────────────────────────────────────────────────────────────
+// Tables that are org-level (no client_id column) — skip region filtering
+const ORG_LEVEL_TABLES = new Set(['users', 'payers', 'providers', 'organizations', 'audit_log', 'coding_rules', 'fee_schedules', 'scrub_rules', 'notifications', 'baa_tracking', 'credentialing', 'bank_deposits', 'invoice_configs']);
+
 async function list(table, orgId, clientId, extra = '', regionClientIds = null) {
   let q = `SELECT * FROM ${table} WHERE org_id = $1`;
   const params = [orgId];
-  if (clientId) { params.push(clientId); q += ` AND client_id = $${params.length}`; }
-  else if (regionClientIds && regionClientIds.length > 0) {
+  const isOrgLevel = ORG_LEVEL_TABLES.has(table);
+  if (clientId && !isOrgLevel) { params.push(clientId); q += ` AND client_id = $${params.length}`; }
+  else if (regionClientIds && regionClientIds.length > 0 && !isOrgLevel) {
     const placeholders = regionClientIds.map((_, i) => `$${params.length + 1 + i}`).join(',');
     params.push(...regionClientIds);
     q += ` AND client_id IN (${placeholders})`;
@@ -9687,8 +9691,8 @@ export const handler = async (event) => {
             COUNT(*) FILTER (WHERE credentialing_status = 'pending') as pending,
             COUNT(*) FILTER (WHERE credentialing_status = 'expired' OR (expiry_date IS NOT NULL AND expiry_date < NOW())) as expired,
             COUNT(*) FILTER (WHERE expiry_date IS NOT NULL AND expiry_date BETWEEN NOW() AND NOW() + INTERVAL '90 days') as expiring_soon
-          FROM credentialing WHERE org_id = $1 ${clientId ? 'AND client_id = $2' : ''}`,
-          clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
+          FROM credentialing WHERE org_id = $1`,
+          [effectiveOrgId]);
         const expiring = await orgQuery(effectiveOrgId, `
           SELECT c.*, p.first_name || ' ' || p.last_name as provider_name
           FROM credentialing c LEFT JOIN providers p ON p.id = c.provider_id
