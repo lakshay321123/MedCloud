@@ -178,7 +178,7 @@ export default function CredentialingPage() {
       <div className="card p-4 mt-4">
         <h3 className="text-sm font-semibold mb-3">Payer Enrollment Pipeline</h3>
         <div className="grid grid-cols-5 gap-2 mb-4">
-          {[{stage:'Submitted',count:4,color:'bg-brand/60'},{stage:'In Review',count:7,color:'bg-brand-light'},{stage:'Approved',count:23,color:'bg-brand'},{stage:'Denied',count:1,color:'bg-red-500'},{stage:'Re-credentialing',count:3,color:'bg-brand-dark'}].map(s=>(
+          {[{stage:'Submitted',count:4,color:'bg-brand/60'},{stage:'In Review',count:7,color:'bg-brand-light'},{stage:'Approved',count:23,color:'bg-brand'},{stage:'Denied',count:1,color:'bg-[#065E76]'},{stage:'Re-credentialing',count:3,color:'bg-brand-dark'}].map(s=>(
             <div key={s.stage} className="text-center">
               <div className={`${s.color} text-white rounded-lg py-3 mb-1`}>
                 <span className="text-lg font-bold">{s.count}</span>
@@ -188,7 +188,7 @@ export default function CredentialingPage() {
           ))}
         </div>
         <div className="space-y-2">
-          <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider">Upcoming Expirations</h4>
+          <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider">Upcoming Expirations</h4>
           {[{name:'Dr. Patel',item:'Malpractice Insurance',date:'2026-04-15',days:42},
             {name:'Dr. Martinez',item:'State License',date:'2026-05-10',days:67},
             {name:'Dr. Williams',item:'CAQH Attestation',date:'2026-04-01',days:28}

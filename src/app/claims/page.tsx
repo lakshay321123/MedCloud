@@ -90,20 +90,20 @@ const POS_OPTIONS = [
 ]
 
 const STATUS_COLORS: Record<string, string> = {
-  draft:        'bg-surface-elevated text-content-tertiary border border-separator',
-  scrubbing:    'bg-brand text-white border border-brand/20 animate-pulse',
-  scrub_failed: 'bg-brand-ghost/60 text-brand-deep font-semibold border border-brand-mid/30 border-l-[3px] border-l-brand-mid',
-  ready:        'bg-brand/10 text-brand-dark border border-brand/20',
-  submitted:    'bg-brand/15 text-brand-dark border border-brand/25',
-  accepted:     'bg-brand text-white shadow-sm',
-  in_process:   'bg-brand-pale0/15 text-brand-deep border border-brand-light/25',
-  paid:         'bg-brand-dark/10 text-brand-dark border border-brand-dark/20',
-  partial_pay:  'bg-brand-pale0/10 text-brand-deep border border-brand-light/20',
-  denied:       'bg-content-tertiary/10 text-content-secondary border border-separator',
-  appealed:     'bg-brand-pale0/10 text-brand-deep border border-brand-light/20',
-  corrected:    'bg-brand/10 text-brand-dark border border-brand/15',
-  write_off:    'bg-surface-elevated text-content-tertiary border border-separator line-through',
-  void:         'bg-surface-elevated text-content-tertiary border border-separator line-through opacity-60',
+  draft:        'bg-[#616161]/10 text-[#616161]',
+  scrubbing:    'bg-[#00B5D6]/10 text-[#00B5D6]',
+  scrub_failed: 'bg-[#065E76]/10 text-[#065E76] font-semibold border-l-[3px] border-l-[#065E76]',
+  ready:        'bg-[#D6EBF2] text-[#065E76]',
+  submitted:    'bg-black/8 text-black',
+  accepted:     'bg-[#D6EBF2] text-[#065E76]',
+  in_process:   'bg-[#00B5D6]/10 text-[#00B5D6]',
+  paid:         'bg-[#D6EBF2] text-[#065E76]',
+  partial_pay:  'bg-white border border-[#CCCCCC] text-[#616161]',
+  denied:       'bg-[#065E76]/10 text-[#065E76] font-semibold',
+  appealed:     'bg-[#00B5D6]/10 text-[#00B5D6]',
+  corrected:    'bg-white border border-[#CCCCCC] text-[#616161]',
+  write_off:    'bg-white border border-[#CCCCCC] text-[#616161] line-through',
+  void:         'bg-[#616161]/10 text-[#616161] line-through opacity-60',
 }
 
 const ALL_STATUSES = ['draft','scrubbing','scrub_failed','ready','submitted','accepted','in_process','paid','partial_pay','denied','appealed','corrected','write_off','void'] as const
@@ -511,7 +511,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
               ) : (
                 <div className="grid grid-cols-2 gap-4 text-[13px]">
                   <div className="space-y-2">
-                    <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-2">Patient Info</p>
+                    <p className="text-[11px] tracking-wider text-content-tertiary font-semibold mb-2">Patient Info</p>
                     <div className="flex justify-between"><span className="text-content-secondary">Patient</span><span className="text-content-primary font-medium">{claim.patientName}</span></div>
                     <div className="flex justify-between"><span className="text-content-secondary">Client</span><span className="text-content-primary">{claim.clientName}</span></div>
                     <div className="flex justify-between"><span className="text-content-secondary">DOS</span><span className="text-content-primary font-mono">{claim.dos}</span></div>
@@ -519,7 +519,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                     <div className="flex justify-between"><span className="text-content-secondary">ICD</span><span className="text-content-primary font-mono">{claim.icdCodes.join(', ')}</span></div>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-2">Payer Info</p>
+                    <p className="text-[11px] tracking-wider text-content-tertiary font-semibold mb-2">Payer Info</p>
                     <div className="flex justify-between"><span className="text-content-secondary">Payer</span><span className="text-content-primary font-medium">{claim.payer}</span></div>
                     <div className="flex justify-between"><span className="text-content-secondary">Billed</span><span className="text-content-primary">${claim.billed}</span></div>
                     <div className="flex justify-between"><span className="text-content-secondary">Allowed</span><span className="text-content-primary">{claim.allowed ? `$${claim.allowed}` : '—'}</span></div>
@@ -533,7 +533,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
               {/* Timeline */}
               {!editMode && (
                 <div>
-                  <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-3">Status Timeline</p>
+                  <p className="text-[11px] tracking-wider text-content-tertiary font-semibold mb-3">Status Timeline</p>
                   <div className="space-y-0">
                     {claim.timeline.map((ev: ClaimTimelineEvent, i: number) => {
                       const isLast = i === claim.timeline.length - 1
@@ -557,12 +557,12 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
               {/* Scrub errors */}
               {claim.scrubErrors.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold">Scrub Errors</p>
+                  <p className="text-[11px] tracking-wider text-content-tertiary font-semibold">Scrub Errors</p>
                   {claim.scrubErrors.map(e => (
-                    <div key={e.ruleId} className="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
+                    <div key={e.ruleId} className="bg-[#065E76]/5 border border-[#065E76]/20 rounded-lg p-3">
                       <div className="flex items-center gap-2 mb-1">
-                        <AlertTriangle size={13} className="text-red-500" />
-                        <span className="text-[13px] font-semibold text-red-500">{e.name}</span>
+                        <AlertTriangle size={13} className="text-[#065E76]" />
+                        <span className="text-[13px] font-semibold text-[#065E76]">{e.name}</span>
                         <span className="text-[11px] text-content-tertiary ml-auto">Rule #{e.ruleId}</span>
                       </div>
                       <p className="text-[12px] text-content-secondary mb-1">{e.description}</p>
@@ -590,19 +590,19 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                       )}
                       {denialRisk && (
                         <div className={`rounded-lg border p-3 mb-1 ${
-                          denialRisk.risk === 'high' ? 'bg-red-500/10 border-red-500/30' :
+                          denialRisk.risk === 'high' ? 'bg-[#065E76]/10 border-[#065E76]/30' :
                           denialRisk.risk === 'medium' ? 'bg-brand-pale0/10 border-brand-light/30' :
                           'bg-brand/10 border-brand/30'}`}>
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-[12px] font-semibold text-content-primary flex items-center gap-1.5">
                               <span>✦</span>
                               Denial Risk: <span className={
-                                denialRisk.risk === 'high' ? 'text-red-500' :
+                                denialRisk.risk === 'high' ? 'text-[#065E76]' :
                                 denialRisk.risk === 'medium' ? 'text-brand-deep' : 'text-brand-dark'
                               }>{denialRisk.risk.toUpperCase()}</span>
                             </span>
                             <span className={`text-[13px] font-bold ${
-                              denialRisk.risk === 'high' ? 'text-red-500' :
+                              denialRisk.risk === 'high' ? 'text-[#065E76]' :
                               denialRisk.risk === 'medium' ? 'text-brand-deep' : 'text-brand-dark'
                             }`}>{denialRisk.probability}%</span>
                           </div>
@@ -640,7 +640,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   <button onClick={handleGenerate837I} disabled={generating837I} className="w-full bg-surface-elevated border border-separator text-content-secondary rounded-btn py-2.5 text-[13px] font-medium disabled:opacity-50">{generating837I ? 'Generating…' : 'Generate 837I Institutional'}</button>
                   {ediOutput && (
                     <div className="mt-2">
-                      <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-1">Generated 837P EDI</p>
+                      <p className="text-[11px] tracking-wider text-content-tertiary font-semibold mb-1">Generated 837P EDI</p>
                       <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[11px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{ediOutput}</pre>
                       <button onClick={() => router.push('/edi')}
                         className="mt-1.5 text-[11px] text-brand hover:underline block">View in EDI Center →</button>
@@ -648,14 +648,14 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   )}
                   {edi837IOutput && (
                     <div className="mt-2">
-                      <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-1">Generated 837I Institutional EDI</p>
+                      <p className="text-[11px] tracking-wider text-content-tertiary font-semibold mb-1">Generated 837I Institutional EDI</p>
                       <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[11px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{edi837IOutput}</pre>
                     </div>
                   )}
                   {underpayResult && (
                     <div className="mt-2 p-3 bg-brand-pale0/5 border border-brand-light/20 rounded-lg">
-                      <p className="text-[11px] uppercase tracking-wider text-brand-deep font-semibold mb-1">Underpayment Analysis</p>
-                      <p className="text-[13px] font-semibold text-content-primary">Total Underpaid: <span className={underpayResult.total_underpaid > 0 ? 'text-red-500' : 'text-brand-dark'}>${underpayResult.total_underpaid.toFixed(2)}</span></p>
+                      <p className="text-[11px] tracking-wider text-brand-deep font-semibold mb-1">Underpayment Analysis</p>
+                      <p className="text-[13px] font-semibold text-content-primary">Total Underpaid: <span className={underpayResult.total_underpaid > 0 ? 'text-[#065E76]' : 'text-brand-dark'}>${underpayResult.total_underpaid.toFixed(2)}</span></p>
                       {underpayResult.underpayments?.map((u, i) => (
                         <div key={i} className="flex justify-between text-[11px] text-content-secondary mt-1">
                           <span>{u.cpt_code}</span>
@@ -666,13 +666,13 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   )}
                   {secondaryResult && (
                     <div className="mt-2 p-3 bg-brand/5 border border-brand/20 rounded-lg">
-                      <p className="text-[11px] uppercase tracking-wider text-brand-dark font-semibold mb-1">Secondary Claim Filed</p>
+                      <p className="text-[11px] tracking-wider text-brand-dark font-semibold mb-1">Secondary Claim Filed</p>
                       <p className="text-[13px] text-content-primary">Claim #{secondaryResult.claim_number || secondaryResult.secondary_claim_id}</p>
                     </div>
                   )}
                   {statusInquiryResult && (
                     <div className="mt-2">
-                      <p className="text-[11px] uppercase tracking-wider text-brand-dark font-semibold mb-1">276 Claim Status Inquiry</p>
+                      <p className="text-[11px] tracking-wider text-brand-dark font-semibold mb-1">276 Claim Status Inquiry</p>
                       <pre className="bg-surface-elevated border border-separator rounded-lg p-3 text-[11px] font-mono text-content-secondary overflow-x-auto max-h-48 whitespace-pre-wrap">{statusInquiryResult}</pre>
                     </div>
                   )}
@@ -684,7 +684,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
           {tab === 'lines' && (
             <div className="space-y-4">
               <table className="w-full text-[12px]">
-                <thead><tr className="border-b border-separator text-[11px] text-content-tertiary uppercase tracking-wider">
+                <thead><tr className="border-b border-separator text-[11px] text-content-tertiary tracking-wider">
                   {['CPT','Modifier','Description','Units','Billed','POS'].map(h => (
                     <th key={h} className="text-left py-2 pr-3">{h}</th>
                   ))}
@@ -718,7 +718,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                 <div className="mt-2">
                   {showAddLine ? (
                     <div className="border border-separator rounded-lg p-3 space-y-2 bg-surface-elevated">
-                      <p className="text-[11px] font-semibold text-content-tertiary uppercase tracking-wider">New Line Item</p>
+                      <p className="text-[11px] font-semibold text-content-tertiary tracking-wider">New Line Item</p>
                       <div className="grid grid-cols-3 gap-2">
                         <div>
                           <label className="text-[11px] text-content-tertiary block mb-0.5">CPT *</label>
@@ -758,7 +758,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                 </div>
               )}
               <div>
-                <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-2">Diagnoses</p>
+                <p className="text-[11px] tracking-wider text-content-tertiary font-semibold mb-2">Diagnoses</p>
                 {claimDiagnoses.length > 0 ? (
                   <div className="space-y-1">
                     {claimDiagnoses.map(dx => (
@@ -782,7 +782,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
             <div className="grid grid-cols-2 gap-4 h-[calc(100vh-320px)]">
               {/* Left: document preview */}
               <div className="card overflow-hidden flex flex-col">
-                <div className="px-4 py-2 border-b border-separator text-[13px] font-semibold text-content-secondary uppercase tracking-wider">
+                <div className="px-4 py-2 border-b border-separator text-[13px] font-semibold text-content-secondary tracking-wider">
                   Supporting Documents
                 </div>
                 <div className="flex-1 flex flex-col items-center justify-center gap-3 text-content-tertiary">
@@ -807,18 +807,18 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                 {scrubResults.length > 0 ? (
                   <>
                     <div className="flex items-center justify-between">
-                      <p className="text-[13px] font-semibold text-content-primary uppercase tracking-wider">AI Scrub Results</p>
+                      <p className="text-[13px] font-semibold text-content-primary tracking-wider">AI Scrub Results</p>
                       <div className="flex gap-2 text-[11px]">
                         <span className="text-brand-dark">{scrubResults.filter(r => r.passed).length} passed</span>
-                        <span className="text-red-500">{scrubResults.filter(r => !r.passed && r.severity === 'error').length} errors</span>
+                        <span className="text-[#065E76]">{scrubResults.filter(r => !r.passed && r.severity === 'error').length} errors</span>
                         <span className="text-brand-deep">{scrubResults.filter(r => !r.passed && r.severity === 'warning').length} warnings</span>
                       </div>
                     </div>
                     {scrubResults.filter(r => !r.passed).length > 0 && (
                       <div className="space-y-1">
                         {scrubResults.filter(r => !r.passed).map(r => (
-                          <div key={r.rule_code} className={`flex items-start gap-2 px-3 py-2 rounded-lg ${r.severity === 'error' ? 'bg-red-500/10 border border-red-500/20' : 'bg-brand-pale0/10 border border-brand-light/20'}`}>
-                            <span className={`text-[11px] font-mono mt-0.5 shrink-0 ${r.severity === 'error' ? 'text-red-500' : 'text-brand-deep'}`}>{r.severity === 'error' ? '✕' : '⚠'}</span>
+                          <div key={r.rule_code} className={`flex items-start gap-2 px-3 py-2 rounded-lg ${r.severity === 'error' ? 'bg-[#065E76]/10 border border-[#065E76]/20' : 'bg-brand-pale0/10 border border-brand-light/20'}`}>
+                            <span className={`text-[11px] font-mono mt-0.5 shrink-0 ${r.severity === 'error' ? 'text-[#065E76]' : 'text-brand-deep'}`}>{r.severity === 'error' ? '✕' : '⚠'}</span>
                             <div>
                               <p className="text-[12px] text-content-primary font-medium">{r.rule_name}</p>
                               <p className="text-[11px] text-content-tertiary">{r.message}</p>
@@ -849,7 +849,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   </div>
                 )}
                 <details className="text-xs" open={scrubResults.length === 0}>
-                  <summary className="text-content-tertiary cursor-pointer hover:text-content-secondary py-1 font-semibold uppercase tracking-wider">Manual Checklist ({checkedRules.size}/{apiScrubRules.length})</summary>
+                  <summary className="text-content-tertiary cursor-pointer hover:text-content-secondary py-1 font-semibold tracking-wider">Manual Checklist ({checkedRules.size}/{apiScrubRules.length})</summary>
                   <div className="space-y-1 mt-2">
                     {apiScrubRules.map(rule => (
                       <label key={rule.id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-surface-elevated cursor-pointer group">
@@ -1096,13 +1096,13 @@ export default function ClaimsPage() {
 
       {/* Timely Filing Alerts */}
       {timelyFilingData?.data && timelyFilingData.data.filter(tf => tf.days_remaining <= 14).length > 0 && (
-        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 flex items-start gap-3">
-          <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
+        <div className="bg-[#065E76]/5 border border-[#065E76]/20 rounded-lg p-3 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-[#065E76] shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="text-[12px] font-semibold text-red-600">Timely Filing Deadlines Approaching</p>
+            <p className="text-[12px] font-semibold text-[#065E76]">Timely Filing Deadlines Approaching</p>
             <div className="flex flex-wrap gap-2 mt-1.5">
               {timelyFilingData.data.filter(tf => tf.days_remaining <= 14).slice(0, 5).map(tf => (
-                <span key={tf.claim_id} className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${tf.days_remaining <= 3 ? 'bg-red-500/20 text-red-600' : tf.days_remaining <= 7 ? 'bg-brand-pale0/20 text-brand-deep' : 'bg-brand-pale0/20 text-brand-deep'}`}>
+                <span key={tf.claim_id} className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${tf.days_remaining <= 3 ? 'bg-[#065E76]/20 text-[#065E76]' : tf.days_remaining <= 7 ? 'bg-brand-pale0/20 text-brand-deep' : 'bg-brand-pale0/20 text-brand-deep'}`}>
                   {tf.claim_number || tf.claim_id.slice(0,8)} · {tf.days_remaining}d left · {tf.payer_name || 'Unknown'}
                 </span>
               ))}
@@ -1127,7 +1127,7 @@ export default function ClaimsPage() {
             </div>
 
             <div>
-              <p className="text-[11px] uppercase tracking-wider font-semibold text-content-tertiary mb-2">Status</p>
+              <p className="text-[11px] tracking-wider font-semibold text-content-tertiary mb-2">Status</p>
               <div className="space-y-1">
                 {ALL_STATUSES.map(s => (
                   <label key={s} className="flex items-center gap-2 cursor-pointer group">
@@ -1141,7 +1141,7 @@ export default function ClaimsPage() {
             </div>
 
             <div>
-              <p className="text-[11px] uppercase tracking-wider font-semibold text-content-tertiary mb-2">Date of Service</p>
+              <p className="text-[11px] tracking-wider font-semibold text-content-tertiary mb-2">Date of Service</p>
               <div className="space-y-2">
                 <input type="date" value={dosFrom} onChange={e => setDosFrom(e.target.value)}
                   className="w-full bg-surface-elevated rounded-btn px-2 py-1.5 text-[12px] text-content-secondary focus:outline-none focus:ring-1 focus:ring-brand/30" />
@@ -1224,7 +1224,7 @@ export default function ClaimsPage() {
                     { label: 'Days', key: 'age' as const },
                   ].map(h => (
                     <th key={h.label} onClick={() => h.key && handleSort(h.key)}
-                      className={`text-left px-3 py-2.5 text-[11px] font-semibold text-content-tertiary uppercase tracking-wider ${h.key ? 'cursor-pointer hover:text-content-primary' : ''}`}>
+                      className={`text-left px-3 py-2.5 text-[11px] font-semibold text-content-tertiary tracking-wider ${h.key ? 'cursor-pointer hover:text-content-primary' : ''}`}>
                       <span className="inline-flex items-center gap-1">
                         {h.label}
                         {h.key && sortKey === h.key && (sortDir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />)}
@@ -1258,8 +1258,8 @@ export default function ClaimsPage() {
                         {c.id}
                         {c.daysTilDeadline !== undefined && c.daysTilDeadline < 15 && (
                           <span className="relative group">
-                            <span className="w-2 h-2 bg-red-500 rounded-full inline-block" />
-                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-surface-elevated border border-separator text-[11px] text-red-400 px-2 py-1 rounded whitespace-nowrap z-50">
+                            <span className="w-2 h-2 bg-[#065E76] rounded-full inline-block" />
+                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-surface-elevated border border-separator text-[11px] text-[#065E76] px-2 py-1 rounded whitespace-nowrap z-50">
                               {c.daysTilDeadline}d until timely filing deadline
                             </span>
                           </span>
@@ -1307,9 +1307,9 @@ export default function ClaimsPage() {
                             ] as Array<{ label: string; variant: 'default' | 'destructive' | 'destructive-confirm' | 'cancel'; action: () => void }>).map(item => (
                               <button key={item.label} onClick={item.action}
                                 className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-elevated ${
-                                  item.variant === 'destructive-confirm' ? 'text-red-500 font-semibold' :
+                                  item.variant === 'destructive-confirm' ? 'text-[#065E76] font-semibold' :
                                   item.variant === 'cancel'              ? 'text-content-tertiary' :
-                                  item.variant === 'destructive'         ? 'text-red-400' :
+                                  item.variant === 'destructive'         ? 'text-[#065E76]' :
                                   'text-content-primary'
                                 }`}>
                                 {item.label}
@@ -1389,7 +1389,7 @@ export default function ClaimsPage() {
         <div className="grid grid-cols-4 gap-3 text-center">
           {[{label:'Ready to Submit',value:allClaims.filter(c=>c.status==='ready').length,color:'text-brand'},
             {label:'Pending Response',value:allClaims.filter(c=>c.status==='submitted').length,color:'text-brand-deep'},
-            {label:'Filing Deadline <7d',value:timelyFilingData?.data?.filter(tf=>tf.days_remaining<=7).length ?? 0,color:'text-red-500'},
+            {label:'Filing Deadline <7d',value:timelyFilingData?.data?.filter(tf=>tf.days_remaining<=7).length ?? 0,color:'text-[#065E76]'},
             {label:'EDI Transactions Today',value:allClaims.filter(c=>c.status==='submitted'||c.status==='accepted').length,color:'text-brand-dark'}].map(k=>
             <div key={k.label} className="bg-surface-elevated rounded-lg p-3">
               <p className={`text-lg font-bold ${k.color}`}>{k.value}</p>

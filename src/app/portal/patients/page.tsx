@@ -37,13 +37,13 @@ function apiPatientToDemoPatient(p: ApiPatient): DemoPatient {
   }
 }
 
-const completenessColor = (p: number) => p >= 100 ? 'bg-brand' : p >= 75 ? 'bg-cyan-500' : p >= 50 ? 'bg-brand-pale' : 'bg-red-500'
+const completenessColor = (p: number) => p >= 100 ? 'bg-brand' : p >= 75 ? 'bg-cyan-500' : p >= 50 ? 'bg-brand-pale' : 'bg-[#065E76]'
 const ic = 'w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors'
 
 function SectionHeader({ title, badge, open, onToggle }: { title: string; badge?: string; open: boolean; onToggle: () => void }) {
   return (
     <button type="button" onClick={onToggle}
-      className="w-full flex items-center justify-between py-2.5 text-[13px] font-semibold text-content-secondary uppercase tracking-wide hover:text-content-primary transition-colors">
+      className="w-full flex items-center justify-between py-2.5 text-[13px] font-semibold text-content-secondary tracking-wide hover:text-content-primary transition-colors">
       <div className="flex items-center gap-2">
         <span>{title}</span>
         {badge && <span className="text-[11px] font-normal text-content-tertiary normal-case">{badge}</span>}
@@ -94,13 +94,13 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
 
           {/* ── DEMOGRAPHICS ── */}
           <div className="space-y-3">
-            <div className="text-[13px] font-semibold text-content-secondary uppercase tracking-wide">Demographics</div>
+            <div className="text-[13px] font-semibold text-content-secondary tracking-wide">Demographics</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div><label className="text-[13px] text-content-secondary block mb-1">First Name <span className="text-red-400">*</span></label>
+              <div><label className="text-[13px] text-content-secondary block mb-1">First Name <span className="text-[#065E76]">*</span></label>
                 <input className={ic} placeholder="First name" value={form.firstName} onChange={e => upd('firstName', e.target.value)} /></div>
               <div><label className="text-[13px] text-content-secondary block mb-1">Middle</label>
                 <input className={ic} placeholder="M.I." value={form.middleName} onChange={e => upd('middleName', e.target.value)} /></div>
-              <div><label className="text-[13px] text-content-secondary block mb-1">Last Name <span className="text-red-400">*</span></label>
+              <div><label className="text-[13px] text-content-secondary block mb-1">Last Name <span className="text-[#065E76]">*</span></label>
                 <input className={ic} placeholder="Last name" value={form.lastName} onChange={e => upd('lastName', e.target.value)} /></div>
             </div>
             <div><label className="text-[13px] text-content-secondary block mb-1">Preferred Name / Nickname</label>
@@ -118,7 +118,7 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
                 <select className={ic} value={form.preferredLanguage} onChange={e => upd('preferredLanguage', e.target.value)}><option>English</option><option>Arabic</option><option>Spanish</option><option>Other</option></select></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><label className="text-[13px] text-content-secondary block mb-1">Phone (Primary) <span className="text-red-400">*</span></label>
+              <div><label className="text-[13px] text-content-secondary block mb-1">Phone (Primary) <span className="text-[#065E76]">*</span></label>
                 <input type="tel" className={ic} placeholder={isUAE ? '+971 50 xxx xxxx' : '(949) xxx-xxxx'} value={form.phone} onChange={e => upd('phone', e.target.value)} /></div>
               <div><label className="text-[13px] text-content-secondary block mb-1">Phone (Secondary/Cell)</label>
                 <input type="tel" className={ic} placeholder="Optional" value={form.secondaryPhone} onChange={e => upd('secondaryPhone', e.target.value)} /></div>
@@ -205,7 +205,7 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
                           <div className="relative w-full h-24 rounded-lg overflow-hidden border border-separator">
                             <img src={preview} alt={`Card ${side}`} className="w-full h-full object-cover" />
                             <button type="button" onClick={() => upd(key, '')}
-                              className="absolute top-1 right-1 bg-black/60 text-white rounded px-1.5 py-0.5 text-[11px] hover:bg-red-500/80">
+                              className="absolute top-1 right-1 bg-black/60 text-white rounded px-1.5 py-0.5 text-[11px] hover:bg-[#065E76]/80">
                               Remove
                             </button>
                           </div>
@@ -586,12 +586,12 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
                     {!isUAE && localPatient.driversLicense && <div><span className="text-[13px] text-content-secondary block">Driver&apos;s License</span><span>{localPatient.driversLicense}</span></div>}
                   </div>
                   {localPatient.allergies && localPatient.allergies.length > 0 && (
-                    <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-2 text-xs">
+                    <div className="bg-[#065E76]/5 border border-[#065E76]/20 rounded-lg p-2 text-xs">
                       <span className="text-content-secondary">Allergies: </span>{localPatient.allergies.join(', ')}
                     </div>
                   )}
                   {localPatient.noShowCount && localPatient.noShowCount >= 3 && (
-                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2 text-xs text-red-600 dark:text-red-400">⚠ {localPatient.noShowCount} no-shows on record</div>
+                    <div className="bg-[#065E76]/10 border border-[#065E76]/20 rounded-lg p-2 text-xs text-[#065E76] dark:text-[#065E76]">⚠ {localPatient.noShowCount} no-shows on record</div>
                   )}
                 </>
               )}

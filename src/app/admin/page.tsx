@@ -8,14 +8,14 @@ import { useAuditLog, useClients, useProviders, useInvoices, useGenerateInvoice,
 import { Users, Building2, Activity, Shield, X, Search, Plus, Receipt, ClipboardList, KeyRound } from 'lucide-react'
 
 const roleColors: Record<string,string> = {
-  admin: 'bg-red-500/10 text-red-500',
+  admin: 'bg-[#065E76]/10 text-[#065E76]',
   director: 'bg-brand/10 text-brand-dark',
   supervisor: 'bg-brand/10 text-brand',
   manager: 'bg-brand/10 text-brand',
   coder: 'bg-brand/10 text-brand-dark dark:text-brand-dark',
   biller: 'bg-brand-pale0/10 text-brand-deep',
   ar_team: 'bg-cyan-500/10 text-cyan-500',
-  posting_team: 'bg-orange-500/10 text-orange-500',
+  posting_team: 'bg-[#616161]/10 text-[#616161]',
   provider: 'bg-brand/10 text-brand-dark',
   client: 'bg-gray-500/10 text-gray-400',
 }
@@ -31,7 +31,7 @@ const actionColors: Record<string,string> = {
   VIEW: 'bg-gray-500/10 text-gray-400',
   CREATE: 'bg-brand/10 text-brand-dark dark:text-brand-dark',
   UPDATE: 'bg-brand-pale0/10 text-brand-deep',
-  DELETE: 'bg-red-500/10 text-red-500',
+  DELETE: 'bg-[#065E76]/10 text-[#065E76]',
   EXPORT: 'bg-brand/10 text-brand',
 }
 
@@ -333,10 +333,10 @@ function SystemHealthTab() {
           <div key={s.name} className="card p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-content-primary">{s.name}</span>
-              <span className={`w-2.5 h-2.5 rounded-full ${s.status==='operational'?'bg-brand':s.status==='degraded'?'bg-brand-pale animate-pulse':'bg-red-500 animate-pulse'}`}/>
+              <span className={`w-2.5 h-2.5 rounded-full ${s.status==='operational'?'bg-brand':s.status==='degraded'?'bg-brand-pale animate-pulse':'bg-[#065E76] animate-pulse'}`}/>
             </div>
             <div className="flex items-center justify-between">
-              <span className={`text-[11px] font-medium ${s.status==='operational'?'text-brand-dark dark:text-brand-dark':s.status==='degraded'?'text-brand-deep':'text-red-500'}`}>
+              <span className={`text-[11px] font-medium ${s.status==='operational'?'text-brand-dark dark:text-brand-dark':s.status==='degraded'?'text-brand-deep':'text-[#065E76]'}`}>
                 {s.status==='operational'?'Operational':s.status==='degraded'?'Degraded':'Down'}
               </span>
               <span className="text-[11px] text-content-tertiary">{s.ms}ms</span>
@@ -347,7 +347,7 @@ function SystemHealthTab() {
       </div>
       <div className="card overflow-hidden">
         <div className="px-4 py-3 border-b border-separator">
-          <h3 className="text-[13px] font-semibold text-content-secondary uppercase tracking-wider">Queue Depths</h3>
+          <h3 className="text-[13px] font-semibold text-content-secondary tracking-wider">Queue Depths</h3>
         </div>
         <table className="w-full text-sm">
           <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
@@ -360,7 +360,7 @@ function SystemHealthTab() {
               <td className="px-4 py-3 font-medium">{q.name}</td>
               <td className="px-4 py-3 text-xs font-mono">{q.items}</td>
               <td className="px-4 py-3 text-xs text-brand">{q.processing}</td>
-              <td className="px-4 py-3 text-xs"><span className={q.failed>0?'text-red-500':'text-content-secondary'}>{q.failed}</span></td>
+              <td className="px-4 py-3 text-xs"><span className={q.failed>0?'text-[#065E76]':'text-content-secondary'}>{q.failed}</span></td>
               <td className="px-4 py-3 text-[13px] text-content-secondary">{q.flush}</td>
             </tr>
           ))}</tbody>
@@ -514,7 +514,7 @@ function PatientAccessTab() {
               <td className="px-4 py-3 text-xs">{r.request_type || 'records'}</td>
               <td className="px-4 py-3 text-[13px] text-content-secondary">{r.created_at?.slice(0,10)}</td>
               <td className="px-4 py-3 text-[13px] text-content-secondary">{r.deadline?.slice(0,10) || '—'}</td>
-              <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full ${r.status === 'completed' ? 'bg-brand/10 text-brand-dark' : r.status === 'overdue' ? 'bg-red-500/10 text-red-500' : 'bg-brand-pale0/10 text-brand-deep'}`}>{r.status || 'pending'}</span></td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full ${r.status === 'completed' ? 'bg-brand/10 text-brand-dark' : r.status === 'overdue' ? 'bg-[#065E76]/10 text-[#065E76]' : 'bg-brand-pale0/10 text-brand-deep'}`}>{r.status || 'pending'}</span></td>
               <td className="px-4 py-3"><button onClick={() => toast.success('Marked complete — use patient access API')} className="text-[11px] text-brand hover:underline">Complete</button></td>
             </tr>
           ))}</tbody>

@@ -331,7 +331,7 @@ export default function ScanSubmitPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] bg-brand/10 text-brand-dark dark:text-brand-dark px-2 py-0.5 rounded-full">✓ Selected</span>
-                        <button onClick={() => setPatientId('')} className="text-content-tertiary hover:text-red-500"><X size={14} /></button>
+                        <button onClick={() => setPatientId('')} className="text-content-tertiary hover:text-[#065E76]"><X size={14} /></button>
                       </div>
                     </div>
                   )}
@@ -387,7 +387,7 @@ export default function ScanSubmitPage() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-medium text-content-secondary">{files.length} file{files.length !== 1 ? 's' : ''} ready</p>
-                    <button onClick={() => setFiles([])} className="text-xs text-red-500 hover:text-red-600">Clear all</button>
+                    <button onClick={() => setFiles([])} className="text-xs text-[#065E76] hover:text-[#065E76]">Clear all</button>
                   </div>
                   {files.map(f => (
                     <div key={f.id} className="flex items-center gap-3 bg-surface-elevated rounded-lg px-3 py-2.5">
@@ -396,7 +396,7 @@ export default function ScanSubmitPage() {
                         <p className="text-sm truncate font-medium">{f.name}</p>
                         <p className="text-[11px] text-content-tertiary">{f.sizeMB}</p>
                       </div>
-                      <button onClick={() => setFiles(p => p.filter(x => x.id !== f.id))} className="text-content-tertiary hover:text-red-500"><X size={14} /></button>
+                      <button onClick={() => setFiles(p => p.filter(x => x.id !== f.id))} className="text-content-tertiary hover:text-[#065E76]"><X size={14} /></button>
                     </div>
                   ))}
                 </div>
@@ -434,7 +434,7 @@ export default function ScanSubmitPage() {
               </div>
 
               {anyError && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 flex items-center gap-2 text-xs text-red-500">
+                <div className="bg-[#065E76]/10 border border-[#065E76]/20 rounded-lg px-3 py-2 flex items-center gap-2 text-xs text-[#065E76]">
                   <AlertCircle size={13} /> Some files failed. Successful ones will still be submitted.
                 </div>
               )}
@@ -486,20 +486,20 @@ function FileReviewRow({ entry, onTypeChange }: { entry: FileEntry; onTypeChange
   }, [open])
 
   return (
-    <div className={`rounded-lg border transition-all ${entry.status === 'error' ? 'border-red-500/30 bg-red-500/5' : 'border-separator bg-surface-elevated'}`}>
+    <div className={`rounded-lg border transition-all ${entry.status === 'error' ? 'border-[#065E76]/30 bg-[#065E76]/5' : 'border-separator bg-surface-elevated'}`}>
       <div className="flex items-center gap-3 px-3 py-2.5">
-        <FileText size={15} className={entry.status === 'error' ? 'text-red-400' : 'text-brand'} />
+        <FileText size={15} className={entry.status === 'error' ? 'text-[#065E76]' : 'text-brand'} />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{entry.name}</p>
           <div className="flex items-center gap-2 mt-0.5">
             {entry.status === 'uploading' && <span className="flex items-center gap-1 text-[11px] text-blue-500"><Loader2 size={10} className="animate-spin" />Uploading…</span>}
             {entry.status === 'classifying' && <span className="flex items-center gap-1 text-[11px] text-brand"><Loader2 size={10} className="animate-spin" />AI reading…</span>}
             {entry.status === 'done' && (
-              <span className={`text-[11px] font-medium ${(entry.aiConfidence || 0) >= 80 ? 'text-brand-dark' : (entry.aiConfidence || 0) >= 50 ? 'text-brand-deep' : 'text-red-400'}`}>
+              <span className={`text-[11px] font-medium ${(entry.aiConfidence || 0) >= 80 ? 'text-brand-dark' : (entry.aiConfidence || 0) >= 50 ? 'text-brand-deep' : 'text-[#065E76]'}`}>
                 {(entry.aiConfidence || 0) > 0 ? `AI: ${entry.aiConfidence}% confident` : '⚠ Review needed'}
               </span>
             )}
-            {entry.status === 'error' && <span className="text-[11px] text-red-500">{entry.error || 'Upload failed'}</span>}
+            {entry.status === 'error' && <span className="text-[11px] text-[#065E76]">{entry.error || 'Upload failed'}</span>}
             <span className="text-[11px] text-content-tertiary">{entry.sizeMB}</span>
           </div>
         </div>

@@ -344,10 +344,10 @@ export default function PaymentPostingPage() {
 
         {/* Silent denial detection banner */}
         {silentDenials.length > 0 && (
-          <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-4">
-            <AlertTriangle size={15} className="text-red-500 mt-0.5 shrink-0" />
+          <div className="flex items-start gap-3 bg-[#065E76]/10 border border-[#065E76]/20 rounded-lg p-3 mb-4">
+            <AlertTriangle size={15} className="text-[#065E76] mt-0.5 shrink-0" />
             <div className="flex-1">
-              <p className="text-[13px] font-semibold text-red-500">Silent Denials Detected</p>
+              <p className="text-[13px] font-semibold text-[#065E76]">Silent Denials Detected</p>
               <p className="text-[12px] text-content-secondary mt-0.5">
                 {silentDenials.length} ERA line{silentDenials.length > 1 ? 's' : ''} have denied amounts but are not routed to AR.
                 These may be silently written off.
@@ -360,7 +360,7 @@ export default function PaymentPostingPage() {
                 ))
                 toast.success(`${silentDenials.length} silent denial(s) routed to AR queue`)
               }}
-              className="shrink-0 bg-red-500 text-white rounded-btn px-3 py-1.5 text-[12px] font-medium hover:bg-red-600 transition-colors">
+              className="shrink-0 bg-[#065E76] text-white rounded-btn px-3 py-1.5 text-[12px] font-medium hover:bg-[#065E76]/80 transition-colors">
               Create AR Tasks
             </button>
           </div>
@@ -368,7 +368,7 @@ export default function PaymentPostingPage() {
 
         <div className="card overflow-hidden mb-4">
           <div className="flex gap-2 items-center justify-between px-4 py-3 border-b border-separator pb-1">
-            <h3 className="text-[12px] font-semibold text-content-secondary uppercase tracking-wider">ERA Files</h3>
+            <h3 className="text-[12px] font-semibold text-content-secondary tracking-wider">ERA Files</h3>
             <button onClick={() => setShowUploadModal(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-brand text-white rounded-btn text-[12px] font-medium hover:bg-brand-dark transition-colors">
               <Upload size={13} /> Upload ERA
@@ -412,7 +412,7 @@ export default function PaymentPostingPage() {
         </div>
 
         <div className="card p-4">
-          <h3 className="text-[12px] font-semibold text-content-tertiary uppercase tracking-wider mb-2">Unmatched Payments</h3>
+          <h3 className="text-[12px] font-semibold text-content-tertiary tracking-wider mb-2">Unmatched Payments</h3>
           <div className="space-y-2 text-[13px]">
             {unmatchedPayments.length === 0 ? (
               <div className="text-content-tertiary text-[12px] text-center py-4">No unmatched payments</div>
@@ -452,7 +452,7 @@ export default function PaymentPostingPage() {
                       finally { setWritingOff(null) }
                     }}
                     disabled={writingOff === p.id}
-                    className="text-[11px] border border-separator text-content-secondary hover:text-red-500 px-2.5 py-1 rounded transition-colors disabled:opacity-50">
+                    className="text-[11px] border border-separator text-content-secondary hover:text-[#065E76] px-2.5 py-1 rounded transition-colors disabled:opacity-50">
                     {writingOff === p.id ? '…' : 'Write Off'}
                   </button>
                 </div>
@@ -569,7 +569,7 @@ export default function PaymentPostingPage() {
       {/* ERA / EOB Document Viewer */}
       <div className="card mb-3 overflow-hidden">
         <div className="flex gap-2 items-center justify-between px-4 py-2 border-b border-separator pb-1 bg-surface-secondary">
-          <span className="text-[12px] font-semibold text-content-secondary uppercase tracking-wider">ERA / EOB Document</span>
+          <span className="text-[12px] font-semibold text-content-secondary tracking-wider">ERA / EOB Document</span>
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-content-tertiary">{era?.file}</span>
             <button
@@ -609,13 +609,13 @@ export default function PaymentPostingPage() {
                 </td>
               </tr>
             ) : eraLines.map(row => {
-              const bg = row.denied > 0 ? 'bg-red-500/5' : row.action === 'review' ? 'bg-brand-pale0/5' : row.action === 'patient_bill' ? 'bg-blue-500/5' : ''
+              const bg = row.denied > 0 ? 'bg-[#065E76]/5' : row.action === 'review' ? 'bg-brand-pale0/5' : row.action === 'patient_bill' ? 'bg-blue-500/5' : ''
               return <tr key={row.id} className={`border-b border-separator ${bg}`}>
                 <td className="px-3 py-2 text-[13px]">{row.patientName}</td>
                 <td className="px-3 py-2 font-mono" title={row.cptDesc}>{row.cpt}</td>
                 <td className="px-3 py-2 font-mono">{row.dos}</td>
                 {(['billed', 'allowed', 'paid', 'denied', 'patBalance'] as const).map(field => (
-                  <td key={field} className={`px-3 py-2 text-right font-mono ${field === 'denied' && row.denied > 0 ? 'text-red-600 dark:text-red-400' : ''} ${field === 'patBalance' && row.patBalance > 0 ? 'text-brand-dark dark:text-brand' : ''}`}>
+                  <td key={field} className={`px-3 py-2 text-right font-mono ${field === 'denied' && row.denied > 0 ? 'text-[#065E76] dark:text-[#065E76]' : ''} ${field === 'patBalance' && row.patBalance > 0 ? 'text-brand-dark dark:text-brand' : ''}`}>
                     {editingCell?.rowId === row.id && editingCell.field === field ? (
                       <input
                         type="number"

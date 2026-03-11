@@ -144,7 +144,7 @@ export default function Topbar() {
                 {searchResults.map((r, i) => (
                   <button key={i} onClick={() => { router.push(r.path); setSearchOpen(false); setSearchQuery('') }}
                     className="w-full text-left px-4 py-2.5 hover:bg-surface-elevated flex items-center gap-3 border-b border-separator last:border-0">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand/10 text-brand font-semibold uppercase">{r.type}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand/10 text-brand font-semibold">{r.type}</span>
                     <div>
                       <div className="text-sm text-black">{r.label}</div>
                       <div className="text-xs text-gray-500">{r.sub}</div>
@@ -168,7 +168,7 @@ export default function Topbar() {
             >
               <Bell size={18} />
               {displayUnread > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-black rounded-full text-[9px] text-white font-bold flex items-center justify-center">
                   {displayUnread > 9 ? '9+' : displayUnread}
                 </span>
               )}
@@ -176,14 +176,14 @@ export default function Topbar() {
             {notifOpen && (
               <div className="absolute left-0 top-full mt-2 w-80 bg-white border border-separator rounded-card shadow-2xl z-50 overflow-hidden">
                 <div className="px-4 py-2.5 border-b border-separator flex items-center justify-between">
-                  <span className="text-xs font-bold text-black uppercase tracking-wide">Notifications</span>
+                  <span className="text-xs font-bold text-black tracking-wide">Notifications</span>
                   {displayUnread > 0 && <span className="text-[10px] text-brand font-medium">{displayUnread} unread</span>}
                 </div>
                 <div className="max-h-80 overflow-y-auto">
                   {notifications.length === 0 ? (
                     <div className="px-4 py-8 text-center text-sm text-gray-400">All caught up ✓</div>
                   ) : notifications.map((n) => {
-                    const dotColor = n.type === 'urgent' || n.type === 'critical' ? 'bg-red-500' : n.type === 'warning' ? 'bg-brand-light' : 'bg-brand'
+                    const dotColor = n.type === 'urgent' || n.type === 'critical' ? 'bg-[#065E76]' : n.type === 'warning' ? 'bg-brand-light' : 'bg-brand'
                     const timeAgo = (() => {
                       const diff = Date.now() - new Date(n.created_at).getTime()
                       if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
@@ -247,7 +247,7 @@ export default function Topbar() {
 
                 {/* Role switcher */}
                 <div className="px-4 py-3 border-b border-separator">
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Switch Role</p>
+                  <p className="text-[11px] font-semibold text-gray-400 tracking-wider mb-2">Switch Role</p>
                   <div className="flex flex-col gap-1">
                     {availableRoles.map(r => (
                       <button
@@ -265,7 +265,7 @@ export default function Topbar() {
 
                 {/* Country toggle */}
                 <div className="px-4 py-3 border-b border-separator">
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Region</p>
+                  <p className="text-[11px] font-semibold text-gray-400 tracking-wider mb-2">Region</p>
                   <div className="flex gap-2">
                     <button
                       onClick={() => { setCountry('usa') }}

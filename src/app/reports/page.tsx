@@ -21,8 +21,8 @@ const REPORT_TYPES = [
     label: 'Denial Analysis',
     description: 'Denials by CARC category, payer, and provider with trend',
     icon: Shield,
-    color: 'bg-red-500/10 text-red-500 border-red-500/20',
-    dot: 'bg-red-500',
+    color: 'bg-[#065E76]/10 text-[#065E76] border-[#065E76]/20',
+    dot: 'bg-[#065E76]',
   },
   {
     id: 'payment_summary',
@@ -86,7 +86,7 @@ function ReportTable({ report }: { report: { columns: string[]; rows: Record<str
         <thead>
           <tr className="border-b border-separator">
             {report.columns.map(col => (
-              <th key={col} className="text-left px-3 py-2.5 text-[11px] font-semibold text-content-tertiary uppercase tracking-wide whitespace-nowrap">
+              <th key={col} className="text-left px-3 py-2.5 text-[11px] font-semibold text-content-tertiary tracking-wide whitespace-nowrap">
                 {col.replace(/_/g, ' ')}
               </th>
             ))}
@@ -111,7 +111,7 @@ function ReportTable({ report }: { report: { columns: string[]; rows: Record<str
 function SummaryCard({ label, value }: { label: string; value: unknown }) {
   return (
     <div className="bg-surface-elevated rounded-lg px-4 py-3 border border-separator">
-      <p className="text-[11px] text-content-tertiary uppercase tracking-wide mb-1">{label.replace(/_/g, ' ')}</p>
+      <p className="text-[11px] text-content-tertiary tracking-wide mb-1">{label.replace(/_/g, ' ')}</p>
       <p className="text-[18px] font-bold text-content-primary">{fmt(value)}</p>
     </div>
   )

@@ -112,7 +112,7 @@ export default function CodingRulesPage() {
         <div className="card p-4">
           <div className="flex items-center gap-4 flex-wrap">
             <div>
-              <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Client</label>
+              <label className="text-[11px] tracking-wider text-content-tertiary font-semibold block mb-1">Client</label>
               <select value={filterClient} onChange={e => setFilterClient(e.target.value)}
                 className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary min-w-[200px]">
                 <option value="">All Clients</option>
@@ -120,7 +120,7 @@ export default function CodingRulesPage() {
               </select>
             </div>
             <div>
-              <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Payer</label>
+              <label className="text-[11px] tracking-wider text-content-tertiary font-semibold block mb-1">Payer</label>
               <input value={filterPayer} onChange={e => setFilterPayer(e.target.value)} placeholder="Filter by payer name..."
                 className="bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-xs text-content-secondary min-w-[200px]" />
             </div>
@@ -140,7 +140,7 @@ export default function CodingRulesPage() {
 
             {/* Natural language input */}
             <div className="mb-4 p-4 bg-blue-500/10 border border-brand/20 rounded-xl">
-              <label className="text-[11px] uppercase tracking-wider text-brand-dark font-semibold block mb-2">
+              <label className="text-[11px] tracking-wider text-brand-dark font-semibold block mb-2">
                 <Zap size={12} className="inline mr-1" /> Write rule in plain English
               </label>
               <div className="flex gap-2">
@@ -159,12 +159,12 @@ export default function CodingRulesPage() {
             {/* Structured fields */}
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Rule Name</label>
+                <label className="text-[11px] tracking-wider text-content-tertiary font-semibold block mb-1">Rule Name</label>
                 <input value={form.rule_name} onChange={e => setForm(p => ({ ...p, rule_name: e.target.value }))} placeholder="Descriptive name"
                   className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Payer</label>
+                <label className="text-[11px] tracking-wider text-content-tertiary font-semibold block mb-1">Payer</label>
                 <input value={form.payer_name} onChange={e => setForm(p => ({ ...p, payer_name: e.target.value }))} placeholder="e.g. Aetna, UHC (blank = all payers)"
                   className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm" />
               </div>
@@ -172,7 +172,7 @@ export default function CodingRulesPage() {
 
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Client</label>
+                <label className="text-[11px] tracking-wider text-content-tertiary font-semibold block mb-1">Client</label>
                 <select value={form.client_id} onChange={e => setForm(p => ({ ...p, client_id: e.target.value }))}
                   className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm">
                   <option value="">All Clients</option>
@@ -180,14 +180,14 @@ export default function CodingRulesPage() {
                 </select>
               </div>
               <div>
-                <label className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold block mb-1">Priority (lower = runs first)</label>
+                <label className="text-[11px] tracking-wider text-content-tertiary font-semibold block mb-1">Priority (lower = runs first)</label>
                 <input type="number" value={form.priority} onChange={e => setForm(p => ({ ...p, priority: +e.target.value }))}
                   className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm" />
               </div>
             </div>
 
             <div className="p-4 bg-surface-elevated rounded-xl border border-separator mb-4">
-              <p className="text-[11px] uppercase tracking-wider text-content-tertiary font-semibold mb-3">Condition → Action</p>
+              <p className="text-[11px] tracking-wider text-content-tertiary font-semibold mb-3">Condition → Action</p>
               <div className="grid grid-cols-3 gap-3 mb-3">
                 <select value={form.condition_field} onChange={e => setForm(p => ({ ...p, condition_field: e.target.value }))}
                   className="bg-surface-default border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary">
@@ -245,7 +245,7 @@ export default function CodingRulesPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-separator text-xs text-content-tertiary uppercase tracking-wider">
+                <tr className="border-b border-separator text-xs text-content-tertiary tracking-wider">
                   <th className="text-left px-4 py-3">Active</th>
                   <th className="text-left px-4 py-3">Rule</th>
                   <th className="text-left px-4 py-3">Payer</th>
@@ -288,7 +288,7 @@ export default function CodingRulesPage() {
                         <button onClick={() => { setForm({ rule_name: r.rule_name, payer_name: r.payer_name || '', client_id: r.client_id || '', condition_field: r.condition_field, condition_operator: r.condition_operator, condition_value: r.condition_value, action_type: r.action_type, action_value: r.action_value, priority: r.priority, english_rule: '' }); setEditingId(r.id); setShowAdd(true) }}
                           className="p-1 rounded hover:bg-surface-elevated text-content-secondary"><Edit3 size={13} /></button>
                         <button onClick={() => deleteRule(r.id)}
-                          className="p-1 rounded hover:bg-red-500/10 text-content-tertiary hover:text-red-500"><Trash2 size={13} /></button>
+                          className="p-1 rounded hover:bg-[#065E76]/10 text-content-tertiary hover:text-[#065E76]"><Trash2 size={13} /></button>
                       </div>
                     </td>
                   </tr>

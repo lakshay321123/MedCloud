@@ -255,13 +255,13 @@ export default function DenialsPage() {
         <KPICard label={t('denials','avgResolution')} value="—" />
       </div>
       {appealDeadlines.length > 0 && (
-        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-start gap-3">
-          <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
+        <div className="bg-[#065E76]/5 border border-[#065E76]/20 rounded-lg p-3 mb-4 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-[#065E76] shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="text-[12px] font-semibold text-red-600">Appeal Deadlines Approaching</p>
+            <p className="text-[12px] font-semibold text-[#065E76]">Appeal Deadlines Approaching</p>
             <div className="flex flex-wrap gap-2 mt-1.5">
               {appealDeadlines.slice(0, 5).map(a => (
-                <span key={a.denial_id} className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${a.urgency === 'critical' ? 'bg-red-500/20 text-red-600' : a.urgency === 'high' ? 'bg-brand-pale0/20 text-brand-deep' : 'bg-brand-pale0/20 text-brand-deep'}`}>
+                <span key={a.denial_id} className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${a.urgency === 'critical' ? 'bg-[#065E76]/20 text-[#065E76]' : a.urgency === 'high' ? 'bg-brand-pale0/20 text-brand-deep' : 'bg-brand-pale0/20 text-brand-deep'}`}>
                   {a.claim_number || a.denial_id.slice(0,8)} · {a.days_remaining}d left
                 </span>
               ))}
@@ -446,7 +446,7 @@ export default function DenialsPage() {
                 <span className="text-[13px] font-medium leading-tight flex-1 cursor-pointer" onClick={() => applyTemplate(t)}>{t.name}</span>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1 shrink-0">
                   <button onClick={() => openEditTemplate(t)} className="p-0.5 rounded hover:bg-surface text-content-tertiary hover:text-brand transition-colors"><Edit2 size={11} /></button>
-                  <button onClick={() => deleteTemplate(t.id)} className="p-0.5 rounded hover:bg-surface text-content-tertiary hover:text-red-500 transition-colors"><Trash2 size={11} /></button>
+                  <button onClick={() => deleteTemplate(t.id)} className="p-0.5 rounded hover:bg-surface text-content-tertiary hover:text-[#065E76] transition-colors"><Trash2 size={11} /></button>
                 </div>
               </div>
               <div className="flex items-center gap-1 mb-2">
@@ -538,12 +538,12 @@ export default function DenialsPage() {
         {appealDeadlines.length > 0 ? (
           <div className="space-y-2">
             {appealDeadlines.slice().sort((a, b) => a.days_remaining - b.days_remaining).slice(0, 8).map(d => (
-              <div key={d.denial_id} className={`flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2 ${d.days_remaining <= 3 ? 'border border-red-500/30' : ''}`}>
+              <div key={d.denial_id} className={`flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2 ${d.days_remaining <= 3 ? 'border border-[#065E76]/30' : ''}`}>
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-mono">{d.claim_number || d.denial_id.slice(0, 8)}</span>
                   <span className={`text-[11px] px-1.5 py-0.5 rounded bg-brand/10 text-brand`}>{d.urgency}</span>
                 </div>
-                <span className={`text-[13px] font-medium ${d.days_remaining <= 3 ? 'text-red-500' : d.days_remaining <= 7 ? 'text-brand-deep' : 'text-content-secondary'}`}>{d.days_remaining}d left</span>
+                <span className={`text-[13px] font-medium ${d.days_remaining <= 3 ? 'text-[#065E76]' : d.days_remaining <= 7 ? 'text-brand-deep' : 'text-content-secondary'}`}>{d.days_remaining}d left</span>
               </div>
             ))}
           </div>

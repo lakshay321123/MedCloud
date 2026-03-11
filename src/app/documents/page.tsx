@@ -30,17 +30,17 @@ const typeIcon: Record<string, React.ReactNode> = {
 
 const sourceBadge = (s: string) => {
   const map: Record<string,string> = {
-    'Portal Upload':'bg-brand/10 text-brand','Email Ingest':'bg-brand/10 text-brand',
-    'Fax':'bg-brand-pale0/10 text-brand-deep','Manual Upload':'bg-surface-elevated text-content-secondary',
-    'Textract Scan':'bg-brand/10 text-brand-dark',
+    'Portal Upload':'bg-[#D6EBF2] text-[#065E76]','Email Ingest':'bg-[#D6EBF2] text-[#065E76]',
+    'Fax':'bg-[#616161]/10 text-[#616161]','Manual Upload':'bg-[#616161]/10 text-[#616161]',
+    'Textract Scan':'bg-[#00B5D6]/10 text-[#00B5D6]',
   }
   return map[s] ?? 'bg-surface-elevated text-content-secondary'
 }
 
 const statusBadge = (s: string) => {
-  if (s==='Linked') return 'bg-brand/10 text-brand-dark dark:text-brand-dark'
-  if (s==='Unlinked') return 'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep'
-  return 'bg-brand/10 text-brand'
+  if (s==='Linked') return 'bg-[#D6EBF2] text-[#065E76]'
+  if (s==='Unlinked') return 'bg-[#616161]/10 text-[#616161]'
+  return 'bg-[#00B5D6]/10 text-[#00B5D6]'
 }
 
 function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () => void }) {
@@ -135,7 +135,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
         {/* Quick Code Entry for Superbill / Clinical Note */}
         {(doc.type === 'Superbill' || doc.type === 'Clinical Note') && (
           <div className="mx-4 mb-4 card p-4">
-            <div className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-3">Quick Code Entry</div>
+            <div className="text-[11px] font-semibold text-content-secondary tracking-wider mb-3">Quick Code Entry</div>
             <div className="space-y-2">
               {[
                 { label: 'CPT Code(s)', placeholder: 'e.g. 99214, 93000' },
@@ -165,7 +165,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
         {/* Link to patient section */}
         {!doc.patientId && (
           <div className="mx-4 mb-4 card p-4">
-            <h4 className="text-[13px] font-semibold text-content-secondary uppercase tracking-wider mb-3">Link to Patient</h4>
+            <h4 className="text-[13px] font-semibold text-content-secondary tracking-wider mb-3">Link to Patient</h4>
             {doc.aiConfidence && (
               <div className="bg-brand/10 border border-brand/20 rounded-lg p-2 mb-3 text-[11px] text-brand flex items-center gap-2">
                 <span>AI Classification: {doc.type}</span>
@@ -409,7 +409,7 @@ function UnlinkedQueueTab() {
               ) : (
                 <>
                   <button onClick={()=>setLinking(d.id)} className="text-[11px] bg-brand text-white px-3 py-1.5 rounded-lg hover:bg-brand-deep transition-colors shadow-sm">Link to Patient</button>
-                  <button onClick={async ()=>{ try { await api.patch(`/documents/${d.id}`, { status: 'discarded' }); toast.success('Document discarded') } catch { toast.warning('Document discarded locally') } }} className="text-[11px] border border-separator text-content-secondary px-3 py-1.5 rounded-lg hover:text-red-500 hover:border-red-500/30 transition-colors">Discard</button>
+                  <button onClick={async ()=>{ try { await api.patch(`/documents/${d.id}`, { status: 'discarded' }); toast.success('Document discarded') } catch { toast.warning('Document discarded locally') } }} className="text-[11px] border border-separator text-content-secondary px-3 py-1.5 rounded-lg hover:text-[#065E76] hover:border-[#065E76]/30 transition-colors">Discard</button>
                 </>
               )}
             </div>
@@ -430,7 +430,7 @@ function FaxCenterTab() {
   const [faxSubject, setFaxSubject] = useState('')
   // Fax inbox is Sprint 3 (Textract pipeline) — empty until integrated
   const faxes: DemoFax[] = []
-  const statusStyle = (s: string) => s==='Received'||s==='Sent'?'bg-brand/10 text-brand-dark dark:text-brand-dark':s==='Failed'?'bg-red-500/10 text-red-500':s==='Pending'?'bg-brand-pale0/10 text-brand-deep':'bg-surface-elevated text-content-secondary'
+  const statusStyle = (s: string) => s==='Received'||s==='Sent'?'bg-brand/10 text-brand-dark dark:text-brand-dark':s==='Failed'?'bg-[#065E76]/10 text-[#065E76]':s==='Pending'?'bg-brand-pale0/10 text-brand-deep':'bg-surface-elevated text-content-secondary'
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -652,7 +652,7 @@ function AIProcessingTab() {
                   <td className="py-2 px-3 font-mono">{d.file_name}</td>
                   <td className="py-2 px-3"><span className="text-[11px] px-2 py-0.5 rounded bg-surface-elevated">{(d as any).classification || d.doc_type || d.document_type || '—'}</span></td>
                   <td className="py-2 px-3">
-                    <span className={`font-medium ${(d.ai_confidence||0)>=90?'text-brand-dark':(d.ai_confidence||0)>=80?'text-brand-deep':'text-red-500'}`}>
+                    <span className={`font-medium ${(d.ai_confidence||0)>=90?'text-brand-dark':(d.ai_confidence||0)>=80?'text-brand-deep':'text-[#065E76]'}`}>
                       {d.ai_confidence ? `${d.ai_confidence}%` : '—'}
                     </span>
                   </td>
@@ -704,13 +704,13 @@ export default function DocumentsPage() {
       )}
       {/* Quiet connection status — only visible if there's a problem */}
       {apiDown ? (
-        <div className='mx-4 mb-4 px-4 py-2.5 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center justify-between text-xs'>
-          <div className='flex items-center gap-2 text-red-600 dark:text-red-400'>
-            <span className='w-2 h-2 rounded-full bg-red-500 shrink-0' />
+        <div className='mx-4 mb-4 px-4 py-2.5 bg-[#065E76]/10 border border-[#065E76]/30 rounded-lg flex items-center justify-between text-xs'>
+          <div className='flex items-center gap-2 text-[#065E76] dark:text-[#065E76]'>
+            <span className='w-2 h-2 rounded-full bg-[#065E76] shrink-0' />
             Documents are temporarily unavailable. Your data is safe — we&apos;re working on it.
           </div>
           <button onClick={() => { const ref = 'DOC-' + Date.now().toString().slice(-6); window.open(`mailto:support@cosentus.ai?subject=Documents+Unavailable+${ref}&body=Reference+${ref}+—+Documents+module+is+unavailable.+Please+investigate.`, '_blank'); toast.info('Support notified. Reference: ' + ref) }}
-            className='text-red-600 underline hover:no-underline ml-4 shrink-0'>Raise Concern</button>
+            className='text-[#065E76] underline hover:no-underline ml-4 shrink-0'>Raise Concern</button>
         </div>
       ) : null}
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1 no-scrollbar">
@@ -877,7 +877,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
               <div className="space-y-1.5 max-h-36 overflow-y-auto">
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-[13px] font-medium text-content-secondary">{files.length} file{files.length !== 1 ? 's' : ''} selected</p>
-                  <button onClick={() => setFiles([])} className="text-[11px] text-red-500 hover:text-red-600">Clear all</button>
+                  <button onClick={() => setFiles([])} className="text-[11px] text-[#065E76] hover:text-[#065E76]">Clear all</button>
                 </div>
                 {files.map((f, i) => (
                   <div key={`${f.name}-${f.lastModified}`} className="flex items-center gap-3 bg-surface-elevated rounded-lg px-3 py-2">
@@ -887,7 +887,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
                       <p className="text-[11px] text-content-tertiary">{(f.size / 1024 / 1024).toFixed(1)} MB</p>
                     </div>
                     <button onClick={() => setFiles(prev => prev.filter(file => file !== f))}>
-                      <X size={14} className="text-content-tertiary hover:text-red-500 transition-colors" />
+                      <X size={14} className="text-content-tertiary hover:text-[#065E76] transition-colors" />
                     </button>
                   </div>
                 ))}

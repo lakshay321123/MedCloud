@@ -33,7 +33,7 @@ export default function Sidebar() {
         {Object.entries(sections).map(([section, mods]) => (
           <div key={section} className="mb-1">
             {!sidebarCollapsed && (
-              <div className="text-[11px] font-semibold text-content-tertiary uppercase tracking-[0.08em] px-3 pt-5 pb-1.5">
+              <div className="text-[11px] font-semibold text-content-tertiary tracking-[0.08em] px-3 pt-5 pb-1.5">
                 {(section in {operations:1,ai:1,management:1,portal:1,system:1,clinical:1,myportal:1}
                   ? t('sections', section as 'operations'|'ai'|'management'|'portal'|'system'|'clinical'|'myportal')
                   : getSectionLabel(currentUser.role, section, portalType))}

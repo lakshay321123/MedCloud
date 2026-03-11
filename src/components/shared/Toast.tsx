@@ -34,19 +34,19 @@ const defaultDuration: Record<ToastType, number> = {
 const toastStyles: Record<ToastType, { bg: string; border: string; icon: React.ReactNode; bar: string }> = {
   success: {
     bg: 'bg-surface-secondary',
-    border: 'border-l-4 border-l-emerald-500 border border-separator',
+    border: 'border-l-4 border-l-[#00B5D6] border border-separator',
     icon: <CheckCircle2 size={18} className="text-brand-dark shrink-0" />,
     bar: 'bg-brand',
   },
   error: {
     bg: 'bg-surface-secondary',
-    border: 'border-l-4 border-l-red-500 border border-separator',
-    icon: <XCircle size={18} className="text-red-500 shrink-0" />,
-    bar: 'bg-red-500',
+    border: 'border-l-4 border-l-[#065E76] border border-separator',
+    icon: <XCircle size={18} className="text-[#065E76] shrink-0" />,
+    bar: 'bg-[#065E76]',
   },
   warning: {
     bg: 'bg-surface-secondary',
-    border: 'border-l-4 border-l-amber-500 border border-separator',
+    border: 'border-l-4 border-l-[#616161] border border-separator',
     icon: <AlertTriangle size={18} className="text-brand-deep shrink-0" />,
     bar: 'bg-brand-pale',
   },

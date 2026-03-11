@@ -187,7 +187,7 @@ function EDIContent() {
         {loading ? (
           <div className="p-8 text-center text-content-secondary text-sm">Loading EDI transactions…</div>
         ) : error ? (
-          <div className="p-8 text-center text-red-500 text-sm">Failed to load transactions. <button onClick={() => refetch()} className="text-brand underline ml-1">Retry</button></div>
+          <div className="p-8 text-center text-[#065E76] text-sm">Failed to load transactions. <button onClick={() => refetch()} className="text-brand underline ml-1">Retry</button></div>
         ) : filtered.length === 0 ? (
           <div className="p-8 text-center text-content-tertiary text-sm">
             {transactions.length === 0 ? 'No EDI transactions yet. Transactions appear when claims are submitted or ERA files are processed.' : 'No transactions match your filters.'}
@@ -347,15 +347,15 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
           {/* File Name */}
           {tx.file_name && (
             <div className="bg-surface-elevated rounded-lg p-3">
-              <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1">File Name</p>
+              <p className="text-[11px] tracking-wider text-content-tertiary mb-1">File Name</p>
               <p className="text-xs font-mono text-content-primary">{tx.file_name}</p>
             </div>
           )}
 
           {/* Response */}
           {(tx.response_code || tx.response_detail) && (
-            <div className={`rounded-lg p-3 ${tx.status === 'rejected' || tx.status === 'error' ? 'bg-red-500/5 border border-red-500/20' : 'bg-brand/5 border border-brand/20'}`}>
-              <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1">Response</p>
+            <div className={`rounded-lg p-3 ${tx.status === 'rejected' || tx.status === 'error' ? 'bg-[#065E76]/5 border border-[#065E76]/20' : 'bg-brand/5 border border-brand/20'}`}>
+              <p className="text-[11px] tracking-wider text-content-tertiary mb-1">Response</p>
               {tx.response_code && <p className="text-xs font-mono font-semibold text-content-primary">{tx.response_code}</p>}
               {tx.response_detail && <p className="text-xs text-content-secondary mt-1">{tx.response_detail}</p>}
             </div>
@@ -364,14 +364,14 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
           {/* Claim Link */}
           {tx.claim_id && (
             <div className="bg-surface-elevated rounded-lg p-3">
-              <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-1">Linked Claim</p>
+              <p className="text-[11px] tracking-wider text-content-tertiary mb-1">Linked Claim</p>
               <p className="text-xs font-mono text-brand">{tx.claim_id.slice(0, 8)}…</p>
             </div>
           )}
 
           {/* Timeline */}
           <div>
-            <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-2">Timeline</p>
+            <p className="text-[11px] tracking-wider text-content-tertiary mb-2">Timeline</p>
             <div className="space-y-2">
               {tx.created_at && (
                 <TimelineEntry label="Created" time={tx.created_at} icon={<Clock size={12} />} />
@@ -381,7 +381,7 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
               )}
               {tx.response_at && (
                 <TimelineEntry label="Response Received" time={tx.response_at}
-                  icon={tx.status === 'accepted' || tx.status === 'received' ? <CheckCircle2 size={12} className="text-brand-dark" /> : <AlertTriangle size={12} className="text-red-500" />} />
+                  icon={tx.status === 'accepted' || tx.status === 'received' ? <CheckCircle2 size={12} className="text-brand-dark" /> : <AlertTriangle size={12} className="text-[#065E76]" />} />
               )}
             </div>
           </div>
@@ -398,7 +398,7 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
 function DetailField({ label, value, icon, action }: { label: string; value: string; icon?: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[11px] uppercase tracking-wider text-content-tertiary mb-0.5">{label}</p>
+      <p className="text-[11px] tracking-wider text-content-tertiary mb-0.5">{label}</p>
       <div className="flex items-center gap-1.5">
         {icon}
         <span className="text-xs text-content-primary font-medium">{value}</span>

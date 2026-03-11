@@ -81,7 +81,7 @@ function ExecutiveDashboard() {
 
   const recentClaimsActivity = metrics?.recent_claims?.slice(0, 5).map(c => ({
     t: `Claim #${c.claim_number} — ${c.first_name} ${c.last_name} ($${Number(c.total_charges || 0).toLocaleString()})`,
-    c: c.status === 'paid' ? 'text-brand-dark dark:text-brand-dark' : c.status === 'denied' ? 'text-red-500' : 'text-brand',
+    c: c.status === 'paid' ? 'text-brand-dark dark:text-brand-dark' : c.status === 'denied' ? 'text-[#065E76]' : 'text-brand',
     ago: timeAgo(c.dos_from),
     href: '/claims',
   }))
@@ -114,15 +114,17 @@ function ExecutiveDashboard() {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 sm:gap-5">
         <div className="col-span-3 card p-6">
-          <h3 className="text-[15px] font-semibold text-content-primary mb-2">
-            {agingBuckets ? t('dashboard','arAgingBuckets') : t('dashboard','revenueTrend')}
-          </h3>
-          {agingBuckets && <p className="text-[11px] text-content-tertiary mb-3">Outstanding claim balances by age bucket</p>}
+          <div className="mb-1">
+            <h3 className="text-[15px] font-semibold text-content-primary leading-tight">
+              {agingBuckets ? t('dashboard','arAgingBuckets') : t('dashboard','revenueTrend')}
+            </h3>
+            {agingBuckets && <p className="text-[11px] text-content-tertiary mt-0">Outstanding claim balances by age bucket</p>}
+          </div>
           <div className="flex items-end gap-3 h-36 px-2 mt-1">
             {agingBuckets
               ? agingBuckets.map((b, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-                    <span className="text-[11px] font-medium text-content-secondary truncate w-full text-center">{b.value > 0 ? b.value.toLocaleString() : '—'}</span>
+                    <span className="text-[13px] font-medium text-content-secondary truncate w-full text-center">{b.value > 0 ? b.value.toLocaleString() : '—'}</span>
                     <div className="w-full rounded-lg relative overflow-hidden" style={{ height: `${Math.max((b.value / maxAgingVal) * 120, b.value > 0 ? 8 : 2)}px` }}>
                       <div className="absolute inset-0 bg-gradient-to-t from-brand-dark to-brand rounded-lg" />
                     </div>
@@ -216,10 +218,10 @@ function CoderDashboard() {
         <KPICard label={t('dashboard','codedToday')} value={4} icon={<CheckCircle2 size={20} />} trend="up" />
       </div>
       {(pastSLA ?? 0) > 0 && (
-        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-start gap-3">
-          <AlertTriangle size={16} className="text-brand-deep mt-0.5 shrink-0" />
+        <div className="bg-surface-elevated border border-separator rounded-xl p-4 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-black mt-0.5 shrink-0" />
           <div>
-            <p className="text-[13px] font-semibold text-brand-deep">{(pastSLA ?? 0)} chart{(pastSLA ?? 0) > 1 ? 's' : ''} past 24-hour SLA</p>
+            <p className="text-[13px] font-semibold text-black">{(pastSLA ?? 0)} chart{(pastSLA ?? 0) > 1 ? 's' : ''} past 24-hour SLA</p>
             <p className="text-[12px] text-content-secondary mt-0.5">These charts were received more than 24 hours ago and must be coded immediately.</p>
           </div>
           <Link href="/coding" className="ml-auto text-[12px] text-brand font-medium shrink-0">Go to Queue →</Link>
@@ -255,11 +257,11 @@ function BillerDashboard() {
         <KPICard label={t('dashboard','chargeLagAlerts')} value={chargeLagCount} icon={<Clock size={20} />} />
       </div>
       {scrubFailed > 0 && (
-        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-surface-elevated border border-separator rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-start gap-3">
-            <AlertTriangle size={16} className="text-brand-deep mt-0.5" />
+            <AlertTriangle size={16} className="text-black mt-0.5" />
             <div>
-              <p className="text-[13px] font-semibold text-brand-deep">{scrubFailed} claims need scrub error resolution</p>
+              <p className="text-[13px] font-semibold text-black">{scrubFailed} claims need scrub error resolution</p>
               <p className="text-[12px] text-content-secondary mt-0.5">Fix scrub errors before these claims can be submitted to the clearinghouse.</p>
             </div>
           </div>
@@ -267,9 +269,9 @@ function BillerDashboard() {
         </div>
       )}
       {chargeLagCount > 0 && (
-        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-surface-elevated border border-separator rounded-xl p-4 flex items-center justify-between">
           <div>
-            <p className="text-[13px] font-semibold text-brand-deep">{chargeLagCount} appointments completed 48h+ with no claim</p>
+            <p className="text-[13px] font-semibold text-black">{chargeLagCount} appointments completed 48h+ with no claim</p>
             <p className="text-[12px] text-content-secondary">Mar 1 — Dr. Martinez × 2, Dr. Patel × 1</p>
           </div>
           <Link href="/claims" className="text-[12px] text-brand font-medium shrink-0">Review →</Link>
@@ -304,11 +306,11 @@ function ARDashboard() {
         <KPICard label={t('dashboard','accountsWorked')} value={12} icon={<CheckCircle2 size={20} />} />
       </div>
       {appealsNearDeadline > 0 && (
-        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-surface-elevated border border-separator rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-start gap-3">
-            <AlertTriangle size={16} className="text-brand-deep mt-0.5" />
+            <AlertTriangle size={16} className="text-black mt-0.5" />
             <div>
-              <p className="text-[13px] font-semibold text-brand-deep">{appealsNearDeadline} appeal response windows closing in &lt; 5 days</p>
+              <p className="text-[13px] font-semibold text-black">{appealsNearDeadline} appeal response windows closing in &lt; 5 days</p>
               <p className="text-[12px] text-content-secondary">Follow up now or escalate to Level 2 before the window closes.</p>
             </div>
           </div>
@@ -343,8 +345,8 @@ function PostingDashboard() {
         <KPICard label={t('dashboard','postedToday')} value={24} icon={<CheckCircle2 size={20} />} />
       </div>
       {pastSLAERAs > 0 && (
-        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
-          <p className="text-[13px] font-semibold text-brand-deep">{pastSLAERAs} ERA past 48-hour posting SLA — requires immediate action</p>
+        <div className="bg-surface-elevated border border-separator rounded-xl p-4 flex items-center justify-between">
+          <p className="text-[13px] font-semibold text-black">{pastSLAERAs} ERA past 48-hour posting SLA — requires immediate action</p>
           <Link href="/payment-posting" className="text-[12px] text-brand font-medium">Post Now →</Link>
         </div>
       )}
@@ -373,8 +375,8 @@ function ProviderDashboard() {
         <KPICard label={t('dashboard','unsignedNotes')} value={unsignedNotes} icon={<Clock size={20} />} />
       </div>
       {(unsignedNotes ?? 0) > 0 && (
-        <div className="bg-brand-pale0/10 border border-brand-light/30 rounded-xl p-4 flex items-center justify-between">
-          <p className="text-[13px] font-semibold text-brand-deep">{(unsignedNotes ?? 0)} note{(unsignedNotes ?? 0) > 1 ? 's' : ''} unsigned for more than 24 hours</p>
+        <div className="bg-surface-elevated border border-separator rounded-xl p-4 flex items-center justify-between">
+          <p className="text-[13px] font-semibold text-black">{(unsignedNotes ?? 0)} note{(unsignedNotes ?? 0) > 1 ? 's' : ''} unsigned for more than 24 hours</p>
           <Link href="/ai-scribe" className="text-[12px] text-brand font-medium">Sign Now →</Link>
         </div>
       )}
@@ -428,8 +430,8 @@ function ClientDashboard() {
             onClick={() => router.push('/tasks')}
             className="bg-brand/10 border border-brand/20 rounded-lg px-3 py-2 flex items-center gap-2 hover:bg-brand/15 transition-colors cursor-pointer"
           >
-            <AlertTriangle size={14} className="text-red-500" />
-            <span className="text-[13px] text-brand-deep font-semibold">{actionNeeded} items need your attention →</span>
+            <AlertTriangle size={14} className="text-[#065E76]" />
+            <span className="text-[13px] text-black font-semibold">{actionNeeded} items need your attention →</span>
           </button>
         )}
       </div>
@@ -460,8 +462,8 @@ function SupervisorDashboard() {
   const unpostedERAs = 2
 
   const exceptions = [
-    { count: chartsPastSLA, label: 'Charts past 24h coding SLA', href: '/coding', color: 'red' },
-    { count: scrubErrors, label: 'Claims with unresolved scrub errors', href: '/claims', color: 'red' },
+    { count: chartsPastSLA, label: 'Charts past 24h coding SLA', href: '/coding', color: 'denied' },
+    { count: scrubErrors, label: 'Claims with unresolved scrub errors', href: '/claims', color: 'denied' },
     { count: unassignedDenials, label: 'Denials received — unassigned', href: '/denials', color: 'blue' },
     { count: unpostedERAs, label: 'ERAs unposted > 36h', href: '/payment-posting', color: 'blue' },
     { count: 2, label: 'Appeal response windows closing < 5 days', href: '/denials', color: 'blue' },
@@ -482,10 +484,10 @@ function SupervisorDashboard() {
       ) : (
         <div className="space-y-3">
           {exceptions.map((exc, i) => (
-            <div key={i} className={`rounded-xl p-4 border flex items-center justify-between ${exc.color === 'red' ? 'bg-red-500/10 border-red-500/30' : 'bg-brand-pale0/10 border-brand-light/30'}`}>
+            <div key={i} className="rounded-xl p-4 border border-separator bg-surface-elevated flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className={`text-2xl font-bold ${exc.color === 'red' ? 'text-red-500' : 'text-brand-deep'}`}>{exc.count}</span>
-                <p className={`text-[13px] font-medium ${exc.color === 'red' ? 'text-red-600' : 'text-brand-deep'}`}>{exc.label}</p>
+                <span className="text-2xl font-bold text-black">{exc.count}</span>
+                <p className="text-[13px] font-medium text-black">{exc.label}</p>
               </div>
               <Link href={exc.href} className="text-[12px] text-brand font-medium shrink-0">Resolve →</Link>
             </div>

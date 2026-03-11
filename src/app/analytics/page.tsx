@@ -25,7 +25,7 @@ function KPITooltip({ formula }: { formula: string }) {
     <span className="relative inline-flex ml-1" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
       <Info size={12} className="text-content-tertiary cursor-help" />
       {show && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-[240px] bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[11px] text-content-secondary shadow-xl whitespace-normal pointer-events-none">
+        <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 w-[240px] bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[11px] text-black shadow-xl whitespace-normal pointer-events-none">
           {formula}
         </span>
       )}
@@ -71,7 +71,7 @@ const payerHassle: Record<string, { score: number; color: string }> = {
   UnitedHealthcare: { score: 42, color: 'text-brand-deep' },
   Medicare: { score: 28, color: 'text-brand-dark' },
   Aetna: { score: 58, color: 'text-brand-deep' },
-  Daman: { score: 71, color: 'text-red-400' },
+  Daman: { score: 71, color: 'text-[#065E76]' },
   NAS: { score: 35, color: 'text-brand-dark' },
   'Self-Pay': { score: 15, color: 'text-brand-dark' },
   BCBS: { score: 45, color: 'text-brand-deep' },
@@ -104,9 +104,9 @@ const PAYER_COLORS: Record<string, string> = {
 
 // ─── Heatmap cell ─────────────────────────────────────────────────────────────
 function HeatCell({ value }: { value: number }) {
-  const bg = value === 0 ? 'bg-surface-elevated' : value <= 3 ? 'bg-red-500/20' : value <= 7 ? 'bg-red-500/40' : 'bg-red-500/70'
+  const bg = value === 0 ? 'bg-surface-elevated' : value <= 3 ? 'bg-[#065E76]/20' : value <= 7 ? 'bg-[#065E76]/40' : 'bg-[#065E76]/70'
   return (
-    <td className={`px-3 py-2 text-center text-[12px] ${bg} ${value > 0 ? 'text-red-300' : 'text-content-tertiary'}`}>
+    <td className={`px-3 py-2 text-center text-[12px] ${bg} ${value > 0 ? 'text-[#065E76]' : 'text-content-tertiary'}`}>
       {value || '—'}
     </td>
   )
@@ -443,7 +443,7 @@ export default function AnalyticsPage() {
                   <Tooltip formatter={(v: number | string | undefined) => [`${v ?? 0}%`]} contentStyle={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 12, color: '#3A3A3C', boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }} itemStyle={{ color: '#3A3A3C' }} labelStyle={{ color: '#1D1D1F', fontWeight: 600 }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <ReferenceLine y={5} stroke="#A1DEED" strokeDasharray="4 4" label={{ value: 'Target 5%', position: 'insideTopRight', fontSize: 10, fill: '#616161' }} />
-                  <Line type="monotone" dataKey="initial" name="Initial Denial Rate" stroke="#EF4444" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="initial" name="Initial Denial Rate" stroke="#065E76" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="net" name="Net Denial Rate" stroke="#00B5D6" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
@@ -475,7 +475,7 @@ export default function AnalyticsPage() {
               <h3 className="text-[14px] font-semibold text-content-primary">Staff Productivity</h3>
             </div>
             <table className="w-full text-[12px]">
-              <thead><tr className="border-b border-separator text-[11px] text-content-tertiary uppercase tracking-wider">
+              <thead><tr className="border-b border-separator text-[11px] text-content-tertiary tracking-wider">
                 {['Name','Role','Claims Today','AI Accept %','Avg Min/Claim','Accuracy','SLA %'].map(h => (
                   <th key={h} className="text-left px-4 py-2.5">{h}</th>
                 ))}
@@ -535,16 +535,16 @@ export default function AnalyticsPage() {
               <div key={f.name} className="card p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-brand">{f.icon}</span>
-                  <p className="text-[13px] font-semibold text-content-primary">{f.name}</p>
+                  <p className="text-[13px] font-semibold text-black">{f.name}</p>
                 </div>
-                <p className="text-[24px] font-bold text-content-primary">{f.metric}</p>
-                <p className="text-[11px] text-content-tertiary mb-2">{f.metricLabel}</p>
+                <p className="text-[24px] font-bold text-[#00B5D6]">{f.metric}</p>
+                <p className="text-[11px] text-black mb-2">{f.metricLabel}</p>
                 <div className="h-1.5 bg-surface-elevated rounded-full mb-3">
                   <div className="h-full bg-brand rounded-full transition-all duration-700" style={{ width: `${f.barPct}%` }} />
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[11px] text-content-secondary">{f.uses}</span>
-                  <span className={`text-[11px] font-medium ${f.trend.startsWith('↑') ? 'text-brand-dark' : f.trend.startsWith('↓') ? 'text-red-400' : 'text-content-tertiary'}`}>{f.trend}</span>
+                  <span className="text-[11px] text-black">{f.uses}</span>
+                  <span className={`text-[11px] font-medium ${f.trend.startsWith('↑') ? 'text-[#00B5D6]' : f.trend.startsWith('↓') ? 'text-[#065E76]' : 'text-black'}`}>{f.trend}</span>
                 </div>
               </div>
             ))}
@@ -561,7 +561,7 @@ export default function AnalyticsPage() {
               <h3 className="text-[14px] font-semibold text-content-primary">Payer Performance</h3>
             </div>
             <table className="w-full text-[12px]">
-              <thead><tr className="border-b border-separator text-[11px] text-content-tertiary uppercase tracking-wider">
+              <thead><tr className="border-b border-separator text-[11px] text-content-tertiary tracking-wider">
                 {['Payer','Claims','Billed','Paid','Denial Rate','Avg Days to Pay','PHI Score'].map(h => (
                   <th key={h} className="text-left px-4 py-2.5">{h}</th>
                 ))}
@@ -577,7 +577,7 @@ export default function AnalyticsPage() {
                     <td className="px-4 py-2.5">${p.billed.toLocaleString()}</td>
                     <td className="px-4 py-2.5 text-brand-dark">${p.paid.toLocaleString()}</td>
                     <td className="px-4 py-2.5">
-                      <span className={parseInt(p.denialRate) > 10 ? 'text-red-400' : parseInt(p.denialRate) > 5 ? 'text-brand-deep' : 'text-brand-dark'}>
+                      <span className={parseInt(p.denialRate) > 10 ? 'text-[#065E76]' : parseInt(p.denialRate) > 5 ? 'text-brand-deep' : 'text-brand-dark'}>
                         {p.denialRate}%
                       </span>
                     </td>
@@ -596,7 +596,7 @@ export default function AnalyticsPage() {
           <div className="card overflow-hidden">
             <div className="px-5 py-4 border-b border-separator">
               <h3 className="text-[14px] font-semibold text-content-primary">Denial by Payer + Category</h3>
-              <p className="text-[11px] text-content-tertiary mt-0.5">Darker red = more denials in that category</p>
+              <p className="text-[11px] text-content-tertiary mt-0.5">Darker shade = more denials in that category</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-[11px]">
@@ -681,7 +681,7 @@ export default function AnalyticsPage() {
                   { label: 'Paid', count: claims.filter(c=>c.status==='paid').length || 18, color: 'bg-brand' },
                   { label: 'Submitted', count: claims.filter(c=>c.status==='submitted').length || 9, color: 'bg-brand' },
                   { label: 'Ready', count: claims.filter(c=>c.status==='ready').length || 5, color: 'bg-brand' },
-                  { label: 'Denied', count: claims.filter(c=>c.status==='denied').length || 3, color: 'bg-red-500' },
+                  { label: 'Denied', count: claims.filter(c=>c.status==='denied').length || 3, color: 'bg-[#065E76]' },
                   { label: 'In Process', count: claims.filter(c=>c.status==='in_process').length || 2, color: 'bg-brand-pale' },
                 ].map(s => (
                   <div key={s.label} className="flex items-center gap-2">
@@ -697,10 +697,10 @@ export default function AnalyticsPage() {
               <h3 className="text-[14px] font-semibold text-content-primary mb-3">Documentation Alerts</h3>
               <div className="space-y-2.5">
                 {[
-                  { label: 'Missing diagnosis linkage', count: 2, color: 'text-red-500' },
+                  { label: 'Missing diagnosis linkage', count: 2, color: 'text-[#065E76]' },
                   { label: 'Incomplete SOAP notes', count: 1, color: 'text-brand-deep' },
                   { label: 'Unsigned encounters', count: 3, color: 'text-brand-deep' },
-                  { label: 'E/M level mismatch', count: 1, color: 'text-red-500' },
+                  { label: 'E/M level mismatch', count: 1, color: 'text-[#065E76]' },
                   { label: 'Missing modifier', count: 0, color: 'text-brand-dark' },
                 ].map(a => (
                   <div key={a.label} className="flex items-center justify-between">

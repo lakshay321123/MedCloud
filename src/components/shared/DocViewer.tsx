@@ -21,7 +21,7 @@ const typeConfig: Record<DocViewerDocument['type'], { icon: React.ReactNode; col
   clinical_note: { icon: <Stethoscope size={14} />, color: 'text-blue-500', label: 'Clinical Note' },
   insurance_card: { icon: <CreditCard size={14} />, color: 'text-brand-dark', label: 'Insurance Card' },
   eob: { icon: <DollarSign size={14} />, color: 'text-blue-700', label: 'Explanation of Benefits' },
-  denial_letter: { icon: <XCircle size={14} />, color: 'text-red-500', label: 'Denial Letter' },
+  denial_letter: { icon: <XCircle size={14} />, color: 'text-[#065E76]', label: 'Denial Letter' },
   prior_auth: { icon: <Shield size={14} />, color: 'text-teal-500', label: 'Prior Authorization' },
 }
 

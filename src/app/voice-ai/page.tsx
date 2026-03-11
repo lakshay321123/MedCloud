@@ -26,7 +26,7 @@ function StatusDot({ status }: { status: RetellCall['call_status'] }) {
     ongoing: 'bg-brand animate-pulse',
     registered: 'bg-blue-500 animate-pulse',
     ended: 'bg-gray-400',
-    error: 'bg-red-500',
+    error: 'bg-[#065E76]',
   }
   return <span className={`inline-block w-2.5 h-2.5 rounded-full ${map[status] ?? 'bg-gray-400'}`} />
 }
@@ -34,7 +34,7 @@ function StatusDot({ status }: { status: RetellCall['call_status'] }) {
 function SentimentBadge({ sentiment }: { sentiment?: string }) {
   if (!sentiment || sentiment === 'Unknown') return null
   const c = sentiment === 'Positive' ? 'bg-brand/10 text-brand-dark dark:text-brand-dark'
-    : sentiment === 'Negative' ? 'bg-red-500/10 text-red-500'
+    : sentiment === 'Negative' ? 'bg-[#065E76]/10 text-[#065E76]'
     : 'bg-gray-500/10 text-content-secondary'
   return <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${c}`}>{sentiment}</span>
 }
@@ -78,7 +78,7 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
             <span className={`text-sm font-semibold ${statusColor}`}>{statusLabel}</span>
             <AgentBadge agent={call._agent_name} />
             {analysis?.call_successful === true && <CheckCircle size={13} className="text-brand-dark" />}
-            {analysis?.call_successful === false && <XCircle size={13} className="text-red-500" />}
+            {analysis?.call_successful === false && <XCircle size={13} className="text-[#065E76]" />}
           </div>
           <p className="text-[13px] text-content-secondary font-mono">{call.to_number}</p>
           {vars['patient_name'] && <p className="text-[11px] text-content-tertiary mt-0.5">{vars['patient_name']}</p>}
@@ -105,13 +105,13 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
 
         {analysis?.call_summary && (
           <div className="p-4 border-b border-separator">
-            <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">AI Summary</h4>
+            <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-2">AI Summary</h4>
             <p className="text-[13px] text-content-primary leading-relaxed">{analysis.call_summary}</p>
           </div>
         )}
 
         <div className="p-4 border-b border-separator">
-          <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">Transcript</h4>
+          <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-2">Transcript</h4>
           <div ref={transcriptRef} className="bg-surface-elevated rounded-lg p-3 h-52 overflow-y-auto text-[11px] space-y-2">
             {lines.length > 0 ? lines.map((line, i) => (
               <div key={i} className="flex gap-2">
@@ -129,7 +129,7 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
 
         {Object.keys(vars).length > 0 && (
           <div className="p-4 border-b border-separator">
-            <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">Call Context</h4>
+            <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-2">Call Context</h4>
             <div className="space-y-1.5 max-h-32 overflow-y-auto">
               {Object.entries(vars).slice(0, 15).map(([k, v]) => (
                 <div key={k} className="flex justify-between text-xs gap-2">
@@ -143,7 +143,7 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
 
         {call.disconnection_reason && (
           <div className="p-4">
-            <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-1">Disconnection</h4>
+            <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-1">Disconnection</h4>
             <p className="text-[13px] text-content-secondary">{call.disconnection_reason}</p>
           </div>
         )}
@@ -331,7 +331,7 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
           className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-[13px] text-content-secondary" />
         {(outcomeFilter || payerFilter || dateRange.start || dateRange.end) && (
           <button onClick={() => { setOutcomeFilter(''); setPayerFilter(''); setDateRange({ start: '', end: '' }) }}
-            className="text-[13px] text-content-tertiary hover:text-red-500 px-2 transition-colors">✕ Clear</button>
+            className="text-[13px] text-content-tertiary hover:text-[#065E76] px-2 transition-colors">✕ Clear</button>
         )}
         <span className="ml-auto text-xs text-content-tertiary self-center">{filtered.length} calls</span>
       </div>
@@ -340,7 +340,7 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
       {debugInfo && (
         <div className="card p-4 border-brand-light/30">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] font-semibold text-brand-deep uppercase tracking-wider">API Debug Response</p>
+            <p className="text-[11px] font-semibold text-brand-deep tracking-wider">API Debug Response</p>
             <button onClick={() => setDebugInfo(null)} className="text-[11px] text-content-tertiary hover:text-content-secondary">✕</button>
           </div>
           <pre className="text-[11px] text-content-secondary font-mono bg-surface-elevated p-3 rounded-lg overflow-auto max-h-48 whitespace-pre-wrap">
@@ -390,7 +390,7 @@ function CallLogTab({ allCalls, loading: allLoading, fallback: allFallback }: { 
                         {call.call_analysis?.call_successful === true
                           ? <span className="text-[11px] px-2 py-0.5 rounded-full bg-brand/10 text-brand-dark dark:text-brand-dark font-medium">Resolved</span>
                           : call.call_analysis?.call_successful === false
-                          ? <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 font-medium">Failed</span>
+                          ? <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#065E76]/10 text-[#065E76] font-medium">Failed</span>
                           : isIncomplete
                           ? <span className="text-[11px] px-2 py-0.5 rounded-full bg-brand-pale0/10 text-brand-deep font-medium">Incomplete</span>
                           : <span className="text-[11px] text-content-tertiary">—</span>}
@@ -569,7 +569,7 @@ function CampaignLauncherTab() {
   return (
     <div className="grid grid-cols-5 gap-5">
       <div className="col-span-2 space-y-3">
-        <h3 className="text-[13px] font-semibold text-content-secondary uppercase tracking-wider">Past Campaigns {fallback && <span className="text-brand-deep normal-case font-normal">(demo)</span>}</h3>
+        <h3 className="text-[13px] font-semibold text-content-secondary tracking-wider">Past Campaigns {fallback && <span className="text-brand-deep normal-case font-normal">(demo)</span>}</h3>
         {batchLoading ? <div className="text-xs text-content-tertiary p-4">Loading…</div>
           : batches.length === 0 ? <div className="card p-6 text-center text-xs text-content-tertiary">No campaigns yet</div>
           : batches.map(b => (
@@ -635,7 +635,7 @@ function CampaignLauncherTab() {
                     <p className="text-[11px] text-content-secondary">{parsed.rows.length} contacts · {parsed.columns.length} columns{parsed.agentDetected && <span className="text-brand ml-1">· {parsed.agentDetected} format</span>}</p>
                   </div>
                 </div>
-                <button onClick={() => setParsed(null)} className="p-1 hover:bg-surface-elevated rounded text-content-tertiary hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                <button onClick={() => setParsed(null)} className="p-1 hover:bg-surface-elevated rounded text-content-tertiary hover:text-[#065E76] transition-colors"><Trash2 size={14} /></button>
               </div>
 
               {parsed.practiceNames.length > 1 && (
@@ -648,7 +648,7 @@ function CampaignLauncherTab() {
 
               <div className="border border-separator rounded-lg overflow-hidden">
                 <div className="px-3 py-2 bg-surface-elevated border-b border-separator flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-content-secondary uppercase tracking-wide">Preview — {filteredRows.length} calls</span>
+                  <span className="text-[11px] font-semibold text-content-secondary tracking-wide">Preview — {filteredRows.length} calls</span>
                   <Eye size={12} className="text-content-tertiary" />
                 </div>
                 <div className="max-h-40 overflow-y-auto">
@@ -669,7 +669,7 @@ function CampaignLauncherTab() {
                           {agentKey === 'cindy' ? (
                             <><td className="px-3 py-1.5">{[row.variables['patientfirstname'], row.variables['patientlastname']].filter(Boolean).join(' ') || '—'}</td>
                             <td className="px-3 py-1.5 text-brand-dark dark:text-brand-dark font-medium">{row.variables['patientbalance'] ? `$${Number(row.variables['patientbalance']).toLocaleString()}` : '—'}</td>
-                            <td className="px-3 py-1.5"><span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${row.variables['aginggroup']?.includes('180') ? 'bg-red-500/10 text-red-500' : 'bg-surface-elevated text-content-secondary'}`}>{row.variables['aginggroup'] || '—'}</span></td></>
+                            <td className="px-3 py-1.5"><span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${row.variables['aginggroup']?.includes('180') ? 'bg-[#065E76]/10 text-[#065E76]' : 'bg-surface-elevated text-content-secondary'}`}>{row.variables['aginggroup'] || '—'}</span></td></>
                           ) : (
                             <><td className="px-3 py-1.5">{row.variables['Patient_Name'] || '—'}</td>
                             <td className="px-3 py-1.5">{row.variables['Primary_Carrier_Name'] || '—'}</td>
@@ -777,7 +777,7 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
     <div className="grid grid-cols-5 gap-5">
       {/* Payer table */}
       <div className="col-span-2">
-        <h3 className="text-[13px] font-semibold text-content-secondary uppercase tracking-wider mb-3">Payer Performance — Chris</h3>
+        <h3 className="text-[13px] font-semibold text-content-secondary tracking-wider mb-3">Payer Performance — Chris</h3>
         {stats.length === 0 ? (
           <div className="card p-8 text-center text-xs text-content-tertiary">
             No call data yet — launch Chris campaigns to see payer analytics
@@ -800,10 +800,10 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         <div className="w-16 h-1.5 bg-surface-elevated rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full ${s.successRate >= 70 ? 'bg-brand' : s.successRate >= 40 ? 'bg-brand-pale' : 'bg-red-500'}`}
+                          <div className={`h-full rounded-full ${s.successRate >= 70 ? 'bg-brand' : s.successRate >= 40 ? 'bg-brand-pale' : 'bg-[#065E76]'}`}
                             style={{ width: `${s.successRate}%` }} />
                         </div>
-                        <span className={`text-[11px] font-medium ${s.successRate >= 70 ? 'text-brand-dark' : s.successRate >= 40 ? 'text-brand-deep' : 'text-red-500'}`}>{s.successRate}%</span>
+                        <span className={`text-[11px] font-medium ${s.successRate >= 70 ? 'text-brand-dark' : s.successRate >= 40 ? 'text-brand-deep' : 'text-[#065E76]'}`}>{s.successRate}%</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 font-mono text-xs">{formatDuration(s.avgDuration)}</td>
@@ -834,7 +834,7 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
               </div>
               <div className="flex items-center gap-2">
                 {selectedPayer.successRate < 50 && (
-                  <span className="flex items-center gap-1 text-[11px] text-red-500 bg-red-500/10 px-2 py-1 rounded-full">
+                  <span className="flex items-center gap-1 text-[11px] text-[#065E76] bg-[#065E76]/10 px-2 py-1 rounded-full">
                     <AlertCircle size={11} />Needs playbook
                   </span>
                 )}
@@ -843,11 +843,11 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
 
             {/* Sample failures */}
             <div className="card p-4">
-              <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-3">Recent Failures</h4>
+              <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-3">Recent Failures</h4>
               <div className="space-y-2 max-h-32 overflow-y-auto">
                 {selectedPayer.calls.filter(c => c.call_analysis?.call_successful === false).slice(0, 5).map(c => (
                   <div key={c.call_id} className="text-[13px] text-content-secondary bg-surface-elevated rounded p-2">
-                    <span className="text-red-500 font-medium mr-2">✗</span>
+                    <span className="text-[#065E76] font-medium mr-2">✗</span>
                     {c.call_analysis?.call_summary ?? c.disconnection_reason ?? 'No summary'}
                   </div>
                 ))}
@@ -872,7 +872,7 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider">Generated Playbook</h4>
+                  <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider">Generated Playbook</h4>
                   <button onClick={() => setPlaybook('')} className="text-[11px] text-content-tertiary hover:text-content-secondary transition-colors">Discard</button>
                 </div>
                 <textarea value={playbook} onChange={e => setPlaybook(e.target.value)}
@@ -996,7 +996,7 @@ function PromptEditorTab() {
         {/* Version history dropdown */}
         {showVersions && versions.length > 0 && (
           <div className="card p-3 space-y-1.5">
-            <p className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider mb-2">Version History</p>
+            <p className="text-[11px] font-semibold text-content-secondary tracking-wider mb-2">Version History</p>
             {versions.map((v, i) => (
               <div key={i} className="flex items-center justify-between bg-surface-elevated rounded p-2">
                 <span className="text-[13px] text-content-secondary">{v.label}</span>
@@ -1010,8 +1010,8 @@ function PromptEditorTab() {
         {promptLoading ? (
           <div className="card p-12 text-center text-sm text-content-tertiary">Loading prompt from Retell…</div>
         ) : promptError ? (
-          <div className="card p-6 border-red-500/20 bg-red-500/5">
-            <p className="text-[13px] font-semibold text-red-500 mb-1">Failed to load prompt</p>
+          <div className="card p-6 border-[#065E76]/20 bg-[#065E76]/5">
+            <p className="text-[13px] font-semibold text-[#065E76] mb-1">Failed to load prompt</p>
             <p className="text-[13px] text-content-secondary font-mono break-all">{promptError}</p>
             <button onClick={refetchPrompt} className="mt-3 text-xs text-brand hover:underline">Retry</button>
           </div>
@@ -1039,7 +1039,7 @@ function PromptEditorTab() {
       {/* Right: AI optimizer */}
       <div className="col-span-2 space-y-4">
         <div>
-          <h3 className="text-[13px] font-semibold text-content-secondary uppercase tracking-wider mb-1">AI Prompt Optimizer</h3>
+          <h3 className="text-[13px] font-semibold text-content-secondary tracking-wider mb-1">AI Prompt Optimizer</h3>
           <p className="text-[11px] text-content-tertiary">Reads {activeAgent === 'chris' ? 'Chris' : 'Cindy'}'s last 100 calls and suggests specific prompt improvements based on failure patterns</p>
         </div>
 
@@ -1084,7 +1084,7 @@ function PromptEditorTab() {
         )}
 
         <div className="card p-4 space-y-2">
-          <p className="text-[11px] font-semibold text-content-secondary uppercase tracking-wider">Quick Actions</p>
+          <p className="text-[11px] font-semibold text-content-secondary tracking-wider">Quick Actions</p>
           {[
             { label: 'Add Payer Playbooks', desc: 'Go to Payer Intelligence tab', action: null },
             { label: 'View Retell Dashboard', desc: 'Open agent in Retell', action: () => window.open('https://app.retellai.com', '_blank') },
