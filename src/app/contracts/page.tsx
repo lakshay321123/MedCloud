@@ -350,12 +350,12 @@ export default function ContractsPage() {
                                 file_name: file.name, content_type: 'application/pdf', document_type: 'contract',
                               })
                               await fetch(url, { method: 'PUT', body: file, headers: { 'Content-Type': 'application/pdf' } })
-                              const doc = await api.post('/documents', {
+                              const doc = await api.post<{ id: string }>('/documents', {
                                 file_name: file.name, s3_key: key, document_type: 'contract', doc_type: 'contract',
                                 content_type: 'application/pdf', file_size: file.size,
                               })
                               toast.success(`${file.name} uploaded — triggering AI extraction...`)
-                              await api.post(`/documents/${(doc as any).id}/textract`, {})
+                              await api.post(`/documents/${doc.id}/textract`, {})
                               toast.success('Textract processing started — rates will appear shortly')
                             } catch (err) {
                               toast.error(`Upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
@@ -367,12 +367,12 @@ export default function ContractsPage() {
                           toast.info('Re-extracting rates from current contract...')
                           try {
                             const { api } = await import('@/lib/api-client')
-                            const docs = await api.get<{ data: any[] }>('/documents', { document_type: 'contract', limit: 1 })
+                            const docs = await api.get<{ data: any[] }>('/documents', { document_type: 'contract', limit: 1, sort: '-created_at' })
                             const contractDoc = docs?.data?.[0]
                             if (!contractDoc) { toast.error('No contract document found — upload one first'); return }
                             await api.post(`/documents/${contractDoc.id}/extract-rates`, { payer_id: selected?.payerId })
                             toast.success('Rate extraction complete')
-                          } catch (err) { toast.error('Re-extraction failed — ensure a contract PDF is uploaded') }
+                          } catch (err) { toast.error(`Re-extraction failed: ${err instanceof Error ? err.message : 'Ensure a contract PDF is uploaded'}`) }
                         }} className="bg-brand/10 text-brand-dark rounded-lg px-4 py-2 text-xs hover:bg-brand/10 transition-colors">Re-Extract Current</button>
                       </div>
                     </div>

@@ -214,8 +214,11 @@ async function runSchemaMigration() {
         status VARCHAR(50) DEFAULT 'connected',
         last_sync TIMESTAMPTZ DEFAULT NOW(),
         created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW()
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(org_id, integration_id)
       );
+      CREATE INDEX IF NOT EXISTS idx_integration_configs_org ON integration_configs (org_id);
+      CREATE INDEX IF NOT EXISTS idx_integration_configs_integ ON integration_configs (integration_id);
       -- Drop old constraint (if it exists) and recreate with full list
       ALTER TABLE claims DROP CONSTRAINT IF EXISTS claims_status_check;
       ALTER TABLE claims ADD CONSTRAINT claims_status_check CHECK (status IN (

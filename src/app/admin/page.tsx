@@ -98,7 +98,7 @@ function UsersTab() {
     if (displayUsers.find(u => u.email === newUser.email)) { toast.error('User with this email already exists'); return }
     setCreating(true)
     try {
-      const result = await createUserAPI({ name: newUser.name, email: newUser.email, role: newUser.role, is_active: true } as any)
+      const result = await createUserAPI({ name: newUser.name, email: newUser.email, role: newUser.role, is_active: true })
       if (result) { toast.success(`User "${newUser.name}" created successfully`); refetchUsers() }
       else { toast.error('Failed to create user') }
     } catch (err) { toast.error(`Failed: ${err instanceof Error ? err.message : 'Unknown error'}`) }
@@ -115,7 +115,7 @@ function UsersTab() {
         await api.put(`/users/${user.id}`, { is_active: !active })
         toast.success(`${user.name} ${active ? 'disabled' : 'reactivated'}`)
         refetchUsers()
-      } catch { toast.error('Failed to update user status') }
+      } catch (err) { toast.error('Failed to update user status'); console.error(err) }
     } else {
       setLocalUsers(prev => prev.map(u => u.email === email ? { ...u, active: !active } : u))
       toast.success(`${user?.name} ${active ? 'disabled' : 'reactivated'}`)

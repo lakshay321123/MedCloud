@@ -56,8 +56,8 @@ function ConfigModal({ integration, onClose }: { integration: Integration; onClo
         status: 'connected',
       })
       toast.success(`${integration.name} connected successfully`)
-    } catch {
-      toast.success(`${integration.name} configuration saved`)
+    } catch (err) {
+      toast.error(`Failed to save configuration: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }
     setLoading(false)
     onClose()

@@ -267,20 +267,19 @@ export default function AnalyticsPage() {
     const denials = denialsApiResult?.data || []
     const payers = Array.from(new Set(claims.map(c => c.payer)))
     if (denials.length === 0) {
-      // Fallback: count denied claims per payer
       return payers.map(p => ({
         payer: p,
-        cats: denialCategories.map(cat => {
-          const payerClaims = claims.filter(c => c.payer === p && c.status === 'denied')
-          return Math.min(payerClaims.length, 5)
+        cats: denialCategories.map(() => {
+          return Math.min(claims.filter(c => c.payer === p && c.status === 'denied').length, 5)
         }),
       }))
     }
+    const claimPayerMap = new Map(claims.map(c => [c.id, c.payer]))
     return payers.map(p => ({
       payer: p,
       cats: denialCategories.map(cat => {
         return denials.filter((d: any) =>
-          (d.payer_name === p || claims.find(c => c.id === d.claim_id)?.payer === p) &&
+          (d.payer_name === p || claimPayerMap.get(d.claim_id) === p) &&
           (d.denial_category || '').toLowerCase().includes(cat.toLowerCase())
         ).length
       }),

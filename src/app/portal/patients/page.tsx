@@ -366,7 +366,7 @@ function PatientVisitsTab({ patientId }: { patientId: string }) {
     let cancelled = false
     api.get('/appointments', { patient_id: patientId, limit: 50 })
       .then((res: any) => { if (!cancelled) setVisits(Array.isArray(res) ? res : res?.data || []) })
-      .catch(() => {})
+      .catch((err) => { if (!cancelled) console.error('Failed to fetch visits:', err) })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [patientId])
