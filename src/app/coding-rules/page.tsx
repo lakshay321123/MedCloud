@@ -53,7 +53,7 @@ export default function CodingRulesPage() {
         setRules(data)
         setLoading(false)
       })
-      .catch(() => setLoading(false))
+      .catch((err) => { console.error('Failed to load coding rules:', err); setLoading(false) })
   }, [])
 
   const filtered = rules.filter(r => {

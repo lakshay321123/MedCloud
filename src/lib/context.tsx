@@ -126,14 +126,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Auto-select client for provider/client facility portal roles.
     // These users belong to exactly one practice — pre-select it so
     // useClientParams sends the right client_id on every API call.
-    // c0000000...101 = Irvine Family Practice (first US client in seed)
+    // c0000000...102 = Irvine Medical Group (first US client in seed)
     if (portal === 'facility' && (user.role === 'provider' || user.role === 'client')) {
       const savedClientId = localStorage.getItem('cosentus_selected_client')
       if (!savedClientId) {
-        // Default to Irvine Family Practice (matches seed data client_id)
         setSelectedClientState({
-          id: 'c0000000-0000-0000-0000-000000000101',
-          name: 'Irvine Family Practice',
+          id: 'c0000000-0000-0000-0000-000000000102',
+          name: 'Irvine Medical Group',
           region: 'us',
           ehr_mode: 'external_ehr',
         })
@@ -146,22 +145,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     api.get<{ data: Array<{ id: string; name: string; region: string; ehr_mode?: string }> }>('/clients')
       .then(res => {
         const data = Array.isArray(res) ? res : res?.data || []
-        const mapped: ClientOrg[] = data.map((c: any) => ({
+        const mapped: ClientOrg[] = data.map((c: { id: string; name: string; region: string; ehr_mode?: string }) => ({
           id: c.id, name: c.name, region: c.region || 'us', ehr_mode: c.ehr_mode || 'external_ehr',
         }))
         if (mapped.length > 0) setApiClients(mapped)
       })
-      .catch(() => {})
+      .catch((err) => { console.error('Failed to fetch clients:', err) })
   }, [])
 
   const direction = getDirection(language)
 
-  // Filter clients by logged-in region — uses real API data
+  // Static fallback clients — used only when API hasn't loaded yet
+  const STATIC_CLIENTS: ClientOrg[] = [
+    { id: 'c0000000-0000-0000-0000-000000000101', name: 'Gulf Medical Center', region: 'uae', ehr_mode: 'medcloud_ehr' },
+    { id: 'c0000000-0000-0000-0000-000000000102', name: 'Irvine Medical Group', region: 'us', ehr_mode: 'external_ehr' },
+    { id: 'c0000000-0000-0000-0000-000000000103', name: 'Patel Cardiology Associates', region: 'us', ehr_mode: 'medcloud_ehr' },
+    { id: 'c0000000-0000-0000-0000-000000000104', name: 'Dubai Wellness Clinic', region: 'uae', ehr_mode: 'external_ehr' },
+  ]
+
+  // Filter clients by logged-in region — API data takes precedence, falls back to static
   const clients = useMemo(() => {
-    if (apiClients.length === 0) return []
-    if (!country) return apiClients
+    const source = apiClients.length > 0 ? apiClients : STATIC_CLIENTS
+    if (!country) return source
     const region = country === 'usa' ? 'us' : 'uae'
-    return apiClients.filter(c => c.region === region)
+    return source.filter(c => c.region === region)
   }, [country, apiClients])
 
   // Clear selectedClient if it doesn't match current region

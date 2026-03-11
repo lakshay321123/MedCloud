@@ -10,10 +10,10 @@ const CLIENT_REGISTRY: Array<{ id: string; name: string; region: 'us' | 'uae' }>
 
 export type RegionType = 'us' | 'uae'
 
-export const UAE_ORG_IDS: readonly [string, ...string[]] = ['org-101', 'org-104']
-export const US_ORG_IDS: readonly [string, ...string[]]  = ['org-102', 'org-103']
+export const UAE_ORG_IDS: readonly [string, ...string[]] = ['c0000000-0000-0000-0000-000000000101', 'c0000000-0000-0000-0000-000000000104']
+export const US_ORG_IDS: readonly [string, ...string[]]  = ['c0000000-0000-0000-0000-000000000102', 'c0000000-0000-0000-0000-000000000103', 'c0000000-0000-0000-0000-000000000105']
 export const UAE_CLIENT_NAMES = ['Gulf Medical Center', 'Dubai Wellness Clinic'] as const
-export const US_CLIENT_NAMES  = ['Irvine Family Practice', 'Patel Cardiology'] as const
+export const US_CLIENT_NAMES  = ['Irvine Medical Group', 'Patel Cardiology Associates', 'Cosentus Demo'] as const
 
 export function getOrgRegion(orgId: string): RegionType {
   return (CLIENT_REGISTRY.find(c => c.id === orgId)?.region as RegionType) ?? 'us'

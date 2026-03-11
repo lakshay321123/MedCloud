@@ -304,15 +304,19 @@ function ARDrawer({
   const handleWriteoff = async () => {
     if (!writeoffReason) { toast.error('Select a reason for write-off'); return }
     try {
-      await requestWriteOff({
+      const result = await requestWriteOff({
         claim_id: account.id,
         amount: account.balance,
         reason: writeoffReason,
         category: writeoffReason,
       })
-      toast.success('Write-off request submitted — pending supervisor approval')
-      setShowWriteoffModal(false)
-      setWriteoffReason('')
+      if (result) {
+        toast.success('Write-off request submitted — pending supervisor approval')
+        setShowWriteoffModal(false)
+        setWriteoffReason('')
+      } else {
+        toast.error('Write-off request failed — no response from server')
+      }
     } catch (err) { toast.error(`Write-off failed: ${err instanceof Error ? err.message : 'Unknown error'}`); console.error(err) }
   }
 
