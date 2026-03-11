@@ -370,7 +370,7 @@ export default function ContractsPage() {
                             const docs = await api.get<{ data: any[] }>('/documents', { document_type: 'contract', limit: 1 })
                             const contractDoc = docs?.data?.[0]
                             if (!contractDoc) { toast.error('No contract document found — upload one first'); return }
-                            await api.post(`/documents/${contractDoc.id}/extract-rates`, { payer_id: selected?.payer_id })
+                            await api.post(`/documents/${contractDoc.id}/extract-rates`, { payer_id: selected?.payerId })
                             toast.success('Rate extraction complete')
                           } catch (err) { toast.error('Re-extraction failed — ensure a contract PDF is uploaded') }
                         }} className="bg-brand/10 text-brand-dark rounded-lg px-4 py-2 text-xs hover:bg-brand/10 transition-colors">Re-Extract Current</button>
