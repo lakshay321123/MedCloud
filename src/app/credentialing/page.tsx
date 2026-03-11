@@ -16,7 +16,7 @@ type Provider = typeof providers[0]
 export default function CredentialingPage() {
   const { toast } = useToast()
   const { t } = useT()
-  const { selectedClient, country } = useApp()
+  const { selectedClient } = useApp()
   const [selected, setSelected] = useState<Provider | null>(null)
   const { data: apiCredResult } = useCredentialing({ limit: 50 })
   const { mutate: updateCred } = useUpdateCredentialing(selected?.id || '')

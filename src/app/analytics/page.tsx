@@ -106,7 +106,7 @@ function HeatCell({ value }: { value: number }) {
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
-  const { selectedClient, country, currentUser } = useApp()
+  const { selectedClient, currentUser } = useApp()
   const { t } = useT()
   const { toast } = useToast()
   const isProvider = currentUser?.role === 'provider'
@@ -158,7 +158,7 @@ export default function AnalyticsPage() {
     if (selectedClient) return apiClaims.filter(c => c.clientId === selectedClient.id)
     // Region filtering handled by backend via useClientParams
     return apiClaims
-  }, [claimsApiResult, selectedClient, country])
+  }, [claimsApiResult, selectedClient])
 
   // ─── Financial calculations ───────────────────────────────────────────────
   const revenueCollected = useMemo(() =>

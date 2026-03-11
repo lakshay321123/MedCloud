@@ -59,7 +59,7 @@ type DenialRow = {
 }
 
 export default function DenialsPage() {
-  const { selectedClient, country, currentUser } = useApp()
+  const { selectedClient, currentUser } = useApp()
   const { t } = useT()
   const { toast } = useToast()
   const router = useRouter()

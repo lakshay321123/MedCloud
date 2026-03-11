@@ -465,7 +465,7 @@ function CodingRulesPanel() {
 
 export default function CodingPage() {
   const router = useRouter()
-  const { selectedClient, currentUser, country } = useApp()
+  const { selectedClient, currentUser } = useApp()
   const { t } = useT()
   const [reassignTarget, setReassignTarget] = useState<string | null>(null)
   const { toast } = useToast()

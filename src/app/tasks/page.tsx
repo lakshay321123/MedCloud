@@ -109,7 +109,7 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
 export default function TasksPage() {
   const { toast } = useToast()
   const { t } = useT()
-  const { country, selectedClient } = useApp()
+  const { selectedClient } = useApp()
   const [selected, setSelected] = useState<Task | null>(null)
   const [showCreate, setShowCreate] = useState(false)
 

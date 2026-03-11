@@ -44,7 +44,7 @@ type TabKey = 'all' | '837' | '835' | '270' | '276' | 'dha'
 
 export default function EDITransactionsPage() {
   const { t } = useT()
-  const { selectedClient, country } = useApp()
+  const { selectedClient } = useApp()
 
   return (
     <ModuleShell title="EDI Transactions">
@@ -56,7 +56,7 @@ export default function EDITransactionsPage() {
 function EDIContent() {
   const { t } = useT()
   const { toast } = useToast()
-  const { selectedClient, country } = useApp()
+  const { selectedClient } = useApp()
   const { data: apiResult, loading, error, refetch } = useEDITransactions({ limit: 500 })
 
   const [tab, setTab] = useState<TabKey>('all')
@@ -73,7 +73,7 @@ function EDIContent() {
       // Region filtering handled by backend via useClientParams
       return true
     })
-  }, [apiResult, selectedClient, country])
+  }, [apiResult, selectedClient])
 
   // Tab filter
   const tabFiltered = useMemo(() => {

@@ -216,7 +216,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
 }
 
 function AllDocsTab() {
-  const { selectedClient, country } = useApp()
+  const { selectedClient } = useApp()
   const { data: apiDocRaw } = useDocuments()
   const apiDocs: DemoDocRecord[] = (Array.isArray(apiDocRaw) ? apiDocRaw : (apiDocRaw as any)?.data || []).map((d: ApiDocument) => ({
     id: d.id, name: d.file_name || 'document',

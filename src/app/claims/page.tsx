@@ -982,7 +982,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function ClaimsPage() {
-  const { selectedClient, country } = useApp()
+  const { selectedClient } = useApp()
   const { t } = useT()
   const { toast } = useToast()
   const router = useRouter()
@@ -1035,7 +1035,7 @@ export default function ClaimsPage() {
       if (typeof av === 'string' && typeof bv === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
       return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number)
     })
-  }, [apiResult, selectedClient, country, search, statusFilters, dosFrom, dosTo, sortKey, sortDir])
+  }, [apiResult, selectedClient, search, statusFilters, dosFrom, dosTo, sortKey, sortDir])
 
   const paginated = allClaims.slice((page - 1) * PER_PAGE, page * PER_PAGE)
   const totalPages = Math.ceil(allClaims.length / PER_PAGE)

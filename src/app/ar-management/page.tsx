@@ -708,7 +708,7 @@ function InboundCallPanel({ accounts: accountsList }: { accounts: ARAccount[] })
 }
 
 export default function ARManagementPage() {
-  const { selectedClient, country } = useApp()
+  const { selectedClient } = useApp()
   const { t } = useT()
   const { toast } = useToast()
   const { mutate: createTask } = useCreateTask()
