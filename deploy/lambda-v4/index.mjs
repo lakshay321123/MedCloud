@@ -204,6 +204,21 @@ async function runSchemaMigration() {
       ALTER TABLE ar_call_log ADD COLUMN IF NOT EXISTS follow_up_action TEXT;
 
       -- ── claims: fix status CHECK constraint to include all valid statuses ─────
+      -- ── integration_configs: persist integration hub settings ────────────────
+      CREATE TABLE IF NOT EXISTS integration_configs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        org_id UUID NOT NULL, client_id UUID,
+        integration_id VARCHAR(100) NOT NULL,
+        integration_name VARCHAR(200),
+        config JSONB DEFAULT '{}',
+        status VARCHAR(50) DEFAULT 'connected',
+        last_sync TIMESTAMPTZ DEFAULT NOW(),
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(org_id, integration_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_integration_configs_org ON integration_configs (org_id);
+      CREATE INDEX IF NOT EXISTS idx_integration_configs_integ ON integration_configs (integration_id);
       -- Drop old constraint (if it exists) and recreate with full list
       ALTER TABLE claims DROP CONSTRAINT IF EXISTS claims_status_check;
       ALTER TABLE claims ADD CONSTRAINT claims_status_check CHECK (status IN (
@@ -7943,6 +7958,7 @@ export const handler = async (event) => {
       'encounters': 'encounters',
       'tasks': 'tasks',
       'credentialing': 'credentialing',
+      'integration-configs': 'integration_configs',
     };
 
     // Sub-routes that should NOT be caught by generic CRUD
@@ -9465,8 +9481,11 @@ export const handler = async (event) => {
         return respond(200, await checkSLAEscalations(effectiveOrgId));
       }
       if (method === 'GET' && !pathParams.id) {
-        const statusFilter = qs.status ? `AND t.status = '${qs.status.replace(/'/g, "''")}'` : '';
-        const assignedFilter = qs.assigned_to ? `AND t.assigned_to = '${qs.assigned_to.replace(/'/g, "''")}'` : '';
+        const params = clientId ? [effectiveOrgId, clientId] : [effectiveOrgId];
+        let statusFilter = '';
+        if (qs.status) { params.push(qs.status); statusFilter = `AND t.status = $${params.length}`; }
+        let assignedFilter = '';
+        if (qs.assigned_to) { params.push(qs.assigned_to); assignedFilter = `AND t.assigned_to = $${params.length}`; }
         const data = await orgQuery(effectiveOrgId, `
           SELECT t.*, 
                  EXTRACT(DAY FROM NOW() - t.created_at) as age_days,
@@ -9477,8 +9496,8 @@ export const handler = async (event) => {
           ORDER BY 
             CASE t.priority WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 ELSE 4 END,
             t.due_date ASC NULLS LAST
-          LIMIT 500`, clientId ? [effectiveOrgId, clientId] : [effectiveOrgId]);
-        return respond(200, data.rows);
+          LIMIT 500`, params);
+        return respond(200, { data: data.rows, meta: { total: data.rows.length, page: 1, limit: 500 } });
       }
       if (method === 'GET' && pathParams.id) {
         const r = await getById('tasks', pathParams.id);

@@ -5,7 +5,7 @@ import React, { useState, useMemo } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
-import { useClaims, useReport, useClientHealthScores, useProviders, useClients } from '@/lib/hooks'
+import { useClaims, useDenials, useReport, useClientHealthScores, useProviders, useClients } from '@/lib/hooks'
 import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
 import { useAnalyticsKPIs } from '@/lib/hooks'
 import {
@@ -145,6 +145,7 @@ export default function AnalyticsPage() {
   // Live API
   const { data: liveKPIs } = useAnalyticsKPIs()
   const { data: claimsApiResult } = useClaims({ limit: 500 })
+  const { data: denialsApiResult } = useDenials({ limit: 500 })
 
   const claims = useMemo(() => {
     const apiClaims = (claimsApiResult?.data || []).map(c => ({
@@ -261,19 +262,29 @@ export default function AnalyticsPage() {
     }))
   }, [claims])
 
-  // ─── Denial heatmap data ─────────────────────────────────────────────────
+  // ─── Denial heatmap data — computed from real denials ───────────────────
   const heatData = useMemo(() => {
+    const denials = denialsApiResult?.data || []
     const payers = Array.from(new Set(claims.map(c => c.payer)))
-    const seedRng = (str: string) => {
-      let h = 0
-      for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0
-      return Math.abs(h) % 10
+    if (denials.length === 0) {
+      return payers.map(p => ({
+        payer: p,
+        cats: denialCategories.map(() => {
+          return Math.min(claims.filter(c => c.payer === p && c.status === 'denied').length, 5)
+        }),
+      }))
     }
+    const claimPayerMap = new Map(claims.map(c => [c.id, c.payer]))
     return payers.map(p => ({
       payer: p,
-      cats: denialCategories.map(cat => seedRng(p + cat) % 5),
+      cats: denialCategories.map(cat => {
+        return denials.filter((d: any) =>
+          (d.payer_name === p || claimPayerMap.get(d.claim_id) === p) &&
+          (d.denial_category || '').toLowerCase().includes(cat.toLowerCase())
+        ).length
+      }),
     }))
-  }, [claims])
+  }, [claims, denialsApiResult])
 
   // ─── Computed monthly revenue + denial trends from real claims ──────────
   const monthlyRevenue = useMemo(() => {

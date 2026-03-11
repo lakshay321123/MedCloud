@@ -358,6 +358,36 @@ function AddPatientModal({ onClose, onSaved }: { onClose: () => void; onSaved?: 
 
 type DetailTab = 'demographics' | 'address' | 'insurance' | 'emergency' | 'employment' | 'documents' | 'visits' | 'messages'
 
+// ── Patient Visits Tab ────────────────────────────────────────────────────
+function PatientVisitsTab({ patientId }: { patientId: string }) {
+  const [visits, setVisits] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    let cancelled = false
+    api.get('/appointments', { patient_id: patientId, limit: 50 })
+      .then((res: any) => { if (!cancelled) setVisits(Array.isArray(res) ? res : res?.data || []) })
+      .catch((err) => { if (!cancelled) console.error('Failed to fetch visits:', err) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [patientId])
+
+  if (loading) return <div className="text-center py-8 text-[13px] text-content-secondary">Loading visits…</div>
+  if (visits.length === 0) return <div className="text-center py-8 text-[13px] text-content-secondary">No visit history yet.</div>
+  return (
+    <div className="space-y-2">
+      {visits.map((v: any) => (
+        <div key={v.id} className="flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2.5">
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium">{v.visit_type || v.appointment_type || 'Office Visit'}</p>
+            <p className="text-[11px] text-content-tertiary">{v.provider_name || 'Provider'} · {v.appointment_date ? new Date(v.appointment_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : v.dos || ''}</p>
+          </div>
+          <span className={`text-[11px] px-2 py-0.5 rounded-md ${v.status === 'completed' ? 'bg-brand-pale0/50 text-brand-deep' : 'bg-gray-100 text-gray-500'}`}>{v.status || 'scheduled'}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Patient Messages Tab ───────────────────────────────────────────────────
 function PatientMessagesTab({ patientId, clientId, patientName }: { patientId: string; clientId: string; patientName: string }) {
   const { currentUser } = useApp()
@@ -705,7 +735,7 @@ function PatientDetailDrawer({ patient, onClose }: { patient: DemoPatient; onClo
           )}
 
           {tab === 'documents' && <PatientDocumentsTab patientId={localPatient.id} patientName={`${localPatient.firstName} ${localPatient.lastName}`} />}
-          {tab === 'visits' && <div className="text-center py-8 text-[13px] text-content-secondary">No visit history yet.</div>}
+          {tab === 'visits' && <PatientVisitsTab patientId={localPatient.id} />}
           {tab === 'messages' && (
             <PatientMessagesTab patientId={localPatient.id} clientId={localPatient.clientId} patientName={`${localPatient.firstName} ${localPatient.lastName}`} />
           )}

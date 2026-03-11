@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
-import { useAuditLog, useClients, useProviders, useInvoices, useGenerateInvoice, useInvoiceConfigs, usePatientAccessRequests, useClientOnboardings, useInitOnboarding } from '@/lib/hooks'
+import { useAuditLog, useClients, useProviders, useInvoices, useGenerateInvoice, useInvoiceConfigs, usePatientAccessRequests, useClientOnboardings, useInitOnboarding, useUsers, useCreateUser, useUpdateUser } from '@/lib/hooks'
 import { Users, Building2, Activity, Shield, X, Search, Plus, Receipt, ClipboardList, KeyRound } from 'lucide-react'
 
 const roleColors: Record<string,string> = {
@@ -78,30 +78,49 @@ function UsersTab() {
   const { toast } = useToast()
   const [showAdd, setShowAdd] = useState(false)
   const [search, setSearch] = useState('')
+  const { data: apiUserResult, refetch: refetchUsers } = useUsers({ limit: 100 })
+  const { mutate: createUserAPI } = useCreateUser()
+  const apiUsers = (apiUserResult?.data || []).map((u) => ({
+    name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email, email: u.email, role: u.role || 'coder',
+    clients: 'All', lastLogin: u.created_at?.slice(0, 10) || 'Never',
+    active: u.is_active !== false, id: u.id,
+  }))
   const [localUsers, setLocalUsers] = useState(users)
+  const displayUsers = apiUsers.length > 0 ? apiUsers : localUsers
   const [newUser, setNewUser] = useState({ name: '', email: '', role: 'coder', clients: '' })
   const [creating, setCreating] = useState(false)
   const [editingUser, setEditingUser] = useState<typeof users[0] | null>(null)
-  const filtered = localUsers.filter(u => !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()))
+  const filtered = displayUsers.filter(u => !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()))
 
   async function handleCreateUser() {
     if (!newUser.name.trim()) { toast.error('Full name required'); return }
     if (!newUser.email.trim() || !newUser.email.includes('@')) { toast.error('Valid email required'); return }
-    if (localUsers.find(u => u.email === newUser.email)) { toast.error('User with this email already exists'); return }
+    if (displayUsers.find(u => u.email === newUser.email)) { toast.error('User with this email already exists'); return }
     setCreating(true)
-    // Simulate API call — backend user endpoint not yet deployed
-    await new Promise(r => setTimeout(r, 800))
-    setLocalUsers(prev => [...prev, { name: newUser.name, email: newUser.email, role: newUser.role, clients: newUser.clients || 'All', lastLogin: 'Never', active: true }])
-    toast.success(`User "${newUser.name}" created. Invite email sent to ${newUser.email}`)
+    try {
+      const nameParts = newUser.name.trim().split(/\s+/)
+      const result = await createUserAPI({ first_name: nameParts[0] || '', last_name: nameParts.slice(1).join(' ') || '', email: newUser.email, role: newUser.role, is_active: true })
+      if (result) { toast.success(`User "${newUser.name}" created successfully`); refetchUsers() }
+      else { toast.error('Failed to create user') }
+    } catch (err) { toast.error(`Failed: ${err instanceof Error ? err.message : 'Unknown error'}`) }
     setNewUser({ name: '', email: '', role: 'coder', clients: '' })
     setShowAdd(false)
     setCreating(false)
   }
 
-  function handleToggleActive(email: string, active: boolean) {
-    setLocalUsers(prev => prev.map(u => u.email === email ? { ...u, active: !active } : u))
-    const user = localUsers.find(u => u.email === email)
-    toast.success(`${user?.name} ${active ? 'disabled' : 'reactivated'}`)
+  async function handleToggleActive(email: string, active: boolean) {
+    const user = displayUsers.find(u => u.email === email)
+    if (user && 'id' in user && user.id) {
+      try {
+        const { api } = await import('@/lib/api-client')
+        await api.put(`/users/${user.id}`, { is_active: !active })
+        toast.success(`${user.name} ${active ? 'disabled' : 'reactivated'}`)
+        refetchUsers()
+      } catch (err) { toast.error('Failed to update user status'); console.error(err) }
+    } else {
+      setLocalUsers(prev => prev.map(u => u.email === email ? { ...u, active: !active } : u))
+      toast.success(`${user?.name} ${active ? 'disabled' : 'reactivated'}`)
+    }
   }
 
   return (

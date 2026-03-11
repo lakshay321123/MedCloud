@@ -45,9 +45,22 @@ const statusColor = (s: string) => ({ connected:'text-brand-dark dark:text-brand
 function ConfigModal({ integration, onClose }: { integration: Integration; onClose: () => void }) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
-  function handleSave() {
+  async function handleSave() {
     setLoading(true)
-    setTimeout(()=>{ setLoading(false); toast.success(`${integration.name} connected successfully`); onClose() }, 1800)
+    try {
+      const { api } = await import('@/lib/api-client')
+      await api.post('/integration-configs', {
+        integration_id: integration.id,
+        integration_name: integration.name,
+        config: { category: integration.category },
+        status: 'connected',
+      })
+      toast.success(`${integration.name} connected successfully`)
+    } catch (err) {
+      toast.error(`Failed to save configuration: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
+    setLoading(false)
+    onClose()
   }
   return (
     <>

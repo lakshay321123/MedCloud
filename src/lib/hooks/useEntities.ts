@@ -147,6 +147,7 @@ export interface ApiCodingItem {
   patient_id?: string
   provider_id?: string
   soap_note_id?: string
+  encounter_id?: string
   status?: string
   received_at?: string
   priority?: Priority
@@ -2017,4 +2018,12 @@ export interface ApiUser {
 export function useUsers(extra?: ApiListParams) {
   const params = useClientParams(extra)
   return useApi<ApiListResponse<ApiUser>>('/users', params)
+}
+
+export function useCreateUser() {
+  return useMutation<ApiUser, Partial<ApiUser>>('post', '/users')
+}
+
+export function useUpdateUser(id: string) {
+  return useMutation<ApiUser, Partial<ApiUser>>('put', `/users/${id}`)
 }
