@@ -288,6 +288,7 @@ function ARDrawer({
   const [showWriteoffModal, setShowWriteoffModal] = useState(false)
   const [writeoffReason, setWriteoffReason] = useState('')
   const { mutate: createTask } = useCreateTask()
+  const { mutate: logCall } = useLogARCall()
   const { mutate: submitAppeal } = useSubmitAppeal(account.denialId || '')
   const { mutate: requestInfo, loading: requestingInfo } = useARRequestInfo()
   const { mutate: escalateClaim, loading: escalating } = useARescalate()
@@ -532,10 +533,18 @@ function ARDrawer({
             <div className="space-y-3">
               <textarea rows={4} placeholder="Add a note…" value={followUpNote} onChange={e => setFollowUpNote(e.target.value)}
                 className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-[13px] text-content-secondary placeholder:text-content-tertiary focus:outline-none focus:border-brand/40 resize-none" />
-              <button onClick={() => {
+              <button onClick={async () => {
                 if (!followUpNote.trim()) return
-                toast.success('Note saved')
-                setFollowUpNote('')
+                try {
+                  await logCall({
+                    claim_id: account.id,
+                    call_type: 'note',
+                    outcome: followUpNote.trim(),
+                    notes: followUpNote.trim(),
+                  })
+                  toast.success('Note saved')
+                  setFollowUpNote('')
+                } catch { toast.error('Failed to save note') }
               }} className="bg-brand text-white rounded-lg px-4 py-2 text-[12px]">Save Note</button>
               <div className="border-t border-separator pt-3">
                 <p className="text-[11px] text-content-tertiary mb-2">Previous Notes</p>
