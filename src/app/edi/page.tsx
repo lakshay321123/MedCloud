@@ -9,7 +9,7 @@ import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 import { useEDITransactions, useCreateEDITransaction } from '@/lib/hooks'
 import type { ApiEDITransaction } from '@/lib/hooks'
-import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
+// Region filtering handled by backend
 import {
   ArrowLeftRight, FileText, Download, Upload, Search, X, Eye,
   CheckCircle2, AlertTriangle, Clock, RefreshCw, Filter, Copy,

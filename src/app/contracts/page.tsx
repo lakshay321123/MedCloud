@@ -7,7 +7,7 @@ import { useToast } from '@/components/shared/Toast'
 import { useFeeSchedules, usePayerConfigs, useUnderpaymentCheck, useExtractContractRates, useCreateFeeSchedule, useUpdateFeeSchedule } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { useApp } from '@/lib/context'
-import { UAE_ORG_IDS, US_ORG_IDS, filterPayersByCountry } from '@/lib/utils/region'
+import { filterPayersByCountry } from '@/lib/utils/region'
 import { Scale, Search, AlertTriangle, Edit2, Plus } from 'lucide-react'
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {

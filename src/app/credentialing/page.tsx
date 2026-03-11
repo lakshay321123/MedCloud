@@ -7,7 +7,7 @@ import { useToast } from '@/components/shared/Toast'
 import { BadgeCheck, AlertTriangle, X } from 'lucide-react'
 import { useCredentialing, useUpdateCredentialing, useCreateCredentialing, useCredentialingDashboard, useCreateEnrollment } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
-import { UAE_CLIENT_NAMES, US_CLIENT_NAMES } from '@/lib/utils/region'
+// Region filtering handled by backend
 
 const providers: Array<{ id: string; name: string; npi: string; client: string; license: string; malpractice: string; dea: string; caqh: string; payers: number; status: string }> = []
 
@@ -43,9 +43,8 @@ export default function CredentialingPage() {
 
   const filteredProviders = baseProviders.filter(p => {
     if (selectedClient) return p.client === selectedClient.name
-    if (country === 'uae') return UAE_CLIENT_NAMES.includes(p.client as typeof UAE_CLIENT_NAMES[number])
-    // Default to US (country null or 'usa') — never mix UAE + US data
-    return US_CLIENT_NAMES.includes(p.client as typeof US_CLIENT_NAMES[number])
+    // Region filtering handled by backend via useClientParams
+    return true
   })
 
   const activeCount = filteredProviders.filter(p => p.status === 'active').length

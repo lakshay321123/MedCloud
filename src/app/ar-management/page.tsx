@@ -3,7 +3,7 @@ import { useT } from '@/lib/i18n'
 import React, { useState, useMemo } from 'react'
 import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
-import { UAE_CLIENT_NAMES, US_CLIENT_NAMES } from '@/lib/utils/region'
+// Region filtering handled by backend
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -803,8 +803,7 @@ export default function ARManagementPage() {
 
   const filtered = accounts.filter(a => {
     if (selectedClient) return a.client.includes(selectedClient.name.split(' ')[0])
-    if (country === 'uae') return UAE_CLIENT_NAMES.some(n => a.client.includes(n.split(' ')[0]))
-    if (country === 'usa') return US_CLIENT_NAMES.some(n => a.client.includes(n.split(' ')[0]))
+    // Region filtering handled by backend via useClientParams
     return true
   })
 

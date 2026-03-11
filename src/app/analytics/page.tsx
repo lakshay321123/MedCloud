@@ -6,7 +6,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { useClaims, useDenials, useReport, useClientHealthScores, useProviders, useClients } from '@/lib/hooks'
-import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
+// Region filtering handled by backend
 import { useAnalyticsKPIs } from '@/lib/hooks'
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,

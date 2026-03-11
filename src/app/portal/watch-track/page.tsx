@@ -7,7 +7,7 @@ import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { FileText, DollarSign, Clock, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react'
 import { useApp } from '@/lib/context'
-import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
+// Region filtering handled by backend
 
 export default function WatchTrackPage() {
   const [statusFilter, setStatusFilter] = useState('')

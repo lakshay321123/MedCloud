@@ -12,7 +12,7 @@ import {
 import { api } from '@/lib/api-client'
 import type { ApiEligibilityCheck, ApiPriorAuth, ApiPatient } from '@/lib/hooks'
 import { ErrorBanner } from '@/components/shared/ApiStates'
-import { filterByRegion } from '@/lib/utils/region'
+// Region filtering handled by backend
 import {
   ShieldCheck, AlertTriangle, CheckCircle2, Clock, Search, X, Plus,
   RefreshCw, ChevronDown, ChevronUp, FileText, Phone, Calendar,

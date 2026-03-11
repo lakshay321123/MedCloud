@@ -6,7 +6,7 @@ import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import DocViewer from '@/components/shared/DocViewer'
 import { useApp } from '@/lib/context'
-import { UAE_ORG_IDS, US_ORG_IDS, getOrgRegion } from '@/lib/utils/region'
+// Region filtering handled by backend
 import type { DemoClaim, ClaimTimelineEvent } from '@/lib/demo-data'
 import { useToast } from '@/components/shared/Toast'
 import { useRouter } from 'next/navigation'

@@ -9,7 +9,7 @@ import type { DemoDocRecord, DemoFax } from '@/lib/demo-data'
 import { useDocuments, usePatients, useRequestUploadUrl, useCreateDocument, useCreateCoding } from '@/lib/hooks'
 import type { ApiDocument } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
-import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
+// Region filtering handled by backend
 import {
   Search, Upload, X, Download, AlertTriangle, FileText, CreditCard,
   DollarSign, XCircle, Stethoscope, File, Eye, Send

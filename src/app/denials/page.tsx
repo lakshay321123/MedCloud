@@ -10,7 +10,7 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import { ShieldAlert, FileText, AlertTriangle, Send, X, Plus, Edit2, Trash2, ChevronDown } from 'lucide-react'
 import { useToast } from '@/components/shared/Toast'
 import { useDenials, useSubmitAppeal, useCheckAppealDeadlines } from '@/lib/hooks'
-import { filterByRegion } from '@/lib/utils/region'
+// Region filtering handled by backend
 import { ErrorBanner } from '@/components/shared/ApiStates'
 import { sanitizeForPrompt } from '@/lib/ai-utils'
 

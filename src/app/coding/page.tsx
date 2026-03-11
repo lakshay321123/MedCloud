@@ -10,7 +10,7 @@ import { getSLAStatus } from '@/lib/utils/time'
 import { useCodingQueue, useUsers } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { sanitizeForPrompt } from '@/lib/ai-utils'
-import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
+// Region filtering handled by backend
 import {
   BrainCircuit, CheckCircle2, Activity, Clock, MessageCircle, Mic, FileUp,
   ChevronDown, ChevronUp, Play, FileText, AlertTriangle, Plus, PauseCircle,
