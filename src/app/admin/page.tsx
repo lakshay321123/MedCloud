@@ -222,12 +222,13 @@ function UsersTab() {
                     })
                     toast.success(`User "${editingUser.name}" updated`)
                     refetchUsers()
+                    setEditingUser(null)
                   } catch (err) { toast.error(`Update failed: ${err instanceof Error ? err.message : 'Unknown error'}`); console.error(err) }
                 } else {
                   setLocalUsers(prev=>prev.map(u=>u.email===editingUser.email?{...editingUser}:u))
                   toast.success(`User "${editingUser.name}" updated`)
+                  setEditingUser(null)
                 }
-                setEditingUser(null)
               }} className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">Save Changes</button>
             </div>
           </div>

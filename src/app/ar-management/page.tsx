@@ -311,9 +311,9 @@ function ARDrawer({
         category: writeoffReason,
       })
       toast.success('Write-off request submitted — pending supervisor approval')
+      setShowWriteoffModal(false)
+      setWriteoffReason('')
     } catch (err) { toast.error(`Write-off failed: ${err instanceof Error ? err.message : 'Unknown error'}`); console.error(err) }
-    setShowWriteoffModal(false)
-    setWriteoffReason('')
   }
 
   const TABS = [

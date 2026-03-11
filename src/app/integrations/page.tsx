@@ -215,7 +215,7 @@ export default function IntegrationsPage() {
                       const r = await api.get<{ status: string; database: string }>('/health', {})
                       if (r?.status === 'healthy') toast.success(`${intg.name} — connection healthy (DB: ${r.database})`)
                       else toast.success(`${intg.name} — responded`)
-                    } catch { toast.success(`${intg.name} — endpoint reachable`) }
+                    } catch (err) { toast.error(`${intg.name} — connection test failed`); console.error(err) }
                   }} className="flex-1 text-[11px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-secondary transition-colors">Test</button>}
                   <button onClick={()=>setLogsFor(intg)} className="flex-1 text-[11px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-secondary transition-colors">Logs</button>
                 </div>
