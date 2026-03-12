@@ -2653,7 +2653,19 @@ async function aiAutoCode(codingQueueId, orgId, userId, coderInstructions = '', 
   if (item.document_id) {
     docSource = await getById('documents', item.document_id);
   }
-  // Fallback: search by patient_id for superbill/clinical docs (same as chargeCapture)
+  // Fallback 1: search by encounter_id for this specific visit's documents
+  if (!docSource && item.encounter_id) {
+    try {
+      const encDocR = await pool.query(
+        `SELECT * FROM documents WHERE encounter_id = $1 AND org_id = $2 AND textract_status = 'completed'
+         AND (doc_type ILIKE '%superbill%' OR doc_type ILIKE '%clinical%' OR doc_type IN ('superbill','Superbill','Other'))
+         ORDER BY created_at DESC LIMIT 1`,
+        [item.encounter_id, orgId]
+      );
+      if (encDocR.rows[0]) docSource = encDocR.rows[0];
+    } catch (e) { safeLog('warn', `AI: encounter doc search error: ${e.message}`); }
+  }
+  // Fallback 2: search by patient_id (broader — may pick different encounter's doc)
   if (!docSource && item.patient_id) {
     try {
       const patDocR = await pool.query(
@@ -7472,13 +7484,18 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
 
         // Use Sonnet for document extraction — reliable, supports document type
         const DOC_EXTRACT_MODEL = 'us.anthropic.claude-sonnet-4-20250514-v1:0';
+        // Bedrock: images (PNG/JPEG) → ImageBlock; PDFs/docs → DocumentBlock
+        const isImage = mediaType.startsWith('image/');
+        const contentBlock = isImage
+          ? { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } }
+          : { type: 'document', source: { type: 'base64', media_type: mediaType, data: base64 } };
         const bedrockBody = JSON.stringify({
           anthropic_version: 'bedrock-2023-05-31',
           max_tokens: 1500,
           messages: [{
             role: 'user',
             content: [
-              { type: 'document', source: { type: 'base64', media_type: mediaType, data: base64 } },
+              contentBlock,
               { type: 'text', text: extractPrompt }
             ]
           }]
@@ -7859,7 +7876,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
         }
         const item = await create('coding_queue', { ...body, status: body.status || 'pending' }, effectiveOrgId);
         // (a) Auto-trigger AI coding if clinical data is available — fire & forget
-        if (item.soap_note_id || item.document_id || item.patient_id) {
+        if (item.soap_note_id || item.document_id || item.encounter_id) {
           aiAutoCode(item.id, effectiveOrgId, userId).then(result => {
             safeLog('info', `Auto-coded ${item.id}: ${result.mock ? 'mock' : 'bedrock'}, confidence=${result.confidence}`);
           }).catch(e => safeLog('warn', `Auto-code failed for ${item.id}: ${e.message}`));
@@ -8722,7 +8739,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
         const existing = await getById('patients', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Patient not found' });
         // Comprehensive FK safety check
-        const fkTables = ['claims', 'appointments', 'encounters', 'documents', 'coding_queue'];
+        const fkTables = ['claims', 'appointments', 'encounters', 'documents', 'coding_queue', 'soap_notes', 'prior_auth_requests', 'charge_captures'];
         const blockers = [];
         for (const t of fkTables) {
           const r = await pool.query(`SELECT COUNT(*) as cnt FROM ${t} WHERE patient_id = $1 AND org_id = $2`, [pathParams.id, effectiveOrgId]).catch(() => ({ rows: [{ cnt: '0' }] }));

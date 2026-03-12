@@ -560,7 +560,15 @@ export default function CodingPage() {
           const tr = typeof doc.textract_result === 'string' ? JSON.parse(doc.textract_result) : doc.textract_result
           const cptParsed = tr?.fields?.cpt_codes?.parsed || []
           const icdParsed = tr?.fields?.diagnoses?.parsed || []
-          if (cptParsed.length === 0 && icdParsed.length === 0) needsExtraction = true
+          if (cptParsed.length > 0 || icdParsed.length > 0) {
+            // Already extracted with codes — link and stop
+            if (codingItem.id) {
+              try { await api.patch(`/coding/${codingItem.id}`, { document_id: doc.id } as any) } catch (err) { console.warn('[coding] Failed to link doc:', err) }
+            }
+            console.log(`[coding] Linked existing extraction: ${cptParsed.length} CPT + ${icdParsed.length} ICD (doc ${doc.id.substring(0, 8)})`)
+            break
+          }
+          needsExtraction = true
         }
         if (needsExtraction) {
           // Call Lambda — reads from S3, sends to Bedrock, saves results. All within AWS.
@@ -570,7 +578,7 @@ export default function CodingPage() {
             if (codingItem.id) {
               try { await api.patch(`/coding/${codingItem.id}`, { document_id: doc.id } as any) } catch (err) { console.warn('[coding] Failed to link doc:', err) }
             }
-            console.log(`[coding] Extracted ${extractResp.fields?.cpt_codes?.length || 0} CPT + ${extractResp.fields?.icd_codes?.length || 0} ICD from ${doc.file_name} (Bedrock in AWS)`)
+            console.log(`[coding] Extracted ${extractResp.fields?.cpt_codes?.length || 0} CPT + ${extractResp.fields?.icd_codes?.length || 0} ICD (doc ${doc.id.substring(0, 8)}, Bedrock)`)
             break // Only need first document
           }
         }
@@ -869,15 +877,21 @@ export default function CodingPage() {
         }
       )
       toast.success(`Chart approved → Claim ${result.claim_number || result.claim_id} created. Sent to billing queue.`)
+      // Only advance to next chart on success
+      const nextIdx = queue.findIndex(q => q.id === selected) + 1
+      setSelected(queue[nextIdx]?.id || queue[0]?.id || '')
+      resetChart()
+      setExpanded({})
     } catch (err) {
       console.error('[coding] chart approval failed:', err)
-      toast.error('Failed to approve chart — please try again')
+      const status = typeof err === 'object' && err && 'status' in err ? Number((err as any).status) : undefined
+      const message = typeof err === 'object' && err && 'message' in err ? String((err as any).message) : ''
+      if (status === 409) {
+        toast.error(message || 'This chart has already been approved.')
+      } else {
+        toast.error('Failed to approve chart — please try again')
+      }
     }
-
-    const nextIdx = queue.findIndex(q => q.id === selected) + 1
-    setSelected(queue[nextIdx]?.id || queue[0]?.id || '')
-    resetChart()
-    setExpanded({})
   }
 
   // KPI metrics — memoized to prevent recalculation on unrelated state changes
