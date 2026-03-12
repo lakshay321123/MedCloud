@@ -2090,7 +2090,7 @@ async function ingest835(eraFileId, ediContent, orgId, clientId, userId) {
     payment_date: parsed.payment_date || new Date().toISOString(),
     total_amount: parsed.total_paid,
     claim_count: parsed.claims.length,
-    status: 'parsed',
+    status: 'processing',
   });
 
   for (const clp of parsed.claims) {
