@@ -3986,9 +3986,13 @@ async function parse277Response(claimId, ediContent, orgId, userId) {
 // ─── Analytics / KPI Endpoints ─────────────────────────────────────────────────
 async function getAnalyticsKPIs(orgId, clientId, dateRange) {
   const params = [orgId];
-  let cf = ''; // claims filter (has client_id)
-  let cfDenials = ''; // denials may use claim JOIN
-  if (clientId) { params.push(clientId); cf = ` AND client_id = $${params.length}`; cfDenials = ` AND client_id = $${params.length}`; }
+  let cf = '';     // direct client_id filter for tables that have the column
+  let cfJoin = ''; // client_id filter via claims JOIN (for denials, payer perf)
+  if (clientId) {
+    params.push(clientId);
+    cf = ` AND client_id = $${params.length}`;
+    cfJoin = ` AND c.client_id = $${params.length}`;
+  }
   let df = '';
   if (dateRange?.from) { params.push(dateRange.from); df += ` AND created_at >= $${params.length}`; }
   if (dateRange?.to) { params.push(dateRange.to); df += ` AND created_at <= $${params.length}`; }
@@ -3998,7 +4002,7 @@ async function getAnalyticsKPIs(orgId, clientId, dateRange) {
       SUM(total_charges)::numeric AS billed, SUM(CASE WHEN status='paid' THEN 1 ELSE 0 END)::int AS paid_ct,
       SUM(CASE WHEN status='denied' THEN 1 ELSE 0 END)::int AS denied_ct FROM claims WHERE org_id = $1${cf}${df}`, params),
     pool.query(`SELECT COALESCE(d.carc_code,'unknown') AS carc, COUNT(*)::int AS cnt, SUM(d.denied_amount)::numeric AS amt
-      FROM denials d LEFT JOIN claims c ON d.claim_id = c.id WHERE d.org_id = $1${clientId ? ` AND c.client_id = $${2}` : ''}${df} GROUP BY d.carc_code ORDER BY cnt DESC LIMIT 20`, params),
+      FROM denials d LEFT JOIN claims c ON d.claim_id = c.id WHERE d.org_id = $1${cfJoin}${df} GROUP BY d.carc_code ORDER BY cnt DESC LIMIT 20`, params),
     pool.query(`SELECT COUNT(*)::int AS total, SUM(amount_paid)::numeric AS collected
       FROM payments WHERE org_id = $1${cf}${df}`, params),
     pool.query(`SELECT
@@ -4010,7 +4014,7 @@ async function getAnalyticsKPIs(orgId, clientId, dateRange) {
       FROM claims WHERE org_id = $1 AND status NOT IN ('paid','write_off','draft')${cf}`, params),
     pool.query(`SELECT py.name, COUNT(c.id)::int AS total, SUM(CASE WHEN c.status='paid' THEN 1 ELSE 0 END)::int AS paid,
       SUM(CASE WHEN c.status='denied' THEN 1 ELSE 0 END)::int AS denied, SUM(c.total_charges)::numeric AS billed
-      FROM claims c JOIN payers py ON c.payer_id = py.id WHERE c.org_id = $1${clientId ? ` AND c.client_id = $${2}` : ''}${df}
+      FROM claims c JOIN payers py ON c.payer_id = py.id WHERE c.org_id = $1${cfJoin}${df}
       GROUP BY py.name ORDER BY billed DESC LIMIT 15`, params),
     pool.query(`SELECT COUNT(*)::int AS total, SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END)::int AS completed,
       SUM(CASE WHEN source IN ('ai_auto','ai_assisted') THEN 1 ELSE 0 END)::int AS ai_coded
