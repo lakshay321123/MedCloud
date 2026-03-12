@@ -1,6 +1,6 @@
 'use client'
 import { useT } from '@/lib/i18n'
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -471,7 +471,7 @@ export default function CodingPage() {
   const { toast } = useToast()
   const { data: apiQueueResult } = useCodingQueue({ status: 'pending', limit: 100 })
 
-  const apiMapped = apiQueueResult?.data?.map(c => ({
+  const apiMapped = useMemo(() => apiQueueResult?.data?.map(c => ({
     id: c.id,
     patientId: c.patient_id || '',
     patientName: c.patient_name || 'Unknown Patient',
@@ -505,21 +505,26 @@ export default function CodingPage() {
     patientPayer: undefined as string | undefined,
     visitType: undefined as string | undefined,
     placeOfService: undefined as string | undefined,
-  })) || []
+  })) || [], [apiQueueResult]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: usersResult } = useUsers({ limit: 100 })
   // Coders pulled from seeded users (role = coder)
-  const coders = (usersResult?.data || [])
+  const coders = useMemo(() => (usersResult?.data || [])
     .filter((u: any) => u.role === 'coder' || u.role === 'coding_specialist')
-    .map((u: any) => ({ id: u.id, name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email }))
+    .map((u: any) => ({ id: u.id, name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email })),
+  [usersResult])
 
-  const queue = (() => {
+  const queue = useMemo(() => {
     const base = apiMapped.length > 0 ? apiMapped : []
-    // Region filtering handled by backend via useClientParams
     return base.filter(item => !selectedClient || item.clientId === selectedClient.id)
-  })()
+  }, [apiMapped, selectedClient])
 
   const [selected, setSelected] = useState(queue[0]?.id || '')
+
+  // Auto-select first item when queue loads and nothing is selected
+  React.useEffect(() => {
+    if (!selected && queue.length > 0) setSelected(queue[0].id)
+  }, [queue, selected])
   const [tab, setTab] = useState<CodingTab>('note')
   const [selectedCodes, setSelectedCodes] = useState<Record<string, boolean>>({})
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
