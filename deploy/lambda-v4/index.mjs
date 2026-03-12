@@ -4485,13 +4485,38 @@ async function chargeCapture(encounterId, orgId, userId) {
   );
   const soap = soapR.rows[0];
 
-  // Also check for documents linked to this encounter
-  const docR = await pool.query(
+  // Check for documents: first by encounter_id, then fall back to patient_id
+  let docR = await pool.query(
     'SELECT * FROM documents WHERE encounter_id = $1 AND textract_status = $2 ORDER BY created_at DESC LIMIT 1',
     [encounterId, 'completed']
   );
+  if (!docR.rows[0] && encounter.patient_id) {
+    // Fallback: find superbill/clinical docs linked to the patient
+    docR = await pool.query(
+      `SELECT * FROM documents WHERE patient_id = $1 AND org_id = $2 AND textract_status = 'completed'
+       AND (doc_type ILIKE '%superbill%' OR doc_type ILIKE '%clinical%' OR doc_type IN ('superbill','Superbill','Other'))
+       ORDER BY created_at DESC LIMIT 1`,
+      [encounter.patient_id, orgId]
+    );
+  }
   const doc = docR.rows[0];
-  const textractText = doc?.textract_result?.text || '';
+  // Parse textract_result — could be JSON string or object
+  let textractText = '';
+  if (doc?.textract_result) {
+    const tr = typeof doc.textract_result === 'string' ? JSON.parse(doc.textract_result) : doc.textract_result;
+    textractText = tr?.raw_text || tr?.text || '';
+    // Also extract structured fields if raw_text is empty
+    if (!textractText && tr?.fields) {
+      const f = tr.fields;
+      const parts = [];
+      if (f.cpt_codes?.parsed?.length) parts.push(`CPT CODES: ${f.cpt_codes.parsed.join(', ')}`);
+      if (f.diagnoses?.parsed?.length) parts.push(`DIAGNOSES: ${f.diagnoses.parsed.join(', ')}`);
+      if (f.patient_name?.value) parts.push(`PATIENT: ${f.patient_name.value}`);
+      if (f.date_of_service?.value) parts.push(`DOS: ${f.date_of_service.value}`);
+      if (f.billed_amount?.value) parts.push(`BILLED: $${f.billed_amount.value}`);
+      textractText = parts.join('\n');
+    }
+  }
 
   // Build clinical text from available sources
   const clinicalText = [
