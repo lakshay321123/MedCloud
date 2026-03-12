@@ -469,7 +469,7 @@ export default function CodingPage() {
   const { t } = useT()
   const [reassignTarget, setReassignTarget] = useState<string | null>(null)
   const { toast } = useToast()
-  const { data: apiQueueResult } = useCodingQueue({ status: 'pending', limit: 100 })
+  const { data: apiQueueResult } = useCodingQueue({ limit: 100 })
 
   const apiMapped = useMemo(() => apiQueueResult?.data?.map(c => ({
     id: c.id,
@@ -516,7 +516,9 @@ export default function CodingPage() {
 
   const queue = useMemo(() => {
     const base = apiMapped.length > 0 ? apiMapped : []
-    return base.filter(item => !selectedClient || item.clientId === selectedClient.id)
+    return base
+      .filter(item => item.status !== 'completed') // Hide completed — show pending, in_progress, on_hold, query_sent
+      .filter(item => !selectedClient || item.clientId === selectedClient.id)
   }, [apiMapped, selectedClient])
 
   const [selected, setSelected] = useState(queue[0]?.id || '')

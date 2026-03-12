@@ -1889,7 +1889,7 @@ async function enrichedPayments(orgId, clientId, regionClientIds = null) {
   return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
 }
 
-async function enrichedCoding(orgId, clientId, regionClientIds = null) {
+async function enrichedCoding(orgId, clientId, regionClientIds = null, qs = {}) {
   let q = `SELECT cq.*, p.first_name || ' ' || p.last_name AS patient_name,
            pr.first_name || ' ' || pr.last_name AS provider_name,
            cl.name AS client_name,
@@ -1911,7 +1911,10 @@ async function enrichedCoding(orgId, clientId, regionClientIds = null) {
     const ph = regionClientIds.map((_, i) => `$${params.length + 1 + i}`).join(',');
     params.push(...regionClientIds); q += ` AND cq.client_id IN (${ph})`;
   }
-  q += ' ORDER BY cq.created_at DESC';
+  // Status filter — frontend sends status=pending to hide completed items
+  if (qs.status) { params.push(qs.status); q += ` AND cq.status = $${params.length}`; }
+  q += ' ORDER BY CASE cq.priority WHEN \'urgent\' THEN 1 WHEN \'high\' THEN 2 WHEN \'medium\' THEN 3 ELSE 4 END, cq.created_at DESC';
+  if (qs.limit) { params.push(parseInt(qs.limit)); q += ` LIMIT $${params.length}`; }
   const rows = (await orgQuery(orgId, q, params)).rows;
   return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
 }
@@ -7603,7 +7606,7 @@ export const handler = async (event) => {
     // ════ Coding Queue ═════════════════════════════════════════════════════
     if (path.includes('/coding') && !path.includes('/approve') && !path.includes('/query') &&
         !path.includes('/assign') && !path.includes('/ai-suggest') && !path.includes('/coding-qa')) {
-      if (method === 'GET' && !pathParams.id) return respond(200, await enrichedCoding(effectiveOrgId, clientId, qs._regionClientIds));
+      if (method === 'GET' && !pathParams.id) return respond(200, await enrichedCoding(effectiveOrgId, clientId, qs._regionClientIds, qs));
       if (method === 'GET' && pathParams.id) {
         const c = await getById('coding_queue', pathParams.id);
         if (!c || c.org_id !== effectiveOrgId) return respond(404, { error: 'Coding item not found' });
