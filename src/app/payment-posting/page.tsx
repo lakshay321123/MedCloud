@@ -273,27 +273,55 @@ export default function PaymentPostingPage() {
     if (loadedEraIds.current.has(selectedEra)) return
     loadedEraIds.current.add(selectedEra)
 
-    // Fetch raw_content from API and parse the real 835
+    // Strategy: try loading persisted line items from DB first → fallback to client-side 835 parse
     setLoadingLines(true)
-    api.get<{ raw_content?: string; file_name?: string }>(`/era-files/${selectedEra}`)
-      .then(rec => {
-        const raw = rec.raw_content || ''
-        if (raw.includes('ISA') || raw.includes('BPR') || raw.includes('CLP')) {
-          // Real 835 content — parse it client-side
-          const parsed = parse835(selectedEra, raw)
-          if (parsed.lines.length > 0) {
-            // De-duplicate against any pre-loaded lines for this era (upload pre-parse)
-            setLineItems((prev: LineItem[]) => {
-              const existingIds = new Set(prev.filter(l => l.eraId === selectedEra).map(l => l.id))
-              const newLines = parsed.lines.filter(l => !existingIds.has(l.id))
-              return newLines.length > 0 ? [...prev, ...newLines] : prev
-            })
-          }
+    api.get<{ data: Array<any> }>(`/era-files/${selectedEra}/lines`)
+      .then(resp => {
+        const dbLines = resp.data || []
+        if (dbLines.length > 0) {
+          // Map DB payment rows → frontend LineItem format
+          const mapped: LineItem[] = dbLines.map((p: any) => ({
+            id: p.id,
+            eraId: selectedEra,
+            claimId: p.claim_id || '',
+            patientName: p.patient_name || 'Unknown',
+            cpt: p.cpt_code || '',
+            cptDesc: '',
+            dos: p.dos_from ? new Date(p.dos_from).toLocaleDateString() : '',
+            billed: Number(p.billed_amount) || 0,
+            allowed: Number(p.allowed_amount) || 0,
+            paid: Number(p.amount_paid) || 0,
+            denied: Math.max(0, (Number(p.billed_amount) || 0) - (Number(p.amount_paid) || 0) - (Number(p.adjustment_amount) || 0)),
+            patBalance: 0,
+            adjCode: p.adj_reason_code || '',
+            adjReason: p.adj_reason_code ? (p.adj_reason_code.split(',')[0] || '') : '',
+            action: p.action || 'pending',
+            notes: p.posting_notes || '',
+          }))
+          setLineItems((prev: LineItem[]) => {
+            const existingIds = new Set(prev.filter(l => l.eraId === selectedEra).map(l => l.id))
+            const newLines = mapped.filter(l => !existingIds.has(l.id))
+            return newLines.length > 0 ? [...prev, ...newLines] : prev
+          })
+          return // DB lines loaded successfully — skip client-side parse
         }
-        // No raw_content or no parseable lines — empty state handled in render
+        // No DB lines — fallback to client-side 835 parse
+        return api.get<{ raw_content?: string }>(`/era-files/${selectedEra}`).then(rec => {
+          const raw = rec.raw_content || ''
+          if (raw.includes('ISA') || raw.includes('BPR') || raw.includes('CLP')) {
+            const parsed = parse835(selectedEra, raw)
+            if (parsed.lines.length > 0) {
+              setLineItems((prev: LineItem[]) => {
+                const existingIds = new Set(prev.filter(l => l.eraId === selectedEra).map(l => l.id))
+                const newLines = parsed.lines.filter(l => !existingIds.has(l.id))
+                return newLines.length > 0 ? [...prev, ...newLines] : prev
+              })
+            }
+          }
+        })
       })
       .catch((error) => {
-        console.error('[payment-posting] Failed to fetch ERA file content:', error)
+        console.error('[payment-posting] Failed to load ERA lines:', error)
         loadedEraIds.current.delete(selectedEra) // allow retry on error
       })
       .finally(() => setLoadingLines(false))
@@ -307,8 +335,21 @@ export default function PaymentPostingPage() {
     patBalance: acc.patBalance + row.patBalance,
   }), { billed: 0, allowed: 0, paid: 0, denied: 0, patBalance: 0 }), [eraLines])
 
+  // Update local state + persist to DB via API
   const setValue = (id: string, field: string, value: number | string) => {
     setLineItems(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row))
+    // Map frontend field names → DB column names for persistence
+    const dbFieldMap: Record<string, string> = {
+      billed: 'billed_amount', allowed: 'allowed_amount', paid: 'amount_paid',
+      adjCode: 'adj_reason_code', adjReason: 'adj_reason_code',
+      action: 'action', notes: 'posting_notes', cpt: 'cpt_code',
+    }
+    const dbField = dbFieldMap[field]
+    if (dbField) {
+      api.patch(`/era-lines/${id}`, { [dbField]: value } as any).catch(err => {
+        console.warn('[payment-posting] Failed to save line edit:', err)
+      })
+    }
   }
 
   // Silent denials: ERA lines with denied > 0 that have action 'post' (not yet routed)

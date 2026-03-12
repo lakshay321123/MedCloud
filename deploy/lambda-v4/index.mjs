@@ -8256,6 +8256,37 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       });
     }
 
+    // ── ERA line items — persisted line-level payment records from 835 parse ────
+    if (path.includes('/era-files') && path.includes('/lines') && method === 'GET') {
+      const eraFile = await getById('era_files', pathParams.id, effectiveOrgId);
+      if (!eraFile || eraFile.org_id !== effectiveOrgId) return respond(404, { error: 'ERA file not found' });
+      const linesR = await orgQuery(effectiveOrgId,
+        `SELECT p.*, c.claim_number, c.patient_id,
+                pt.first_name || ' ' || pt.last_name AS patient_name,
+                c.dos_from
+         FROM payments p
+         LEFT JOIN claims c ON p.claim_id = c.id
+         LEFT JOIN patients pt ON c.patient_id = pt.id
+         WHERE p.era_file_id = $1 AND p.org_id = $2 AND p.status = 'line_detail'
+         ORDER BY p.created_at`,
+        [pathParams.id, effectiveOrgId]
+      );
+      return respond(200, { data: linesR.rows, meta: { total: linesR.rows.length } });
+    }
+
+    // ── ERA line item update — save edits (billed, allowed, paid, adj codes, notes, action) ──
+    if (path.includes('/era-lines') && (method === 'PUT' || method === 'PATCH') && pathParams.id) {
+      const payment = await getById('payments', pathParams.id, effectiveOrgId);
+      if (!payment || payment.org_id !== effectiveOrgId) return respond(404, { error: 'Line item not found' });
+      const allowed = ['billed_amount', 'allowed_amount', 'amount_paid', 'adjustment_amount',
+        'cpt_code', 'adj_reason_code', 'posting_notes', 'action', 'status'];
+      const safeBody = {};
+      for (const k of allowed) { if (body[k] !== undefined) safeBody[k] = body[k]; }
+      const updated = await update('payments', pathParams.id, safeBody, effectiveOrgId);
+      await auditLog(effectiveOrgId, userId, 'edit_era_line', 'payments', pathParams.id, safeBody);
+      return respond(200, updated);
+    }
+
     if (path.includes('/era-files') && path.includes('/parse-835') && method === 'POST') {
       const { edi_content } = body;
       if (!edi_content) return respond(400, { error: 'edi_content required' });
@@ -8263,7 +8294,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       return respond(200, result);
     }
 
-    if (path.includes('/era-files') && !path.includes('/parse-835') && !path.includes('/reconcile') && !path.includes('/download')) {
+    if (path.includes('/era-files') && !path.includes('/parse-835') && !path.includes('/reconcile') && !path.includes('/download') && !path.includes('/lines')) {
       if (method === 'GET' && !pathParams.id) {
         return respond(200, await list('era_files', effectiveOrgId, clientId, 'ORDER BY created_at DESC', qs._regionClientIds));
       }
