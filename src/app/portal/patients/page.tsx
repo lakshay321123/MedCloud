@@ -1,7 +1,7 @@
 'use client'
 import { useT } from '@/lib/i18n'
 import React, { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useApp } from '@/lib/context'
 import { api } from '@/lib/api-client'
 import type { DemoPatient } from '@/lib/demo-data'
@@ -808,9 +808,21 @@ export default function PatientsPage() {
     ? apiResult.data.map(apiPatientToDemoPatient)
     : null
 
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
   const patients: DemoPatient[] = apiPatients
     ? (clientFilter ? apiPatients.filter(p => p.clientId === clientFilter) : apiPatients)
     : []
+
+  // Auto-open patient drawer when navigated from global search with ?openId=
+  useEffect(() => {
+    const openId = searchParams.get('openId')
+    if (openId && patients.length > 0 && !selected) {
+      const match = patients.find(p => p.id === openId)
+      if (match) setSelected(match)
+    }
+  }, [searchParams, patients, selected])
 
   return (
     <ModuleShell title={t("patients","title")} subtitle="Manage patient records"

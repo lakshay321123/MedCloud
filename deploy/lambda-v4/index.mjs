@@ -1581,7 +1581,7 @@ async function globalSearch(orgId, clientId, regionClientIds, query, role) {
         `SELECT id, first_name, last_name, dob, email FROM patients WHERE org_id = $1${cf} AND (first_name ILIKE $${pIdx} OR last_name ILIKE $${pIdx} OR email ILIKE $${pIdx} OR CAST(dob AS TEXT) ILIKE $${pIdx}) LIMIT 5`,
         [...cfParams, searchTerm]
       );
-      r.rows.forEach(p => results.push({ type: 'patient', id: p.id, label: `${p.first_name} ${p.last_name}`, sub: p.dob ? `DOB: ${p.dob}` : p.email, path: `/portal/patients?search=${encodeURIComponent(q)}` }));
+      r.rows.forEach(p => results.push({ type: 'patient', id: p.id, label: `${p.first_name} ${p.last_name}`, sub: p.dob ? `DOB: ${p.dob}` : p.email, path: `/portal/patients?openId=${p.id}` }));
     } catch (_) {}
   }
 
@@ -1593,7 +1593,7 @@ async function globalSearch(orgId, clientId, regionClientIds, query, role) {
         `SELECT c.id, c.claim_number, c.status, p.first_name || ' ' || p.last_name AS patient_name FROM claims c LEFT JOIN patients p ON c.patient_id = p.id WHERE c.org_id = $1${cf.replace(/client_id/g, 'c.client_id')} AND (c.claim_number ILIKE $${pIdx} OR p.first_name ILIKE $${pIdx} OR p.last_name ILIKE $${pIdx}) LIMIT 5`,
         [...cfParams, searchTerm]
       );
-      r.rows.forEach(c => results.push({ type: 'claim', id: c.id, label: c.claim_number, sub: `${c.patient_name || 'Unknown'} — ${c.status}`, path: `/claims` }));
+      r.rows.forEach(c => results.push({ type: 'claim', id: c.id, label: c.claim_number, sub: `${c.patient_name || 'Unknown'} — ${c.status}`, path: `/claims?openId=${c.id}` }));
     } catch (_) {}
   }
 
@@ -1605,7 +1605,7 @@ async function globalSearch(orgId, clientId, regionClientIds, query, role) {
         `SELECT id, first_name, last_name, npi, specialty FROM providers WHERE org_id = $1 AND (first_name ILIKE $${pIdx} OR last_name ILIKE $${pIdx} OR npi ILIKE $${pIdx}) LIMIT 5`,
         [orgId, searchTerm]
       );
-      r.rows.forEach(p => results.push({ type: 'provider', id: p.id, label: `Dr. ${p.first_name} ${p.last_name}`, sub: `NPI: ${p.npi}`, path: `/credentialing` }));
+      r.rows.forEach(p => results.push({ type: 'provider', id: p.id, label: `Dr. ${p.first_name} ${p.last_name}`, sub: `NPI: ${p.npi}`, path: `/credentialing?openId=${p.id}` }));
     } catch (_) {}
   }
 
@@ -1617,7 +1617,7 @@ async function globalSearch(orgId, clientId, regionClientIds, query, role) {
         `SELECT id, file_name, doc_type, patient_name FROM documents WHERE org_id = $1 AND (file_name ILIKE $${pIdx} OR patient_name ILIKE $${pIdx}) LIMIT 5`,
         [orgId, searchTerm]
       );
-      r.rows.forEach(d => results.push({ type: 'document', id: d.id, label: d.file_name || d.doc_type, sub: d.patient_name || '', path: `/documents` }));
+      r.rows.forEach(d => results.push({ type: 'document', id: d.id, label: d.file_name || d.doc_type, sub: d.patient_name || '', path: `/documents?openId=${d.id}` }));
     } catch (_) {}
   }
 

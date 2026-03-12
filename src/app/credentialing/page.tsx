@@ -1,12 +1,13 @@
 'use client'
 import { useT } from '@/lib/i18n'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import { BadgeCheck, AlertTriangle, X } from 'lucide-react'
 import { useCredentialing, useUpdateCredentialing, useCreateCredentialing, useCredentialingDashboard, useCreateEnrollment } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
+import { useSearchParams } from 'next/navigation'
 // Region filtering handled by backend
 
 const providers: Array<{ id: string; name: string; npi: string; client: string; license: string; malpractice: string; dea: string; caqh: string; payers: number; status: string }> = []
@@ -46,6 +47,16 @@ export default function CredentialingPage() {
     // Region filtering handled by backend via useClientParams
     return true
   })
+
+  // Auto-open provider drawer when navigated from global search with ?openId=
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    const openId = searchParams.get('openId')
+    if (openId && filteredProviders.length > 0 && !selected) {
+      const match = filteredProviders.find(p => p.id === openId)
+      if (match) setSelected(match)
+    }
+  }, [searchParams, filteredProviders, selected])
 
   const activeCount = filteredProviders.filter(p => p.status === 'active').length
   const expiringCount = filteredProviders.filter(p => p.status === 'expiring').length

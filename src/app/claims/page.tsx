@@ -1,6 +1,6 @@
 'use client'
 import { useT } from '@/lib/i18n'
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -9,7 +9,7 @@ import { useApp } from '@/lib/context'
 // Region filtering handled by backend
 import type { DemoClaim, ClaimTimelineEvent } from '@/lib/demo-data'
 import { useToast } from '@/components/shared/Toast'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { api } from '@/lib/api-client'
 import { useClaims, useScrubClaim, useTransitionClaim, useGenerateEDI,
          useClaimLines, useAddClaimLine, useClaimDiagnoses, useAddClaimDiagnosis,
@@ -1039,6 +1039,16 @@ export default function ClaimsPage() {
 
   const paginated = allClaims.slice((page - 1) * PER_PAGE, page * PER_PAGE)
   const totalPages = Math.ceil(allClaims.length / PER_PAGE)
+
+  // Auto-open claim drawer when navigated from global search with ?openId=
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    const openId = searchParams.get('openId')
+    if (openId && allClaims.length > 0 && !drawerClaim) {
+      const match = allClaims.find(c => c.id === openId || c.apiId === openId)
+      if (match) setDrawerClaim(match)
+    }
+  }, [searchParams, allClaims, drawerClaim])
 
   // KPIs
   const today = new Date().toISOString().split('T')[0]

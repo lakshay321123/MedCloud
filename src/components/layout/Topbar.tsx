@@ -146,7 +146,7 @@ export default function Topbar() {
               onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true) }}
               onFocus={() => searchQuery && setSearchOpen(true)}
               onKeyDown={e => {
-                if (e.key === 'Enter' && searchQuery.trim()) { setSearchOpen(false); router.push(`/portal/patients?search=${encodeURIComponent(searchQuery.trim())}`) }
+                if (e.key === 'Enter' && searchQuery.trim()) { setSearchOpen(false); if (searchResults.length > 0) { router.push(searchResults[0].path); setSearchQuery('') } }
                 if (e.key === 'Escape') { setSearchOpen(false); setSearchQuery('') }
               }}
               placeholder="Search patients, claims, docs..."
