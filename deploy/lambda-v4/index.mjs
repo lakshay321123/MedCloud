@@ -8263,7 +8263,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     }
 
     // ── ERA line items — persisted line-level payment records from 835 parse ────
-    if (path.includes('/era-files') && path.includes('/lines') && method === 'GET') {
+    if (path.includes('/era-files') && path.includes('/line-items') && method === 'GET') {
       const eraFile = await getById('era_files', pathParams.id, effectiveOrgId);
       if (!eraFile || eraFile.org_id !== effectiveOrgId) return respond(404, { error: 'ERA file not found' });
       const linesR = await orgQuery(effectiveOrgId,
@@ -8300,7 +8300,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       return respond(200, result);
     }
 
-    if (path.includes('/era-files') && !path.includes('/parse-835') && !path.includes('/reconcile') && !path.includes('/download') && !path.includes('/lines')) {
+    if (path.includes('/era-files') && !path.includes('/parse-835') && !path.includes('/reconcile') && !path.includes('/download') && !path.includes('/line-items')) {
       if (method === 'GET' && !pathParams.id) {
         return respond(200, await list('era_files', effectiveOrgId, clientId, 'ORDER BY created_at DESC', qs._regionClientIds));
       }

@@ -275,7 +275,7 @@ export default function PaymentPostingPage() {
 
     // Strategy: try loading persisted line items from DB first → fallback to client-side 835 parse
     setLoadingLines(true)
-    api.get<{ data: Array<any> }>(`/era-files/${selectedEra}/lines`)
+    api.get<{ data: Array<any> }>(`/era-files/${selectedEra}/line-items`)
       .then(resp => {
         const dbLines = resp.data || []
         if (dbLines.length > 0) {
