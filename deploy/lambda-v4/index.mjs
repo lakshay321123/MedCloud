@@ -106,6 +106,15 @@ try {
   console.log('Bedrock SDK loaded successfully — bedrockClient ready');
 } catch (e) { console.log('Bedrock SDK not available:', e.message, '— AI coding will return mock suggestions'); }
 
+// Lambda SDK for async self-invoke (AI coding runs in background to avoid API Gateway 29s timeout)
+let lambdaClient = null, LambdaInvokeCommand = null;
+try {
+  const lamMod = await import('@aws-sdk/client-lambda');
+  lambdaClient = new lamMod.LambdaClient({ region: process.env.AWS_REGION || 'us-east-1' });
+  LambdaInvokeCommand = lamMod.InvokeCommand;
+  console.log('Lambda SDK loaded — async AI coding enabled');
+} catch (e) { console.log('Lambda SDK not available:', e.message, '— AI coding will run synchronously'); }
+
 const S3_BUCKET = process.env.S3_BUCKET || 'medcloud-documents-us-prod';
 
 // ─── Schema Migration — adds missing columns that were omitted from v4-seed.sql ──
@@ -397,6 +406,12 @@ async function runSchemaMigration() {
     "ALTER TABLE coding_queue ALTER COLUMN dos DROP NOT NULL",
     "ALTER TABLE coding_queue DROP CONSTRAINT IF EXISTS coding_queue_priority_check",
     "ALTER TABLE coding_queue DROP CONSTRAINT IF EXISTS coding_queue_status_check",
+    "ALTER TABLE ai_coding_suggestions ADD COLUMN IF NOT EXISTS status VARCHAR(30) DEFAULT 'completed'",
+    "ALTER TABLE ai_coding_suggestions ADD COLUMN IF NOT EXISTS reasoning TEXT",
+    "ALTER TABLE ai_coding_suggestions ADD COLUMN IF NOT EXISTS documentation_gaps JSONB DEFAULT '[]'",
+    "ALTER TABLE ai_coding_suggestions ADD COLUMN IF NOT EXISTS audit_flags JSONB DEFAULT '[]'",
+    "ALTER TABLE ai_coding_suggestions ADD COLUMN IF NOT EXISTS hcc_diagnoses JSONB DEFAULT '[]'",
+    "ALTER TABLE ai_coding_suggestions ADD COLUMN IF NOT EXISTS error_message TEXT",
     "ALTER TABLE claims ALTER COLUMN patient_id DROP NOT NULL",
     "ALTER TABLE claims ALTER COLUMN provider_id DROP NOT NULL",
     "ALTER TABLE claim_lines ADD COLUMN IF NOT EXISTS org_id UUID",
@@ -2591,7 +2606,7 @@ const UNDERPAYMENT_THRESHOLD_PCT = 0.95; // Flag if paid < 95% of contracted rat
 const HIGH_DENIAL_RISK_THRESHOLD = 70;   // Log warning if risk score > 70%
 
 // ─── Bedrock AI Auto-Coding ────────────────────────────────────────────────────
-async function aiAutoCode(codingQueueId, orgId, userId, coderInstructions = '') {
+async function aiAutoCode(codingQueueId, orgId, userId, coderInstructions = '', existingSuggestionId = null) {
   const item = await getById('coding_queue', codingQueueId);
   if (!item || item.org_id !== orgId) throw new Error('Coding queue item not found');
 
@@ -2638,7 +2653,19 @@ async function aiAutoCode(codingQueueId, orgId, userId, coderInstructions = '') 
   if (item.document_id) {
     docSource = await getById('documents', item.document_id);
   }
-  // Fallback: search by patient_id for superbill/clinical docs (same as chargeCapture)
+  // Fallback 1: search by encounter_id for this specific visit's documents
+  if (!docSource && item.encounter_id) {
+    try {
+      const encDocR = await pool.query(
+        `SELECT * FROM documents WHERE encounter_id = $1 AND org_id = $2 AND textract_status = 'completed'
+         AND (doc_type ILIKE '%superbill%' OR doc_type ILIKE '%clinical%' OR doc_type IN ('superbill','Superbill','Other'))
+         ORDER BY created_at DESC LIMIT 1`,
+        [item.encounter_id, orgId]
+      );
+      if (encDocR.rows[0]) docSource = encDocR.rows[0];
+    } catch (e) { safeLog('warn', `AI: encounter doc search error: ${e.message}`); }
+  }
+  // Fallback 2: search by patient_id (broader — may pick different encounter's doc)
   if (!docSource && item.patient_id) {
     try {
       const patDocR = await pool.query(
@@ -2821,7 +2848,7 @@ Respond ONLY with valid JSON (no markdown, no backticks):
 
   // Use callAI() — calls Bedrock for AI suggestions; returns null on failure (no external fallback)
   try {
-    const aiText = await callAI(prompt, { max_tokens: 2048, timeoutMs: 25000 });
+    const aiText = await callAI(prompt, { max_tokens: 2048, timeoutMs: 120000 });
     if (aiText) {
       suggestion = JSON.parse(aiText.replace(/```json|```/g, '').trim());
     }
@@ -2950,21 +2977,53 @@ Respond ONLY with valid JSON (no markdown, no backticks):
     ? suggestion.suggested_cpt.reduce((s, c) => s + (c.confidence || 0), 0) / suggestion.suggested_cpt.length
     : 0;
 
-  // Persist AI suggestion
-  const saved = await create('ai_coding_suggestions', {
-    org_id: orgId,
-    coding_queue_id: codingQueueId,
-    encounter_id: item.encounter_id,
-    soap_note_id: item.soap_note_id,
-    suggested_cpt: JSON.stringify(suggestion.suggested_cpt || []),
-    suggested_icd: JSON.stringify(suggestion.suggested_icd || []),
-    suggested_em: suggestion.suggested_em,
-    em_confidence: suggestion.em_confidence,
-    model_id: suggestion.mock ? 'mock' : BEDROCK_MODEL,
-    prompt_version: 'v2.0',
-    total_confidence: totalConf,
-    processing_ms: processingMs,
-  }, orgId);
+  // Persist AI suggestion — either update pre-created record (async mode) or create new
+  let saved;
+  if (existingSuggestionId) {
+    // Async mode: update the pre-created pending record
+    await pool.query(
+      `UPDATE ai_coding_suggestions SET 
+        coding_queue_id = $1, encounter_id = $2, soap_note_id = $3,
+        suggested_cpt = $4, suggested_icd = $5, suggested_em = $6,
+        em_confidence = $7, model_id = $8, prompt_version = $9,
+        total_confidence = $10, processing_ms = $11, status = 'completed',
+        reasoning = $12, documentation_gaps = $13, audit_flags = $14,
+        hcc_diagnoses = $15, updated_at = NOW()
+      WHERE id = $16`,
+      [
+        codingQueueId, item.encounter_id, item.soap_note_id,
+        JSON.stringify(suggestion.suggested_cpt || []),
+        JSON.stringify(suggestion.suggested_icd || []),
+        suggestion.suggested_em,
+        suggestion.em_confidence || 0,
+        suggestion.mock ? 'mock' : BEDROCK_MODEL,
+        'v2.0', totalConf, processingMs,
+        suggestion.reasoning || null,
+        JSON.stringify(suggestion.documentation_gaps || []),
+        JSON.stringify(suggestion.audit_flags || []),
+        JSON.stringify(suggestion.hcc_diagnoses || []),
+        existingSuggestionId
+      ]
+    );
+    saved = { id: existingSuggestionId };
+  } else {
+    // Sync mode: create new record
+    saved = await create('ai_coding_suggestions', {
+      org_id: orgId,
+      coding_queue_id: codingQueueId,
+      encounter_id: item.encounter_id,
+      soap_note_id: item.soap_note_id,
+      suggested_cpt: JSON.stringify(suggestion.suggested_cpt || []),
+      suggested_icd: JSON.stringify(suggestion.suggested_icd || []),
+      suggested_em: suggestion.suggested_em,
+      em_confidence: suggestion.em_confidence,
+      model_id: suggestion.mock ? 'mock' : BEDROCK_MODEL,
+      prompt_version: 'v2.0',
+      total_confidence: totalConf,
+      processing_ms: processingMs,
+      status: 'completed',
+    }, orgId);
+  }
 
   // Update coding queue item
   await update('coding_queue', codingQueueId, {
@@ -7152,6 +7211,25 @@ export const handler = async (event) => {
     return { statusCode: 200, body: 'SNS processed' };
   }
 
+  // ── Internal Self-Invoke: Async AI Coding ─────────────────────────────────
+  // Lambda self-invokes with this event to process AI coding in background
+  // (bypasses API Gateway 29s timeout — Lambda has 180s)
+  if (event._internal === 'ai-code') {
+    const { codingQueueId, orgId, userId, suggestionId, instructions } = event;
+    console.log(`[async-ai] Processing AI coding for ${codingQueueId}, suggestion ${suggestionId}`);
+    try {
+      const result = await aiAutoCode(codingQueueId, orgId, userId, instructions || '', suggestionId);
+      console.log(`[async-ai] Completed: ${codingQueueId} → ${result.mock ? 'mock' : 'bedrock'}, confidence=${result.confidence}`);
+    } catch (e) {
+      console.error(`[async-ai] Failed for ${codingQueueId}:`, e.message);
+      await pool.query(
+        `UPDATE ai_coding_suggestions SET status = 'failed', error_message = $1, updated_at = NOW() WHERE id = $2`,
+        [e.message?.substring(0, 500), suggestionId]
+      ).catch(() => {});
+    }
+    return { statusCode: 200, body: JSON.stringify({ processed: codingQueueId }) };
+  }
+
   if (event.httpMethod === 'OPTIONS' || event.requestContext?.http?.method === 'OPTIONS') {
     return respond(200, {});
   }
@@ -7406,13 +7484,18 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
 
         // Use Sonnet for document extraction — reliable, supports document type
         const DOC_EXTRACT_MODEL = 'us.anthropic.claude-sonnet-4-20250514-v1:0';
+        // Bedrock: images (PNG/JPEG) → ImageBlock; PDFs/docs → DocumentBlock
+        const isImage = mediaType.startsWith('image/');
+        const contentBlock = isImage
+          ? { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } }
+          : { type: 'document', source: { type: 'base64', media_type: mediaType, data: base64 } };
         const bedrockBody = JSON.stringify({
           anthropic_version: 'bedrock-2023-05-31',
           max_tokens: 1500,
           messages: [{
             role: 'user',
             content: [
-              { type: 'document', source: { type: 'base64', media_type: mediaType, data: base64 } },
+              contentBlock,
               { type: 'text', text: extractPrompt }
             ]
           }]
@@ -7793,7 +7876,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
         }
         const item = await create('coding_queue', { ...body, status: body.status || 'pending' }, effectiveOrgId);
         // (a) Auto-trigger AI coding if clinical data is available — fire & forget
-        if (item.soap_note_id || item.document_id || item.patient_id) {
+        if (item.soap_note_id || item.document_id || item.encounter_id) {
           aiAutoCode(item.id, effectiveOrgId, userId).then(result => {
             safeLog('info', `Auto-coded ${item.id}: ${result.mock ? 'mock' : 'bedrock'}, confidence=${result.confidence}`);
           }).catch(e => safeLog('warn', `Auto-code failed for ${item.id}: ${e.message}`));
@@ -7821,7 +7904,8 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
         // Auto-trigger AI coding when clinical data is newly linked
         const newSoap = safeBody.soap_note_id && safeBody.soap_note_id !== existing.soap_note_id;
         const newDoc = safeBody.document_id && safeBody.document_id !== existing.document_id;
-        if (newSoap || newDoc) {
+        const newEncounter = safeBody.encounter_id && safeBody.encounter_id !== existing.encounter_id;
+        if (newSoap || newDoc || newEncounter) {
           aiAutoCode(pathParams.id, effectiveOrgId, userId).then(result => {
             safeLog('info', `Auto-coded on update ${pathParams.id}: ${result.mock ? 'mock' : 'bedrock'}, confidence=${result.confidence}`);
           }).catch(e => safeLog('warn', `Auto-code on update failed for ${pathParams.id}: ${e.message}`));
@@ -7886,10 +7970,87 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       return respond(200, c);
     }
 
-    // AI auto-code
+    // AI auto-code — async self-invoke to bypass API Gateway 29s timeout
     if (path.includes('/coding') && path.includes('/ai-suggest') && method === 'POST') {
-      const result = await aiAutoCode(pathParams.id, effectiveOrgId, userId, body.instructions || '');
-      return respond(200, result);
+      const codingQueueId = pathParams.id;
+      
+      // Validate coding item exists and belongs to caller's org (fail fast)
+      const codingItem = await getById('coding_queue', codingQueueId);
+      if (!codingItem || codingItem.org_id !== effectiveOrgId) {
+        return respond(404, { error: 'Coding item not found' });
+      }
+      
+      // Create a pending suggestion record immediately
+      const pending = await create('ai_coding_suggestions', {
+        org_id: effectiveOrgId,
+        coding_queue_id: codingQueueId,
+        status: 'processing',
+        model_id: 'pending',
+        prompt_version: 'v2.0',
+        total_confidence: 0,
+        processing_ms: 0,
+      }, effectiveOrgId);
+      
+      // Try async self-invoke (Lambda → Lambda, bypasses API Gateway 29s limit)
+      if (lambdaClient && LambdaInvokeCommand) {
+        try {
+          const functionName = process.env.AWS_LAMBDA_FUNCTION_NAME || 'medcloud-api';
+          await lambdaClient.send(new LambdaInvokeCommand({
+            FunctionName: functionName,
+            InvocationType: 'Event', // Fire-and-forget async
+            Payload: JSON.stringify({
+              _internal: 'ai-code',
+              codingQueueId,
+              orgId: effectiveOrgId,
+              userId,
+              suggestionId: pending.id,
+              instructions: body.instructions || '',
+            }),
+          }));
+          console.log(`[ai-suggest] Async invoke dispatched for ${codingQueueId}, suggestion ${pending.id}`);
+          return respond(202, {
+            suggestion_id: pending.id,
+            status: 'processing',
+            message: 'AI coding started — poll /ai-coding-suggestions/:id for results',
+          });
+        } catch (invokeErr) {
+          console.warn(`[ai-suggest] Self-invoke failed (${invokeErr.message}), falling back to sync`);
+          // Fall through to synchronous execution
+        }
+      }
+      
+      // Fallback: synchronous execution (if Lambda SDK unavailable or self-invoke failed)
+      try {
+        const result = await aiAutoCode(codingQueueId, effectiveOrgId, userId, body.instructions || '');
+        // Update the pending record with results
+        await pool.query(
+          `UPDATE ai_coding_suggestions SET 
+            suggested_cpt = $1, suggested_icd = $2, suggested_em = $3,
+            em_confidence = $4, model_id = $5, total_confidence = $6,
+            processing_ms = $7, status = 'completed', reasoning = $8,
+            documentation_gaps = $9, updated_at = NOW()
+          WHERE id = $10`,
+          [
+            JSON.stringify(result.suggested_cpt || []),
+            JSON.stringify(result.suggested_icd || []),
+            result.suggested_em || null,
+            result.em_confidence || 0,
+            result.mock ? 'mock' : 'bedrock',
+            result.confidence || 0,
+            result.processing_ms || 0,
+            result.reasoning || null,
+            JSON.stringify(result.documentation_gaps || []),
+            pending.id
+          ]
+        );
+        return respond(200, { ...result, suggestion_id: pending.id });
+      } catch (syncErr) {
+        await pool.query(
+          `UPDATE ai_coding_suggestions SET status = 'failed', error_message = $1, updated_at = NOW() WHERE id = $2`,
+          [syncErr.message?.substring(0, 500), pending.id]
+        ).catch(() => {});
+        return respond(500, { error: 'AI coding failed', suggestion_id: pending.id });
+      }
     }
 
     // (e) Coding Rules Engine — CRUD
@@ -7920,13 +8081,30 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       }
     }
 
-    // AI coding suggestions lookup
+    // AI coding suggestions lookup — supports both coding_queue_id and direct suggestion_id
     if (path.includes('/ai-coding-suggestions') && method === 'GET' && pathParams.id) {
-      const r = await pool.query(
+      // Try as coding_queue_id first, then as direct suggestion id
+      let r = await pool.query(
         'SELECT * FROM ai_coding_suggestions WHERE coding_queue_id = $1 ORDER BY created_at DESC LIMIT 1',
         [pathParams.id]
       );
-      return r.rows[0] ? respond(200, r.rows[0]) : respond(404, { error: 'No AI suggestions found' });
+      if (!r.rows[0]) {
+        r = await pool.query('SELECT * FROM ai_coding_suggestions WHERE id = $1 LIMIT 1', [pathParams.id]);
+      }
+      if (!r.rows[0]) return respond(404, { error: 'No AI suggestions found', status: 'not_found' });
+      const row = r.rows[0];
+      // Parse JSON fields for the response
+      const result = {
+        ...row,
+        suggested_cpt: typeof row.suggested_cpt === 'string' ? JSON.parse(row.suggested_cpt) : row.suggested_cpt,
+        suggested_icd: typeof row.suggested_icd === 'string' ? JSON.parse(row.suggested_icd) : row.suggested_icd,
+        documentation_gaps: typeof row.documentation_gaps === 'string' ? JSON.parse(row.documentation_gaps) : row.documentation_gaps,
+        audit_flags: typeof row.audit_flags === 'string' ? JSON.parse(row.audit_flags) : row.audit_flags,
+        hcc_diagnoses: typeof row.hcc_diagnoses === 'string' ? JSON.parse(row.hcc_diagnoses) : row.hcc_diagnoses,
+        status: row.status || 'completed', // Legacy rows without status are assumed completed
+        mock: row.model_id === 'mock' || row.model_id === 'pending',
+      };
+      return respond(200, result);
     }
 
     // ════ Contract Underpayment Detection ══════════════════════════════════
@@ -8568,7 +8746,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
         const existing = await getById('patients', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Patient not found' });
         // Comprehensive FK safety check
-        const fkTables = ['claims', 'appointments', 'encounters', 'documents', 'coding_queue'];
+        const fkTables = ['claims', 'appointments', 'encounters', 'documents', 'coding_queue', 'soap_notes', 'prior_auth_requests', 'charge_captures'];
         const blockers = [];
         for (const t of fkTables) {
           const r = await pool.query(`SELECT COUNT(*) as cnt FROM ${t} WHERE patient_id = $1 AND org_id = $2`, [pathParams.id, effectiveOrgId]).catch(() => ({ rows: [{ cnt: '0' }] }));

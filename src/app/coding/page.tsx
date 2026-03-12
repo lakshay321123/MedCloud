@@ -560,7 +560,15 @@ export default function CodingPage() {
           const tr = typeof doc.textract_result === 'string' ? JSON.parse(doc.textract_result) : doc.textract_result
           const cptParsed = tr?.fields?.cpt_codes?.parsed || []
           const icdParsed = tr?.fields?.diagnoses?.parsed || []
-          if (cptParsed.length === 0 && icdParsed.length === 0) needsExtraction = true
+          if (cptParsed.length > 0 || icdParsed.length > 0) {
+            // Already extracted with codes — link and stop
+            if (codingItem.id) {
+              try { await api.patch(`/coding/${codingItem.id}`, { document_id: doc.id } as any) } catch (err) { console.warn('[coding] Failed to link doc:', err) }
+            }
+            console.log(`[coding] Linked existing extraction: ${cptParsed.length} CPT + ${icdParsed.length} ICD (doc ${doc.id.substring(0, 8)})`)
+            break
+          }
+          needsExtraction = true
         }
         if (needsExtraction) {
           // Call Lambda — reads from S3, sends to Bedrock, saves results. All within AWS.
@@ -570,7 +578,7 @@ export default function CodingPage() {
             if (codingItem.id) {
               try { await api.patch(`/coding/${codingItem.id}`, { document_id: doc.id } as any) } catch (err) { console.warn('[coding] Failed to link doc:', err) }
             }
-            console.log(`[coding] Extracted ${extractResp.fields?.cpt_codes?.length || 0} CPT + ${extractResp.fields?.icd_codes?.length || 0} ICD from ${doc.file_name} (Bedrock in AWS)`)
+            console.log(`[coding] Extracted ${extractResp.fields?.cpt_codes?.length || 0} CPT + ${extractResp.fields?.icd_codes?.length || 0} ICD (doc ${doc.id.substring(0, 8)}, Bedrock)`)
             break // Only need first document
           }
         }
@@ -594,42 +602,23 @@ export default function CodingPage() {
         suggested_em?: string; em_confidence?: number; reasoning?: string
         mock?: boolean; suggestion_id?: string; processing_ms?: number; confidence?: number
         documentation_gaps?: string[]; audit_flags?: string[]; hcc_diagnoses?: string[]
+        status?: string; message?: string
       }>(`/coding/${item.id}/ai-suggest`, { instructions: instructions || '' })
 
-      // Map Lambda response format → frontend format
-      const icd: AISuggestedCode[] = (result.suggested_icd || []).map(c => ({
-        code: c.code, desc: c.description, confidence: c.confidence,
-        is_hcc: c.is_hcc,
-        reasoning: c.specificity_note || (c.is_hcc ? 'HCC risk adjustment diagnosis' : undefined),
-      }))
-      const cpt: AISuggestedCode[] = (result.suggested_cpt || []).map(c => ({
-        code: c.code, desc: c.description, confidence: c.confidence,
-        modifiers: c.modifier ? [c.modifier] : [],
-        reasoning: c.modifier_reason || c.ncci_note || undefined,
-      }))
-
-      setAiCodeCache(prev => ({ ...prev, [item.id]: { icd, cpt } }))
-      // Auto-select all generated codes + E/M conflict detection
-      const newSelected: Record<string, boolean> = {}
-      icd.forEach(c => { newSelected[`icd-${c.code}`] = true })
-      // E/M conflict: only keep the highest-level E/M code
-      const emCodes = cpt.filter(c => /^99(2[0-5][0-9]|[3-4])/.test(c.code))
-      const nonEmCodes = cpt.filter(c => !/^99(2[0-5][0-9]|[3-4])/.test(c.code))
-      if (emCodes.length > 1) {
-        const highest = emCodes.sort((a, b) => b.code.localeCompare(a.code))[0]
-        nonEmCodes.push(highest)
-        nonEmCodes.forEach(c => { newSelected[`cpt-${c.code}`] = true })
+      // Async mode: backend returned 202 with suggestion_id — poll for results
+      if (result.status === 'processing' && result.suggestion_id) {
+        toast.info('AI coding started — analyzing patient data, visit notes & documents...')
+        const pollResult = await pollForAISuggestion(result.suggestion_id)
+        if (pollResult) {
+          applyAIResults(pollResult, item.id)
+        } else {
+          toast.warning('AI coding is taking longer than expected — results will appear when ready')
+          setAiCoding(false)
+          return
+        }
       } else {
-        cpt.forEach(c => { newSelected[`cpt-${c.code}`] = true })
-      }
-      setSelectedCodes(prev => ({ ...prev, ...newSelected }))
-      setShowQuickSoap(false)
-
-      const mockLabel = result.mock ? ' (mock — Bedrock unavailable)' : ''
-      if (result.documentation_gaps?.length) {
-        toast.warning(`AI generated ${icd.length} ICD + ${cpt.length} CPT codes${mockLabel}. ${result.documentation_gaps.length} documentation gap(s) flagged.`)
-      } else {
-        toast.success(`AI generated ${icd.length} ICD + ${cpt.length} CPT codes${mockLabel}`)
+        // Sync mode: backend returned full results immediately
+        applyAIResults(result, item.id)
       }
     } catch (e) {
       console.error('AI coding error:', e)
@@ -637,6 +626,65 @@ export default function CodingPage() {
       toast.error('AI coding failed — use manual entry below')
     } finally {
       setAiCoding(false)
+    }
+  }
+
+  // Poll GET /ai-coding-suggestions/:id until status is 'completed' or 'failed'
+  async function pollForAISuggestion(suggestionId: string, maxAttempts = 20, intervalMs = 3000): Promise<any | null> {
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise(r => setTimeout(r, intervalMs))
+      try {
+        const poll = await api.get<any>(`/ai-coding-suggestions/${suggestionId}`)
+        if (poll.status === 'completed') return poll
+        if (poll.status === 'failed') {
+          toast.error(`AI coding failed: ${poll.error_message || 'Unknown error'}`)
+          return null
+        }
+        // Still processing — continue polling
+      } catch (e) {
+        console.warn('[polling] AI suggestion poll error:', e)
+        // Continue polling on transient errors
+      }
+    }
+    return null // Timed out after maxAttempts
+  }
+
+  // Apply AI results to the UI (works for both sync and async responses)
+  function applyAIResults(result: any, itemId: string) {
+    // Map Lambda response format → frontend format
+    const icd: AISuggestedCode[] = (result.suggested_icd || []).map((c: any) => ({
+      code: c.code, desc: c.description || c.desc, confidence: c.confidence,
+      is_hcc: c.is_hcc,
+      reasoning: c.specificity_note || c.reasoning || (c.is_hcc ? 'HCC risk adjustment diagnosis' : undefined),
+    }))
+    const cpt: AISuggestedCode[] = (result.suggested_cpt || []).map((c: any) => ({
+      code: c.code, desc: c.description || c.desc, confidence: c.confidence,
+      modifiers: c.modifier ? [c.modifier] : c.modifiers || [],
+      reasoning: c.modifier_reason || c.ncci_note || c.reasoning || undefined,
+    }))
+
+    setAiCodeCache(prev => ({ ...prev, [itemId]: { icd, cpt } }))
+    // Auto-select all generated codes + E/M conflict detection
+    const newSelected: Record<string, boolean> = {}
+    icd.forEach(c => { newSelected[`icd-${c.code}`] = true })
+    // E/M conflict: only keep the highest-level E/M code
+    const emCodes = cpt.filter(c => /^99(2[0-5][0-9]|[3-4])/.test(c.code))
+    const nonEmCodes = cpt.filter(c => !/^99(2[0-5][0-9]|[3-4])/.test(c.code))
+    if (emCodes.length > 1) {
+      const highest = emCodes.sort((a, b) => b.code.localeCompare(a.code))[0]
+      nonEmCodes.push(highest)
+      nonEmCodes.forEach(c => { newSelected[`cpt-${c.code}`] = true })
+    } else {
+      cpt.forEach(c => { newSelected[`cpt-${c.code}`] = true })
+    }
+    setSelectedCodes(prev => ({ ...prev, ...newSelected }))
+    setShowQuickSoap(false)
+
+    const mockLabel = result.mock || result.model_id === 'mock' ? ' (mock — Bedrock unavailable)' : ''
+    if (result.documentation_gaps?.length) {
+      toast.warning(`AI generated ${icd.length} ICD + ${cpt.length} CPT codes${mockLabel}. ${result.documentation_gaps.length} documentation gap(s) flagged.`)
+    } else {
+      toast.success(`AI generated ${icd.length} ICD + ${cpt.length} CPT codes${mockLabel}`)
     }
   }
 
@@ -829,15 +877,21 @@ export default function CodingPage() {
         }
       )
       toast.success(`Chart approved → Claim ${result.claim_number || result.claim_id} created. Sent to billing queue.`)
+      // Only advance to next chart on success
+      const nextIdx = queue.findIndex(q => q.id === selected) + 1
+      setSelected(queue[nextIdx]?.id || queue[0]?.id || '')
+      resetChart()
+      setExpanded({})
     } catch (err) {
       console.error('[coding] chart approval failed:', err)
-      toast.error('Failed to approve chart — please try again')
+      const status = typeof err === 'object' && err && 'status' in err ? Number((err as any).status) : undefined
+      const message = typeof err === 'object' && err && 'message' in err ? String((err as any).message) : ''
+      if (status === 409) {
+        toast.error(message || 'This chart has already been approved.')
+      } else {
+        toast.error('Failed to approve chart — please try again')
+      }
     }
-
-    const nextIdx = queue.findIndex(q => q.id === selected) + 1
-    setSelected(queue[nextIdx]?.id || queue[0]?.id || '')
-    resetChart()
-    setExpanded({})
   }
 
   // KPI metrics — memoized to prevent recalculation on unrelated state changes
