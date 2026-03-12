@@ -248,7 +248,7 @@ export default function DenialsPage() {
           const won = denials.filter(d => d.status === 'appeal_won').length
           const total = denials.filter(d => ['appeal_won', 'in_appeal', 'appealed', 'appeal_pending'].includes(d.status)).length
           return total > 0 ? `${Math.round((won / total) * 100)}%` : '—'
-        })()} trend="up" sub="+4%" />
+        })()} trend="up" />
         <KPICard label={t('denials','avgResolution')} value="—" />
       </div>
       {appealDeadlines.length > 0 && (
