@@ -1657,21 +1657,33 @@ export default function CodingPage() {
                   }} />
                 </div>
 
-                {/* AI Charge Capture */}
-                {item?.encounter_id && (
+                {/* AI Charge Capture — works from encounter SOAP OR patient superbill docs */}
+                {item && (
                   <button
                     onClick={async () => {
-                      if (!item.encounter_id) return
                       setCapturingCharges(true)
                       try {
-                        const result = await api.post<any>(`/encounters/${item.encounter_id}/charge-capture`, {})
-                        if (result?.charges?.length > 0) {
-                          toast.success(`AI captured ${result.charges.length} charge(s) — $${result.total_estimated_charge?.toLocaleString() || '0'} estimated`)
+                        if (item.encounter_id) {
+                          // Path A: Has encounter — use full charge capture with SOAP + docs
+                          const result = await api.post<any>(`/encounters/${item.encounter_id}/charge-capture`, {})
+                          if (result?.charges?.length > 0) {
+                            toast.success(`AI captured ${result.charges.length} charge(s) — $${result.total_estimated_charge?.toLocaleString() || '0'} estimated`)
+                          } else {
+                            toast.info('AI charge capture complete — no additional charges found')
+                          }
+                          if (result?.missing_documentation?.length > 0) {
+                            toast.warning(`Documentation gaps: ${result.missing_documentation.slice(0, 2).join('; ')}`)
+                          }
                         } else {
-                          toast.info('AI charge capture complete — no additional charges found')
-                        }
-                        if (result?.missing_documentation?.length > 0) {
-                          toast.warning(`Documentation gaps: ${result.missing_documentation.slice(0, 2).join('; ')}`)
+                          // Path B: No encounter — extract from patient's superbill documents
+                          await ensureDocumentExtracted(item)
+                          // Now run AI coding using extracted document data
+                          if (!aiCodeCache[item.id]) {
+                            await generateAICodes('', '', item.providerSpecialty || '', 'Extract all billable codes from the uploaded superbill/encounter form. Identify every CPT, ICD-10, modifier, and charge.')
+                            toast.success('Charge capture from superbill complete')
+                          } else {
+                            toast.info('Codes already generated from this document')
+                          }
                         }
                       } catch (err) {
                         toast.error(`Charge capture failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
