@@ -26,18 +26,23 @@ export function useApi<T>(
   const [loading, setLoading] = useState(!options?.skip && !options?.initialData)
   const [error, setError] = useState<MedCloudApiError | null>(null)
   const mountedRef = useRef(true)
+  const dataRef = useRef<T | undefined>(options?.initialData)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const paramsKey = JSON.stringify(params)
 
   const fetchData = useCallback(async () => {
     if (options?.skip) return
-    setLoading(true)
+    // Only show loading spinner on INITIAL fetch (no data yet).
+    // On subsequent fetches (param changes, refetches), keep showing
+    // stale data to avoid the page "blinking" blank.
+    if (!dataRef.current) setLoading(true)
     setError(null)
     try {
       const result = await api.get<T>(path, params)
       if (mountedRef.current) {
         setData(result)
+        dataRef.current = result
         setLoading(false)
       }
     } catch (err) {
@@ -69,6 +74,7 @@ export function useApi<T>(
 
   const mutate = useCallback((newData: T) => {
     setData(newData)
+    dataRef.current = newData
   }, [])
 
   return { data, loading, error, refetch: fetchData, mutate }
