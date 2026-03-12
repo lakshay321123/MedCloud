@@ -924,6 +924,31 @@ async function seedDemoData(orgId) {
       }
     }
 
+    // ── Fix NULL client_ids for per-client views ──────────────────────────────
+    // Distribute org-level records across US clients so per-client filtering works
+    const usClientRows = await pool.query(`SELECT id FROM clients WHERE org_id = $1 AND region = 'us' ORDER BY created_at`, [_org]);
+    const usIds = usClientRows.rows.map(r => r.id);
+    if (usIds.length > 0) {
+      // Tasks: assign round-robin to US clients
+      const nullTasks = await pool.query(`SELECT id FROM tasks WHERE org_id = $1 AND client_id IS NULL`, [_org]);
+      for (let i = 0; i < nullTasks.rows.length; i++) {
+        await pool.query(`UPDATE tasks SET client_id = $1 WHERE id = $2`, [usIds[i % usIds.length], nullTasks.rows[i].id]).catch(()=>{});
+      }
+      // Documents: distribute round-robin across US clients (re-distribute if all on same client)
+      const allDocs = await pool.query(`SELECT id FROM documents WHERE org_id = $1 ORDER BY created_at`, [_org]);
+      for (let i = 0; i < allDocs.rows.length; i++) {
+        await pool.query(`UPDATE documents SET client_id = $1 WHERE id = $2`, [usIds[i % usIds.length], allDocs.rows[i].id]).catch(()=>{});
+      }
+      // Eligibility checks: assign round-robin
+      const nullElig = await pool.query(`SELECT id FROM eligibility_checks WHERE org_id = $1 AND client_id IS NULL`, [_org]);
+      for (let i = 0; i < nullElig.rows.length; i++) {
+        await pool.query(`UPDATE eligibility_checks SET client_id = $1 WHERE id = $2`, [usIds[i % usIds.length], nullElig.rows[i].id]).catch(()=>{});
+      }
+      if (nullTasks.rows.length > 0 || nullElig.rows.length > 0) {
+        safeLog('info', `Assigned client_ids: ${nullTasks.rows.length} tasks, ${nullElig.rows.length} elig checks`);
+      }
+    }
+
   } catch (e) {
     safeLog('error', 'Seed demo data error (non-fatal):', e.message);
   }
@@ -8052,8 +8077,8 @@ export const handler = async (event) => {
         FROM claims WHERE org_id = $1 AND status NOT IN ('paid','write_off','draft')`, [effectiveOrgId]);
 
       // Recent claims with patient names
-      const recentClaims = await pool.query(`SELECT c.id, c.claim_number, c.status, c.total_charges, c.dos_from,
-        p.first_name, p.last_name FROM claims c LEFT JOIN patients p ON p.id = c.patient_id
+      const recentClaims = await pool.query(`SELECT c.id, c.claim_number, c.status, c.total_charges, c.dos_from, c.created_at,
+        p.first_name, p.last_name, py.name AS payer_name FROM claims c LEFT JOIN patients p ON p.id = c.patient_id LEFT JOIN payers py ON py.id = c.payer_id
         WHERE c.org_id = $1 ORDER BY c.created_at DESC LIMIT 10`, [effectiveOrgId]);
 
       // Patient count
@@ -9778,9 +9803,11 @@ export const handler = async (event) => {
         if (qs.assigned_to) { params.push(qs.assigned_to); assignedFilter = `AND t.assigned_to = $${params.length}`; }
         const data = await orgQuery(effectiveOrgId, `
           SELECT t.*, 
+                 cl.name AS client_name,
                  EXTRACT(DAY FROM NOW() - t.created_at) as age_days,
                  CASE WHEN t.due_date < NOW() AND t.status NOT IN ('completed','cancelled') THEN TRUE ELSE FALSE END as overdue
           FROM tasks t
+          LEFT JOIN clients cl ON t.client_id = cl.id
           WHERE t.org_id = $1 ${clientFilter}
             ${statusFilter} ${assignedFilter}
           ORDER BY 

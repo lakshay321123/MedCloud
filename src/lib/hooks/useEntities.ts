@@ -351,6 +351,7 @@ export interface ApiDashboardMetrics {
     status: string
     total_charges: number
     dos_from: string
+    created_at?: string
     first_name: string
     last_name: string
     payer_name: string

@@ -80,14 +80,26 @@ function ExecutiveDashboard() {
   const denialRate = totalClaims > 0 ? ((openDenials / totalClaims) * 100).toFixed(1) : '0'
   const totalBilled = metrics?.claims_by_status?.reduce((s, c) => s + Number(c.total || 0), 0) || 0
   const collectionRate = totalBilled > 0 ? ((totalCollectionsMtd / totalBilled) * 100).toFixed(1) : '—'
-  const avgDaysInAR = totalAR > 0 && totalClaims > 0 ? Math.round(totalAR / totalClaims) : '—'
   const codingQueueCount = Number(metrics?.coding_queue_count) || 0
   const agingData = metrics?.ar_aging
+  // Compute weighted average days from AR aging buckets
+  const avgDaysInAR = agingData ? (() => {
+    const buckets = [
+      { days: 15, val: Number(agingData['0_30'] || 0) },
+      { days: 45, val: Number(agingData['31_60'] || 0) },
+      { days: 75, val: Number(agingData['61_90'] || 0) },
+      { days: 105, val: Number(agingData['91_120'] || 0) },
+      { days: 150, val: Number(agingData['120_plus'] || 0) },
+    ]
+    const totalVal = buckets.reduce((s, b) => s + b.val, 0)
+    if (totalVal === 0) return '—'
+    return Math.round(buckets.reduce((s, b) => s + b.days * b.val, 0) / totalVal)
+  })() : '—'
 
   const recentClaimsActivity = metrics?.recent_claims?.slice(0, 5).map(c => ({
     t: `Claim #${c.claim_number} — ${c.first_name} ${c.last_name} ($${Number(c.total_charges || 0).toLocaleString()})`,
     c: c.status === 'paid' ? 'text-brand-dark dark:text-brand-dark' : c.status === 'denied' ? 'text-[#065E76]' : 'text-brand',
-    ago: timeAgo(c.dos_from),
+    ago: timeAgo(c.created_at || c.dos_from),
     href: '/claims',
   }))
 
