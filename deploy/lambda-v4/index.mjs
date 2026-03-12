@@ -169,6 +169,12 @@ async function runSchemaMigration() {
 
       -- ── payments: add updated_at (create()/update() helpers always write it) ──
       ALTER TABLE payments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS patient_responsibility NUMERIC(10,2) DEFAULT 0;
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS cpt_code VARCHAR(10);
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS adj_reason_code VARCHAR(200);
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS posting_notes TEXT;
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS applied_by UUID;
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS applied_at TIMESTAMPTZ;
       UPDATE payments SET updated_at = COALESCE(created_at, NOW()) WHERE updated_at IS NULL;
 
       -- ── scrub_rules: add ordering column ────────────────────────────────────
