@@ -16,7 +16,7 @@ const roleRouteMap: Record<string, string[]> = {
   ar_team:      ['/dashboard', '/denials', '/ar-management', '/voice-ai', '/tasks', '/documents', '/portal/messages'],
   posting_team: ['/dashboard', '/payment-posting', '/tasks', '/documents', '/portal/messages'],
   provider:     ['/dashboard', '/ai-scribe', '/documents', '/analytics', '/portal/appointments', '/portal/messages', '/portal/patients'],
-  client:       ['/dashboard', '/portal'],
+  client:       ['/dashboard', '/portal', '/eligibility'],
 }
 
 export function middleware(req: NextRequest) {
@@ -44,7 +44,7 @@ export function middleware(req: NextRequest) {
       const portalType = parsed.portalType
 
       // Facility portal users (provider, client) must never access back-office routes
-      const backOfficeRoutes = ['/claims', '/coding', '/eligibility', '/denials', '/ar-management',
+      const backOfficeRoutes = ['/claims', '/coding', '/denials', '/ar-management',
         '/payment-posting', '/contracts', '/voice-ai', '/analytics', '/admin', '/integrations', '/credentialing']
 
       if (portalType === 'facility') {

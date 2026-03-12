@@ -184,16 +184,9 @@ async function runSchemaMigration() {
         target_role VARCHAR(50)
       );
 
-      -- ── full-text search index for global search ──────────────────────────────
-      CREATE INDEX IF NOT EXISTS idx_patients_search ON patients USING gin(
-        to_tsvector('english', coalesce(first_name,'') || ' ' || coalesce(last_name,'') || ' ' || coalesce(email,''))
-      );
-      CREATE INDEX IF NOT EXISTS idx_claims_search ON claims USING gin(
-        to_tsvector('english', coalesce(claim_number,''))
-      );
-      CREATE INDEX IF NOT EXISTS idx_providers_search ON providers USING gin(
-        to_tsvector('english', coalesce(first_name,'') || ' ' || coalesce(last_name,'') || ' ' || coalesce(npi,''))
-      );
+      -- ── full-text search indexes removed from cold start ──────────────────────
+      -- GIN/trigram indexes for global search should be created in a proper
+      -- migration to avoid heavyweight locks on hot tables during Lambda init.
 
       -- ── ar_call_log: create if not exists ───────────────────────────────────
       CREATE TABLE IF NOT EXISTS ar_call_log (
@@ -1568,7 +1561,7 @@ async function globalSearch(orgId, clientId, regionClientIds, query, role) {
     cfParams = [orgId, ...regionClientIds];
   }
 
-  const perm = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.admin;
+  const perm = ROLE_PERMISSIONS[role] || { tables: [], dashboardScope: 'none' };
   const canAccess = (tbl) => perm.tables === '*' || perm.tables.includes(tbl);
 
   const searchTerm = `%${q}%`;
@@ -1578,14 +1571,14 @@ async function globalSearch(orgId, clientId, regionClientIds, query, role) {
     try {
       const pIdx = cfParams.length + 1;
       const r = await pool.query(
-        `SELECT id, first_name, last_name, dob, email FROM patients WHERE org_id = $1${cf} AND (first_name ILIKE $${pIdx} OR last_name ILIKE $${pIdx} OR email ILIKE $${pIdx} OR CAST(dob AS TEXT) ILIKE $${pIdx}) LIMIT 5`,
+        `SELECT id, first_name, last_name, dob, email FROM patients WHERE org_id = $1${cf} AND (first_name ILIKE $${pIdx} OR last_name ILIKE $${pIdx} OR email ILIKE $${pIdx}) LIMIT 5`,
         [...cfParams, searchTerm]
       );
       r.rows.forEach(p => {
         const dobFmt = p.dob ? new Date(p.dob).toISOString().split('T')[0] : null;
         results.push({ type: 'patient', id: p.id, label: `${p.first_name} ${p.last_name}`, sub: dobFmt ? `DOB: ${dobFmt}` : (p.email || ''), path: `/portal/patients?openId=${p.id}` });
       });
-    } catch (_) {}
+    } catch (e) { safeLog('warn', 'search:patients failed:', e.message); }
   }
 
   // Search claims
@@ -1596,49 +1589,48 @@ async function globalSearch(orgId, clientId, regionClientIds, query, role) {
         `SELECT c.id, c.claim_number, c.status, p.first_name || ' ' || p.last_name AS patient_name FROM claims c LEFT JOIN patients p ON c.patient_id = p.id WHERE c.org_id = $1${cf.replace(/client_id/g, 'c.client_id')} AND (c.claim_number ILIKE $${pIdx} OR p.first_name ILIKE $${pIdx} OR p.last_name ILIKE $${pIdx}) LIMIT 5`,
         [...cfParams, searchTerm]
       );
-      r.rows.forEach(c => results.push({ type: 'claim', id: c.id, label: c.claim_number, sub: `${c.patient_name || 'Unknown'} — ${c.status}`, path: `/claims?openId=${c.id}` }));
-    } catch (_) {}
+      r.rows.forEach(c => { results.push({ type: 'claim', id: c.id, label: c.claim_number, sub: `${c.patient_name || 'Unknown'} — ${c.status}`, path: `/claims?openId=${c.id}` }); });
+    } catch (e) { safeLog('warn', 'search:claims failed:', e.message); }
   }
 
-  // Search providers
-  if (canAccess('patients')) { // providers are visible to anyone who can see patients
+  // Search providers (use cfParams for client scoping)
+  if (canAccess('patients')) {
     try {
-      const pIdx = [orgId].length + 1;
+      const pIdx = cfParams.length + 1;
       const r = await pool.query(
-        `SELECT id, first_name, last_name, npi, specialty FROM providers WHERE org_id = $1 AND (first_name ILIKE $${pIdx} OR last_name ILIKE $${pIdx} OR npi ILIKE $${pIdx}) LIMIT 5`,
-        [orgId, searchTerm]
+        `SELECT id, first_name, last_name, npi, specialty FROM providers WHERE org_id = $1${cf} AND (first_name ILIKE $${pIdx} OR last_name ILIKE $${pIdx} OR npi ILIKE $${pIdx}) LIMIT 5`,
+        [...cfParams, searchTerm]
       );
-      r.rows.forEach(p => results.push({ type: 'provider', id: p.id, label: `Dr. ${p.first_name} ${p.last_name}`, sub: `NPI: ${p.npi}`, path: `/credentialing?openId=${p.id}` }));
-    } catch (_) {}
+      r.rows.forEach(p => { results.push({ type: 'provider', id: p.id, label: `Dr. ${p.first_name} ${p.last_name}`, sub: `NPI: ${p.npi}`, path: `/credentialing?openId=${p.id}` }); });
+    } catch (e) { safeLog('warn', 'search:providers failed:', e.message); }
   }
 
-  // Search documents
+  // Search documents (use cfParams for client scoping)
   if (canAccess('documents')) {
     try {
-      const pIdx = [orgId].length + 1;
+      const pIdx = cfParams.length + 1;
       const r = await pool.query(
-        `SELECT id, file_name, doc_type, patient_name FROM documents WHERE org_id = $1 AND (file_name ILIKE $${pIdx} OR patient_name ILIKE $${pIdx}) LIMIT 5`,
-        [orgId, searchTerm]
+        `SELECT id, file_name, doc_type, patient_name FROM documents WHERE org_id = $1${cf} AND (file_name ILIKE $${pIdx} OR patient_name ILIKE $${pIdx}) LIMIT 5`,
+        [...cfParams, searchTerm]
       );
-      r.rows.forEach(d => results.push({ type: 'document', id: d.id, label: d.file_name || d.doc_type, sub: d.patient_name || '', path: `/documents?openId=${d.id}` }));
-    } catch (_) {}
+      r.rows.forEach(d => { results.push({ type: 'document', id: d.id, label: d.file_name || d.doc_type, sub: d.patient_name || '', path: `/documents?openId=${d.id}` }); });
+    } catch (e) { safeLog('warn', 'search:documents failed:', e.message); }
   }
 
   return { results: results.slice(0, 15) };
 }
 
 // ─── Seed Role-Based Notifications from Real Data ───────────────────────────
-let _notifSeeded = false;
+const _notifSeededOrgs = new Set();
 async function seedRoleNotifications(orgId) {
-  if (_notifSeeded) return;
-  _notifSeeded = true;
+  if (_notifSeededOrgs.has(orgId)) return;
 
   try {
     // Check if we already have seeded notifications
     const existing = await pool.query(
       `SELECT COUNT(*)::int AS cnt FROM notifications WHERE org_id = $1 AND target_role IS NOT NULL`, [orgId]
-    ).catch(() => ({ rows: [{ cnt: 0 }] }));
-    if (existing.rows[0].cnt > 5) return; // Already seeded
+    ).catch(e => { safeLog('warn', 'seedNotif: count check failed:', e.message); return { rows: [{ cnt: 0 }] }; });
+    if (existing.rows[0].cnt > 5) { _notifSeededOrgs.add(orgId); return; } // Already seeded
 
     const notifs = [];
 
@@ -1647,7 +1639,7 @@ async function seedRoleNotifications(orgId) {
       `SELECT d.id, c.claim_number, p.first_name || ' ' || p.last_name AS patient_name, d.denial_reason, d.status
        FROM denials d LEFT JOIN claims c ON d.claim_id = c.id LEFT JOIN patients p ON c.patient_id = p.id
        WHERE d.org_id = $1 AND d.status = 'open' LIMIT 5`, [orgId]
-    ).catch(() => ({ rows: [] }));
+    ).catch(e => { safeLog('warn', 'seedNotif: denied query failed:', e.message); return { rows: [] }; });
     denied.rows.forEach(d => {
       notifs.push({ title: `Denied: ${d.claim_number} — ${d.patient_name || 'Unknown'}`, message: d.denial_reason || 'Review required', type: 'urgent', priority: 'high', entity_type: 'denial', entity_id: d.id, action_url: '/denials', target_role: 'biller' });
       notifs.push({ title: `AR Follow-up: ${d.claim_number} denial open`, message: d.denial_reason || 'Needs follow-up', type: 'warning', priority: 'high', entity_type: 'denial', entity_id: d.id, action_url: '/denials', target_role: 'ar_team' });
@@ -1657,7 +1649,7 @@ async function seedRoleNotifications(orgId) {
     const expiring = await pool.query(
       `SELECT id, provider_name, credential_type, expiry_date FROM credentialing
        WHERE org_id = $1 AND status IN ('expiring', 'expired') LIMIT 3`, [orgId]
-    ).catch(() => ({ rows: [] }));
+    ).catch(e => { safeLog('warn', 'seedNotif: expiring cred query failed:', e.message); return { rows: [] }; });
     expiring.rows.forEach(c => {
       notifs.push({ title: `Credential expiring: ${c.provider_name} — ${c.credential_type}`, message: `Expires: ${c.expiry_date}`, type: 'warning', priority: 'high', entity_type: 'credentialing', entity_id: c.id, action_url: '/credentialing', target_role: 'admin' });
       notifs.push({ title: `Credential alert: ${c.provider_name}`, message: `${c.credential_type} expiring`, type: 'warning', priority: 'medium', entity_type: 'credentialing', entity_id: c.id, action_url: '/credentialing', target_role: 'director' });
@@ -1667,9 +1659,9 @@ async function seedRoleNotifications(orgId) {
     const overdue = await pool.query(
       `SELECT id, title, task_type, priority, assigned_to FROM tasks
        WHERE org_id = $1 AND status NOT IN ('completed', 'cancelled') AND priority IN ('high', 'urgent') LIMIT 5`, [orgId]
-    ).catch(() => ({ rows: [] }));
+    ).catch(e => { safeLog('warn', 'seedNotif: overdue tasks query failed:', e.message); return { rows: [] }; });
     overdue.rows.forEach(t => {
-      const role = t.task_type === 'coding' ? 'coder' : t.task_type === 'billing' ? 'biller' : t.task_type === 'posting' ? 'posting_team' : t.task_type === 'ar_followup' ? 'ar_team' : 'supervisor';
+      const role = t.task_type === 'coding' ? 'coder' : t.task_type === 'billing' ? 'biller' : t.task_type === 'posting' ? 'posting_team' : t.task_type === 'ar_follow_up' ? 'ar_team' : 'supervisor';
       notifs.push({ title: `${t.priority.toUpperCase()} task: ${t.title}`, message: `Type: ${t.task_type}`, type: t.priority === 'urgent' ? 'critical' : 'warning', priority: t.priority, entity_type: 'task', entity_id: t.id, action_url: '/tasks', target_role: role });
     });
 
@@ -1678,7 +1670,7 @@ async function seedRoleNotifications(orgId) {
       `SELECT cq.id, cq.status, p.first_name || ' ' || p.last_name AS patient_name
        FROM coding_queue cq LEFT JOIN patients p ON cq.patient_id = p.id
        WHERE cq.org_id = $1 AND cq.status IN ('pending', 'on_hold') LIMIT 3`, [orgId]
-    ).catch(() => ({ rows: [] }));
+    ).catch(e => { safeLog('warn', 'seedNotif: coding query failed:', e.message); return { rows: [] }; });
     coding.rows.forEach(c => {
       notifs.push({ title: `Coding pending: ${c.patient_name || 'Unknown patient'}`, message: `Status: ${c.status}`, type: 'info', priority: 'medium', entity_type: 'coding_queue', entity_id: c.id, action_url: '/coding', target_role: 'coder' });
     });
@@ -1686,20 +1678,20 @@ async function seedRoleNotifications(orgId) {
     // 5. ERA files ready → posting_team
     const eras = await pool.query(
       `SELECT id, file_name, payer_name, status FROM era_files WHERE org_id = $1 AND status = 'new' LIMIT 3`, [orgId]
-    ).catch(() => ({ rows: [] }));
+    ).catch(e => { safeLog('warn', 'seedNotif: era query failed:', e.message); return { rows: [] }; });
     eras.rows.forEach(e => {
       notifs.push({ title: `ERA ready to post: ${e.payer_name || e.file_name}`, message: `File: ${e.file_name}`, type: 'info', priority: 'medium', entity_type: 'era_file', entity_id: e.id, action_url: '/payment-posting', target_role: 'posting_team' });
     });
 
     // 6. Upcoming appointments → client (front desk), provider
     const apts = await pool.query(
-      `SELECT a.id, a.appointment_date, a.visit_type, p.first_name || ' ' || p.last_name AS patient_name
+      `SELECT a.id, a.appointment_date, a.appointment_type, p.first_name || ' ' || p.last_name AS patient_name
        FROM appointments a LEFT JOIN patients p ON a.patient_id = p.id
        WHERE a.org_id = $1 AND DATE(a.appointment_date) = CURRENT_DATE LIMIT 3`, [orgId]
-    ).catch(() => ({ rows: [] }));
+    ).catch(e => { safeLog('warn', 'seedNotif: appointments query failed:', e.message); return { rows: [] }; });
     apts.rows.forEach(a => {
-      notifs.push({ title: `Today: ${a.patient_name || 'Patient'} — ${a.visit_type}`, message: `Date: ${a.appointment_date}`, type: 'info', priority: 'normal', entity_type: 'appointment', entity_id: a.id, action_url: '/portal/appointments', target_role: 'client' });
-      notifs.push({ title: `Appointment today: ${a.patient_name || 'Patient'}`, message: a.visit_type, type: 'info', priority: 'normal', entity_type: 'appointment', entity_id: a.id, action_url: '/portal/appointments', target_role: 'provider' });
+      notifs.push({ title: `Today: ${a.patient_name || 'Patient'} — ${a.appointment_type}`, message: `Date: ${a.appointment_date}`, type: 'info', priority: 'normal', entity_type: 'appointment', entity_id: a.id, action_url: '/portal/appointments', target_role: 'client' });
+      notifs.push({ title: `Appointment today: ${a.patient_name || 'Patient'}`, message: a.appointment_type, type: 'info', priority: 'normal', entity_type: 'appointment', entity_id: a.id, action_url: '/portal/appointments', target_role: 'provider' });
     });
 
     // 7. Dashboard-level alerts for leadership
@@ -1715,6 +1707,7 @@ async function seedRoleNotifications(orgId) {
       ).catch(e => safeLog('warn', 'seedNotif insert failed:', e.message));
     }
     safeLog('info', `Seeded ${notifs.length} role-based notifications`);
+    _notifSeededOrgs.add(orgId);
   } catch (e) {
     safeLog('warn', 'seedRoleNotifications failed:', e.message);
   }
@@ -7163,9 +7156,9 @@ export const handler = async (event) => {
     // (e.g. /admin/run-migrations executes arbitrary SQL).
     const callerRole  = authCtx.role   || 'staff';
     // filterRole: used for data-scoping (dashboard, notifications, search).
-    // In production this should match callerRole from JWT. In demo mode we accept qs.role
-    // so the frontend role-switcher can drive different data views.
-    const filterRole = qs.role || callerRole;
+    // Always trust the JWT-derived callerRole. Demo role-switching only allowed
+    // when DEMO_MODE env var is explicitly set.
+    const filterRole = (process.env.DEMO_MODE === 'true' && qs.role) ? qs.role : callerRole;
 
     const effectiveOrgId = validateUUID(rawOrgId, 'org_id');
     const userId = (rawUserId && UUID_RE.test(rawUserId)) ? rawUserId : null;
@@ -8298,25 +8291,29 @@ export const handler = async (event) => {
         FROM appointments a LEFT JOIN patients p ON p.id = a.patient_id
         WHERE a.org_id = $1 AND DATE(a.appointment_date) = CURRENT_DATE ORDER BY a.appointment_time LIMIT 10`, [effectiveOrgId]);
 
-      // Role-specific data scoping
-      const rolePerm = ROLE_PERMISSIONS[filterRole] || ROLE_PERMISSIONS.admin;
+      // Role-specific data scoping (apply client filter for multi-tenancy)
+      const rolePerm = ROLE_PERMISSIONS[filterRole] || { tables: [], dashboardScope: 'none' };
       const roleScope = rolePerm.dashboardScope;
       let roleData = {};
+      const dashCf = clientId ? ' AND client_id = $2' : '';
+      const dashParams = clientId ? [effectiveOrgId, clientId] : [effectiveOrgId];
 
       if (roleScope === 'coding') {
-        const pendingCoding = await pool.query(`SELECT cq.id, cq.status, cq.priority, p.first_name || ' ' || p.last_name AS patient_name FROM coding_queue cq LEFT JOIN patients p ON cq.patient_id = p.id WHERE cq.org_id = $1 AND cq.status NOT IN ('approved','billed') ORDER BY CASE cq.priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END LIMIT 15`, [effectiveOrgId]).catch(() => ({ rows: [] }));
+        const pendingCoding = await pool.query(`SELECT cq.id, cq.status, cq.priority, p.first_name || ' ' || p.last_name AS patient_name FROM coding_queue cq LEFT JOIN patients p ON cq.patient_id = p.id WHERE cq.org_id = $1${dashCf.replace(/client_id/g, 'cq.client_id')} AND cq.status NOT IN ('approved','billed') ORDER BY CASE cq.priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END LIMIT 15`, dashParams).catch(e => { safeLog('warn', 'Dashboard coding query failed:', e.message); return { rows: [] }; });
         roleData = { coding_queue: pendingCoding.rows, coding_queue_count: pendingCoding.rows.length };
       } else if (roleScope === 'ar') {
-        const arDenials = await pool.query(`SELECT d.id, d.denial_reason, d.status, c.claim_number, p.first_name || ' ' || p.last_name AS patient_name, c.dos_from FROM denials d LEFT JOIN claims c ON d.claim_id = c.id LEFT JOIN patients p ON c.patient_id = p.id WHERE d.org_id = $1 AND d.status IN ('open','in_appeal') AND NOW() - c.dos_from > interval '60 days' ORDER BY c.dos_from ASC LIMIT 15`, [effectiveOrgId]).catch(() => ({ rows: [] }));
+        const arDenials = await pool.query(`SELECT d.id, d.denial_reason, d.status, c.claim_number, p.first_name || ' ' || p.last_name AS patient_name, c.dos_from FROM denials d LEFT JOIN claims c ON d.claim_id = c.id LEFT JOIN patients p ON c.patient_id = p.id WHERE d.org_id = $1${dashCf.replace(/client_id/g, 'd.client_id')} AND d.status IN ('open','in_appeal') AND NOW() - c.dos_from > interval '60 days' ORDER BY c.dos_from ASC LIMIT 15`, dashParams).catch(e => { safeLog('warn', 'Dashboard AR query failed:', e.message); return { rows: [] }; });
         roleData = { ar_denials_60plus: arDenials.rows, ar_denials_count: arDenials.rows.length };
       } else if (roleScope === 'posting') {
-        const pendingERAs = await pool.query(`SELECT id, file_name, payer_name, status, total_paid FROM era_files WHERE org_id = $1 AND status IN ('new','processing') ORDER BY created_at DESC LIMIT 10`, [effectiveOrgId]).catch(() => ({ rows: [] }));
-        const unposted = await pool.query(`SELECT COUNT(*)::int as cnt, SUM(paid)::numeric as total FROM payments WHERE org_id = $1 AND action = 'pending'`, [effectiveOrgId]).catch(() => ({ rows: [{ cnt: 0, total: 0 }] }));
+        const pendingERAs = await pool.query(`SELECT id, file_name, payer_name, status, total_paid FROM era_files WHERE org_id = $1${dashCf} AND status IN ('new','processing') ORDER BY created_at DESC LIMIT 10`, dashParams).catch(e => { safeLog('warn', 'Dashboard ERA query failed:', e.message); return { rows: [] }; });
+        const unposted = await pool.query(`SELECT COUNT(*)::int as cnt, SUM(paid)::numeric as total FROM payments WHERE org_id = $1${dashCf} AND action = 'pending'`, dashParams).catch(e => { safeLog('warn', 'Dashboard unposted query failed:', e.message); return { rows: [{ cnt: 0, total: 0 }] }; });
         roleData = { pending_eras: pendingERAs.rows, unposted_payments: unposted.rows[0] };
       } else if (roleScope === 'provider') {
-        roleData = { my_appointments: upcomingApts.rows };
+        // Filter appointments to the current provider's appointments
+        const providerApts = upcomingApts.rows.filter(a => a.provider_id === userId || !a.provider_id);
+        roleData = { my_appointments: providerApts };
       } else if (roleScope === 'frontdesk') {
-        const checkins = await pool.query(`SELECT a.id, a.status, a.visit_type, p.first_name || ' ' || p.last_name AS patient_name FROM appointments a LEFT JOIN patients p ON a.patient_id = p.id WHERE a.org_id = $1 AND DATE(a.appointment_date) = CURRENT_DATE ORDER BY a.appointment_time LIMIT 15`, [effectiveOrgId]).catch(() => ({ rows: [] }));
+        const checkins = await pool.query(`SELECT a.id, a.status, a.appointment_type, p.first_name || ' ' || p.last_name AS patient_name FROM appointments a LEFT JOIN patients p ON a.patient_id = p.id WHERE a.org_id = $1${dashCf.replace(/client_id/g, 'a.client_id')} AND DATE(a.appointment_date) = CURRENT_DATE ORDER BY a.appointment_time LIMIT 15`, dashParams).catch(e => { safeLog('warn', 'Dashboard checkins query failed:', e.message); return { rows: [] }; });
         roleData = { todays_checkins: checkins.rows };
       }
 
@@ -8736,29 +8733,7 @@ export const handler = async (event) => {
       }
     }
 
-    // ════ Notifications ═══════════════════════════════════════════════════
-    if (path.includes('/notifications')) {
-      if (method === 'GET') {
-        try { const result = await getNotifications(effectiveOrgId, userId, qs); return respond(200, result); } catch(e) { if (e.message?.includes('does not exist')) return respond(200, { notifications: [], unread_count: 0 }); throw e; }
-      }
-      if (method === 'POST' && !pathParams.id) {
-        const result = await createNotification(effectiveOrgId, body);
-        return respond(201, result);
-      }
-      // Mark as read
-      if (method === 'PUT' && pathParams.id) {
-        await pool.query('UPDATE notifications SET read = TRUE, read_at = NOW() WHERE id = $1', [pathParams.id]);
-        return respond(200, { id: pathParams.id, read: true });
-      }
-      // Mark all read
-      if (method === 'PUT' && path.includes('/mark-all-read')) {
-        await pool.query(
-          'UPDATE notifications SET read = TRUE, read_at = NOW() WHERE org_id = $1 AND user_id = $2 AND read = FALSE',
-          [effectiveOrgId, userId]
-        );
-        return respond(200, { status: 'all_read' });
-      }
-    }
+    // ════ Notifications — handled by role-aware handler below (resource === 'notifications') ════
 
     // ════ Appeals CRUD ════════════════════════════════════════════════════
     if (path.includes('/appeals')) {
@@ -9921,7 +9896,7 @@ export const handler = async (event) => {
           markQ += ` AND (target_role = $3 OR target_role IS NULL)`;
           markP.push(filterRole);
         }
-        await pool.query(markQ, markP).catch(() => {});
+        await pool.query(markQ, markP).catch(e => safeLog('warn', 'Mark all notifications read failed:', e.message));
         return respond(200, { message: 'All notifications marked as read' });
       }
     }

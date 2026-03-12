@@ -5,6 +5,7 @@ import { useApp } from '@/lib/context'
 import { UserRole } from '@/types'
 import { Search, Bell, LogOut, ChevronDown, Settings, User, FileText, Stethoscope, FolderOpen, Loader2, CheckCheck } from 'lucide-react'
 import { useNotifications, useGlobalSearch, useMarkAllNotificationsRead } from '@/lib/hooks'
+import { api } from '@/lib/api-client'
 import Dropdown, { DropdownOption } from '@/components/shared/Dropdown'
 import { useRouter } from 'next/navigation'
 
@@ -63,22 +64,21 @@ export default function Topbar() {
 
   // Mark single notification read
   const handleMarkRead = useCallback(async (id: string, actionUrl: string) => {
-    try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/notifications/${id}/read`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-      }).catch(() => {})
-    } catch (_) {}
     setNotifOpen(false)
     router.push(actionUrl || '/dashboard')
-    setTimeout(() => refetchNotifs(), 500)
+    try {
+      await api.put(`/notifications/${id}`, { read: true })
+      refetchNotifs()
+    } catch (err) { console.error('Failed to mark notification read:', err) }
   }, [router, refetchNotifs])
 
   // Mark all read
   const markAllRead = useMarkAllNotificationsRead()
   const handleMarkAllRead = useCallback(async () => {
-    await markAllRead.mutate({}).catch(() => {})
-    setTimeout(() => refetchNotifs(), 500)
+    try {
+      await markAllRead.mutate({})
+      setTimeout(() => refetchNotifs(), 500)
+    } catch (err) { console.error('Failed to mark all notifications read:', err) }
   }, [markAllRead, refetchNotifs])
 
   useEffect(() => {
@@ -160,7 +160,7 @@ export default function Topbar() {
                 {searchResults.map((r, i) => {
                   const Icon = SEARCH_ICONS[r.type] || Search
                   return (
-                    <button key={`${r.type}-${r.id}-${i}`} onClick={() => { router.push(r.path); setSearchOpen(false); setSearchQuery('') }}
+                    <button type="button" key={`${r.type}-${r.id}-${i}`} onClick={() => { router.push(r.path); setSearchOpen(false); setSearchQuery('') }}
                       className="w-full text-left px-4 py-2.5 hover:bg-surface-elevated flex items-center gap-3 border-b border-separator last:border-0">
                       <Icon size={14} className="text-brand shrink-0" />
                       <div className="min-w-0 flex-1">
@@ -181,7 +181,7 @@ export default function Topbar() {
           </div>
           {/* Notifications — right next to search */}
           <div className="relative shrink-0" ref={notifRef}>
-            <button
+            <button type="button"
               onClick={() => { setNotifOpen(o => !o); if (!notifOpen) refetchNotifs() }}
               className="p-2 rounded-btn hover:bg-white/20 text-white relative transition-colors"
             >
@@ -199,7 +199,7 @@ export default function Topbar() {
                   <div className="flex items-center gap-2">
                     {unreadCount > 0 && <span className="text-[10px] text-brand font-medium">{unreadCount} unread</span>}
                     {unreadCount > 0 && (
-                      <button onClick={handleMarkAllRead} className="text-[10px] text-gray-400 hover:text-brand font-medium flex items-center gap-1 transition-colors">
+                      <button type="button" onClick={handleMarkAllRead} className="text-[10px] text-gray-400 hover:text-brand font-medium flex items-center gap-1 transition-colors">
                         <CheckCheck size={11} /> Mark all
                       </button>
                     )}
@@ -217,7 +217,7 @@ export default function Topbar() {
                       return `${Math.floor(diff / 86400000)}d ago`
                     })()
                     return (
-                      <button key={n.id}
+                      <button type="button" key={n.id}
                         onClick={() => handleMarkRead(n.id, n.action_url || '/dashboard')}
                         className={`w-full text-left px-4 py-3 hover:bg-surface-elevated border-b border-separator last:border-0 flex items-start gap-3 transition-colors ${!n.read ? 'bg-brand/5' : ''}`}>
                         <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${dotColor}`} />
@@ -230,7 +230,7 @@ export default function Topbar() {
                   })}
                 </div>
                 <div className="px-4 py-2 border-t border-separator">
-                  <button onClick={() => { setNotifOpen(false); router.push('/tasks') }} className="text-xs text-brand hover:text-brand-dark font-medium transition-colors">
+                  <button type="button" onClick={() => { setNotifOpen(false); router.push('/tasks') }} className="text-xs text-brand hover:text-brand-dark font-medium transition-colors">
                     View all in Tasks →
                   </button>
                 </div>
