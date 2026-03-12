@@ -1,6 +1,6 @@
 'use client'
 import { useT } from '@/lib/i18n'
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
@@ -469,9 +469,9 @@ export default function CodingPage() {
   const { t } = useT()
   const [reassignTarget, setReassignTarget] = useState<string | null>(null)
   const { toast } = useToast()
-  const { data: apiQueueResult } = useCodingQueue({ status: 'pending', limit: 100 })
+  const { data: apiQueueResult } = useCodingQueue({ limit: 100 })
 
-  const apiMapped = apiQueueResult?.data?.map(c => ({
+  const apiMapped = useMemo(() => apiQueueResult?.data?.map(c => ({
     id: c.id,
     patientId: c.patient_id || '',
     patientName: c.patient_name || 'Unknown Patient',
@@ -505,21 +505,26 @@ export default function CodingPage() {
     patientPayer: undefined as string | undefined,
     visitType: undefined as string | undefined,
     placeOfService: undefined as string | undefined,
-  })) || []
+  })) || [], [apiQueueResult]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: usersResult } = useUsers({ limit: 100 })
   // Coders pulled from seeded users (role = coder)
-  const coders = (usersResult?.data || [])
+  const coders = useMemo(() => (usersResult?.data || [])
     .filter((u: any) => u.role === 'coder' || u.role === 'coding_specialist')
-    .map((u: any) => ({ id: u.id, name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email }))
+    .map((u: any) => ({ id: u.id, name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email })),
+  [usersResult])
 
-  const queue = (() => {
+  const queue = useMemo(() => {
     const base = apiMapped.length > 0 ? apiMapped : []
-    // Region filtering handled by backend via useClientParams
     return base.filter(item => !selectedClient || item.clientId === selectedClient.id)
-  })()
+  }, [apiMapped, selectedClient])
 
   const [selected, setSelected] = useState(queue[0]?.id || '')
+
+  // Auto-select first item when queue loads and nothing is selected
+  React.useEffect(() => {
+    if (!selected && queue.length > 0) setSelected(queue[0].id)
+  }, [queue, selected])
   const [tab, setTab] = useState<CodingTab>('note')
   const [selectedCodes, setSelectedCodes] = useState<Record<string, boolean>>({})
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
@@ -854,27 +859,28 @@ export default function CodingPage() {
     setExpanded({})
   }
 
+  // KPI metrics — memoized to prevent recalculation on unrelated state changes
+  const kpiMetrics = useMemo(() => {
+    const allItems = apiQueueResult?.data ?? []
+    const completedItems = allItems.filter((c: any) => c.status === 'completed')
+    const codedTodayCount = completedItems.filter((c: any) =>
+      c.completed_at && new Date(c.completed_at).toDateString() === new Date().toDateString()
+    ).length
+    const aiUsageRate = completedItems.length === 0 ? '—' : (() => {
+      const aiUsed = completedItems.filter((c: any) => c.ai_suggested_cpt?.length > 0 || c.ai_suggested_icd?.length > 0).length
+      return `${Math.round((aiUsed / completedItems.length) * 100)}%`
+    })()
+    return { queueCount: apiQueueResult?.meta?.total ?? queue.length, codedTodayCount, aiUsageRate }
+  }, [apiQueueResult, queue.length])
+
   return (
     <ModuleShell title={t("coding","title")} subtitle={t("coding","subtitle")}>
-      {/* Pre-compute for KPIs — avoid repeated filter passes */}
-      {(() => {
-        const completedItems = (apiQueueResult?.data ?? []).filter((c: any) => c.status === 'completed')
-        const codedTodayCount = completedItems.filter((c: any) =>
-          c.completed_at && new Date(c.completed_at).toDateString() === new Date().toDateString()
-        ).length
-        const aiUsageRate = completedItems.length === 0 ? '—' : (() => {
-          const aiUsed = completedItems.filter((c: any) => c.ai_suggested_cpt?.length > 0 || c.ai_suggested_icd?.length > 0).length
-          return `${Math.round((aiUsed / completedItems.length) * 100)}%`
-        })()
-        return (
-          <div className="grid grid-cols-4 gap-4 mb-4">
-            <KPICard label={t('coding','myQueue')} value={apiQueueResult?.meta?.total ?? queue.length} icon={<BrainCircuit size={20} />} />
-            <KPICard label={t('coding','codedToday')} value={codedTodayCount} icon={<CheckCircle2 size={20} />} />
-            <KPICard label="AI Usage Rate" value={aiUsageRate} icon={<Activity size={20} />} />
-            <KPICard label={t('coding','avgTimeChart')} value="—" icon={<Clock size={20} />} />
-          </div>
-        )
-      })()}
+      <div className="grid grid-cols-4 gap-4 mb-4">
+        <KPICard label={t('coding','myQueue')} value={kpiMetrics.queueCount} icon={<BrainCircuit size={20} />} />
+        <KPICard label={t('coding','codedToday')} value={kpiMetrics.codedTodayCount} icon={<CheckCircle2 size={20} />} />
+        <KPICard label="AI Usage Rate" value={kpiMetrics.aiUsageRate} icon={<Activity size={20} />} />
+        <KPICard label={t('coding','avgTimeChart')} value="—" icon={<Clock size={20} />} />
+      </div>
 
       <div className={`grid gap-4 h-[calc(100vh-280px)] ${docOpen ? 'grid-cols-12' : 'grid-cols-12'}`}>
         {/* ── Queue Panel ── */}
@@ -1652,21 +1658,33 @@ export default function CodingPage() {
                   }} />
                 </div>
 
-                {/* AI Charge Capture */}
-                {item?.encounter_id && (
+                {/* AI Charge Capture — works from encounter SOAP OR patient superbill docs */}
+                {item && (
                   <button
                     onClick={async () => {
-                      if (!item.encounter_id) return
                       setCapturingCharges(true)
                       try {
-                        const result = await api.post<any>(`/encounters/${item.encounter_id}/charge-capture`, {})
-                        if (result?.charges?.length > 0) {
-                          toast.success(`AI captured ${result.charges.length} charge(s) — $${result.total_estimated_charge?.toLocaleString() || '0'} estimated`)
+                        if (item.encounter_id) {
+                          // Path A: Has encounter — use full charge capture with SOAP + docs
+                          const result = await api.post<any>(`/encounters/${item.encounter_id}/charge-capture`, {})
+                          if (result?.charges?.length > 0) {
+                            toast.success(`AI captured ${result.charges.length} charge(s) — $${result.total_estimated_charge?.toLocaleString() || '0'} estimated`)
+                          } else {
+                            toast.info('AI charge capture complete — no additional charges found')
+                          }
+                          if (result?.missing_documentation?.length > 0) {
+                            toast.warning(`Documentation gaps: ${result.missing_documentation.slice(0, 2).join('; ')}`)
+                          }
                         } else {
-                          toast.info('AI charge capture complete — no additional charges found')
-                        }
-                        if (result?.missing_documentation?.length > 0) {
-                          toast.warning(`Documentation gaps: ${result.missing_documentation.slice(0, 2).join('; ')}`)
+                          // Path B: No encounter — extract from patient's superbill documents
+                          await ensureDocumentExtracted(item)
+                          // Now run AI coding using extracted document data
+                          if (!aiCodeCache[item.id]) {
+                            await generateAICodes('', '', item.providerSpecialty || '', 'Extract all billable codes from the uploaded superbill/encounter form. Identify every CPT, ICD-10, modifier, and charge.')
+                            toast.success('Charge capture from superbill complete')
+                          } else {
+                            toast.info('Codes already generated from this document')
+                          }
                         }
                       } catch (err) {
                         toast.error(`Charge capture failed: ${err instanceof Error ? err.message : 'Unknown error'}`)

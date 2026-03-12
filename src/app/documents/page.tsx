@@ -260,12 +260,12 @@ function AllDocsTab() {
   const docSearchParams = useSearchParams()
   const openId = docSearchParams.get('openId')
   const docRouter = useRouter()
-  const openIdDismissed = useRef(false)
+  const consumedOpenId = useRef<string | null>(null)
   useEffect(() => {
-    if (!openId || selectedDoc || openIdDismissed.current) return
+    if (!openId || openId === consumedOpenId.current) return
     const match = apiDocs.find(d => d.id === openId)
-    if (match) setSelectedDoc(match)
-  }, [openId, apiDocs, selectedDoc])
+    if (match) { setSelectedDoc(match); consumedOpenId.current = openId }
+  }, [openId, apiDocs])
 
   return (
     <div>
@@ -356,8 +356,8 @@ function AllDocsTab() {
         </table></div>
       </div>
       {selectedDoc&&<>
-        <div className="fixed inset-0 bg-black/20 z-30" onClick={()=>{ openIdDismissed.current = true; setSelectedDoc(null); if (docSearchParams.get('openId')) docRouter.replace('/documents', { scroll: false }) }}/>
-        <DocPreviewDrawer doc={selectedDoc} onClose={()=>{ openIdDismissed.current = true; setSelectedDoc(null); if (docSearchParams.get('openId')) docRouter.replace('/documents', { scroll: false }) }}/>
+        <div className="fixed inset-0 bg-black/20 z-30" onClick={()=>{ setSelectedDoc(null); if (docSearchParams.get('openId')) docRouter.replace('/documents', { scroll: false }) }}/>
+        <DocPreviewDrawer doc={selectedDoc} onClose={()=>{ setSelectedDoc(null); if (docSearchParams.get('openId')) docRouter.replace('/documents', { scroll: false }) }}/>
       </>}
     </div>
   )

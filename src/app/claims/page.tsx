@@ -1043,14 +1043,14 @@ export default function ClaimsPage() {
   // Auto-open claim drawer when navigated from global search with ?openId=
   const searchParams = useSearchParams()
   const openId = searchParams.get('openId') ?? null
-  const openIdDismissed = useRef(false)
+  const consumedOpenId = useRef<string | null>(null)
   const { data: directClaim } = useClaim(openId)
   useEffect(() => {
-    if (!openId || drawerClaim || openIdDismissed.current) return
+    if (!openId || openId === consumedOpenId.current) return
     const match = allClaims.find(c => c.id === openId || c.apiId === openId)
-    if (match) { setDrawerClaim(match); return }
-    if (directClaim) setDrawerClaim(apiClaimToDemoClaim(directClaim as ApiClaim))
-  }, [openId, allClaims, drawerClaim, directClaim])
+    if (match) { setDrawerClaim(match); consumedOpenId.current = openId; return }
+    if (directClaim) { setDrawerClaim(apiClaimToDemoClaim(directClaim as ApiClaim)); consumedOpenId.current = openId }
+  }, [openId, allClaims, directClaim])
 
   // KPIs
   const today = new Date().toISOString().split('T')[0]
@@ -1358,7 +1358,7 @@ export default function ClaimsPage() {
         </div>
       </div>
 
-      {drawerClaim && <ClaimDrawer claim={drawerClaim} onClose={() => { openIdDismissed.current = true; setDrawerClaim(null); if (searchParams.get('openId')) router.replace('/claims', { scroll: false }) }} onRefetch={refetch} apiScrubRules={apiScrubRules} />}
+      {drawerClaim && <ClaimDrawer claim={drawerClaim} onClose={() => { setDrawerClaim(null); if (searchParams.get('openId')) router.replace('/claims', { scroll: false }) }} onRefetch={refetch} apiScrubRules={apiScrubRules} />}
 
       {/* ── Batch Submit Panel ── */}
       <div className="card p-4 mt-4">

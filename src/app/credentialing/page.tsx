@@ -52,15 +52,14 @@ export default function CredentialingPage() {
   // Auto-open provider drawer when navigated from global search with ?openId=
   const searchParams = useSearchParams()
   const openId = searchParams.get('openId')
-  const openIdDismissed = useRef(false)
+  const consumedOpenId = useRef<string | null>(null)
   useEffect(() => {
-    if (!openId || selected || openIdDismissed.current) return
+    if (!openId || openId === consumedOpenId.current) return
     const match = filteredProviders.find(p => p.id === openId)
-    if (match) { setSelected(match); return }
-    // If not in loaded list, try all base providers (ignoring client filter)
+    if (match) { setSelected(match); consumedOpenId.current = openId; return }
     const baseMatch = baseProviders.find(p => p.id === openId)
-    if (baseMatch) setSelected(baseMatch)
-  }, [openId, filteredProviders, baseProviders, selected])
+    if (baseMatch) { setSelected(baseMatch); consumedOpenId.current = openId }
+  }, [openId, filteredProviders, baseProviders])
 
   const activeCount = filteredProviders.filter(p => p.status === 'active').length
   const expiringCount = filteredProviders.filter(p => p.status === 'expiring').length
@@ -108,11 +107,11 @@ export default function CredentialingPage() {
 
       {selected && (
         <>
-          <div className="fixed inset-0 bg-black/20 z-30" onClick={() => { openIdDismissed.current = true; setSelected(null); if (searchParams.get('openId')) router.replace('/credentialing', { scroll: false }) }} />
+          <div className="fixed inset-0 bg-black/20 z-30" onClick={() => { setSelected(null); if (searchParams.get('openId')) router.replace('/credentialing', { scroll: false }) }} />
           <div className="fixed right-0 top-0 h-full w-[420px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl">
             <div className="flex gap-2 items-center justify-between p-4 border-b border-separator pb-1">
               <h3 className="font-semibold text-content-primary">{selected.name}</h3>
-              <button onClick={() => { openIdDismissed.current = true; setSelected(null); if (searchParams.get('openId')) router.replace('/credentialing', { scroll: false }) }} className="p-1 hover:bg-surface-elevated rounded-btn">
+              <button onClick={() => { setSelected(null); if (searchParams.get('openId')) router.replace('/credentialing', { scroll: false }) }} className="p-1 hover:bg-surface-elevated rounded-btn">
                 <X size={16} className="text-content-secondary" />
               </button>
             </div>

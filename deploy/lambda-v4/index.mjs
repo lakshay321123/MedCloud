@@ -1889,7 +1889,7 @@ async function enrichedPayments(orgId, clientId, regionClientIds = null) {
   return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
 }
 
-async function enrichedCoding(orgId, clientId, regionClientIds = null) {
+async function enrichedCoding(orgId, clientId, regionClientIds = null, qs = {}) {
   let q = `SELECT cq.*, p.first_name || ' ' || p.last_name AS patient_name,
            pr.first_name || ' ' || pr.last_name AS provider_name,
            cl.name AS client_name,
@@ -1909,9 +1909,12 @@ async function enrichedCoding(orgId, clientId, regionClientIds = null) {
   if (clientId) { params.push(clientId); q += ` AND cq.client_id = $${params.length}`; }
   else if (regionClientIds && regionClientIds.length > 0) {
     const ph = regionClientIds.map((_, i) => `$${params.length + 1 + i}`).join(',');
-    params.push(...regionClientIds); q += ` AND cq.client_id IN (${ph})`;
+    params.push(...regionClientIds); q += ` AND (cq.client_id IN (${ph}) OR cq.client_id IS NULL)`;
   }
-  q += ' ORDER BY cq.created_at DESC';
+  // Status filter — frontend sends status=pending to hide completed items
+  if (qs.status) { params.push(qs.status); q += ` AND cq.status = $${params.length}`; }
+  q += ' ORDER BY CASE cq.priority WHEN \'urgent\' THEN 1 WHEN \'high\' THEN 2 WHEN \'medium\' THEN 3 ELSE 4 END, cq.created_at DESC';
+  if (qs.limit) { params.push(parseInt(qs.limit)); q += ` LIMIT $${params.length}`; }
   const rows = (await orgQuery(orgId, q, params)).rows;
   return { data: rows, meta: { total: rows.length, page: 1, limit: rows.length } };
 }
@@ -4482,13 +4485,38 @@ async function chargeCapture(encounterId, orgId, userId) {
   );
   const soap = soapR.rows[0];
 
-  // Also check for documents linked to this encounter
-  const docR = await pool.query(
+  // Check for documents: first by encounter_id, then fall back to patient_id
+  let docR = await pool.query(
     'SELECT * FROM documents WHERE encounter_id = $1 AND textract_status = $2 ORDER BY created_at DESC LIMIT 1',
     [encounterId, 'completed']
   );
+  if (!docR.rows[0] && encounter.patient_id) {
+    // Fallback: find superbill/clinical docs linked to the patient
+    docR = await pool.query(
+      `SELECT * FROM documents WHERE patient_id = $1 AND org_id = $2 AND textract_status = 'completed'
+       AND (doc_type ILIKE '%superbill%' OR doc_type ILIKE '%clinical%' OR doc_type IN ('superbill','Superbill','Other'))
+       ORDER BY created_at DESC LIMIT 1`,
+      [encounter.patient_id, orgId]
+    );
+  }
   const doc = docR.rows[0];
-  const textractText = doc?.textract_result?.text || '';
+  // Parse textract_result — could be JSON string or object
+  let textractText = '';
+  if (doc?.textract_result) {
+    const tr = typeof doc.textract_result === 'string' ? JSON.parse(doc.textract_result) : doc.textract_result;
+    textractText = tr?.raw_text || tr?.text || '';
+    // Also extract structured fields if raw_text is empty
+    if (!textractText && tr?.fields) {
+      const f = tr.fields;
+      const parts = [];
+      if (f.cpt_codes?.parsed?.length) parts.push(`CPT CODES: ${f.cpt_codes.parsed.join(', ')}`);
+      if (f.diagnoses?.parsed?.length) parts.push(`DIAGNOSES: ${f.diagnoses.parsed.join(', ')}`);
+      if (f.patient_name?.value) parts.push(`PATIENT: ${f.patient_name.value}`);
+      if (f.date_of_service?.value) parts.push(`DOS: ${f.date_of_service.value}`);
+      if (f.billed_amount?.value) parts.push(`BILLED: $${f.billed_amount.value}`);
+      textractText = parts.join('\n');
+    }
+  }
 
   // Build clinical text from available sources
   const clinicalText = [
@@ -7150,15 +7178,14 @@ export const handler = async (event) => {
     const rawOrgId  = authCtx.org_id   || headers['x-org-id']    || qs.org_id    || body.org_id    || 'a0000000-0000-0000-0000-000000000001';
     const rawUserId = authCtx.user_id  || headers['x-user-id']   || qs.user_id   || body.user_id   || null;
     const rawClientId = authCtx.client_id || headers['x-client-id'] || qs.client_id || body.client_id || null;
-    // SECURITY: role MUST come from Cognito JWT (authCtx) only — never from
-    // user-supplied headers. Accepting x-role from headers would allow any caller
-    // to send x-role: admin and bypass authorization checks on privileged routes
-    // (e.g. /admin/run-migrations executes arbitrary SQL).
+    // SECURITY: callerRole comes from Cognito JWT only — used for privileged
+    // route checks (e.g. /admin/run-migrations). Never from user headers.
     const callerRole  = authCtx.role   || 'staff';
     // filterRole: used for data-scoping (dashboard, notifications, search).
-    // Always trust the JWT-derived callerRole. Demo role-switching only allowed
-    // when DEMO_MODE env var is explicitly set.
-    const filterRole = (process.env.DEMO_MODE === 'true' && qs.role) ? qs.role : callerRole;
+    // When Cognito authorizer is active, authCtx.role is set and takes priority.
+    // Pre-Cognito: accept qs.role from the frontend (same trust level as org_id/user_id
+    // which also fall back to qs). This does NOT affect privileged route checks.
+    const filterRole = authCtx.role || qs.role || callerRole;
 
     const effectiveOrgId = validateUUID(rawOrgId, 'org_id');
     const userId = (rawUserId && UUID_RE.test(rawUserId)) ? rawUserId : null;
@@ -7604,7 +7631,7 @@ export const handler = async (event) => {
     // ════ Coding Queue ═════════════════════════════════════════════════════
     if (path.includes('/coding') && !path.includes('/approve') && !path.includes('/query') &&
         !path.includes('/assign') && !path.includes('/ai-suggest') && !path.includes('/coding-qa')) {
-      if (method === 'GET' && !pathParams.id) return respond(200, await enrichedCoding(effectiveOrgId, clientId, qs._regionClientIds));
+      if (method === 'GET' && !pathParams.id) return respond(200, await enrichedCoding(effectiveOrgId, clientId, qs._regionClientIds, qs));
       if (method === 'GET' && pathParams.id) {
         const c = await getById('coding_queue', pathParams.id);
         if (!c || c.org_id !== effectiveOrgId) return respond(404, { error: 'Coding item not found' });
