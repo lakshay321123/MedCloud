@@ -594,42 +594,23 @@ export default function CodingPage() {
         suggested_em?: string; em_confidence?: number; reasoning?: string
         mock?: boolean; suggestion_id?: string; processing_ms?: number; confidence?: number
         documentation_gaps?: string[]; audit_flags?: string[]; hcc_diagnoses?: string[]
+        status?: string; message?: string
       }>(`/coding/${item.id}/ai-suggest`, { instructions: instructions || '' })
 
-      // Map Lambda response format → frontend format
-      const icd: AISuggestedCode[] = (result.suggested_icd || []).map(c => ({
-        code: c.code, desc: c.description, confidence: c.confidence,
-        is_hcc: c.is_hcc,
-        reasoning: c.specificity_note || (c.is_hcc ? 'HCC risk adjustment diagnosis' : undefined),
-      }))
-      const cpt: AISuggestedCode[] = (result.suggested_cpt || []).map(c => ({
-        code: c.code, desc: c.description, confidence: c.confidence,
-        modifiers: c.modifier ? [c.modifier] : [],
-        reasoning: c.modifier_reason || c.ncci_note || undefined,
-      }))
-
-      setAiCodeCache(prev => ({ ...prev, [item.id]: { icd, cpt } }))
-      // Auto-select all generated codes + E/M conflict detection
-      const newSelected: Record<string, boolean> = {}
-      icd.forEach(c => { newSelected[`icd-${c.code}`] = true })
-      // E/M conflict: only keep the highest-level E/M code
-      const emCodes = cpt.filter(c => /^99(2[0-5][0-9]|[3-4])/.test(c.code))
-      const nonEmCodes = cpt.filter(c => !/^99(2[0-5][0-9]|[3-4])/.test(c.code))
-      if (emCodes.length > 1) {
-        const highest = emCodes.sort((a, b) => b.code.localeCompare(a.code))[0]
-        nonEmCodes.push(highest)
-        nonEmCodes.forEach(c => { newSelected[`cpt-${c.code}`] = true })
+      // Async mode: backend returned 202 with suggestion_id — poll for results
+      if (result.status === 'processing' && result.suggestion_id) {
+        toast.info('AI coding started — analyzing patient data, visit notes & documents...')
+        const pollResult = await pollForAISuggestion(result.suggestion_id)
+        if (pollResult) {
+          applyAIResults(pollResult, item.id)
+        } else {
+          toast.warning('AI coding is taking longer than expected — results will appear when ready')
+          setAiCoding(false)
+          return
+        }
       } else {
-        cpt.forEach(c => { newSelected[`cpt-${c.code}`] = true })
-      }
-      setSelectedCodes(prev => ({ ...prev, ...newSelected }))
-      setShowQuickSoap(false)
-
-      const mockLabel = result.mock ? ' (mock — Bedrock unavailable)' : ''
-      if (result.documentation_gaps?.length) {
-        toast.warning(`AI generated ${icd.length} ICD + ${cpt.length} CPT codes${mockLabel}. ${result.documentation_gaps.length} documentation gap(s) flagged.`)
-      } else {
-        toast.success(`AI generated ${icd.length} ICD + ${cpt.length} CPT codes${mockLabel}`)
+        // Sync mode: backend returned full results immediately
+        applyAIResults(result, item.id)
       }
     } catch (e) {
       console.error('AI coding error:', e)
@@ -637,6 +618,65 @@ export default function CodingPage() {
       toast.error('AI coding failed — use manual entry below')
     } finally {
       setAiCoding(false)
+    }
+  }
+
+  // Poll GET /ai-coding-suggestions/:id until status is 'completed' or 'failed'
+  async function pollForAISuggestion(suggestionId: string, maxAttempts = 20, intervalMs = 3000): Promise<any | null> {
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise(r => setTimeout(r, intervalMs))
+      try {
+        const poll = await api.get<any>(`/ai-coding-suggestions/${suggestionId}`)
+        if (poll.status === 'completed') return poll
+        if (poll.status === 'failed') {
+          toast.error(`AI coding failed: ${poll.error_message || 'Unknown error'}`)
+          return null
+        }
+        // Still processing — continue polling
+      } catch (e) {
+        console.warn('[polling] AI suggestion poll error:', e)
+        // Continue polling on transient errors
+      }
+    }
+    return null // Timed out after maxAttempts
+  }
+
+  // Apply AI results to the UI (works for both sync and async responses)
+  function applyAIResults(result: any, itemId: string) {
+    // Map Lambda response format → frontend format
+    const icd: AISuggestedCode[] = (result.suggested_icd || []).map((c: any) => ({
+      code: c.code, desc: c.description || c.desc, confidence: c.confidence,
+      is_hcc: c.is_hcc,
+      reasoning: c.specificity_note || c.reasoning || (c.is_hcc ? 'HCC risk adjustment diagnosis' : undefined),
+    }))
+    const cpt: AISuggestedCode[] = (result.suggested_cpt || []).map((c: any) => ({
+      code: c.code, desc: c.description || c.desc, confidence: c.confidence,
+      modifiers: c.modifier ? [c.modifier] : c.modifiers || [],
+      reasoning: c.modifier_reason || c.ncci_note || c.reasoning || undefined,
+    }))
+
+    setAiCodeCache(prev => ({ ...prev, [itemId]: { icd, cpt } }))
+    // Auto-select all generated codes + E/M conflict detection
+    const newSelected: Record<string, boolean> = {}
+    icd.forEach(c => { newSelected[`icd-${c.code}`] = true })
+    // E/M conflict: only keep the highest-level E/M code
+    const emCodes = cpt.filter(c => /^99(2[0-5][0-9]|[3-4])/.test(c.code))
+    const nonEmCodes = cpt.filter(c => !/^99(2[0-5][0-9]|[3-4])/.test(c.code))
+    if (emCodes.length > 1) {
+      const highest = emCodes.sort((a, b) => b.code.localeCompare(a.code))[0]
+      nonEmCodes.push(highest)
+      nonEmCodes.forEach(c => { newSelected[`cpt-${c.code}`] = true })
+    } else {
+      cpt.forEach(c => { newSelected[`cpt-${c.code}`] = true })
+    }
+    setSelectedCodes(prev => ({ ...prev, ...newSelected }))
+    setShowQuickSoap(false)
+
+    const mockLabel = result.mock || result.model_id === 'mock' ? ' (mock — Bedrock unavailable)' : ''
+    if (result.documentation_gaps?.length) {
+      toast.warning(`AI generated ${icd.length} ICD + ${cpt.length} CPT codes${mockLabel}. ${result.documentation_gaps.length} documentation gap(s) flagged.`)
+    } else {
+      toast.success(`AI generated ${icd.length} ICD + ${cpt.length} CPT codes${mockLabel}`)
     }
   }
 
