@@ -1,6 +1,6 @@
 'use client'
 import { useT } from '@/lib/i18n'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useApp } from '@/lib/context'
 import { api } from '@/lib/api-client'
@@ -817,9 +817,10 @@ export default function PatientsPage() {
 
   // Auto-open patient drawer when navigated from global search with ?openId=
   const openId = searchParams.get('openId')
+  const openIdDismissed = useRef(false)
   const { data: directPatient } = usePatient(openId)
   useEffect(() => {
-    if (!openId || selected) return
+    if (!openId || selected || openIdDismissed.current) return
     // First try from already-loaded list
     const match = patients.find(p => p.id === openId)
     if (match) { setSelected(match); return }
@@ -873,7 +874,7 @@ export default function PatientsPage() {
         </table></div>
       </div>
       {showAdd && <AddPatientModal onClose={() => setShowAdd(false)} onSaved={refetch}/>}
-      {selected && <PatientDetailDrawer patient={selected} onClose={() => { setSelected(null); if (searchParams.get('openId')) router.replace('/portal/patients', { scroll: false }) }}/>}
+      {selected && <PatientDetailDrawer patient={selected} onClose={() => { openIdDismissed.current = true; setSelected(null); if (searchParams.get('openId')) router.replace('/portal/patients', { scroll: false }) }}/>}
 
       {/* ── Patient Statements ── */}
       <div className="card p-4 mt-4">
