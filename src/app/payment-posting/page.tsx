@@ -292,7 +292,7 @@ export default function PaymentPostingPage() {
             allowed: Number(p.allowed_amount) || 0,
             paid: Number(p.amount_paid) || 0,
             denied: Math.max(0, (Number(p.billed_amount) || 0) - (Number(p.amount_paid) || 0) - (Number(p.adjustment_amount) || 0)),
-            patBalance: 0,
+            patBalance: Number(p.patient_responsibility) || 0,
             adjCode: p.adj_reason_code || '',
             adjReason: p.adj_reason_code ? (p.adj_reason_code.split(',')[0] || '') : '',
             action: p.action || 'pending',
@@ -335,19 +335,27 @@ export default function PaymentPostingPage() {
     patBalance: acc.patBalance + row.patBalance,
   }), { billed: 0, allowed: 0, paid: 0, denied: 0, patBalance: 0 }), [eraLines])
 
-  // Update local state + persist to DB via API
+  // Update local state + persist to DB via API (with rollback on failure)
   const setValue = (id: string, field: string, value: number | string) => {
+    // Capture old value before optimistic update (for rollback)
+    const oldRow = lineItems.find(row => row.id === id)
+    const oldValue = oldRow ? (oldRow as any)[field] : value
+    // Optimistic update
     setLineItems(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row))
     // Map frontend field names → DB column names for persistence
     const dbFieldMap: Record<string, string> = {
       billed: 'billed_amount', allowed: 'allowed_amount', paid: 'amount_paid',
       adjCode: 'adj_reason_code', adjReason: 'adj_reason_code',
       action: 'action', notes: 'posting_notes', cpt: 'cpt_code',
+      patBalance: 'patient_responsibility',
     }
     const dbField = dbFieldMap[field]
     if (dbField) {
       api.patch(`/era-lines/${id}`, { [dbField]: value } as any).catch(err => {
         console.warn('[payment-posting] Failed to save line edit:', err)
+        // Revert optimistic update
+        setLineItems(prev => prev.map(row => row.id === id ? { ...row, [field]: oldValue } : row))
+        toast.error('Failed to save edit — reverted')
       })
     }
   }

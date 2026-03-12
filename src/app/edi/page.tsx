@@ -107,7 +107,7 @@ function EDIContent() {
   const kpis = useMemo(() => {
     const total = transactions.length
     const pending = transactions.filter(tx => tx.status === 'pending' || tx.status === 'sent').length
-    const accepted = transactions.filter(tx => tx.status === 'accepted' || tx.status === 'received' || tx.status === 'parsed').length
+    const accepted = transactions.filter(tx => tx.status === 'accepted' || tx.status === 'received' || tx.status === 'parsed' || tx.status === 'processing').length
     const errors = transactions.filter(tx => tx.status === 'rejected' || tx.status === 'error').length
     const outbound = transactions.filter(tx => tx.direction === 'outbound').length
     return { total, pending, accepted, errors, outbound, successRate: total > 0 ? Math.round((accepted / total) * 100) : 0 }
@@ -378,7 +378,7 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
               )}
               {tx.response_at && (
                 <TimelineEntry label="Response Received" time={tx.response_at}
-                  icon={tx.status === 'accepted' || tx.status === 'received' ? <CheckCircle2 size={12} className="text-brand-dark" /> : <AlertTriangle size={12} className="text-[#065E76]" />} />
+                  icon={tx.status === 'accepted' || tx.status === 'received' || tx.status === 'processing' ? <CheckCircle2 size={12} className="text-brand-dark" /> : <AlertTriangle size={12} className="text-[#065E76]" />} />
               )}
             </div>
           </div>

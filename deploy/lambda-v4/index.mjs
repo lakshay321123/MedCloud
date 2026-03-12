@@ -8266,17 +8266,22 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     if (path.includes('/era-files') && path.includes('/line-items') && method === 'GET') {
       const eraFile = await getById('era_files', pathParams.id, effectiveOrgId);
       if (!eraFile || eraFile.org_id !== effectiveOrgId) return respond(404, { error: 'ERA file not found' });
-      const linesR = await orgQuery(effectiveOrgId,
-        `SELECT p.*, c.claim_number, c.patient_id,
+      let linesSql = `SELECT p.*, c.claim_number, c.patient_id,
                 pt.first_name || ' ' || pt.last_name AS patient_name,
                 c.dos_from
          FROM payments p
          LEFT JOIN claims c ON p.claim_id = c.id
          LEFT JOIN patients pt ON c.patient_id = pt.id
-         WHERE p.era_file_id = $1 AND p.org_id = $2 AND p.status = 'line_detail'
-         ORDER BY p.created_at`,
-        [pathParams.id, effectiveOrgId]
-      );
+         WHERE p.era_file_id = $1 AND p.org_id = $2 AND p.status = 'line_detail'`;
+      const linesParams = [pathParams.id, effectiveOrgId];
+      // Client-level scoping
+      if (clientId) { linesParams.push(clientId); linesSql += ` AND p.client_id = $${linesParams.length}`; }
+      else if (qs._regionClientIds?.length > 0) {
+        const ph = qs._regionClientIds.map((_, i) => `$${linesParams.length + 1 + i}`).join(',');
+        linesParams.push(...qs._regionClientIds); linesSql += ` AND (p.client_id IN (${ph}) OR p.client_id IS NULL)`;
+      }
+      linesSql += ' ORDER BY p.created_at';
+      const linesR = await orgQuery(effectiveOrgId, linesSql, linesParams);
       return respond(200, { data: linesR.rows, meta: { total: linesR.rows.length } });
     }
 
@@ -8284,8 +8289,16 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     if (path.includes('/era-lines') && (method === 'PUT' || method === 'PATCH') && pathParams.id) {
       const payment = await getById('payments', pathParams.id, effectiveOrgId);
       if (!payment || payment.org_id !== effectiveOrgId) return respond(404, { error: 'Line item not found' });
+      // Only allow editing ERA line-detail rows — reject regular payment records
+      if (payment.status !== 'line_detail' || !payment.era_file_id) {
+        return respond(400, { error: 'Only ERA line-detail payments can be edited here' });
+      }
+      // Client-level scoping: if caller is scoped to a client, verify this line belongs to them
+      if (clientId && payment.client_id && payment.client_id !== clientId) {
+        return respond(404, { error: 'Line item not found' });
+      }
       const allowed = ['billed_amount', 'allowed_amount', 'amount_paid', 'adjustment_amount',
-        'cpt_code', 'adj_reason_code', 'posting_notes', 'action', 'status'];
+        'cpt_code', 'adj_reason_code', 'posting_notes', 'action', 'patient_responsibility'];
       const safeBody = {};
       for (const k of allowed) { if (body[k] !== undefined) safeBody[k] = body[k]; }
       const updated = await update('payments', pathParams.id, safeBody, effectiveOrgId);
