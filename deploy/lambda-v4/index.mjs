@@ -2848,7 +2848,7 @@ Respond ONLY with valid JSON (no markdown, no backticks):
 
   // Use callAI() — calls Bedrock for AI suggestions; returns null on failure (no external fallback)
   try {
-    const aiText = await callAI(prompt, { max_tokens: 2048, timeoutMs: 25000 });
+    const aiText = await callAI(prompt, { max_tokens: 2048, timeoutMs: 120000 });
     if (aiText) {
       suggestion = JSON.parse(aiText.replace(/```json|```/g, '').trim());
     }
