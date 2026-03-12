@@ -1909,7 +1909,7 @@ async function enrichedCoding(orgId, clientId, regionClientIds = null, qs = {}) 
   if (clientId) { params.push(clientId); q += ` AND cq.client_id = $${params.length}`; }
   else if (regionClientIds && regionClientIds.length > 0) {
     const ph = regionClientIds.map((_, i) => `$${params.length + 1 + i}`).join(',');
-    params.push(...regionClientIds); q += ` AND cq.client_id IN (${ph})`;
+    params.push(...regionClientIds); q += ` AND (cq.client_id IN (${ph}) OR cq.client_id IS NULL)`;
   }
   // Status filter — frontend sends status=pending to hide completed items
   if (qs.status) { params.push(qs.status); q += ` AND cq.status = $${params.length}`; }

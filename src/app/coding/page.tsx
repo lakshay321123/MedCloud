@@ -516,9 +516,7 @@ export default function CodingPage() {
 
   const queue = useMemo(() => {
     const base = apiMapped.length > 0 ? apiMapped : []
-    return base
-      .filter(item => item.status !== 'completed') // Hide completed — show pending, in_progress, on_hold, query_sent
-      .filter(item => !selectedClient || item.clientId === selectedClient.id)
+    return base.filter(item => !selectedClient || item.clientId === selectedClient.id)
   }, [apiMapped, selectedClient])
 
   const [selected, setSelected] = useState(queue[0]?.id || '')
