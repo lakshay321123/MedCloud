@@ -258,13 +258,12 @@ function AllDocsTab() {
 
   // Auto-open document drawer when navigated from global search with ?openId=
   const docSearchParams = useSearchParams()
+  const openId = docSearchParams.get('openId')
   useEffect(() => {
-    const openId = docSearchParams.get('openId')
-    if (openId && apiDocs.length > 0 && !selectedDoc) {
-      const match = apiDocs.find(d => d.id === openId)
-      if (match) setSelectedDoc(match)
-    }
-  }, [docSearchParams, apiDocs, selectedDoc])
+    if (!openId || selectedDoc) return
+    const match = apiDocs.find(d => d.id === openId)
+    if (match) setSelectedDoc(match)
+  }, [openId, apiDocs, selectedDoc])
 
   return (
     <div>

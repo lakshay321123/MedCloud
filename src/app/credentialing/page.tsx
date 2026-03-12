@@ -50,13 +50,15 @@ export default function CredentialingPage() {
 
   // Auto-open provider drawer when navigated from global search with ?openId=
   const searchParams = useSearchParams()
+  const openId = searchParams.get('openId')
   useEffect(() => {
-    const openId = searchParams.get('openId')
-    if (openId && filteredProviders.length > 0 && !selected) {
-      const match = filteredProviders.find(p => p.id === openId)
-      if (match) setSelected(match)
-    }
-  }, [searchParams, filteredProviders, selected])
+    if (!openId || selected) return
+    const match = filteredProviders.find(p => p.id === openId)
+    if (match) { setSelected(match); return }
+    // If not in loaded list, try all base providers (ignoring client filter)
+    const baseMatch = baseProviders.find(p => p.id === openId)
+    if (baseMatch) setSelected(baseMatch)
+  }, [openId, filteredProviders, baseProviders, selected])
 
   const activeCount = filteredProviders.filter(p => p.status === 'active').length
   const expiringCount = filteredProviders.filter(p => p.status === 'expiring').length

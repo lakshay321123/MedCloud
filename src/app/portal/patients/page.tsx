@@ -9,7 +9,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
 import { Plus, Search, X, Upload, ChevronDown, Pencil, Check, Users, FileText } from 'lucide-react'
-import { usePatients, useCreatePatient, useUpdatePatient, usePatientStatements, useGenerateStatement, useUpdateStatement, useFlagHCCCodes, useMessages, useSendMessage } from '@/lib/hooks'
+import { usePatients, usePatient, useCreatePatient, useUpdatePatient, usePatientStatements, useGenerateStatement, useUpdateStatement, useFlagHCCCodes, useMessages, useSendMessage } from '@/lib/hooks'
 import type { ApiPatient } from '@/lib/hooks'
 import { ErrorBanner } from '@/components/shared/ApiStates'
 import { formatDOB, toMRN, computeProfileComplete } from '@/lib/utils/region'
@@ -816,13 +816,16 @@ export default function PatientsPage() {
     : []
 
   // Auto-open patient drawer when navigated from global search with ?openId=
+  const openId = searchParams.get('openId')
+  const { data: directPatient } = usePatient(openId)
   useEffect(() => {
-    const openId = searchParams.get('openId')
-    if (openId && patients.length > 0 && !selected) {
-      const match = patients.find(p => p.id === openId)
-      if (match) setSelected(match)
-    }
-  }, [searchParams, patients, selected])
+    if (!openId || selected) return
+    // First try from already-loaded list
+    const match = patients.find(p => p.id === openId)
+    if (match) { setSelected(match); return }
+    // Fallback: use directly fetched patient
+    if (directPatient) setSelected(apiPatientToDemoPatient(directPatient as ApiPatient))
+  }, [openId, patients, selected, directPatient])
 
   return (
     <ModuleShell title={t("patients","title")} subtitle="Manage patient records"

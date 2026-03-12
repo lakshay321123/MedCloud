@@ -1581,7 +1581,10 @@ async function globalSearch(orgId, clientId, regionClientIds, query, role) {
         `SELECT id, first_name, last_name, dob, email FROM patients WHERE org_id = $1${cf} AND (first_name ILIKE $${pIdx} OR last_name ILIKE $${pIdx} OR email ILIKE $${pIdx} OR CAST(dob AS TEXT) ILIKE $${pIdx}) LIMIT 5`,
         [...cfParams, searchTerm]
       );
-      r.rows.forEach(p => results.push({ type: 'patient', id: p.id, label: `${p.first_name} ${p.last_name}`, sub: p.dob ? `DOB: ${p.dob}` : p.email, path: `/portal/patients?openId=${p.id}` }));
+      r.rows.forEach(p => {
+        const dobFmt = p.dob ? new Date(p.dob).toISOString().split('T')[0] : null;
+        results.push({ type: 'patient', id: p.id, label: `${p.first_name} ${p.last_name}`, sub: dobFmt ? `DOB: ${dobFmt}` : (p.email || ''), path: `/portal/patients?openId=${p.id}` });
+      });
     } catch (_) {}
   }
 

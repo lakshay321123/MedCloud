@@ -511,6 +511,11 @@ export function useProviders(extra?: ApiListParams) {
   return useApi<ApiListResponse<ApiProvider>>('/providers', params)
 }
 
+export function useProvider(id: string | null) {
+  const { orgId } = useApp()
+  return useApi<ApiProvider>(id ? `/providers/${id}` : '/providers', { org_id: orgId }, { skip: !id })
+}
+
 // ── Payers ────────────────────────────────────────────────────────────────────
 
 export function usePayers(extra?: ApiListParams) {
@@ -728,8 +733,8 @@ export function useClaimDocuments(claimId: string | null) {
   )
 }
 
-export function useDocument(id: string) {
-  return useApi<ApiDocument>(`/documents/${id}`)
+export function useDocument(id: string | null) {
+  return useApi<ApiDocument>(id ? `/documents/${id}` : '/documents', {}, { skip: !id })
 }
 
 export function useRequestUploadUrl() {
