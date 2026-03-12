@@ -987,7 +987,7 @@ function ProviderView() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
         <KPICard label={t('scribe', 'notesToday')} value={visits.length} icon={<FileText size={20} />} />
         <KPICard label={t('scribe', 'pendingSignOff')} value={pending.length} icon={<Clock size={20} />} />
-        <KPICard label={t('scribe', 'avgConfidence')} value="91%" icon={<BrainCircuit size={20} />} />
+        <KPICard label={t('scribe', 'avgConfidence')} value="—" icon={<BrainCircuit size={20} />} />
         <KPICard label={t('scribe', 'codesSuggested')} value={visits.reduce((s, v) => s + (v.suggestedCodes?.length || 0), 0)} icon={<Activity size={20} />} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">

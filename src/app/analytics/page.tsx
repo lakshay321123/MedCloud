@@ -469,12 +469,12 @@ export default function AnalyticsPage() {
               value={liveKPIs?.overview?.clean_claim_rate != null ? `${liveKPIs.overview.clean_claim_rate}%` : '91.3%'}
               icon={<CheckCircle2 size={20}/>}
               sub={<span><KPITooltip formula="Claims that passed scrubbing without errors ÷ total claims × 100. Target: > 95%" />of claims pass scrub</span> as unknown as string} />
-            <KPICard label={t('analytics','firstPassRate')} value="87.6%" icon={<Activity size={20}/>}
+            <KPICard label={t('analytics','firstPassRate')} value="—" icon={<Activity size={20}/>}
               sub={<span><KPITooltip formula="Claims paid on first submission ÷ total submitted × 100" />paid first try</span> as unknown as string} />
-            <KPICard label={t('analytics','avgCodingTime')} value="16.2m" icon={<Clock size={20}/>} />
-            <KPICard label={t('analytics','submissionLag')} value="1.2d" icon={<FileText size={20}/>}
+            <KPICard label={t('analytics','avgCodingTime')} value="—" icon={<Clock size={20}/>} />
+            <KPICard label={t('analytics','submissionLag')} value="—" icon={<FileText size={20}/>}
               sub={<span><KPITooltip formula="Average days from DOS to submission date" />DOS to submit</span> as unknown as string} />
-            <KPICard label={t('analytics','postingLag')} value="0.8d" icon={<DollarSign size={20}/>}
+            <KPICard label={t('analytics','postingLag')} value="—" icon={<DollarSign size={20}/>}
               sub={<span><KPITooltip formula="Average days from ERA receipt to payment posting" />ERA to post</span> as unknown as string} />
           </div>
 
@@ -532,11 +532,11 @@ export default function AnalyticsPage() {
       {tab === 'ai' && (
         <div className="space-y-6">
           <div className="grid grid-cols-5 gap-4">
-            <KPICard label={t('analytics','autoCodingAcc')} value="88.3%" icon={<BrainCircuit size={20}/>} trend="up" sub="+2.1% vs last month" />
-            <KPICard label={t('analytics','aiAcceptRate')} value="84.7%" icon={<CheckCircle2 size={20}/>} />
-            <KPICard label={t('analytics','textractConf')} value="91.2%" icon={<Activity size={20}/>} />
-            <KPICard label={t('analytics','autoPostRate')} value="76.4%" icon={<DollarSign size={20}/>} />
-            <KPICard label={t('analytics','voiceSuccess')} value="78.1%" icon={<Phone size={20}/>} trend="up" sub="+3.4%" />
+            <KPICard label={t('analytics','autoCodingAcc')} value="—" icon={<BrainCircuit size={20}/>} />
+            <KPICard label={t('analytics','aiAcceptRate')} value="—" icon={<CheckCircle2 size={20}/>} />
+            <KPICard label={t('analytics','textractConf')} value="—" icon={<Activity size={20}/>} />
+            <KPICard label={t('analytics','autoPostRate')} value="—" icon={<DollarSign size={20}/>} />
+            <KPICard label={t('analytics','voiceSuccess')} value="—" icon={<Phone size={20}/>} />
           </div>
 
           <div className="grid grid-cols-3 gap-4">
@@ -635,7 +635,7 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-4 gap-4">
             <KPICard label="Encounters This Month" value={claims.length || 37} icon={<Activity size={20}/>} sub="Total patient visits" />
             <KPICard label="Avg Charges / Visit" value={claims.length > 0 ? `$${Math.round(claims.reduce((s,c)=>s+c.billed,0)/claims.length)}` : '$312'} icon={<DollarSign size={20}/>} sub="Billed per encounter" />
-            <KPICard label="Coding Accuracy" value="96.2%" icon={<CheckCircle2 size={20}/>} sub="AI-coded visits reviewed" />
+            <KPICard label="Coding Accuracy" value="—" icon={<CheckCircle2 size={20}/>} sub="AI-coded visits reviewed" />
             <KPICard label="Documentation Score" value="8.4/10" icon={<ShieldAlert size={20}/>} sub="SOAP completeness avg" />
           </div>
 
