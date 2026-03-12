@@ -1,6 +1,6 @@
 'use client'
 import { useT } from '@/lib/i18n'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -9,6 +9,7 @@ import { ListChecks, X, Plus } from 'lucide-react'
 import { useTasks, useUpdateTask, useCreateTask } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { useApp } from '@/lib/context'
+import { useSearchParams, useRouter } from 'next/navigation'
 // Region filtering handled by backend
 
 type Task = {
@@ -165,6 +166,17 @@ export default function TasksPage() {
     return true
   })
 
+  // Auto-open task drawer when navigated from notifications with ?openId=
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const openIdDismissed = useRef(false)
+  useEffect(() => {
+    const openId = searchParams.get('openId')
+    if (!openId || openIdDismissed.current) return
+    const match = taskList.find(t => t.id === openId)
+    if (match && selected?.id !== openId) setSelected(match)
+  }, [searchParams, taskList]) // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <ModuleShell
       title={t("tasks","title")}
@@ -219,14 +231,14 @@ export default function TasksPage() {
 
       {selected && (
         <>
-          <div className="fixed inset-0 bg-black/20 z-30" onClick={() => setSelected(null)} />
+          <div className="fixed inset-0 bg-black/20 z-30" onClick={() => { openIdDismissed.current = true; setSelected(null); if (searchParams.get('openId')) router.replace('/tasks', { scroll: false }) }} />
           <div className="fixed right-0 top-0 h-full w-[380px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl">
             <div className="flex gap-2 items-center justify-between p-4 border-b border-separator pb-1">
               <div>
                 <h3 className="font-semibold text-content-primary">{selected.type}</h3>
                 <p className="text-xs text-content-secondary">{selected.id}</p>
               </div>
-              <button onClick={() => setSelected(null)} className="p-1 hover:bg-surface-elevated rounded-btn">
+              <button onClick={() => { openIdDismissed.current = true; setSelected(null); if (searchParams.get('openId')) router.replace('/tasks', { scroll: false }) }} className="p-1 hover:bg-surface-elevated rounded-btn">
                 <X size={16} className="text-content-secondary" />
               </button>
             </div>
@@ -272,7 +284,7 @@ export default function TasksPage() {
                     }
                   }
                   toast.success('Task updated')
-                  setSelected(null)
+                  openIdDismissed.current = true; setSelected(null); if (searchParams.get('openId')) router.replace('/tasks', { scroll: false })
                   setPendingStatus(null)
                 }}
                 className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium">Save Changes</button>

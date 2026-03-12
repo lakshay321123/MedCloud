@@ -63,9 +63,12 @@ export default function Topbar() {
   const unreadCount = notifData?.unread_count ?? 0
 
   // Mark single notification read
-  const handleMarkRead = useCallback(async (id: string, actionUrl: string) => {
+  const handleMarkRead = useCallback(async (id: string, actionUrl: string, entityId?: string) => {
     setNotifOpen(false)
-    router.push(actionUrl || '/dashboard')
+    // Build URL with openId so the target page opens the specific record
+    const url = actionUrl || '/dashboard'
+    const navUrl = entityId ? `${url}${url.includes('?') ? '&' : '?'}openId=${entityId}` : url
+    router.push(navUrl)
     try {
       await api.put(`/notifications/${id}`, { read: true })
       refetchNotifs()
@@ -218,7 +221,7 @@ export default function Topbar() {
                     })()
                     return (
                       <button type="button" key={n.id}
-                        onClick={() => handleMarkRead(n.id, n.action_url || '/dashboard')}
+                        onClick={() => handleMarkRead(n.id, n.action_url || '/dashboard', n.entity_id)}
                         className={`w-full text-left px-4 py-3 hover:bg-surface-elevated border-b border-separator last:border-0 flex items-start gap-3 transition-colors ${!n.read ? 'bg-brand/5' : ''}`}>
                         <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${dotColor}`} />
                         <div className="flex-1 min-w-0">
