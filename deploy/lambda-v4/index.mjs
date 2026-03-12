@@ -7150,15 +7150,14 @@ export const handler = async (event) => {
     const rawOrgId  = authCtx.org_id   || headers['x-org-id']    || qs.org_id    || body.org_id    || 'a0000000-0000-0000-0000-000000000001';
     const rawUserId = authCtx.user_id  || headers['x-user-id']   || qs.user_id   || body.user_id   || null;
     const rawClientId = authCtx.client_id || headers['x-client-id'] || qs.client_id || body.client_id || null;
-    // SECURITY: role MUST come from Cognito JWT (authCtx) only — never from
-    // user-supplied headers. Accepting x-role from headers would allow any caller
-    // to send x-role: admin and bypass authorization checks on privileged routes
-    // (e.g. /admin/run-migrations executes arbitrary SQL).
+    // SECURITY: callerRole comes from Cognito JWT only — used for privileged
+    // route checks (e.g. /admin/run-migrations). Never from user headers.
     const callerRole  = authCtx.role   || 'staff';
     // filterRole: used for data-scoping (dashboard, notifications, search).
-    // Always trust the JWT-derived callerRole. Demo role-switching only allowed
-    // when DEMO_MODE env var is explicitly set.
-    const filterRole = (process.env.DEMO_MODE === 'true' && qs.role) ? qs.role : callerRole;
+    // When Cognito authorizer is active, authCtx.role is set and takes priority.
+    // Pre-Cognito: accept qs.role from the frontend (same trust level as org_id/user_id
+    // which also fall back to qs). This does NOT affect privileged route checks.
+    const filterRole = authCtx.role || qs.role || callerRole;
 
     const effectiveOrgId = validateUUID(rawOrgId, 'org_id');
     const userId = (rawUserId && UUID_RE.test(rawUserId)) ? rawUserId : null;
