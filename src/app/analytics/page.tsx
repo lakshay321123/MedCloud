@@ -149,7 +149,7 @@ export default function AnalyticsPage() {
       status: c.status,
       billed: Number(c.total_charges) || 0,
       allowed: Number(c.allowed_amount) || 0,
-      paid: Number(c.paid_amount) || (['paid','partial_pay'].includes(c.status) ? Number(c.total_charges) * 0.9 : 0),
+      paid: c.paid_amount != null ? Number(c.paid_amount) : (['paid','partial_pay'].includes(c.status) ? Number(c.total_charges) * 0.9 : 0),
       submittedDate: c.submitted_date || (c as any).submitted_at,
       paymentDate: c.paid_date || (c as any).payment_date,
       dos: c.dos_from,

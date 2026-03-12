@@ -22,7 +22,7 @@ import {
 // Format copay/deductible — handles both number and object shapes
 function fmtMoney(v: unknown): string {
   if (v == null) return '—'
-  if (typeof v === 'number') return '$' + v.toFixed(0)
+  if (typeof v === 'number') return '$' + (Number.isInteger(v) ? v.toString() : v.toFixed(2))
   if (typeof v === 'string') return '$' + v
   if (typeof v === 'object') {
     const obj = v as Record<string, unknown>
