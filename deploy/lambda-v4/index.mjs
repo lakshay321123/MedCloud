@@ -2634,22 +2634,34 @@ async function aiAutoCode(codingQueueId, orgId, userId, coderInstructions = '') 
   }
   // Pull linked documents (superbill text from Textract)
   let superbillText = '';
+  let docSource = null;
   if (item.document_id) {
+    docSource = await getById('documents', item.document_id);
+  }
+  // Fallback: search by patient_id for superbill/clinical docs (same as chargeCapture)
+  if (!docSource && item.patient_id) {
     try {
-      const doc = await getById('documents', item.document_id);
-      if (doc?.textract_result) {
-        const tr = typeof doc.textract_result === 'string' ? JSON.parse(doc.textract_result) : doc.textract_result;
-        superbillText = tr.raw_text || tr.text || '';
-        if (superbillText) clinicalText += `\n\nSUPERBILL/DOCUMENT TEXT:\n${superbillText.slice(0, 2000)}`;
-        // If Textract extracted structured fields, add them explicitly
-        if (tr.fields) {
-          const f = tr.fields;
-          if (f.cpt_codes?.parsed?.length > 0) clinicalText += `\nEXTRACTED CPT CODES: ${f.cpt_codes.parsed.join(', ')}`;
-          if (f.diagnoses?.parsed?.length > 0) clinicalText += `\nEXTRACTED ICD CODES: ${f.diagnoses.parsed.join(', ')}`;
-          if (f.patient_name?.value) clinicalText += `\nSUPERBILL PATIENT: ${f.patient_name.value}`;
-          if (f.date_of_service?.value) clinicalText += `\nSUPERBILL DOS: ${f.date_of_service.value}`;
-          if (f.billed_amount?.value && f.billed_amount.value !== '0') clinicalText += `\nSUPERBILL TOTAL: $${f.billed_amount.value}`;
-        }
+      const patDocR = await pool.query(
+        `SELECT * FROM documents WHERE patient_id = $1 AND org_id = $2 AND textract_status = 'completed'
+         AND (doc_type ILIKE '%superbill%' OR doc_type ILIKE '%clinical%' OR doc_type IN ('superbill','Superbill','Other'))
+         ORDER BY created_at DESC LIMIT 1`,
+        [item.patient_id, orgId]
+      );
+      if (patDocR.rows[0]) docSource = patDocR.rows[0];
+    } catch (e) { safeLog('warn', `AI: patient doc search error: ${e.message}`); }
+  }
+  if (docSource?.textract_result) {
+    try {
+      const tr = typeof docSource.textract_result === 'string' ? JSON.parse(docSource.textract_result) : docSource.textract_result;
+      superbillText = tr.raw_text || tr.text || '';
+      if (superbillText) clinicalText += `\n\nSUPERBILL/DOCUMENT TEXT:\n${superbillText.slice(0, 2000)}`;
+      if (tr.fields) {
+        const f = tr.fields;
+        if (f.cpt_codes?.parsed?.length > 0) clinicalText += `\nEXTRACTED CPT CODES: ${f.cpt_codes.parsed.join(', ')}`;
+        if (f.diagnoses?.parsed?.length > 0) clinicalText += `\nEXTRACTED ICD CODES: ${f.diagnoses.parsed.join(', ')}`;
+        if (f.patient_name?.value) clinicalText += `\nSUPERBILL PATIENT: ${f.patient_name.value}`;
+        if (f.date_of_service?.value) clinicalText += `\nSUPERBILL DOS: ${f.date_of_service.value}`;
+        if (f.billed_amount?.value && f.billed_amount.value !== '0') clinicalText += `\nSUPERBILL TOTAL: $${f.billed_amount.value}`;
       }
     } catch (e) { safeLog('warn', `AI: doc text error: ${e.message}`); }
   }
@@ -7670,8 +7682,8 @@ export const handler = async (event) => {
           if (dupR.rows.length > 0) return respond(409, { error: 'Coding item already exists for this record', existing_id: dupR.rows[0].id });
         }
         const item = await create('coding_queue', { ...body, status: body.status || 'pending' }, effectiveOrgId);
-        // (a) Auto-trigger AI coding if SOAP note is linked — don't await (fire & forget)
-        if (item.soap_note_id) {
+        // (a) Auto-trigger AI coding if clinical data is available — fire & forget
+        if (item.soap_note_id || item.document_id || item.patient_id) {
           aiAutoCode(item.id, effectiveOrgId, userId).then(result => {
             safeLog('info', `Auto-coded ${item.id}: ${result.mock ? 'mock' : 'bedrock'}, confidence=${result.confidence}`);
           }).catch(e => safeLog('warn', `Auto-code failed for ${item.id}: ${e.message}`));
@@ -7696,6 +7708,14 @@ export const handler = async (event) => {
           }
         }
         const updated = await update('coding_queue', pathParams.id, safeBody, effectiveOrgId);
+        // Auto-trigger AI coding when clinical data is newly linked
+        const newSoap = safeBody.soap_note_id && safeBody.soap_note_id !== existing.soap_note_id;
+        const newDoc = safeBody.document_id && safeBody.document_id !== existing.document_id;
+        if (newSoap || newDoc) {
+          aiAutoCode(pathParams.id, effectiveOrgId, userId).then(result => {
+            safeLog('info', `Auto-coded on update ${pathParams.id}: ${result.mock ? 'mock' : 'bedrock'}, confidence=${result.confidence}`);
+          }).catch(e => safeLog('warn', `Auto-code on update failed for ${pathParams.id}: ${e.message}`));
+        }
         return respond(200, updated);
       }
       if (method === 'DELETE' && pathParams.id) {
