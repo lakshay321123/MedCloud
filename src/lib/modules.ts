@@ -11,7 +11,7 @@ export const modules: ModuleConfig[] = [
   { id: 'edi', label: 'EDI Transactions', icon: 'ArrowLeftRight', path: '/edi', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
   { id: 'coding', label: 'AI Coding', icon: 'BrainCircuit', path: '/coding', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'coder'] },
   { id: 'coding-rules', label: 'Coding Rules', icon: 'Zap', path: '/coding-rules', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'coder'] },
-  { id: 'eligibility', label: 'Eligibility', icon: 'ShieldCheck', path: '/eligibility', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
+  { id: 'eligibility', label: 'Eligibility', icon: 'ShieldCheck', path: '/eligibility', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller', 'client'] },
   { id: 'denials', label: 'Denials & Appeals', icon: 'ShieldAlert', path: '/denials', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller', 'ar_team'] },
   { id: 'ar', label: 'A/R Management', icon: 'TrendingUp', path: '/ar-management', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'ar_team'] },
   { id: 'posting', label: 'Payment Posting', icon: 'Receipt', path: '/payment-posting', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'posting_team'] },
@@ -38,7 +38,7 @@ export const modules: ModuleConfig[] = [
 ]
 
 // Facility portal shows this curated module set (role-filtered on top)
-const facilityModuleIds = ['dashboard', 'scribe', 'documents', 'appointments', 'messages', 'portal-patients', 'scan']
+const facilityModuleIds = ['dashboard', 'scribe', 'documents', 'appointments', 'messages', 'portal-patients', 'scan', 'eligibility']
 
 export const sectionLabels: Record<string, Record<string, string>> = {
   facility: { operations: 'OVERVIEW', ai: 'AI TOOLS', management: 'FILES', portal: 'CLINICAL' },

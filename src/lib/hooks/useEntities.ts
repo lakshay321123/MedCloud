@@ -12,11 +12,11 @@ function useClientParams(extra?: ApiListParams): ApiListParams {
   const { selectedClient, orgId, currentUser, country } = useApp()
   const rawClientId = selectedClient?.id
   const clientId = rawClientId && UUID_REGEX.test(rawClientId) ? rawClientId : undefined
-  void currentUser
   return {
     org_id: orgId,
     ...(clientId !== undefined ? { client_id: clientId } : {}),
     ...(country && !clientId ? { region: country === 'usa' ? 'us' : 'uae' } : {}),
+    role: currentUser.role,
     ...extra,
   }
 }
@@ -2025,4 +2025,23 @@ export function useCreateUser() {
 
 export function useUpdateUser(id: string) {
   return useMutation<ApiUser, Partial<ApiUser>>('put', `/users/${id}`)
+}
+
+// ── Global Search ───────────────────────────────────────────────────────────
+export interface SearchResult {
+  type: string
+  id: string
+  label: string
+  sub: string
+  path: string
+}
+
+export function useGlobalSearch(query: string) {
+  const params = useClientParams({ q: query })
+  return useApi<{ results: SearchResult[] }>('/search', params, { skip: !query || query.length < 2 })
+}
+
+// ── Mark All Notifications Read ────────────────────────────────────────────
+export function useMarkAllNotificationsRead() {
+  return useMutation<{ message: string }, Record<string, never>>('put', '/notifications/mark-all-read')
 }
