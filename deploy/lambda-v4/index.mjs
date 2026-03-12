@@ -7904,7 +7904,8 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
         // Auto-trigger AI coding when clinical data is newly linked
         const newSoap = safeBody.soap_note_id && safeBody.soap_note_id !== existing.soap_note_id;
         const newDoc = safeBody.document_id && safeBody.document_id !== existing.document_id;
-        if (newSoap || newDoc) {
+        const newEncounter = safeBody.encounter_id && safeBody.encounter_id !== existing.encounter_id;
+        if (newSoap || newDoc || newEncounter) {
           aiAutoCode(pathParams.id, effectiveOrgId, userId).then(result => {
             safeLog('info', `Auto-coded on update ${pathParams.id}: ${result.mock ? 'mock' : 'bedrock'}, confidence=${result.confidence}`);
           }).catch(e => safeLog('warn', `Auto-code on update failed for ${pathParams.id}: ${e.message}`));
@@ -7972,6 +7973,12 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     // AI auto-code — async self-invoke to bypass API Gateway 29s timeout
     if (path.includes('/coding') && path.includes('/ai-suggest') && method === 'POST') {
       const codingQueueId = pathParams.id;
+      
+      // Validate coding item exists and belongs to caller's org (fail fast)
+      const codingItem = await getById('coding_queue', codingQueueId);
+      if (!codingItem || codingItem.org_id !== effectiveOrgId) {
+        return respond(404, { error: 'Coding item not found' });
+      }
       
       // Create a pending suggestion record immediately
       const pending = await create('ai_coding_suggestions', {
