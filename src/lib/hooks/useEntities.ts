@@ -488,6 +488,8 @@ export function useCreateCoding() {
     patient_id?: string
     provider_id?: string
     client_id?: string
+    encounter_id?: string
+    document_id?: string
     soap_note_id?: string
     received_at?: string
     priority?: Priority

@@ -506,6 +506,24 @@ async function runSchemaMigration() {
     )`);
     await pool.query('CREATE INDEX IF NOT EXISTS idx_coding_feedback_org ON coding_feedback(org_id)');
   } catch (e) { if (e.code !== '42P07') safeLog('warn', 'coding_feedback:', e.message); }
+  // AI charge capture results
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS charge_captures (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      org_id UUID NOT NULL, client_id UUID, encounter_id UUID,
+      patient_id UUID, provider_id UUID, dos DATE,
+      charges_json JSONB DEFAULT '[]', diagnoses_json JSONB DEFAULT '[]',
+      em_level VARCHAR(10), total_charges NUMERIC(12,2) DEFAULT 0,
+      ai_confidence INT DEFAULT 0, status VARCHAR(30) DEFAULT 'pending_review',
+      reviewed_by UUID, reviewed_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_charge_captures_org ON charge_captures(org_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_charge_captures_enc ON charge_captures(encounter_id)');
+    // RLS for org isolation (HIPAA)
+    await pool.query('ALTER TABLE charge_captures ENABLE ROW LEVEL SECURITY').catch(() => {});
+    await pool.query(`CREATE POLICY IF NOT EXISTS charge_captures_org_policy ON charge_captures FOR ALL USING (org_id = current_setting('app.current_org_id', true)::uuid)`).catch(() => {});
+  } catch (e) { if (e.code !== '42P07') safeLog('warn', 'charge_captures:', e.message); }
   // HIPAA: BAA tracking table
   try {
     await pool.query(`CREATE TABLE IF NOT EXISTS baa_tracking (
@@ -966,7 +984,7 @@ const BEDROCK_MODEL = process.env.BEDROCK_MODEL || 'us.anthropic.claude-sonnet-4
 // ═══ Bedrock AI Abstraction — all AI calls routed through AWS Bedrock (HIPAA) ═══
 // PHI never leaves the AWS account. Returns null if Bedrock is unavailable (no fallback).
 
-async function callAI(prompt, { max_tokens = 2000, system = 'You are an expert medical coding and billing AI assistant.', timeoutMs = 25000 } = {}) {
+async function callAI(prompt, { max_tokens = 2000, system = 'You are an expert medical coding and billing AI assistant.', timeoutMs = 45000 } = {}) {
   // HIPAA: ALL AI calls go through AWS Bedrock ONLY — PHI never leaves AWS account
   if (!bedrockClient || !InvokeModelCommand) {
     safeLog('warn', 'Bedrock not available — returning null (mock fallback)');
@@ -7638,6 +7656,19 @@ export const handler = async (event) => {
         return respond(200, c);
       }
       if (method === 'POST') {
+        // ── Duplicate prevention (single combined query) ──
+        const dupConditions = [];
+        const dupParams = [effectiveOrgId];
+        if (body.soap_note_id) { dupParams.push(body.soap_note_id); dupConditions.push(`soap_note_id = $${dupParams.length}`); }
+        if (body.encounter_id) { dupParams.push(body.encounter_id); dupConditions.push(`encounter_id = $${dupParams.length}`); }
+        if (body.document_id) { dupParams.push(body.document_id); dupConditions.push(`document_id = $${dupParams.length}`); }
+        if (dupConditions.length > 0) {
+          const dupR = await pool.query(
+            `SELECT id FROM coding_queue WHERE org_id = $1 AND (${dupConditions.join(' OR ')}) LIMIT 1`,
+            dupParams
+          );
+          if (dupR.rows.length > 0) return respond(409, { error: 'Coding item already exists for this record', existing_id: dupR.rows[0].id });
+        }
         const item = await create('coding_queue', { ...body, status: body.status || 'pending' }, effectiveOrgId);
         // (a) Auto-trigger AI coding if SOAP note is linked — don't await (fire & forget)
         if (item.soap_note_id) {
@@ -7650,12 +7681,13 @@ export const handler = async (event) => {
       if ((method === 'PUT' || method === 'PATCH') && pathParams.id) {
         const existing = await getById('coding_queue', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Coding item not found' });
-        const allowed = ['status','priority','notes','assigned_to','document_id','hold_reason','coding_method','soap_note_id','patient_id','provider_id'];
+        const allowed = ['status','priority','notes','assigned_to','document_id','hold_reason','coding_method','soap_note_id','patient_id','provider_id','client_id','encounter_id'];
         const safeBody = {};
         for (const k of allowed) { if (body[k] !== undefined) safeBody[k] = body[k]; }
         // Cross-tenant validation: verify foreign keys belong to same org
         const fkChecks = [
-          ['document_id', 'documents'], ['patient_id', 'patients'], ['provider_id', 'providers'], ['soap_note_id', 'soap_notes']
+          ['document_id', 'documents'], ['patient_id', 'patients'], ['provider_id', 'providers'],
+          ['soap_note_id', 'soap_notes'], ['client_id', 'clients'], ['encounter_id', 'encounters']
         ];
         for (const [field, table] of fkChecks) {
           if (safeBody[field]) {
@@ -7665,6 +7697,24 @@ export const handler = async (event) => {
         }
         const updated = await update('coding_queue', pathParams.id, safeBody, effectiveOrgId);
         return respond(200, updated);
+      }
+      if (method === 'DELETE' && pathParams.id) {
+        const existing = await getById('coding_queue', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Coding item not found' });
+        const client = await pool.connect();
+        try {
+          await client.query('BEGIN');
+          await client.query('DELETE FROM coding_feedback WHERE coding_item_id = $1 AND org_id = $2', [pathParams.id, effectiveOrgId]);
+          await client.query('DELETE FROM ai_coding_suggestions WHERE coding_queue_id = $1 AND org_id = $2', [pathParams.id, effectiveOrgId]);
+          await client.query('DELETE FROM coding_queue WHERE id = $1 AND org_id = $2', [pathParams.id, effectiveOrgId]);
+          await client.query('COMMIT');
+        } catch (txErr) {
+          await client.query('ROLLBACK');
+          safeLog('error', `coding_queue delete failed: ${txErr.message}`);
+          return respond(500, { error: 'Delete failed' });
+        } finally { client.release(); }
+        await auditLog(effectiveOrgId, userId, 'delete', 'coding_queue', pathParams.id, {});
+        return respond(200, { deleted: true });
       }
     }
 
@@ -8384,6 +8434,21 @@ export const handler = async (event) => {
       }
       if (method === 'POST') return respond(201, await create('patients', body, effectiveOrgId));
       if (method === 'PUT' && pathParams.id) return respond(200, await update('patients', pathParams.id, body), effectiveOrgId);
+      if (method === 'DELETE' && pathParams.id) {
+        const existing = await getById('patients', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Patient not found' });
+        // Comprehensive FK safety check
+        const fkTables = ['claims', 'appointments', 'encounters', 'documents', 'coding_queue'];
+        const blockers = [];
+        for (const t of fkTables) {
+          const r = await pool.query(`SELECT COUNT(*) as cnt FROM ${t} WHERE patient_id = $1 AND org_id = $2`, [pathParams.id, effectiveOrgId]).catch(() => ({ rows: [{ cnt: '0' }] }));
+          if (parseInt(r.rows[0].cnt) > 0) blockers.push(`${t}: ${r.rows[0].cnt}`);
+        }
+        if (blockers.length > 0) return respond(409, { error: `Cannot delete patient with linked records: ${blockers.join(', ')}` });
+        await pool.query('DELETE FROM patients WHERE id = $1 AND org_id = $2', [pathParams.id, effectiveOrgId]);
+        await auditLog(effectiveOrgId, userId, 'delete', 'patients', pathParams.id, {});
+        return respond(200, { deleted: true });
+      }
     }
 
     // ════ CARC / RARC Reference ════════════════════════════════════════════
