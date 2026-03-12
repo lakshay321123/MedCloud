@@ -1,6 +1,6 @@
 'use client'
 import { useT } from '@/lib/i18n'
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -9,9 +9,9 @@ import { useApp } from '@/lib/context'
 // Region filtering handled by backend
 import type { DemoClaim, ClaimTimelineEvent } from '@/lib/demo-data'
 import { useToast } from '@/components/shared/Toast'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { api } from '@/lib/api-client'
-import { useClaims, useScrubClaim, useTransitionClaim, useGenerateEDI,
+import { useClaims, useClaim, useScrubClaim, useTransitionClaim, useGenerateEDI,
          useClaimLines, useAddClaimLine, useClaimDiagnoses, useAddClaimDiagnosis,
          useScrubRules, useUpdateClaim, useGenerate837I, useTriggerSecondaryClaim, useUnderpaymentCheck, useTimelyFilingDeadlines, useBatchSubmitClaims, useGenerate276, useSendMessage, useMessages, useAuditLog, useRequestUploadUrl, useCreateDocument, useClaimDocuments } from '@/lib/hooks'
 import type { ApiClaim, ApiDocument } from '@/lib/hooks'
@@ -1040,6 +1040,18 @@ export default function ClaimsPage() {
   const paginated = allClaims.slice((page - 1) * PER_PAGE, page * PER_PAGE)
   const totalPages = Math.ceil(allClaims.length / PER_PAGE)
 
+  // Auto-open claim drawer when navigated from global search with ?openId=
+  const searchParams = useSearchParams()
+  const openId = searchParams.get('openId') ?? null
+  const openIdDismissed = useRef(false)
+  const { data: directClaim } = useClaim(openId)
+  useEffect(() => {
+    if (!openId || drawerClaim || openIdDismissed.current) return
+    const match = allClaims.find(c => c.id === openId || c.apiId === openId)
+    if (match) { setDrawerClaim(match); return }
+    if (directClaim) setDrawerClaim(apiClaimToDemoClaim(directClaim as ApiClaim))
+  }, [openId, allClaims, drawerClaim, directClaim])
+
   // KPIs
   const today = new Date().toISOString().split('T')[0]
   const submittedToday = allClaims.filter(c => c.submittedDate === today).length
@@ -1346,7 +1358,7 @@ export default function ClaimsPage() {
         </div>
       </div>
 
-      {drawerClaim && <ClaimDrawer claim={drawerClaim} onClose={() => setDrawerClaim(null)} onRefetch={refetch} apiScrubRules={apiScrubRules} />}
+      {drawerClaim && <ClaimDrawer claim={drawerClaim} onClose={() => { openIdDismissed.current = true; setDrawerClaim(null); if (searchParams.get('openId')) router.replace('/claims', { scroll: false }) }} onRefetch={refetch} apiScrubRules={apiScrubRules} />}
 
       {/* ── Batch Submit Panel ── */}
       <div className="card p-4 mt-4">

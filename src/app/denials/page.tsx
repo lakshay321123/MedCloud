@@ -1,5 +1,5 @@
 'use client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useT } from '@/lib/i18n'
 import React, { useState, useEffect } from 'react'
 import { useApp } from '@/lib/context'
@@ -230,6 +230,16 @@ export default function DenialsPage() {
   useEffect(() => {
     if (!selected && denials.length > 0) setSelected(denials[0].id)
   }, [denials]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-select denial when navigated from global search with ?openId=
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    const openId = searchParams.get('openId')
+    if (openId && denials.length > 0) {
+      const match = denials.find(d => d.id === openId || d.apiId === openId)
+      if (match && selected !== match.id) setSelected(match.id)
+    }
+  }, [searchParams, denials]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedDenial = denials.find(x => x.id === selected)
 
