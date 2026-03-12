@@ -117,7 +117,7 @@ const translations = {
     activePatients:   { en: 'Active Patients',           ar: 'المرضى النشطون',               es: 'Pacientes Activos' },
     openDenials:      { en: 'Open Denials',              ar: 'الرفوض المفتوحة',              es: 'Denegaciones Abiertas' },
     recentActivity:   { en: 'Recent Activity',           ar: 'النشاط الأخير',                es: 'Actividad Reciente' },
-    totalRevenueMTD:  { en: 'Total Revenue (MTD)',        ar: 'إجمالي الإيراد (الشهر)',       es: 'Ingresos Totales (Mes)' },
+    totalRevenueMTD:  { en: 'Total Revenue (MTD) Billed',  ar: 'إجمالي الإيراد (الشهر)',       es: 'Ingresos Totales (Mes)' },
     revenueTrend:     { en: 'Revenue Trend',              ar: 'اتجاه الإيرادات',              es: 'Tendencia de Ingresos' },
     arAgingBuckets:   { en: 'A/R Aging Buckets',          ar: 'أعمار الذمم المدينة',          es: 'Antigüedad de Cuentas' },
     aiCallsToday:     { en: 'AI Calls Today',            ar: 'مكالمات الذكاء اليوم',         es: 'Llamadas IA Hoy' },
