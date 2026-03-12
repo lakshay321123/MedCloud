@@ -1,7 +1,7 @@
 'use client'
 import { useT } from '@/lib/i18n'
 import React, { useState, useMemo, useEffect, useRef } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import ModuleShell from '@/components/shared/ModuleShell'
 import { useToast } from '@/components/shared/Toast'
 import { useApp } from '@/lib/context'
@@ -259,6 +259,7 @@ function AllDocsTab() {
   // Auto-open document drawer when navigated from global search with ?openId=
   const docSearchParams = useSearchParams()
   const openId = docSearchParams.get('openId')
+  const docRouter = useRouter()
   useEffect(() => {
     if (!openId || selectedDoc) return
     const match = apiDocs.find(d => d.id === openId)
@@ -354,8 +355,8 @@ function AllDocsTab() {
         </table></div>
       </div>
       {selectedDoc&&<>
-        <div className="fixed inset-0 bg-black/20 z-30" onClick={()=>setSelectedDoc(null)}/>
-        <DocPreviewDrawer doc={selectedDoc} onClose={()=>setSelectedDoc(null)}/>
+        <div className="fixed inset-0 bg-black/20 z-30" onClick={()=>{ setSelectedDoc(null); if (docSearchParams.get('openId')) docRouter.replace('/documents', { scroll: false }) }}/>
+        <DocPreviewDrawer doc={selectedDoc} onClose={()=>{ setSelectedDoc(null); if (docSearchParams.get('openId')) docRouter.replace('/documents', { scroll: false }) }}/>
       </>}
     </div>
   )

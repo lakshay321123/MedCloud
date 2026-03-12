@@ -7,7 +7,7 @@ import { useToast } from '@/components/shared/Toast'
 import { BadgeCheck, AlertTriangle, X } from 'lucide-react'
 import { useCredentialing, useUpdateCredentialing, useCreateCredentialing, useCredentialingDashboard, useCreateEnrollment } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 // Region filtering handled by backend
 
 const providers: Array<{ id: string; name: string; npi: string; client: string; license: string; malpractice: string; dea: string; caqh: string; payers: number; status: string }> = []
@@ -18,6 +18,7 @@ export default function CredentialingPage() {
   const { toast } = useToast()
   const { t } = useT()
   const { selectedClient } = useApp()
+  const router = useRouter()
   const [selected, setSelected] = useState<Provider | null>(null)
   const { data: apiCredResult } = useCredentialing({ limit: 50 })
   const { mutate: updateCred } = useUpdateCredentialing(selected?.id || '')
@@ -106,11 +107,11 @@ export default function CredentialingPage() {
 
       {selected && (
         <>
-          <div className="fixed inset-0 bg-black/20 z-30" onClick={() => setSelected(null)} />
+          <div className="fixed inset-0 bg-black/20 z-30" onClick={() => { setSelected(null); if (searchParams.get('openId')) router.replace('/credentialing', { scroll: false }) }} />
           <div className="fixed right-0 top-0 h-full w-[420px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl">
             <div className="flex gap-2 items-center justify-between p-4 border-b border-separator pb-1">
               <h3 className="font-semibold text-content-primary">{selected.name}</h3>
-              <button onClick={() => setSelected(null)} className="p-1 hover:bg-surface-elevated rounded-btn">
+              <button onClick={() => { setSelected(null); if (searchParams.get('openId')) router.replace('/credentialing', { scroll: false }) }} className="p-1 hover:bg-surface-elevated rounded-btn">
                 <X size={16} className="text-content-secondary" />
               </button>
             </div>

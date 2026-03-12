@@ -873,7 +873,7 @@ export default function PatientsPage() {
         </table></div>
       </div>
       {showAdd && <AddPatientModal onClose={() => setShowAdd(false)} onSaved={refetch}/>}
-      {selected && <PatientDetailDrawer patient={selected} onClose={() => setSelected(null)}/>}
+      {selected && <PatientDetailDrawer patient={selected} onClose={() => { setSelected(null); if (searchParams.get('openId')) router.replace('/portal/patients', { scroll: false }) }}/>}
 
       {/* ── Patient Statements ── */}
       <div className="card p-4 mt-4">

@@ -1357,7 +1357,7 @@ export default function ClaimsPage() {
         </div>
       </div>
 
-      {drawerClaim && <ClaimDrawer claim={drawerClaim} onClose={() => setDrawerClaim(null)} onRefetch={refetch} apiScrubRules={apiScrubRules} />}
+      {drawerClaim && <ClaimDrawer claim={drawerClaim} onClose={() => { setDrawerClaim(null); if (searchParams.get('openId')) router.replace('/claims', { scroll: false }) }} onRefetch={refetch} apiScrubRules={apiScrubRules} />}
 
       {/* ── Batch Submit Panel ── */}
       <div className="card p-4 mt-4">
