@@ -70,7 +70,7 @@ export default function Topbar() {
     const navUrl = entityId ? `${url}${url.includes('?') ? '&' : '?'}openId=${entityId}` : url
     router.push(navUrl)
     try {
-      await api.put(`/notifications/${id}`, { read: true })
+      await api.put(`/notifications/${id}/read`, {})
       refetchNotifs()
     } catch (err) { console.error('Failed to mark notification read:', err) }
   }, [router, refetchNotifs])

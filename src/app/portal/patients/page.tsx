@@ -817,16 +817,14 @@ export default function PatientsPage() {
 
   // Auto-open patient drawer when navigated from global search with ?openId=
   const openId = searchParams.get('openId')
-  const openIdDismissed = useRef(false)
+  const consumedOpenId = useRef<string | null>(null)
   const { data: directPatient } = usePatient(openId)
   useEffect(() => {
-    if (!openId || selected || openIdDismissed.current) return
-    // First try from already-loaded list
+    if (!openId || openId === consumedOpenId.current) return
     const match = patients.find(p => p.id === openId)
-    if (match) { setSelected(match); return }
-    // Fallback: use directly fetched patient
-    if (directPatient) setSelected(apiPatientToDemoPatient(directPatient as ApiPatient))
-  }, [openId, patients, selected, directPatient])
+    if (match) { setSelected(match); consumedOpenId.current = openId; return }
+    if (directPatient) { setSelected(apiPatientToDemoPatient(directPatient as ApiPatient)); consumedOpenId.current = openId }
+  }, [openId, patients, directPatient])
 
   return (
     <ModuleShell title={t("patients","title")} subtitle="Manage patient records"
@@ -874,7 +872,7 @@ export default function PatientsPage() {
         </table></div>
       </div>
       {showAdd && <AddPatientModal onClose={() => setShowAdd(false)} onSaved={refetch}/>}
-      {selected && <PatientDetailDrawer patient={selected} onClose={() => { openIdDismissed.current = true; setSelected(null); if (searchParams.get('openId')) router.replace('/portal/patients', { scroll: false }) }}/>}
+      {selected && <PatientDetailDrawer patient={selected} onClose={() => { setSelected(null); if (searchParams.get('openId')) router.replace('/portal/patients', { scroll: false }) }}/>}
 
       {/* ── Patient Statements ── */}
       <div className="card p-4 mt-4">
