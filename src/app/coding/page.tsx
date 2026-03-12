@@ -1678,6 +1678,7 @@ export default function CodingPage() {
                         } else {
                           // Path B: No encounter — extract from patient's superbill documents
                           await ensureDocumentExtracted(item)
+                          // Now run AI coding using extracted document data
                           if (!aiCodeCache[item.id]) {
                             await generateAICodes('', '', item.providerSpecialty || '', 'Extract all billable codes from the uploaded superbill/encounter form. Identify every CPT, ICD-10, modifier, and charge.')
                             toast.success('Charge capture from superbill complete')

@@ -27,6 +27,7 @@ interface AppState {
   setPortalType: (p: PortalType) => void
   isScribeRecording: boolean
   setIsScribeRecording: (v: boolean) => void
+  hydrated: boolean
 }
 
 // Role → display name used at init AND on setRole switches
@@ -105,6 +106,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [apiClients, setApiClients] = useState<ClientOrg[]>([])
   const [portalType, setPortalTypeState] = useState<PortalType | null>(null)
   const [isScribeRecording, setIsScribeRecording] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
   // TODO: Sprint 2 — derive orgId from Cognito JWT claims after authentication
   // For Sprint 1 dev mode, hardcode to seeded organization UUID
   const orgId = 'a0000000-0000-0000-0000-000000000001'
@@ -132,12 +134,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!savedClientId) {
         setSelectedClientState({
           id: 'c0000000-0000-0000-0000-000000000102',
-          name: 'Irvine Medical Group',
+          name: 'Sunrise Cardiology Group',
           region: 'us',
           ehr_mode: 'external_ehr',
         })
       }
     }
+    setHydrated(true)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch real clients from API
@@ -155,12 +158,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const direction = getDirection(language)
 
-  // Static fallback clients — used only when API hasn't loaded yet
+  // Static fallback clients — must match real DB data, used only when API hasn't loaded yet
   const STATIC_CLIENTS: ClientOrg[] = [
-    { id: 'c0000000-0000-0000-0000-000000000101', name: 'Gulf Medical Center', region: 'uae', ehr_mode: 'medcloud_ehr' },
-    { id: 'c0000000-0000-0000-0000-000000000102', name: 'Irvine Medical Group', region: 'us', ehr_mode: 'external_ehr' },
-    { id: 'c0000000-0000-0000-0000-000000000103', name: 'Patel Cardiology Associates', region: 'us', ehr_mode: 'medcloud_ehr' },
-    { id: 'c0000000-0000-0000-0000-000000000104', name: 'Dubai Wellness Clinic', region: 'uae', ehr_mode: 'external_ehr' },
+    { id: 'c0000000-0000-0000-0000-000000000101', name: 'Metro Internal Medicine', region: 'us', ehr_mode: 'external_ehr' },
+    { id: 'c0000000-0000-0000-0000-000000000102', name: 'Sunrise Cardiology Group', region: 'us', ehr_mode: 'external_ehr' },
+    { id: 'c0000000-0000-0000-0000-000000000103', name: 'Al Noor Medical Center', region: 'uae', ehr_mode: 'medcloud_ehr' },
+    { id: 'c0000000-0000-0000-0000-000000000104', name: 'Pacific Orthopedic Associates', region: 'us', ehr_mode: 'external_ehr' },
+    { id: 'c0000000-0000-0000-0000-000000000105', name: 'Dubai Wellness Clinic', region: 'uae', ehr_mode: 'external_ehr' },
   ]
 
   // Filter clients by logged-in region — API data takes precedence, falls back to static
@@ -236,6 +240,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setTheme, setLanguage, toggleSidebar, setRole, setSelectedClient,
       setCountry, setPortalType,
       isScribeRecording, setIsScribeRecording,
+      hydrated,
     }}>
       {children}
     </AppContext.Provider>

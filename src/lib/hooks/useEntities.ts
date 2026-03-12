@@ -8,8 +8,8 @@ import type { ClaimStatus, AppointmentStatus, TaskStatus, Priority } from '@/typ
 // ── Shared helper ─────────────────────────────────────────────────────────────
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-function useClientParams(extra?: ApiListParams): ApiListParams {
-  const { selectedClient, orgId, currentUser, country } = useApp()
+function useClientParams(extra?: ApiListParams): ApiListParams & { _skip?: boolean } {
+  const { selectedClient, orgId, currentUser, country, hydrated } = useApp()
   const rawClientId = selectedClient?.id
   const clientId = rawClientId && UUID_REGEX.test(rawClientId) ? rawClientId : undefined
   return {
@@ -18,6 +18,7 @@ function useClientParams(extra?: ApiListParams): ApiListParams {
     ...(country && !clientId ? { region: country === 'usa' ? 'us' : 'uae' } : {}),
     role: currentUser.role,
     ...extra,
+    ...(!hydrated ? { _skip: true } : {}),
   }
 }
 
