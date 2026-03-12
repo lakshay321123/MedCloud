@@ -6,7 +6,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useApp } from '@/lib/context'
-import { filterPayersByCountry } from '@/lib/utils/region'
+// Region filtering handled by backend
 import { useToast } from '@/components/shared/Toast'
 import { Receipt, ArrowLeft, AlertTriangle, CheckCircle2, Send, FileText, StickyNote, Upload, X, Clock } from 'lucide-react'
 import { getSLAStatus } from '@/lib/utils/time'
@@ -212,7 +212,7 @@ async function downloadERAFile(eraId: string, onError: (msg: string) => void) {
 }
 
 export default function PaymentPostingPage() {
-  const { selectedClient, country } = useApp()
+  const { selectedClient } = useApp()
   const { t } = useT()
   const { toast } = useToast()
   const { data: apiERAResult, refetch: refetchERAs } = useERAFiles({ limit: 50 })
@@ -241,7 +241,7 @@ export default function PaymentPostingPage() {
     exceptions: 0,
     receivedAt: e.created_at || '',
   })) || []
-  const eras = filterPayersByCountry(allEras, country)
+  const eras = allEras
 
   // Unmatched payments from real API
   const allPayments = (Array.isArray((paymentsResult as any)?.data) ? (paymentsResult as any).data : []) as Array<{

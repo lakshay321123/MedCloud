@@ -7,7 +7,7 @@ import { useToast } from '@/components/shared/Toast'
 import { useFeeSchedules, usePayerConfigs, useUnderpaymentCheck, useExtractContractRates, useCreateFeeSchedule, useUpdateFeeSchedule } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { useApp } from '@/lib/context'
-import { filterPayersByCountry } from '@/lib/utils/region'
+// Region filtering handled by backend
 import { Scale, Search, AlertTriangle, Edit2, Plus } from 'lucide-react'
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
@@ -38,7 +38,7 @@ function StatusBadgeContract({ status }: { status: string }) {
 }
 
 export default function ContractsPage() {
-  const { selectedClient, country } = useApp()
+  const { selectedClient } = useApp()
   const { toast } = useToast()
   const { t } = useT()
   const [search, setSearch] = useState('')
@@ -86,15 +86,11 @@ export default function ContractsPage() {
     })
   })()
 
-  const allContracts = filterPayersByCountry(
-    apiContracts.filter(c => {
+  const allContracts = apiContracts.filter(c => {
       if (!c.clientId) return true
       if (selectedClient) return c.clientId === selectedClient.id
-      // Region filtering handled by backend via useClientParams
       return true
-    }),
-    country
-  )
+    })
   const filtered = allContracts.filter(c =>
     !search || c.payer.toLowerCase().includes(search.toLowerCase()) || c.client.toLowerCase().includes(search.toLowerCase())
   )

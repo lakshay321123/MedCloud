@@ -161,8 +161,7 @@ export default function TasksPage() {
 
   const rawTasks = taskList
   const displayTasks = rawTasks.filter(t => {
-    if (selectedClient) return t.client === selectedClient.name
-    // Region filtering handled by backend via useClientParams
+    if (selectedClient) return !t.client || t.client === selectedClient.name
     return true
   })
 
