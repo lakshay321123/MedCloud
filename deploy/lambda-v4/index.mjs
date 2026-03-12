@@ -7277,7 +7277,7 @@ export const handler = async (event) => {
       body.doc_type = body.document_type;
     }
 
-    if (path.includes('/documents') && !path.includes('/upload-url') && !path.includes('/textract') && !path.includes('/classify') && !path.includes('/extract-rates')) {
+    if (path.includes('/documents') && !path.includes('/upload-url') && !path.includes('/textract') && !path.includes('/classify') && !path.includes('/extract-rates') && !path.includes('/extract-codes')) {
       if (method === 'GET' && !pathParams.id) {
         // Enriched document list — JOIN patients for name, filter by patient_id if requested
         let q = `SELECT d.*, 
@@ -7363,6 +7363,116 @@ export const handler = async (event) => {
       if (method === 'GET') {
         const result = await getTextractResults(pathParams.id, effectiveOrgId);
         return respond(200, result);
+      }
+    }
+
+    // ════ Bedrock Document Extraction (All-in-AWS OCR + AI) ═══════════════
+    // Reads PDF/image from S3 → sends to Bedrock Claude → extracts ICD/CPT
+    // PHI NEVER leaves AWS account — replaces Vercel /api/extract-text route
+    if (path.includes('/documents') && path.includes('/extract-codes') && method === 'POST') {
+      const doc = await getById('documents', pathParams.id);
+      if (!doc || doc.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
+      if (!doc.s3_key) return respond(400, { error: 'Document has no S3 file — upload first' });
+      if (!bedrockClient || !InvokeModelCommand || !s3Client || !GetObjectCommand) {
+        return respond(503, { error: 'AWS SDK not available' });
+      }
+      try {
+        // Step 1: Download file from S3
+        const s3Resp = await s3Client.send(new GetObjectCommand({ Bucket: S3_BUCKET, Key: doc.s3_key }));
+        const chunks = [];
+        for await (const chunk of s3Resp.Body) { chunks.push(chunk); }
+        const buffer = Buffer.concat(chunks);
+        const base64 = buffer.toString('base64');
+        const fileName = (doc.file_name || doc.s3_key || '').toLowerCase();
+        const mediaType = fileName.endsWith('.png') ? 'image/png'
+          : (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) ? 'image/jpeg'
+          : 'application/pdf';
+
+        // Step 2: Send to Bedrock Claude for structured extraction
+        const extractPrompt = `Extract medical codes from this superbill/encounter form. Return ONLY valid JSON (no markdown, no backticks):
+{
+  "patient_name": "string or null",
+  "date_of_service": "MM/DD/YYYY or null",
+  "icd_codes": ["J06.9", "R05.9"],
+  "cpt_codes": ["99213", "87880"],
+  "hcpcs_codes": ["J1100"],
+  "charges": [165.00, 35.00],
+  "total_charges": 264.00,
+  "provider_name": "string or null",
+  "insurance": "string or null",
+  "notes": "string or null"
+}
+Only include codes that are clearly selected/circled/checked on the form. Do not include unchecked codes.`;
+
+        // Use Sonnet for document extraction — reliable, supports document type
+        const DOC_EXTRACT_MODEL = 'us.anthropic.claude-sonnet-4-20250514-v1:0';
+        const bedrockBody = JSON.stringify({
+          anthropic_version: 'bedrock-2023-05-31',
+          max_tokens: 1500,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'document', source: { type: 'base64', media_type: mediaType, data: base64 } },
+              { type: 'text', text: extractPrompt }
+            ]
+          }]
+        });
+
+        const bedrockResp = await Promise.race([
+          bedrockClient.send(new InvokeModelCommand({ modelId: DOC_EXTRACT_MODEL, body: bedrockBody, contentType: 'application/json' })),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Bedrock extraction timeout (25s)')), 25000))
+        ]);
+        const aiResult = JSON.parse(new TextDecoder().decode(bedrockResp.body));
+        const aiText = aiResult.content?.[0]?.text || '{}';
+        let parsed = {};
+        try {
+          parsed = JSON.parse(aiText.replace(/```json|```/g, '').trim());
+        } catch { const m = aiText.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); }
+
+        const allCpt = [...(parsed.cpt_codes || []), ...(parsed.hcpcs_codes || [])];
+        const rawText = `Patient: ${parsed.patient_name || 'Unknown'} | DOS: ${parsed.date_of_service || ''} | ICD: ${(parsed.icd_codes || []).join(', ')} | CPT: ${allCpt.join(', ')} | Charges: $${parsed.total_charges || 0} | Insurance: ${parsed.insurance || ''} | Notes: ${parsed.notes || ''}`;
+
+        // Step 3: Save extraction results to document record
+        const textractResult = {
+          fields: {
+            patient_name: { value: parsed.patient_name || null, confidence: 0.90 },
+            date_of_service: { value: parsed.date_of_service || null, confidence: 0.90 },
+            cpt_codes: { value: allCpt.join(' '), parsed: allCpt, confidence: 0.90 },
+            diagnoses: { value: (parsed.icd_codes || []).join(' '), parsed: parsed.icd_codes || [], confidence: 0.90 },
+            billed_amount: { value: String(parsed.total_charges || 0), confidence: 0.85 },
+          },
+          raw_text: rawText,
+          mode: 'bedrock_document',
+        };
+        await update('documents', pathParams.id, {
+          textract_result: JSON.stringify(textractResult),
+          textract_status: 'completed',
+          textract_confidence: 90,
+        }, effectiveOrgId);
+
+        safeLog('info', `Bedrock doc extraction ${pathParams.id}: ${(parsed.icd_codes||[]).length} ICD, ${allCpt.length} CPT`);
+        return respond(200, {
+          document_id: pathParams.id,
+          raw_text: rawText,
+          text_length: rawText.length,
+          fields: {
+            patient_name: parsed.patient_name || null,
+            date_of_service: parsed.date_of_service || null,
+            icd_codes: parsed.icd_codes || [],
+            cpt_codes: allCpt,
+            charges: parsed.charges || [],
+            total_charges: parsed.total_charges || 0,
+            provider_name: parsed.provider_name || null,
+            insurance: parsed.insurance || null,
+            notes: parsed.notes || null,
+          },
+          method: 'bedrock_document',
+        });
+      } catch (err) {
+        const errMsg = err?.message || err?.name || String(err) || 'Unknown error';
+        const errCode = err?.code || err?.$metadata?.httpStatusCode || '';
+        safeLog('error', `Bedrock doc extraction failed: ${errMsg} ${errCode} ${JSON.stringify(err?.$metadata || {}).substring(0,200)}`);
+        return respond(500, { error: `Document extraction failed: ${errMsg}` });
       }
     }
 
