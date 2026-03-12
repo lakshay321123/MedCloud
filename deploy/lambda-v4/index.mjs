@@ -7611,6 +7611,21 @@ export const handler = async (event) => {
         return respond(200, c);
       }
       if (method === 'POST') {
+        // ── Duplicate prevention ──
+        if (body.soap_note_id) {
+          const dup = await pool.query(
+            'SELECT id FROM coding_queue WHERE org_id = $1 AND soap_note_id = $2 LIMIT 1',
+            [effectiveOrgId, body.soap_note_id]
+          );
+          if (dup.rows.length > 0) return respond(409, { error: 'Coding item already exists for this SOAP note', existing_id: dup.rows[0].id });
+        }
+        if (body.encounter_id) {
+          const dup = await pool.query(
+            'SELECT id FROM coding_queue WHERE org_id = $1 AND encounter_id = $2 LIMIT 1',
+            [effectiveOrgId, body.encounter_id]
+          );
+          if (dup.rows.length > 0) return respond(409, { error: 'Coding item already exists for this encounter', existing_id: dup.rows[0].id });
+        }
         const item = await create('coding_queue', { ...body, status: body.status || 'pending' }, effectiveOrgId);
         // (a) Auto-trigger AI coding if SOAP note is linked — don't await (fire & forget)
         if (item.soap_note_id) {
@@ -7623,7 +7638,7 @@ export const handler = async (event) => {
       if ((method === 'PUT' || method === 'PATCH') && pathParams.id) {
         const existing = await getById('coding_queue', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Coding item not found' });
-        const allowed = ['status','priority','notes','assigned_to','document_id','hold_reason','coding_method','soap_note_id','patient_id','provider_id'];
+        const allowed = ['status','priority','notes','assigned_to','document_id','hold_reason','coding_method','soap_note_id','patient_id','provider_id','client_id','encounter_id'];
         const safeBody = {};
         for (const k of allowed) { if (body[k] !== undefined) safeBody[k] = body[k]; }
         // Cross-tenant validation: verify foreign keys belong to same org
@@ -7638,6 +7653,15 @@ export const handler = async (event) => {
         }
         const updated = await update('coding_queue', pathParams.id, safeBody, effectiveOrgId);
         return respond(200, updated);
+      }
+      if (method === 'DELETE' && pathParams.id) {
+        const existing = await getById('coding_queue', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Coding item not found' });
+        // Also clean up linked AI suggestions
+        await pool.query('DELETE FROM ai_coding_suggestions WHERE coding_queue_id = $1', [pathParams.id]).catch(() => {});
+        await pool.query('DELETE FROM coding_queue WHERE id = $1 AND org_id = $2', [pathParams.id, effectiveOrgId]);
+        await auditLog(effectiveOrgId, userId, 'delete', 'coding_queue', pathParams.id, { patient_name: existing.patient_name || 'unknown' });
+        return respond(200, { deleted: true });
       }
     }
 
@@ -8357,6 +8381,19 @@ export const handler = async (event) => {
       }
       if (method === 'POST') return respond(201, await create('patients', body, effectiveOrgId));
       if (method === 'PUT' && pathParams.id) return respond(200, await update('patients', pathParams.id, body), effectiveOrgId);
+      if (method === 'DELETE' && pathParams.id) {
+        const existing = await getById('patients', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Patient not found' });
+        // Check for linked records before deleting
+        const linked = await pool.query(
+          'SELECT COUNT(*) as cnt FROM claims WHERE patient_id = $1 AND org_id = $2',
+          [pathParams.id, effectiveOrgId]
+        );
+        if (parseInt(linked.rows[0].cnt) > 0) return respond(409, { error: 'Cannot delete patient with linked claims' });
+        await pool.query('DELETE FROM patients WHERE id = $1 AND org_id = $2', [pathParams.id, effectiveOrgId]);
+        await auditLog(effectiveOrgId, userId, 'delete', 'patients', pathParams.id, { name: `${existing.first_name} ${existing.last_name}` });
+        return respond(200, { deleted: true });
+      }
     }
 
     // ════ CARC / RARC Reference ════════════════════════════════════════════

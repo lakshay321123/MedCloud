@@ -175,7 +175,7 @@ function ProviderView() {
   const { t } = useT()
   const { toast } = useToast()
   const router = useRouter()
-  const { setIsScribeRecording, country, orgId, currentUser } = useApp()
+  const { setIsScribeRecording, country, orgId, currentUser, selectedClient } = useApp()
   const [uiState, setUiState] = useState<UIState>('queue')
   const { data: apiSOAPResult } = useSOAPNotes({ limit: 50 })
   const { data: apptResult } = useAppointments({ limit: 100 })
@@ -887,6 +887,7 @@ function ProviderView() {
                     // Step 2: Create coding queue item — linked to SOAP note via soap_note_id
                     await createCoding.mutate({
                       patient_id: selectedVisit.patientId || '',
+                      client_id: selectedClient?.id || undefined,
                       soap_note_id: soapResult.id,
                       received_at: new Date().toISOString(),
                       priority: 'medium', status: 'pending',
