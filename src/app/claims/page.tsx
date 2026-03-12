@@ -6,7 +6,7 @@ import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import DocViewer from '@/components/shared/DocViewer'
 import { useApp } from '@/lib/context'
-import { UAE_ORG_IDS, US_ORG_IDS, getOrgRegion } from '@/lib/utils/region'
+// Region filtering handled by backend
 import type { DemoClaim, ClaimTimelineEvent } from '@/lib/demo-data'
 import { useToast } from '@/components/shared/Toast'
 import { useRouter } from 'next/navigation'
@@ -982,7 +982,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function ClaimsPage() {
-  const { selectedClient, country } = useApp()
+  const { selectedClient } = useApp()
   const { t } = useT()
   const { toast } = useToast()
   const router = useRouter()
@@ -1022,13 +1022,8 @@ export default function ClaimsPage() {
       : []
 
     return source.filter(c => {
-      // Region filter — only show claims matching current region
+      // Region filtering handled by backend via useClientParams region param
       if (selectedClient && c.clientId !== selectedClient.id) return false
-      if (!selectedClient && country) {
-        const clientRegion = getOrgRegion(c.clientId)
-        if (country === 'usa' && clientRegion === 'uae') return false
-        if (country === 'uae' && clientRegion === 'us') return false
-      }
       if (search && !c.patientName.toLowerCase().includes(search.toLowerCase()) && !c.id.toLowerCase().includes(search.toLowerCase())) return false
       if (statusFilters.length && !statusFilters.includes(c.status)) return false
       if (dosFrom && c.dos < dosFrom) return false
@@ -1040,7 +1035,7 @@ export default function ClaimsPage() {
       if (typeof av === 'string' && typeof bv === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
       return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number)
     })
-  }, [apiResult, selectedClient, country, search, statusFilters, dosFrom, dosTo, sortKey, sortDir])
+  }, [apiResult, selectedClient, search, statusFilters, dosFrom, dosTo, sortKey, sortDir])
 
   const paginated = allClaims.slice((page - 1) * PER_PAGE, page * PER_PAGE)
   const totalPages = Math.ceil(allClaims.length / PER_PAGE)

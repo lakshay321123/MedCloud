@@ -9,7 +9,7 @@ import { useApp } from '@/lib/context'
 import { useToast } from '@/components/shared/Toast'
 import { useEDITransactions, useCreateEDITransaction } from '@/lib/hooks'
 import type { ApiEDITransaction } from '@/lib/hooks'
-import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
+// Region filtering handled by backend
 import {
   ArrowLeftRight, FileText, Download, Upload, Search, X, Eye,
   CheckCircle2, AlertTriangle, Clock, RefreshCw, Filter, Copy,
@@ -44,7 +44,7 @@ type TabKey = 'all' | '837' | '835' | '270' | '276' | 'dha'
 
 export default function EDITransactionsPage() {
   const { t } = useT()
-  const { selectedClient, country } = useApp()
+  const { selectedClient } = useApp()
 
   return (
     <ModuleShell title="EDI Transactions">
@@ -56,7 +56,7 @@ export default function EDITransactionsPage() {
 function EDIContent() {
   const { t } = useT()
   const { toast } = useToast()
-  const { selectedClient, country } = useApp()
+  const { selectedClient } = useApp()
   const { data: apiResult, loading, error, refetch } = useEDITransactions({ limit: 500 })
 
   const [tab, setTab] = useState<TabKey>('all')
@@ -70,13 +70,10 @@ function EDIContent() {
     const raw = apiResult?.data || []
     return raw.filter(tx => {
       if (selectedClient && tx.client_id && tx.client_id !== selectedClient.id) return false
-      if (!selectedClient && tx.client_id) {
-        if (country === 'uae' && !UAE_ORG_IDS.includes(tx.client_id)) return false
-        if (country === 'usa' && !US_ORG_IDS.includes(tx.client_id)) return false
-      }
+      // Region filtering handled by backend via useClientParams
       return true
     })
-  }, [apiResult, selectedClient, country])
+  }, [apiResult, selectedClient])
 
   // Tab filter
   const tabFiltered = useMemo(() => {

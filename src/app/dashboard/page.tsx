@@ -76,13 +76,30 @@ function ExecutiveDashboard() {
   const totalPatients = Number(metrics?.total_patients) || 0
   const openDenials = Number(metrics?.open_denials) || 0
   const totalCollectionsMtd = Number(metrics?.total_collections_mtd) || 0
+  const totalAR = Number(metrics?.total_ar) || 0
   const denialRate = totalClaims > 0 ? ((openDenials / totalClaims) * 100).toFixed(1) : '0'
+  const totalBilled = metrics?.claims_by_status?.reduce((s, c) => s + Number(c.total || 0), 0) || 0
+  const collectionRate = totalBilled > 0 ? ((totalCollectionsMtd / totalBilled) * 100).toFixed(1) : '—'
+  const codingQueueCount = Number(metrics?.coding_queue_count) || 0
   const agingData = metrics?.ar_aging
+  // Compute weighted average days from AR aging buckets
+  const avgDaysInAR = agingData ? (() => {
+    const buckets = [
+      { days: 15, val: Number(agingData['0_30'] || 0) },
+      { days: 45, val: Number(agingData['31_60'] || 0) },
+      { days: 75, val: Number(agingData['61_90'] || 0) },
+      { days: 105, val: Number(agingData['91_120'] || 0) },
+      { days: 150, val: Number(agingData['120_plus'] || 0) },
+    ]
+    const totalVal = buckets.reduce((s, b) => s + b.val, 0)
+    if (totalVal === 0) return '—'
+    return Math.round(buckets.reduce((s, b) => s + b.days * b.val, 0) / totalVal)
+  })() : '—'
 
   const recentClaimsActivity = metrics?.recent_claims?.slice(0, 5).map(c => ({
     t: `Claim #${c.claim_number} — ${c.first_name} ${c.last_name} ($${Number(c.total_charges || 0).toLocaleString()})`,
     c: c.status === 'paid' ? 'text-brand-dark dark:text-brand-dark' : c.status === 'denied' ? 'text-[#065E76]' : 'text-brand',
-    ago: timeAgo(c.dos_from),
+    ago: timeAgo(c.created_at || c.dos_from),
     href: '/claims',
   }))
 
@@ -101,16 +118,16 @@ function ExecutiveDashboard() {
   return (
     <div className="space-y-6 stagger-children">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
-        <KPICard label={t("dashboard","totalRevenueMTD")} value={loading ? '…' : `$${(totalCollectionsMtd / 1000000).toFixed(1)}M`} sub="+8.2% vs last month" trend="up" icon={<DollarSign size={20} />} />
-        <KPICard label={t("dashboard","claimsSubmitted")} value={loading ? '…' : totalClaims.toLocaleString()} sub="+124 today" trend="up" icon={<FileText size={20} />} />
-        <KPICard label={t("dashboard","denialRate")} value={loading ? '…' : `${denialRate}%`} sub="-0.3% vs last month" trend="down" icon={<AlertTriangle size={20} />} />
-        <KPICard label={t("dashboard","daysInAR")} value="28.5" sub="-2.1 days" trend="down" icon={<Clock size={20} />} />
+        <KPICard label={t("dashboard","totalRevenueMTD")} value={loading ? '…' : totalCollectionsMtd > 0 ? `$${(totalCollectionsMtd / 1000000).toFixed(1)}M` : `$${(totalBilled / 1000).toFixed(0)}K billed`} icon={<DollarSign size={20} />} />
+        <KPICard label={t("dashboard","claimsSubmitted")} value={loading ? '…' : totalClaims.toLocaleString()} icon={<FileText size={20} />} />
+        <KPICard label={t("dashboard","denialRate")} value={loading ? '…' : `${denialRate}%`} icon={<AlertTriangle size={20} />} />
+        <KPICard label={t("dashboard","daysInAR")} value={loading ? '…' : String(avgDaysInAR)} icon={<Clock size={20} />} />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
-        <KPICard label={t("dashboard","collectionRate")} value="96.8%" sub="+0.4%" trend="up" icon={<TrendingUp size={20} />} />
+        <KPICard label={t("dashboard","collectionRate")} value={loading ? '…' : `${collectionRate}%`} icon={<TrendingUp size={20} />} />
         <KPICard label={t("dashboard","activePatients")} value={loading ? '…' : totalPatients.toLocaleString()} icon={<Users size={20} />} />
-        <KPICard label={t("dashboard","aiCallsToday")} value="127" icon={<Phone size={20} />} />
-        <KPICard label={t("dashboard","aiCodingAcc")} value="94.2%" icon={<BrainCircuit size={20} />} />
+        <KPICard label={t("dashboard","aiCallsToday")} value={loading ? '…' : String(codingQueueCount || '—')} icon={<Phone size={20} />} />
+        <KPICard label={t("dashboard","aiCodingAcc")} value={loading ? '…' : '—'} icon={<BrainCircuit size={20} />} />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 sm:gap-5">
         <div className="col-span-3 card p-6">
@@ -131,15 +148,10 @@ function ExecutiveDashboard() {
                     <span className="text-[11px] text-content-tertiary whitespace-nowrap">{b.label}d</span>
                   </div>
                 ))
-              : [1.8, 2.0, 2.1, 2.2, 2.3, 2.4].map((v, i) => (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                    <span className="text-[11px] font-medium text-content-secondary">${v}M</span>
-                    <div className="w-full rounded-lg relative overflow-hidden" style={{ height: `${(v / 2.5) * 140}px` }}>
-                      <div className="absolute inset-0 bg-gradient-to-t from-brand-dark to-brand rounded-lg" />
-                    </div>
-                    <span className="text-[11px] text-content-tertiary">{['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'][i]}</span>
-                  </div>
-                ))}
+              : loading
+                ? <div className="flex items-center justify-center h-full text-[13px] text-content-tertiary">Loading...</div>
+                : <div className="flex items-center justify-center h-full text-[13px] text-content-tertiary">AR aging data will appear once claims are processed</div>
+              }
           </div>
         </div>
         <div className="col-span-2 card p-6">

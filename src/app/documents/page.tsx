@@ -9,7 +9,7 @@ import type { DemoDocRecord, DemoFax } from '@/lib/demo-data'
 import { useDocuments, usePatients, useRequestUploadUrl, useCreateDocument, useCreateCoding } from '@/lib/hooks'
 import type { ApiDocument } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
-import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
+// Region filtering handled by backend
 import {
   Search, Upload, X, Download, AlertTriangle, FileText, CreditCard,
   DollarSign, XCircle, Stethoscope, File, Eye, Send
@@ -216,7 +216,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
 }
 
 function AllDocsTab() {
-  const { selectedClient, country } = useApp()
+  const { selectedClient } = useApp()
   const { data: apiDocRaw } = useDocuments()
   const apiDocs: DemoDocRecord[] = (Array.isArray(apiDocRaw) ? apiDocRaw : (apiDocRaw as any)?.data || []).map((d: ApiDocument) => ({
     id: d.id, name: d.file_name || 'document',
@@ -248,8 +248,7 @@ function AllDocsTab() {
   const filtered = apiDocs.filter(d => {
     if (d.clientId) {
       if (selectedClient && d.clientId !== selectedClient.id) return false
-      if (!selectedClient && country === 'uae' && !UAE_ORG_IDS.includes(d.clientId)) return false
-      if (!selectedClient && country === 'usa' && !US_ORG_IDS.includes(d.clientId)) return false
+      // Region filtering handled by backend via useClientParams
     }
     if (search && !d.name.toLowerCase().includes(search.toLowerCase()) && !d.patient.toLowerCase().includes(search.toLowerCase())) return false
     if (typeFilter.length > 0 && !typeFilter.includes(d.type)) return false

@@ -10,7 +10,7 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import { ShieldAlert, FileText, AlertTriangle, Send, X, Plus, Edit2, Trash2, ChevronDown } from 'lucide-react'
 import { useToast } from '@/components/shared/Toast'
 import { useDenials, useSubmitAppeal, useCheckAppealDeadlines } from '@/lib/hooks'
-import { filterByRegion } from '@/lib/utils/region'
+// Region filtering handled by backend
 import { ErrorBanner } from '@/components/shared/ApiStates'
 import { sanitizeForPrompt } from '@/lib/ai-utils'
 
@@ -59,7 +59,7 @@ type DenialRow = {
 }
 
 export default function DenialsPage() {
-  const { selectedClient, country, currentUser } = useApp()
+  const { selectedClient, currentUser } = useApp()
   const { t } = useT()
   const { toast } = useToast()
   const router = useRouter()
@@ -82,13 +82,10 @@ export default function DenialsPage() {
     rarc_description: d.rarc_description,
   })) || []
 
-  const denials: DenialRow[] = filterByRegion(
-    apiDenials,
-    currentUser.organization_id,
-    currentUser.role,
-    selectedClient?.id,
-    country
-  )
+  // Region filtering handled by backend via useClientParams
+  const denials: DenialRow[] = selectedClient
+    ? apiDenials.filter(d => d.clientId === selectedClient.id)
+    : apiDenials
 
   const [selected, setSelected] = useState(denials[0]?.id || '')
   const [appealLevel, setAppealLevel] = useState<'L1' | 'L2' | 'L3'>('L1')

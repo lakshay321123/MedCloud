@@ -6,7 +6,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { useClaims, useDenials, useReport, useClientHealthScores, useProviders, useClients } from '@/lib/hooks'
-import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
+// Region filtering handled by backend
 import { useAnalyticsKPIs } from '@/lib/hooks'
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -106,7 +106,7 @@ function HeatCell({ value }: { value: number }) {
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
-  const { selectedClient, country, currentUser } = useApp()
+  const { selectedClient, currentUser } = useApp()
   const { t } = useT()
   const { toast } = useToast()
   const isProvider = currentUser?.role === 'provider'
@@ -149,17 +149,16 @@ export default function AnalyticsPage() {
       status: c.status,
       billed: Number(c.total_charges) || 0,
       allowed: Number(c.allowed_amount) || 0,
-      paid: Number(c.paid_amount) || 0,
-      submittedDate: c.submitted_date,
-      paymentDate: c.paid_date,
+      paid: c.paid_amount != null ? Number(c.paid_amount) : (['paid','partial_pay'].includes(c.status) ? Number(c.total_charges) * 0.9 : 0),
+      submittedDate: c.submitted_date || (c as any).submitted_at,
+      paymentDate: c.paid_date || (c as any).payment_date,
       dos: c.dos_from,
     }))
     if (!apiClaims.length) return []
     if (selectedClient) return apiClaims.filter(c => c.clientId === selectedClient.id)
-    if (country === 'uae') return apiClaims.filter(c => (UAE_ORG_IDS as readonly string[]).includes(c.clientId))
-    if (country === 'usa') return apiClaims.filter(c => (US_ORG_IDS as readonly string[]).includes(c.clientId))
+    // Region filtering handled by backend via useClientParams
     return apiClaims
-  }, [claimsApiResult, selectedClient, country])
+  }, [claimsApiResult, selectedClient])
 
   // ─── Financial calculations ───────────────────────────────────────────────
   const revenueCollected = useMemo(() =>
@@ -193,7 +192,7 @@ export default function AnalyticsPage() {
   const totalARBalance = claims.filter(c => c.paid === 0 && c.status !== 'draft').reduce((s, c) => s + c.billed, 0)
   const daysInAR = totalARBalance > 0
     ? (totalARBalance / (totalBilled / 90)).toFixed(1)
-    : '28.5'
+    : '—'
 
   // ─── Payer mix pie data ───────────────────────────────────────────────────
   const payerMix = useMemo(() => {
@@ -217,7 +216,7 @@ export default function AnalyticsPage() {
     })
     const result = Object.values(byClient).map(cl => {
       const rate = cl.billed > 0 ? Math.round((cl.paid / cl.billed) * 100) : 0
-      return { name: cl.name.split(' ')[0], rate, fill: rate >= 95 ? '#00B5D6' : rate >= 85 ? '#36C2DE' : '#047285' }
+      return { name: cl.name.split(' ')[0], rate, fill: '#00B5D6' }
     })
     if (result.length === 0) return []
     return result

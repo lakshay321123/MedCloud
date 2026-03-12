@@ -12,12 +12,25 @@ import {
 import { api } from '@/lib/api-client'
 import type { ApiEligibilityCheck, ApiPriorAuth, ApiPatient } from '@/lib/hooks'
 import { ErrorBanner } from '@/components/shared/ApiStates'
-import { filterByRegion } from '@/lib/utils/region'
+// Region filtering handled by backend
 import {
   ShieldCheck, AlertTriangle, CheckCircle2, Clock, Search, X, Plus,
   RefreshCw, ChevronDown, ChevronUp, FileText, Phone, Calendar,
   User, Building2, CreditCard, Activity, Eye, Save,
 } from 'lucide-react'
+
+// Format copay/deductible — handles both number and object shapes
+function fmtMoney(v: unknown): string {
+  if (v == null) return '—'
+  if (typeof v === 'number') return '$' + (Number.isInteger(v) ? v.toString() : v.toFixed(2))
+  if (typeof v === 'string') return '$' + v
+  if (typeof v === 'object') {
+    const obj = v as Record<string, unknown>
+    const parts = Object.entries(obj).map(([k, val]) => `${k}: $${val}`)
+    return parts.join(' / ')
+  }
+  return '—'
+}
 
 /* ── status helpers ──────────────────────────────────────────────────────── */
 
@@ -66,9 +79,9 @@ function EligibilityContent() {
   const eligChecksRaw = eligResult?.data || []
   const priorAuthsRaw = paResult?.data || []
 
-  // Apply region filter — prevents US+UAE data mixing when "All Clients" is selected
-  const eligChecks = filterByRegion(eligChecksRaw, currentUser?.organization_id || '', currentUser?.role || '', selectedClient?.id, country)
-  const priorAuths = filterByRegion(priorAuthsRaw, currentUser?.organization_id || '', currentUser?.role || '', selectedClient?.id, country)
+  // Region filtering handled by backend via useClientParams
+  const eligChecks = selectedClient ? eligChecksRaw.filter((c: any) => c.client_id === selectedClient.id) : eligChecksRaw
+  const priorAuths = selectedClient ? priorAuthsRaw.filter((c: any) => c.client_id === selectedClient.id) : priorAuthsRaw
 
   /* KPIs */
   const kpis = useMemo(() => {
@@ -275,8 +288,8 @@ function EligibilityResultCard({ result, patient }: { result: ApiEligibilityChec
         </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <BenefitField label="Copay" value={result.copay != null ? `$${result.copay}` : 'N/A'} icon={<CreditCard size={12} />} />
-        <BenefitField label="Deductible Remaining" value={result.deductible != null ? `$${result.deductible}` : 'N/A'} icon={<CreditCard size={12} />} />
+        <BenefitField label="Copay" value={fmtMoney(result.copay)} icon={<CreditCard size={12} />} />
+        <BenefitField label="Deductible Remaining" value={fmtMoney(result.deductible)} icon={<CreditCard size={12} />} />
         <BenefitField label="Coinsurance" value={String(rd.coinsurance || rd.coinsurance_pct || 'N/A')} icon={<Activity size={12} />} />
         <BenefitField label="Prior Auth Required" value={result.prior_auth_required ? 'Yes' : 'No'}
           icon={result.prior_auth_required ? <AlertTriangle size={12} className="text-brand-deep" /> : <CheckCircle2 size={12} className="text-brand-dark" />} />
@@ -364,8 +377,8 @@ function BatchCheckTab() {
                       <td>${r.patient_name || 'Unknown'}</td>
                       <td>${r.status || '—'}</td>
                       <td>${r.network_status || '—'}</td>
-                      <td>${r.copay != null ? '$' + r.copay : '—'}</td>
-                      <td>${r.deductible != null ? '$' + r.deductible : '—'}</td>
+                      <td>${fmtMoney(r.copay)}</td>
+                      <td>${fmtMoney(r.deductible)}</td>
                       <td>${r.prior_auth_required ? 'Required' : 'No'}</td>
                     </tr>`).join('')
                   win.document.write(`<!DOCTYPE html><html><head>
@@ -409,8 +422,8 @@ function BatchCheckTab() {
                 <td className="px-4 py-2.5 font-medium text-content-primary">{r.patient_name || 'Unknown'}</td>
                 <td className="px-4 py-2.5"><EligStatusBadge status={r.status || 'unknown'} /></td>
                 <td className="px-4 py-2.5 text-content-secondary">{r.network_status || '—'}</td>
-                <td className="px-4 py-2.5">{r.copay != null ? `$${r.copay}` : '—'}</td>
-                <td className="px-4 py-2.5">{r.deductible != null ? `$${r.deductible}` : '—'}</td>
+                <td className="px-4 py-2.5">{fmtMoney(r.copay)}</td>
+                <td className="px-4 py-2.5">{fmtMoney(r.deductible)}</td>
                 <td className={`px-4 py-2.5 ${r.prior_auth_required ? 'text-brand-deep dark:text-brand-deep font-medium' : 'text-content-secondary'}`}>
                   {r.prior_auth_required ? 'Required' : 'No'}</td>
               </tr>))}</tbody>
@@ -485,8 +498,8 @@ function CheckHistoryTab({ checks, loading }: { checks: ApiEligibilityCheck[]; l
                     <td className="px-4 py-2.5 text-content-secondary">{c.dos || '—'}</td>
                     <td className="px-4 py-2.5"><EligStatusBadge status={c.status || 'unknown'} /></td>
                     <td className="px-4 py-2.5 text-content-secondary">{c.network_status || '—'}</td>
-                    <td className="px-4 py-2.5">{c.copay != null ? `$${c.copay}` : '—'}</td>
-                    <td className="px-4 py-2.5">{c.deductible != null ? `$${c.deductible}` : '—'}</td>
+                    <td className="px-4 py-2.5">{fmtMoney(c.copay)}</td>
+                    <td className="px-4 py-2.5">{fmtMoney(c.deductible)}</td>
                     <td className={`px-4 py-2.5 ${c.prior_auth_required ? 'text-brand-deep font-medium' : 'text-content-secondary'}`}>
                       {c.prior_auth_required ? 'Yes' : 'No'}</td>
                     <td className="px-4 py-2.5 text-content-tertiary">

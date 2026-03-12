@@ -10,7 +10,7 @@ import { getSLAStatus } from '@/lib/utils/time'
 import { useCodingQueue, useUsers } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { sanitizeForPrompt } from '@/lib/ai-utils'
-import { UAE_ORG_IDS, US_ORG_IDS } from '@/lib/utils/region'
+// Region filtering handled by backend
 import {
   BrainCircuit, CheckCircle2, Activity, Clock, MessageCircle, Mic, FileUp,
   ChevronDown, ChevronUp, Play, FileText, AlertTriangle, Plus, PauseCircle,
@@ -465,7 +465,7 @@ function CodingRulesPanel() {
 
 export default function CodingPage() {
   const router = useRouter()
-  const { selectedClient, currentUser, country } = useApp()
+  const { selectedClient, currentUser, clients } = useApp()
   const { t } = useT()
   const [reassignTarget, setReassignTarget] = useState<string | null>(null)
   const { toast } = useToast()
@@ -513,18 +513,10 @@ export default function CodingPage() {
     .filter((u: any) => u.role === 'coder' || u.role === 'coding_specialist')
     .map((u: any) => ({ id: u.id, name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email }))
 
-  // UAE org IDs
-  const uaeClientIds = UAE_ORG_IDS
-
   const queue = (() => {
     const base = apiMapped.length > 0 ? apiMapped : []
-    // Filter by region
-    const regionFiltered = base.filter(item => {
-      const isUAEClient = uaeClientIds.includes(item.clientId)
-      return country === 'uae' ? isUAEClient : !isUAEClient
-    })
-    // All roles see all items for their org/client — no role-based sub-sampling
-    return regionFiltered.filter(item => !selectedClient || item.clientId === selectedClient.id)
+    // Region filtering handled by backend via useClientParams
+    return base.filter(item => !selectedClient || item.clientId === selectedClient.id)
   })()
 
   const [selected, setSelected] = useState(queue[0]?.id || '')
@@ -773,7 +765,7 @@ export default function CodingPage() {
     })
   }
 
-  const isUAEClient = uaeClientIds.includes(item?.clientId || '')
+  const isUAEClient = clients.some(c => c.id === (item?.clientId || '') && c.region === 'uae')
 
   const tabClass = (active: boolean) =>
     `px-3 py-2 text-[12px] font-medium ${active ? 'text-brand border-b-2 border-brand' : 'text-content-secondary'}`

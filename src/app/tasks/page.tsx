@@ -9,7 +9,7 @@ import { ListChecks, X, Plus } from 'lucide-react'
 import { useTasks, useUpdateTask, useCreateTask } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { useApp } from '@/lib/context'
-import { UAE_CLIENT_NAMES, US_CLIENT_NAMES } from '@/lib/utils/region'
+// Region filtering handled by backend
 
 type Task = {
   id: string
@@ -109,7 +109,7 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
 export default function TasksPage() {
   const { toast } = useToast()
   const { t } = useT()
-  const { country, selectedClient } = useApp()
+  const { selectedClient } = useApp()
   const [selected, setSelected] = useState<Task | null>(null)
   const [showCreate, setShowCreate] = useState(false)
 
@@ -161,9 +161,7 @@ export default function TasksPage() {
 
   const rawTasks = taskList
   const displayTasks = rawTasks.filter(t => {
-    if (selectedClient) return t.client === selectedClient.name
-    if (country === 'uae') return UAE_CLIENT_NAMES.includes(t.client as typeof UAE_CLIENT_NAMES[number]) || !t.client
-    if (country === 'usa') return US_CLIENT_NAMES.includes(t.client as typeof US_CLIENT_NAMES[number]) || !t.client
+    if (selectedClient) return !t.client || t.client === selectedClient.name
     return true
   })
 
