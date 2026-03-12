@@ -506,6 +506,24 @@ async function runSchemaMigration() {
     )`);
     await pool.query('CREATE INDEX IF NOT EXISTS idx_coding_feedback_org ON coding_feedback(org_id)');
   } catch (e) { if (e.code !== '42P07') safeLog('warn', 'coding_feedback:', e.message); }
+  // AI charge capture results
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS charge_captures (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      org_id UUID NOT NULL, client_id UUID, encounter_id UUID,
+      patient_id UUID, provider_id UUID, dos DATE,
+      charges_json JSONB DEFAULT '[]', diagnoses_json JSONB DEFAULT '[]',
+      em_level VARCHAR(10), total_charges NUMERIC(12,2) DEFAULT 0,
+      ai_confidence INT DEFAULT 0, status VARCHAR(30) DEFAULT 'pending_review',
+      reviewed_by UUID, reviewed_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_charge_captures_org ON charge_captures(org_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_charge_captures_enc ON charge_captures(encounter_id)');
+    // RLS for org isolation (HIPAA)
+    await pool.query('ALTER TABLE charge_captures ENABLE ROW LEVEL SECURITY').catch(() => {});
+    await pool.query(`CREATE POLICY IF NOT EXISTS charge_captures_org_policy ON charge_captures FOR ALL USING (org_id = current_setting('app.current_org_id', true)::uuid)`).catch(() => {});
+  } catch (e) { if (e.code !== '42P07') safeLog('warn', 'charge_captures:', e.message); }
   // HIPAA: BAA tracking table
   try {
     await pool.query(`CREATE TABLE IF NOT EXISTS baa_tracking (
@@ -966,7 +984,7 @@ const BEDROCK_MODEL = process.env.BEDROCK_MODEL || 'us.anthropic.claude-sonnet-4
 // ═══ Bedrock AI Abstraction — all AI calls routed through AWS Bedrock (HIPAA) ═══
 // PHI never leaves the AWS account. Returns null if Bedrock is unavailable (no fallback).
 
-async function callAI(prompt, { max_tokens = 2000, system = 'You are an expert medical coding and billing AI assistant.', timeoutMs = 25000 } = {}) {
+async function callAI(prompt, { max_tokens = 2000, system = 'You are an expert medical coding and billing AI assistant.', timeoutMs = 45000 } = {}) {
   // HIPAA: ALL AI calls go through AWS Bedrock ONLY — PHI never leaves AWS account
   if (!bedrockClient || !InvokeModelCommand) {
     safeLog('warn', 'Bedrock not available — returning null (mock fallback)');
@@ -2616,22 +2634,34 @@ async function aiAutoCode(codingQueueId, orgId, userId, coderInstructions = '') 
   }
   // Pull linked documents (superbill text from Textract)
   let superbillText = '';
+  let docSource = null;
   if (item.document_id) {
+    docSource = await getById('documents', item.document_id);
+  }
+  // Fallback: search by patient_id for superbill/clinical docs (same as chargeCapture)
+  if (!docSource && item.patient_id) {
     try {
-      const doc = await getById('documents', item.document_id);
-      if (doc?.textract_result) {
-        const tr = typeof doc.textract_result === 'string' ? JSON.parse(doc.textract_result) : doc.textract_result;
-        superbillText = tr.raw_text || tr.text || '';
-        if (superbillText) clinicalText += `\n\nSUPERBILL/DOCUMENT TEXT:\n${superbillText.slice(0, 2000)}`;
-        // If Textract extracted structured fields, add them explicitly
-        if (tr.fields) {
-          const f = tr.fields;
-          if (f.cpt_codes?.parsed?.length > 0) clinicalText += `\nEXTRACTED CPT CODES: ${f.cpt_codes.parsed.join(', ')}`;
-          if (f.diagnoses?.parsed?.length > 0) clinicalText += `\nEXTRACTED ICD CODES: ${f.diagnoses.parsed.join(', ')}`;
-          if (f.patient_name?.value) clinicalText += `\nSUPERBILL PATIENT: ${f.patient_name.value}`;
-          if (f.date_of_service?.value) clinicalText += `\nSUPERBILL DOS: ${f.date_of_service.value}`;
-          if (f.billed_amount?.value && f.billed_amount.value !== '0') clinicalText += `\nSUPERBILL TOTAL: $${f.billed_amount.value}`;
-        }
+      const patDocR = await pool.query(
+        `SELECT * FROM documents WHERE patient_id = $1 AND org_id = $2 AND textract_status = 'completed'
+         AND (doc_type ILIKE '%superbill%' OR doc_type ILIKE '%clinical%' OR doc_type IN ('superbill','Superbill','Other'))
+         ORDER BY created_at DESC LIMIT 1`,
+        [item.patient_id, orgId]
+      );
+      if (patDocR.rows[0]) docSource = patDocR.rows[0];
+    } catch (e) { safeLog('warn', `AI: patient doc search error: ${e.message}`); }
+  }
+  if (docSource?.textract_result) {
+    try {
+      const tr = typeof docSource.textract_result === 'string' ? JSON.parse(docSource.textract_result) : docSource.textract_result;
+      superbillText = tr.raw_text || tr.text || '';
+      if (superbillText) clinicalText += `\n\nSUPERBILL/DOCUMENT TEXT:\n${superbillText.slice(0, 2000)}`;
+      if (tr.fields) {
+        const f = tr.fields;
+        if (f.cpt_codes?.parsed?.length > 0) clinicalText += `\nEXTRACTED CPT CODES: ${f.cpt_codes.parsed.join(', ')}`;
+        if (f.diagnoses?.parsed?.length > 0) clinicalText += `\nEXTRACTED ICD CODES: ${f.diagnoses.parsed.join(', ')}`;
+        if (f.patient_name?.value) clinicalText += `\nSUPERBILL PATIENT: ${f.patient_name.value}`;
+        if (f.date_of_service?.value) clinicalText += `\nSUPERBILL DOS: ${f.date_of_service.value}`;
+        if (f.billed_amount?.value && f.billed_amount.value !== '0') clinicalText += `\nSUPERBILL TOTAL: $${f.billed_amount.value}`;
       }
     } catch (e) { safeLog('warn', `AI: doc text error: ${e.message}`); }
   }
@@ -7247,7 +7277,7 @@ export const handler = async (event) => {
       body.doc_type = body.document_type;
     }
 
-    if (path.includes('/documents') && !path.includes('/upload-url') && !path.includes('/textract') && !path.includes('/classify') && !path.includes('/extract-rates')) {
+    if (path.includes('/documents') && !path.includes('/upload-url') && !path.includes('/textract') && !path.includes('/classify') && !path.includes('/extract-rates') && !path.includes('/extract-codes')) {
       if (method === 'GET' && !pathParams.id) {
         // Enriched document list — JOIN patients for name, filter by patient_id if requested
         let q = `SELECT d.*, 
@@ -7333,6 +7363,116 @@ export const handler = async (event) => {
       if (method === 'GET') {
         const result = await getTextractResults(pathParams.id, effectiveOrgId);
         return respond(200, result);
+      }
+    }
+
+    // ════ Bedrock Document Extraction (All-in-AWS OCR + AI) ═══════════════
+    // Reads PDF/image from S3 → sends to Bedrock Claude → extracts ICD/CPT
+    // PHI NEVER leaves AWS account — replaces Vercel /api/extract-text route
+    if (path.includes('/documents') && path.includes('/extract-codes') && method === 'POST') {
+      const doc = await getById('documents', pathParams.id);
+      if (!doc || doc.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
+      if (!doc.s3_key) return respond(400, { error: 'Document has no S3 file — upload first' });
+      if (!bedrockClient || !InvokeModelCommand || !s3Client || !GetObjectCommand) {
+        return respond(503, { error: 'AWS SDK not available' });
+      }
+      try {
+        // Step 1: Download file from S3
+        const s3Resp = await s3Client.send(new GetObjectCommand({ Bucket: S3_BUCKET, Key: doc.s3_key }));
+        const chunks = [];
+        for await (const chunk of s3Resp.Body) { chunks.push(chunk); }
+        const buffer = Buffer.concat(chunks);
+        const base64 = buffer.toString('base64');
+        const fileName = (doc.file_name || doc.s3_key || '').toLowerCase();
+        const mediaType = fileName.endsWith('.png') ? 'image/png'
+          : (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) ? 'image/jpeg'
+          : 'application/pdf';
+
+        // Step 2: Send to Bedrock Claude for structured extraction
+        const extractPrompt = `Extract medical codes from this superbill/encounter form. Return ONLY valid JSON (no markdown, no backticks):
+{
+  "patient_name": "string or null",
+  "date_of_service": "MM/DD/YYYY or null",
+  "icd_codes": ["J06.9", "R05.9"],
+  "cpt_codes": ["99213", "87880"],
+  "hcpcs_codes": ["J1100"],
+  "charges": [165.00, 35.00],
+  "total_charges": 264.00,
+  "provider_name": "string or null",
+  "insurance": "string or null",
+  "notes": "string or null"
+}
+Only include codes that are clearly selected/circled/checked on the form. Do not include unchecked codes.`;
+
+        // Use Sonnet for document extraction — reliable, supports document type
+        const DOC_EXTRACT_MODEL = 'us.anthropic.claude-sonnet-4-20250514-v1:0';
+        const bedrockBody = JSON.stringify({
+          anthropic_version: 'bedrock-2023-05-31',
+          max_tokens: 1500,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'document', source: { type: 'base64', media_type: mediaType, data: base64 } },
+              { type: 'text', text: extractPrompt }
+            ]
+          }]
+        });
+
+        const bedrockResp = await Promise.race([
+          bedrockClient.send(new InvokeModelCommand({ modelId: DOC_EXTRACT_MODEL, body: bedrockBody, contentType: 'application/json' })),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Bedrock extraction timeout (25s)')), 25000))
+        ]);
+        const aiResult = JSON.parse(new TextDecoder().decode(bedrockResp.body));
+        const aiText = aiResult.content?.[0]?.text || '{}';
+        let parsed = {};
+        try {
+          parsed = JSON.parse(aiText.replace(/```json|```/g, '').trim());
+        } catch { const m = aiText.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); }
+
+        const allCpt = [...(parsed.cpt_codes || []), ...(parsed.hcpcs_codes || [])];
+        const rawText = `Patient: ${parsed.patient_name || 'Unknown'} | DOS: ${parsed.date_of_service || ''} | ICD: ${(parsed.icd_codes || []).join(', ')} | CPT: ${allCpt.join(', ')} | Charges: $${parsed.total_charges || 0} | Insurance: ${parsed.insurance || ''} | Notes: ${parsed.notes || ''}`;
+
+        // Step 3: Save extraction results to document record
+        const textractResult = {
+          fields: {
+            patient_name: { value: parsed.patient_name || null, confidence: 0.90 },
+            date_of_service: { value: parsed.date_of_service || null, confidence: 0.90 },
+            cpt_codes: { value: allCpt.join(' '), parsed: allCpt, confidence: 0.90 },
+            diagnoses: { value: (parsed.icd_codes || []).join(' '), parsed: parsed.icd_codes || [], confidence: 0.90 },
+            billed_amount: { value: String(parsed.total_charges || 0), confidence: 0.85 },
+          },
+          raw_text: rawText,
+          mode: 'bedrock_document',
+        };
+        await update('documents', pathParams.id, {
+          textract_result: JSON.stringify(textractResult),
+          textract_status: 'completed',
+          textract_confidence: 90,
+        }, effectiveOrgId);
+
+        safeLog('info', `Bedrock doc extraction ${pathParams.id}: ${(parsed.icd_codes||[]).length} ICD, ${allCpt.length} CPT`);
+        return respond(200, {
+          document_id: pathParams.id,
+          raw_text: rawText,
+          text_length: rawText.length,
+          fields: {
+            patient_name: parsed.patient_name || null,
+            date_of_service: parsed.date_of_service || null,
+            icd_codes: parsed.icd_codes || [],
+            cpt_codes: allCpt,
+            charges: parsed.charges || [],
+            total_charges: parsed.total_charges || 0,
+            provider_name: parsed.provider_name || null,
+            insurance: parsed.insurance || null,
+            notes: parsed.notes || null,
+          },
+          method: 'bedrock_document',
+        });
+      } catch (err) {
+        const errMsg = err?.message || err?.name || String(err) || 'Unknown error';
+        const errCode = err?.code || err?.$metadata?.httpStatusCode || '';
+        safeLog('error', `Bedrock doc extraction failed: ${errMsg} ${errCode} ${JSON.stringify(err?.$metadata || {}).substring(0,200)}`);
+        return respond(500, { error: `Document extraction failed: ${errMsg}` });
       }
     }
 
@@ -7638,9 +7778,22 @@ export const handler = async (event) => {
         return respond(200, c);
       }
       if (method === 'POST') {
+        // ── Duplicate prevention (single combined query) ──
+        const dupConditions = [];
+        const dupParams = [effectiveOrgId];
+        if (body.soap_note_id) { dupParams.push(body.soap_note_id); dupConditions.push(`soap_note_id = $${dupParams.length}`); }
+        if (body.encounter_id) { dupParams.push(body.encounter_id); dupConditions.push(`encounter_id = $${dupParams.length}`); }
+        if (body.document_id) { dupParams.push(body.document_id); dupConditions.push(`document_id = $${dupParams.length}`); }
+        if (dupConditions.length > 0) {
+          const dupR = await pool.query(
+            `SELECT id FROM coding_queue WHERE org_id = $1 AND (${dupConditions.join(' OR ')}) LIMIT 1`,
+            dupParams
+          );
+          if (dupR.rows.length > 0) return respond(409, { error: 'Coding item already exists for this record', existing_id: dupR.rows[0].id });
+        }
         const item = await create('coding_queue', { ...body, status: body.status || 'pending' }, effectiveOrgId);
-        // (a) Auto-trigger AI coding if SOAP note is linked — don't await (fire & forget)
-        if (item.soap_note_id) {
+        // (a) Auto-trigger AI coding if clinical data is available — fire & forget
+        if (item.soap_note_id || item.document_id || item.patient_id) {
           aiAutoCode(item.id, effectiveOrgId, userId).then(result => {
             safeLog('info', `Auto-coded ${item.id}: ${result.mock ? 'mock' : 'bedrock'}, confidence=${result.confidence}`);
           }).catch(e => safeLog('warn', `Auto-code failed for ${item.id}: ${e.message}`));
@@ -7650,12 +7803,13 @@ export const handler = async (event) => {
       if ((method === 'PUT' || method === 'PATCH') && pathParams.id) {
         const existing = await getById('coding_queue', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Coding item not found' });
-        const allowed = ['status','priority','notes','assigned_to','document_id','hold_reason','coding_method','soap_note_id','patient_id','provider_id'];
+        const allowed = ['status','priority','notes','assigned_to','document_id','hold_reason','coding_method','soap_note_id','patient_id','provider_id','client_id','encounter_id'];
         const safeBody = {};
         for (const k of allowed) { if (body[k] !== undefined) safeBody[k] = body[k]; }
         // Cross-tenant validation: verify foreign keys belong to same org
         const fkChecks = [
-          ['document_id', 'documents'], ['patient_id', 'patients'], ['provider_id', 'providers'], ['soap_note_id', 'soap_notes']
+          ['document_id', 'documents'], ['patient_id', 'patients'], ['provider_id', 'providers'],
+          ['soap_note_id', 'soap_notes'], ['client_id', 'clients'], ['encounter_id', 'encounters']
         ];
         for (const [field, table] of fkChecks) {
           if (safeBody[field]) {
@@ -7664,7 +7818,33 @@ export const handler = async (event) => {
           }
         }
         const updated = await update('coding_queue', pathParams.id, safeBody, effectiveOrgId);
+        // Auto-trigger AI coding when clinical data is newly linked
+        const newSoap = safeBody.soap_note_id && safeBody.soap_note_id !== existing.soap_note_id;
+        const newDoc = safeBody.document_id && safeBody.document_id !== existing.document_id;
+        if (newSoap || newDoc) {
+          aiAutoCode(pathParams.id, effectiveOrgId, userId).then(result => {
+            safeLog('info', `Auto-coded on update ${pathParams.id}: ${result.mock ? 'mock' : 'bedrock'}, confidence=${result.confidence}`);
+          }).catch(e => safeLog('warn', `Auto-code on update failed for ${pathParams.id}: ${e.message}`));
+        }
         return respond(200, updated);
+      }
+      if (method === 'DELETE' && pathParams.id) {
+        const existing = await getById('coding_queue', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Coding item not found' });
+        const client = await pool.connect();
+        try {
+          await client.query('BEGIN');
+          await client.query('DELETE FROM coding_feedback WHERE coding_item_id = $1 AND org_id = $2', [pathParams.id, effectiveOrgId]);
+          await client.query('DELETE FROM ai_coding_suggestions WHERE coding_queue_id = $1 AND org_id = $2', [pathParams.id, effectiveOrgId]);
+          await client.query('DELETE FROM coding_queue WHERE id = $1 AND org_id = $2', [pathParams.id, effectiveOrgId]);
+          await client.query('COMMIT');
+        } catch (txErr) {
+          await client.query('ROLLBACK');
+          safeLog('error', `coding_queue delete failed: ${txErr.message}`);
+          return respond(500, { error: 'Delete failed' });
+        } finally { client.release(); }
+        await auditLog(effectiveOrgId, userId, 'delete', 'coding_queue', pathParams.id, {});
+        return respond(200, { deleted: true });
       }
     }
 
@@ -8384,6 +8564,21 @@ export const handler = async (event) => {
       }
       if (method === 'POST') return respond(201, await create('patients', body, effectiveOrgId));
       if (method === 'PUT' && pathParams.id) return respond(200, await update('patients', pathParams.id, body), effectiveOrgId);
+      if (method === 'DELETE' && pathParams.id) {
+        const existing = await getById('patients', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Patient not found' });
+        // Comprehensive FK safety check
+        const fkTables = ['claims', 'appointments', 'encounters', 'documents', 'coding_queue'];
+        const blockers = [];
+        for (const t of fkTables) {
+          const r = await pool.query(`SELECT COUNT(*) as cnt FROM ${t} WHERE patient_id = $1 AND org_id = $2`, [pathParams.id, effectiveOrgId]).catch(() => ({ rows: [{ cnt: '0' }] }));
+          if (parseInt(r.rows[0].cnt) > 0) blockers.push(`${t}: ${r.rows[0].cnt}`);
+        }
+        if (blockers.length > 0) return respond(409, { error: `Cannot delete patient with linked records: ${blockers.join(', ')}` });
+        await pool.query('DELETE FROM patients WHERE id = $1 AND org_id = $2', [pathParams.id, effectiveOrgId]);
+        await auditLog(effectiveOrgId, userId, 'delete', 'patients', pathParams.id, {});
+        return respond(200, { deleted: true });
+      }
     }
 
     // ════ CARC / RARC Reference ════════════════════════════════════════════

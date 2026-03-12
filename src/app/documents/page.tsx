@@ -149,9 +149,15 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
                 </div>
               ))}
               <button onClick={async () => {
+                if (!doc.patientId) { toast.error('Link this document to a patient before sending to coding'); return }
                 setSendingToCoding(true)
                 try {
-                  await createCoding({ status: 'pending', notes: `Document: ${doc.name || doc.patient || 'Unknown'}` })
+                  await createCoding({
+                    patient_id: doc.patientId,
+                    client_id: doc.clientId || undefined,
+                    status: 'pending',
+                    notes: `Document: ${doc.name || doc.patient || 'Unknown'}`,
+                  })
                   toast.success('Sent to coding queue')
                   onClose()
                 } catch { toast.error('Failed to send to coding queue') } finally { setSendingToCoding(false) }

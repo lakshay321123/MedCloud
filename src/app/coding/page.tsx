@@ -554,7 +554,7 @@ export default function CodingPage() {
       const docs = docsResp.data || []
       for (const doc of docs) {
         if (!doc.s3_key) continue
-        // Check if textract_result is empty or has no extracted codes
+        // Check if extraction already done with valid codes
         let needsExtraction = !doc.textract_result
         if (doc.textract_result) {
           const tr = typeof doc.textract_result === 'string' ? JSON.parse(doc.textract_result) : doc.textract_result
@@ -563,33 +563,14 @@ export default function CodingPage() {
           if (cptParsed.length === 0 && icdParsed.length === 0) needsExtraction = true
         }
         if (needsExtraction) {
-          // Get presigned URL, then extract text via Vercel route
-          const dl = await api.get<{ download_url: string }>(`/documents/${doc.id}/download`, { mode: 'inline' } as any)
-          if (!dl.download_url) continue
-          const extractResp = await fetch('/api/extract-text', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ presigned_url: dl.download_url, document_id: doc.id }),
-          }).then(r => r.json())
-          if (extractResp.raw_text && extractResp.text_length > 20) {
-            // Save to document AND link to coding queue item
-            await api.patch(`/documents/${doc.id}`, {
-              textract_result: JSON.stringify({
-                fields: {
-                  patient_name: { value: extractResp.fields?.patient_name || 'Unknown', confidence: 0.85 },
-                  date_of_service: { value: extractResp.fields?.date_of_service || '', confidence: 0.85 },
-                  cpt_codes: { value: (extractResp.fields?.cpt_codes || []).join(' '), parsed: extractResp.fields?.cpt_codes || [], confidence: 0.85 },
-                  diagnoses: { value: (extractResp.fields?.icd_codes || []).join(' '), parsed: extractResp.fields?.icd_codes || [], confidence: 0.85 },
-                  billed_amount: { value: String(extractResp.fields?.total_charges || 0), confidence: 0.85 },
-                },
-                raw_text: extractResp.raw_text,
-                mode: 'vercel_on_demand',
-              }),
-              textract_status: 'completed',
-            } as any)
+          // Call Lambda — reads from S3, sends to Bedrock, saves results. All within AWS.
+          const extractResp = await api.post<{ raw_text: string; text_length: number; fields: any; document_id: string }>(`/documents/${doc.id}/extract-codes`, {})
+          if (extractResp?.raw_text && extractResp.text_length > 20) {
             // Link document to coding queue item if not linked
-            if (!codingItem.id) continue
-            try { await api.patch(`/coding/${codingItem.id}`, { document_id: doc.id } as any) } catch (err) { console.warn('[coding] Failed to link doc:', err) }
-            console.log(`[coding] Extracted ${extractResp.fields?.cpt_codes?.length || 0} CPT + ${extractResp.fields?.icd_codes?.length || 0} ICD from ${doc.file_name}`)
+            if (codingItem.id) {
+              try { await api.patch(`/coding/${codingItem.id}`, { document_id: doc.id } as any) } catch (err) { console.warn('[coding] Failed to link doc:', err) }
+            }
+            console.log(`[coding] Extracted ${extractResp.fields?.cpt_codes?.length || 0} CPT + ${extractResp.fields?.icd_codes?.length || 0} ICD from ${doc.file_name} (Bedrock in AWS)`)
             break // Only need first document
           }
         }
