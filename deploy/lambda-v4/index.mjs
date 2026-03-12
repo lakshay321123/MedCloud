@@ -506,6 +506,21 @@ async function runSchemaMigration() {
     )`);
     await pool.query('CREATE INDEX IF NOT EXISTS idx_coding_feedback_org ON coding_feedback(org_id)');
   } catch (e) { if (e.code !== '42P07') safeLog('warn', 'coding_feedback:', e.message); }
+  // AI charge capture results table
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS charge_captures (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      org_id UUID NOT NULL, client_id UUID, encounter_id UUID,
+      patient_id UUID, provider_id UUID, dos DATE,
+      charges_json JSONB DEFAULT '[]', diagnoses_json JSONB DEFAULT '[]',
+      em_level VARCHAR(10), total_charges NUMERIC(12,2) DEFAULT 0,
+      ai_confidence INT DEFAULT 0, status VARCHAR(30) DEFAULT 'pending_review',
+      reviewed_by UUID, reviewed_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_charge_captures_org ON charge_captures(org_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_charge_captures_enc ON charge_captures(encounter_id)');
+  } catch (e) { if (e.code !== '42P07') safeLog('warn', 'charge_captures:', e.message); }
   // HIPAA: BAA tracking table
   try {
     await pool.query(`CREATE TABLE IF NOT EXISTS baa_tracking (
@@ -966,7 +981,7 @@ const BEDROCK_MODEL = process.env.BEDROCK_MODEL || 'us.anthropic.claude-sonnet-4
 // ═══ Bedrock AI Abstraction — all AI calls routed through AWS Bedrock (HIPAA) ═══
 // PHI never leaves the AWS account. Returns null if Bedrock is unavailable (no fallback).
 
-async function callAI(prompt, { max_tokens = 2000, system = 'You are an expert medical coding and billing AI assistant.', timeoutMs = 25000 } = {}) {
+async function callAI(prompt, { max_tokens = 2000, system = 'You are an expert medical coding and billing AI assistant.', timeoutMs = 45000 } = {}) {
   // HIPAA: ALL AI calls go through AWS Bedrock ONLY — PHI never leaves AWS account
   if (!bedrockClient || !InvokeModelCommand) {
     safeLog('warn', 'Bedrock not available — returning null (mock fallback)');
