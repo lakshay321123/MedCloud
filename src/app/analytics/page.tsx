@@ -192,7 +192,7 @@ export default function AnalyticsPage() {
   const totalARBalance = claims.filter(c => c.paid === 0 && c.status !== 'draft').reduce((s, c) => s + c.billed, 0)
   const daysInAR = totalARBalance > 0
     ? (totalARBalance / (totalBilled / 90)).toFixed(1)
-    : '28.5'
+    : '—'
 
   // ─── Payer mix pie data ───────────────────────────────────────────────────
   const payerMix = useMemo(() => {
