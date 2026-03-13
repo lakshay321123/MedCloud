@@ -115,6 +115,24 @@ try {
   console.log('Lambda SDK loaded — async AI coding enabled');
 } catch (e) { console.log('Lambda SDK not available:', e.message, '— AI coding will run synchronously'); }
 
+// Cognito SDK for admin user creation (creates login credentials from backend)
+let cognitoClient = null, CognitoCommands = null;
+const COGNITO_USER_POOL_ID = process.env.COGNITO_USER_POOL_ID;
+if (!COGNITO_USER_POOL_ID) {
+  console.error('FATAL: COGNITO_USER_POOL_ID env var is not set — /users/create-with-auth will be unavailable');
+}
+try {
+  const cogMod = await import('@aws-sdk/client-cognito-identity-provider');
+  cognitoClient = new cogMod.CognitoIdentityProviderClient({ region: process.env.AWS_REGION || 'us-east-1' });
+  CognitoCommands = {
+    AdminCreateUser: cogMod.AdminCreateUserCommand,
+    AdminSetUserPassword: cogMod.AdminSetUserPasswordCommand,
+    AdminAddUserToGroup: cogMod.AdminAddUserToGroupCommand,
+    AdminDeleteUser: cogMod.AdminDeleteUserCommand,
+  };
+  console.log('Cognito SDK loaded — admin user creation enabled');
+} catch (e) { console.log('Cognito SDK not available:', e.message); }
+
 const S3_BUCKET = process.env.S3_BUCKET || 'medcloud-documents-us-prod';
 
 // ─── Schema Migration — adds missing columns that were omitted from v4-seed.sql ──
@@ -445,6 +463,12 @@ async function runSchemaMigration() {
     "ALTER TABLE soap_notes ALTER COLUMN encounter_id DROP NOT NULL",
     "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS target_role VARCHAR(50)",
     "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
+    "ALTER TABLE clients ADD COLUMN IF NOT EXISTS contact_name VARCHAR(200)",
+    "ALTER TABLE clients ADD COLUMN IF NOT EXISTS contact_email VARCHAR(200)",
+    "ALTER TABLE clients ADD COLUMN IF NOT EXISTS pricing_model VARCHAR(50) DEFAULT '% Revenue'",
+    "ALTER TABLE clients ADD COLUMN IF NOT EXISTS ehr_mode VARCHAR(50) DEFAULT 'external_ehr'",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS cognito_sub VARCHAR(200)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_cognito_sub ON users(cognito_sub) WHERE cognito_sub IS NOT NULL",
   ];
   for (const sql of colFixes) {
     try { await pool.query(sql); } catch (e) { if (e.code !== '42701' && e.code !== '42704') safeLog('warn', `colFix: ${e.message}`); }
@@ -8982,6 +9006,97 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     }
 
 
+    // ════ Admin: Create User with Cognito Authentication ════════════════════
+    if (path.includes('/users/create-with-auth') && method === 'POST') {
+      // Security: env var must be set — no hardcoded fallback
+      if (!COGNITO_USER_POOL_ID || !cognitoClient || !CognitoCommands) {
+        return respond(503, { error: 'Cognito not configured — cannot create authenticated users' });
+      }
+      // Security: caller must be admin
+      if (callerRole !== 'admin') {
+        return respond(403, { error: 'Only admins can create users with login credentials' });
+      }
+      const { email, password, first_name, last_name, role } = body;
+      if (!email || !password || !first_name || !role) {
+        return respond(400, { error: 'email, password, first_name, and role are required' });
+      }
+      // Password complexity: min 8 chars + uppercase + lowercase + number (matches Cognito policy)
+      const pwdPolicy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+      if (!pwdPolicy.test(password)) {
+        return respond(400, { error: 'Password must be at least 8 characters and contain 1 uppercase, 1 lowercase, and 1 number' });
+      }
+      const validRoles = ['admin','biller','coder','ar_team','posting_team','provider','client','supervisor','manager','director'];
+      if (!validRoles.includes(role)) {
+        return respond(400, { error: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
+      }
+      // Only admins can create other admins
+      if (role === 'admin' && callerRole !== 'admin') {
+        return respond(403, { error: 'Only admins can assign the admin role' });
+      }
+      let createdUsername = null; // track for rollback if any step fails
+      try {
+        // 1. Create user in Cognito with all custom attributes the authorizer needs
+        const cognitoResult = await cognitoClient.send(new CognitoCommands.AdminCreateUser({
+          UserPoolId: COGNITO_USER_POOL_ID,
+          Username: email,
+          UserAttributes: [
+            { Name: 'email', Value: email },
+            { Name: 'email_verified', Value: 'true' },
+            { Name: 'given_name', Value: first_name },
+            { Name: 'family_name', Value: last_name || '' },
+            { Name: 'custom:org_id', Value: effectiveOrgId },
+            { Name: 'custom:portal_type', Value: 'backoffice' },
+            { Name: 'custom:role', Value: role },
+            ...(body.client_id ? [{ Name: 'custom:client_id', Value: body.client_id }] : []),
+          ],
+          MessageAction: 'SUPPRESS', // Don't send invitation email
+        }));
+        createdUsername = cognitoResult.User?.Username || email;
+        // Sub attribute is the immutable JWT identifier — must come from Attributes, not Username
+        const cognitoSub = cognitoResult.User?.Attributes?.find(a => a.Name === 'sub')?.Value || cognitoResult.User?.Username || '';
+        // 2. Set permanent password (skip temp password + force-change flow)
+        await cognitoClient.send(new CognitoCommands.AdminSetUserPassword({
+          UserPoolId: COGNITO_USER_POOL_ID,
+          Username: email,
+          Password: password,
+          Permanent: true,
+        }));
+        // 3. Add user to role group
+        await cognitoClient.send(new CognitoCommands.AdminAddUserToGroup({
+          UserPoolId: COGNITO_USER_POOL_ID,
+          Username: email,
+          GroupName: role,
+        }));
+        // 4. Create user record in DB (cognito_sub links JWT claims to DB row)
+        const dbUser = await create('users', {
+          first_name, last_name: last_name || '', email, role, is_active: true,
+          cognito_sub: cognitoSub,
+          ...(body.client_id ? { client_id: body.client_id } : {}),
+        }, effectiveOrgId);
+        await auditLog(effectiveOrgId, userId, 'create_user_with_auth', 'users', dbUser.id, { email, role });
+        safeLog('info', `Admin created user: ${email} (role=${role})`);
+        return respond(201, { ...dbUser, cognito_created: true, message: `User ${email} created with login credentials` });
+      } catch (e) {
+        // Rollback: if Cognito user was created, delete it on ANY downstream failure
+        if (createdUsername && e.name !== 'UsernameExistsException') {
+          try {
+            await cognitoClient.send(new CognitoCommands.AdminDeleteUser({ UserPoolId: COGNITO_USER_POOL_ID, Username: createdUsername }));
+          } catch (cleanupErr) {
+            safeLog('error', `Cognito rollback failed for ${email}: ${cleanupErr.message} — manual cleanup required`);
+          }
+        }
+        if (e.name === 'UsernameExistsException') {
+          return respond(409, { error: 'User with this email already exists in authentication system' });
+        }
+        if (e.message?.includes('duplicate') || e.code === '23505') {
+          return respond(409, { error: 'User with this email already exists' });
+        }
+        safeLog('error', `Create user with auth failed: ${e.message}`);
+        return respond(500, { error: `Failed to create user: ${e.message}` });
+      }
+    }
+
+
     const entityMap = {
       'appointments': 'appointments',
       'providers': 'providers',
@@ -8998,6 +9113,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       'credentialing': ['/dashboard', '/enrollment'],
       'tasks': ['/check-sla'],
       'clients': ['/health'],
+      'users': ['/create-with-auth'],
     };
 
     for (const [route, table] of Object.entries(entityMap)) {

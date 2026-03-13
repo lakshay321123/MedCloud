@@ -73,7 +73,7 @@ function UsersTab() {
   }))
   const [localUsers, setLocalUsers] = useState(users)
   const displayUsers = apiUsers.length > 0 ? apiUsers : localUsers
-  const [newUser, setNewUser] = useState({ name: '', email: '', role: 'coder', clients: '' })
+  const [newUser, setNewUser] = useState({ name: '', email: '', role: 'coder', clients: '', password: '' })
   const [creating, setCreating] = useState(false)
   const [editingUser, setEditingUser] = useState<typeof users[0] | null>(null)
   const filtered = displayUsers.filter(u => !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()))
@@ -82,14 +82,43 @@ function UsersTab() {
     if (!newUser.name.trim()) { toast.error('Full name required'); return }
     if (!newUser.email.trim() || !newUser.email.includes('@')) { toast.error('Valid email required'); return }
     if (displayUsers.find(u => u.email === newUser.email)) { toast.error('User with this email already exists'); return }
+    if (newUser.password) {
+      const pwdPolicy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+      if (!pwdPolicy.test(newUser.password)) {
+        toast.error('Password must be at least 8 characters with 1 uppercase, 1 lowercase, and 1 number')
+        return
+      }
+    }
     setCreating(true)
     try {
       const nameParts = newUser.name.trim().split(/\s+/)
-      const result = await createUserAPI({ first_name: nameParts[0] || '', last_name: nameParts.slice(1).join(' ') || '', email: newUser.email, role: newUser.role, is_active: true })
-      if (result) { toast.success(`User "${newUser.name}" created successfully`); refetchUsers() }
-      else { toast.error('Failed to create user') }
-    } catch (err) { toast.error(`Failed: ${err instanceof Error ? err.message : 'Unknown error'}`) }
-    setNewUser({ name: '', email: '', role: 'coder', clients: '' })
+      const firstName = nameParts[0] || ''
+      const lastName = nameParts.slice(1).join(' ') || ''
+
+      if (newUser.password) {
+        // Create with Cognito authentication (user can log in immediately)
+        const { api } = await import('@/lib/api-client')
+        const result = await api.post('/users/create-with-auth', {
+          email: newUser.email, password: newUser.password,
+          first_name: firstName, last_name: lastName, role: newUser.role,
+        })
+        if (result) {
+          toast.success(`User "${newUser.name}" created with login credentials (${newUser.role})`)
+          refetchUsers()
+        } else {
+          toast.error('Failed to create user with login — please try again')
+        }
+      } else {
+        // DB-only user (no login credentials)
+        const result = await createUserAPI({ first_name: firstName, last_name: lastName, email: newUser.email, role: newUser.role, is_active: true })
+        if (result) { toast.success(`User "${newUser.name}" created (DB only — no login)`) ; refetchUsers() }
+        else { toast.error('Failed to create user') }
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error'
+      toast.error(`Failed: ${msg}`)
+    }
+    setNewUser({ name: '', email: '', role: 'coder', clients: '', password: '' })
     setShowAdd(false)
     setCreating(false)
   }
@@ -173,8 +202,13 @@ function UsersTab() {
                 <label className="text-[13px] text-content-secondary block mb-1">Assign to Clients</label>
                 <input value={newUser.clients} onChange={e=>setNewUser(p=>({...p,clients:e.target.value}))} placeholder="IFP, GMC (or leave blank for All)" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
               </div>
-              <button onClick={handleCreateUser} disabled={creating}
-                className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors disabled:opacity-50">{creating ? 'Creating…' : 'Create User & Send Invite'}</button>
+              <div>
+                <label htmlFor="new-user-password" className="text-[13px] text-content-secondary block mb-1">Password {newUser.password ? <span className="text-brand-dark">(will create login)</span> : <span className="text-content-tertiary">(optional — leave blank for DB-only)</span>}</label>
+                <input id="new-user-password" value={newUser.password} onChange={e=>setNewUser(p=>({...p,password:e.target.value}))} placeholder="Min 8 chars, 1 upper, 1 lower, 1 number" type="password" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
+                {newUser.password && newUser.password.length > 0 && newUser.password.length < 8 && <p className="text-[11px] text-red-500 mt-1">Must be at least 8 characters</p>}
+              </div>
+              <button type="button" onClick={handleCreateUser} disabled={creating}
+                className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors disabled:opacity-50">{creating ? 'Creating…' : newUser.password ? 'Create User with Login' : 'Create User (DB Only)'}</button>
             </div>
           </div>
         </>
@@ -235,7 +269,7 @@ function UsersTab() {
 
 function OrgsTab() {
   const { toast } = useToast()
-  const { data: clientsResult } = useClients()
+  const { data: clientsResult, refetch: refetchClients } = useClients()
   const [showAddOrg, setShowAddOrg] = useState(false)
   const [orgData, setOrgData] = useState({
     name: '', contact: '', email: '', region: 'us', pricing: '% Revenue'
@@ -329,14 +363,29 @@ function OrgsTab() {
                 </div>
               </div>
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (!orgData.name) {
                     toast.error('Organization name is required')
                     return
                   }
-                  toast.success(`Organization '${orgData.name}' created. Onboarding email sent.`)
-                  setOrgData({ name: '', contact: '', email: '', region: 'us', pricing: '% Revenue' })
-                  setShowAddOrg(false)
+                  try {
+                    const { api } = await import('@/lib/api-client')
+                    await api.post('/clients', {
+                      name: orgData.name,
+                      contact_name: orgData.contact || null,
+                      contact_email: orgData.email || null,
+                      region: orgData.region,
+                      pricing_model: orgData.pricing,
+                      ehr_mode: 'external_ehr',
+                      is_active: true,
+                    })
+                    toast.success(`Organization "${orgData.name}" created`)
+                    setOrgData({ name: '', contact: '', email: '', region: 'us', pricing: '% Revenue' })
+                    setShowAddOrg(false)
+                    refetchClients()
+                  } catch (err: unknown) {
+                    toast.error(`Failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+                  }
                 }}
                 className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">Create Organization</button>
             </div>
