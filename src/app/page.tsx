@@ -27,6 +27,11 @@ export default function LoginPage() {
         localStorage.setItem('cosentus_region', data.country)
         localStorage.setItem('cosentus_portal_type', data.portalType)
         localStorage.setItem('cosentus_role', data.role)
+        if (data.name)     localStorage.setItem('cosentus_user_name', data.name)
+        if (data.email)    localStorage.setItem('cosentus_user_email', data.email)
+        if (data.orgId)    localStorage.setItem('cosentus_org_id', data.orgId)
+        if (data.clientId) localStorage.setItem('cosentus_client_id', data.clientId)
+        if (data.idToken)  localStorage.setItem('cosentus_auth_token', data.idToken)
         window.location.href = '/dashboard'
       } else {
         setError(data.error || 'Invalid email or password')
