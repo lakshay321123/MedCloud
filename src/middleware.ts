@@ -40,8 +40,22 @@ export function middleware(req: NextRequest) {
   // Session exists — parse portalType for coarse route guard
   if (session) {
     try {
-      const parsed = JSON.parse(session.value)
-      const portalType = parsed.portalType
+      // Cookie is signed: base64url(payload).signature
+      // Decode the payload portion only — signature verification is done server-side in the login route.
+      // Middleware only needs portalType for coarse route guards.
+      const cookieValue = session.value
+      const dotIndex = cookieValue.indexOf('.')
+      let parsed: Record<string, unknown>
+      if (dotIndex > 0) {
+        // Signed format — extract and decode the base64url payload
+        const encodedPayload = cookieValue.slice(0, dotIndex)
+        const decoded = Buffer.from(encodedPayload, 'base64url').toString('utf8')
+        parsed = JSON.parse(decoded)
+      } else {
+        // Legacy plain-JSON fallback (sessions set before HMAC signing)
+        parsed = JSON.parse(cookieValue)
+      }
+      const portalType = parsed.portalType as string | undefined
 
       // Facility portal users (provider, client) must never access back-office routes
       const backOfficeRoutes = ['/claims', '/coding', '/denials', '/ar-management',
