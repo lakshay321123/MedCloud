@@ -26,6 +26,7 @@ interface LineItem {
   allowed: number
   paid: number
   denied: number
+  adjustment: number // stored for recalc — denied = max(0, billed - paid - adjustment)
   patBalance: number
   adjCode?: string
   adjReason?: string
@@ -105,7 +106,7 @@ function parse835(eraId: string, raw: string): ParsedERA {
         patientName: currentPatient || `Patient ${claimIdx}`,
         cpt, cptDesc: '', dos: currentDOS || result.paymentDate,
         billed, allowed: billed,
-        paid, denied: billed - paid > 0 ? billed - paid : 0,
+        paid, adjustment: 0, denied: billed - paid > 0 ? billed - paid : 0,
         patBalance: currentClaimPatResp,
         adjCode: currentClaimAdj, adjReason: currentClaimAdjReason,
         action: paid === 0 ? 'review' : 'post', notes: '',
@@ -119,7 +120,8 @@ function parse835(eraId: string, raw: string): ParsedERA {
       const adjAmt = parseFloat(e[3]) || 0
       last.adjCode = adj
       last.adjReason = reason
-      last.denied = adjAmt
+      last.adjustment = adjAmt
+      last.denied = Math.max(0, last.billed - last.paid - adjAmt)
       last.patBalance = e[1] === 'PR' ? adjAmt : last.patBalance
       last.allowed = last.billed - (e[1] === 'CO' ? adjAmt : 0)
     }
@@ -132,7 +134,7 @@ function parse835(eraId: string, raw: string): ParsedERA {
       patientName: currentPatient || 'Unknown Patient',
       cpt: '', cptDesc: 'See 835 file', dos: currentDOS || result.paymentDate,
       billed: currentClaimBilled, allowed: currentClaimBilled,
-      paid: currentClaimPaid, denied: currentClaimBilled - currentClaimPaid,
+      paid: currentClaimPaid, adjustment: 0, denied: currentClaimBilled - currentClaimPaid,
       patBalance: currentClaimPatResp,
       adjCode: currentClaimAdj, adjReason: currentClaimAdjReason,
       action: currentClaimPaid === 0 ? 'review' : 'post', notes: '',
@@ -273,30 +275,65 @@ export default function PaymentPostingPage() {
     if (loadedEraIds.current.has(selectedEra)) return
     loadedEraIds.current.add(selectedEra)
 
-    // Fetch raw_content from API and parse the real 835
+    // Strategy: try loading persisted line items from DB first → fallback to client-side 835 parse
     setLoadingLines(true)
-    api.get<{ raw_content?: string; file_name?: string }>(`/era-files/${selectedEra}`)
-      .then(rec => {
-        const raw = rec.raw_content || ''
-        if (raw.includes('ISA') || raw.includes('BPR') || raw.includes('CLP')) {
-          // Real 835 content — parse it client-side
-          const parsed = parse835(selectedEra, raw)
-          if (parsed.lines.length > 0) {
-            // De-duplicate against any pre-loaded lines for this era (upload pre-parse)
-            setLineItems((prev: LineItem[]) => {
-              const existingIds = new Set(prev.filter(l => l.eraId === selectedEra).map(l => l.id))
-              const newLines = parsed.lines.filter(l => !existingIds.has(l.id))
-              return newLines.length > 0 ? [...prev, ...newLines] : prev
-            })
-          }
+    let loadedAnyLines = false
+    api.get<{ data: Array<any> }>(`/era-files/${selectedEra}/line-items`)
+      .then(resp => {
+        const dbLines = resp.data || []
+        if (dbLines.length > 0) {
+          loadedAnyLines = true
+          // Map DB payment rows → frontend LineItem format
+          const mapped: LineItem[] = dbLines.map((p: any) => ({
+            id: p.id,
+            eraId: selectedEra,
+            claimId: p.claim_id || '',
+            patientName: p.patient_name || 'Unknown',
+            cpt: p.cpt_code || '',
+            cptDesc: '',
+            dos: p.dos_from ? String(p.dos_from).slice(0, 10) : '',
+            billed: Number(p.billed_amount) || 0,
+            allowed: Number(p.allowed_amount) || 0,
+            paid: Number(p.amount_paid) || 0,
+            adjustment: Number(p.adjustment_amount) || 0,
+            denied: Math.max(0, (Number(p.allowed_amount) || 0) - (Number(p.amount_paid) || 0)),
+            patBalance: Number(p.patient_responsibility) || 0,
+            adjCode: p.adj_reason_code || '',
+            adjReason: p.adj_reason_code ? (p.adj_reason_code.split(',')[0] || '') : '',
+            action: p.action || 'pending',
+            notes: p.posting_notes || '',
+          }))
+          setLineItems((prev: LineItem[]) => {
+            const existingIds = new Set(prev.filter(l => l.eraId === selectedEra).map(l => l.id))
+            const newLines = mapped.filter(l => !existingIds.has(l.id))
+            return newLines.length > 0 ? [...prev, ...newLines] : prev
+          })
+          return // DB lines loaded successfully — skip client-side parse
         }
-        // No raw_content or no parseable lines — empty state handled in render
+        // No DB lines — fallback to client-side 835 parse
+        return api.get<{ raw_content?: string }>(`/era-files/${selectedEra}`).then(rec => {
+          const raw = rec.raw_content || ''
+          if (raw.includes('ISA') || raw.includes('BPR') || raw.includes('CLP')) {
+            const parsed = parse835(selectedEra, raw)
+            if (parsed.lines.length > 0) {
+              loadedAnyLines = true
+              setLineItems((prev: LineItem[]) => {
+                const existingIds = new Set(prev.filter(l => l.eraId === selectedEra).map(l => l.id))
+                const newLines = parsed.lines.filter(l => !existingIds.has(l.id))
+                return newLines.length > 0 ? [...prev, ...newLines] : prev
+              })
+            }
+          }
+        })
       })
       .catch((error) => {
-        console.error('[payment-posting] Failed to fetch ERA file content:', error)
+        console.error('[payment-posting] Failed to load ERA lines:', error)
         loadedEraIds.current.delete(selectedEra) // allow retry on error
       })
-      .finally(() => setLoadingLines(false))
+      .finally(() => {
+        if (!loadedAnyLines) loadedEraIds.current.delete(selectedEra) // allow retry if no lines loaded
+        setLoadingLines(false)
+      })
   }, [selectedEra, eras]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const totals = useMemo(() => eraLines.reduce((acc, row) => ({
@@ -307,8 +344,42 @@ export default function PaymentPostingPage() {
     patBalance: acc.patBalance + row.patBalance,
   }), { billed: 0, allowed: 0, paid: 0, denied: 0, patBalance: 0 }), [eraLines])
 
+  // Update local state + persist to DB via API (with rollback on failure)
   const setValue = (id: string, field: string, value: number | string) => {
-    setLineItems(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row))
+    // Map frontend field names → DB column names for persistence
+    const dbFieldMap: Record<string, string> = {
+      billed: 'billed_amount', allowed: 'allowed_amount', paid: 'amount_paid',
+      adjCode: 'adj_reason_code', adjReason: 'adj_reason_code',
+      action: 'action', notes: 'posting_notes', cpt: 'cpt_code',
+      patBalance: 'patient_responsibility',
+    }
+    const dbField = dbFieldMap[field]
+    if (!dbField) return // Block edits for unmapped fields (e.g. denied)
+    // Capture old row for rollback
+    const oldRow = lineItems.find(row => row.id === id)
+    const oldValue = oldRow ? (oldRow as any)[field] : value
+    const oldDenied = oldRow?.denied ?? 0
+    // Optimistic update — auto-recalculate denied when monetary fields change
+    setLineItems(prev => prev.map(row => {
+      if (row.id !== id) return row
+      const updated = { ...row, [field]: value }
+      if (field === 'paid' || field === 'billed' || field === 'allowed') {
+        // Denied = shortfall between what payer allows and what they actually paid
+        updated.denied = Math.max(0, updated.allowed - Number(updated.paid))
+      }
+      return updated
+    }))
+    const optimisticValue = value
+    api.patch(`/era-lines/${id}`, { [dbField]: optimisticValue } as any).catch(err => {
+      console.warn('[payment-posting] Failed to save line edit:', err)
+      // Only revert if cell still holds the optimistic value (don't clobber newer edits)
+      setLineItems(prev => prev.map(row =>
+        row.id === id && (row as any)[field] === optimisticValue
+          ? { ...row, [field]: oldValue, denied: oldDenied }
+          : row
+      ))
+      toast.error('Failed to save edit — reverted')
+    })
   }
 
   // Silent denials: ERA lines with denied > 0 that have action 'post' (not yet routed)
