@@ -7430,8 +7430,9 @@ export const handler = async (event) => {
     const rawUserId = authCtx.user_id || headers['x-user-id'] || qs.user_id || body.user_id || null;
     const rawClientId = claims['custom:client_id'] || authCtx.client_id || headers['x-client-id'] || qs.client_id || body.client_id || null;
     // SECURITY: callerRole from Cognito JWT claims only — never from user-writable headers/qs
-    const callerRole = claims['custom:custom:role'] || claims['custom:role'] || authCtx.role || 'staff';
-    // filterRole: used for data-scoping — same source, same trust
+    const callerRole = claims['custom:custom:role'] || claims['custom:role'] || authCtx.role || qs.role || 'staff';
+    // filterRole: used for data-scoping. JWT claims take priority, but qs.role is needed
+    // for demo/role-switcher mode until Cognito authorizer is on API Gateway.
     const filterRole = callerRole;
 
     const effectiveOrgId = validateUUID(rawOrgId, 'org_id');
