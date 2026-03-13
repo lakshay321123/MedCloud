@@ -185,11 +185,11 @@ function AppointmentDrawer({ appt, onClose, currentUserRole }: ApptDrawerProps) 
             </>
           )}
 
-          {/* AI Scribe CTA — provider only */}
+          {/* Ai Scribe CTA — provider only */}
           {isProvider && (
             <button onClick={() => { onClose(); router.push(`/ai-scribe?patient=${appt.patientId}`) }}
               className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium flex items-center justify-center gap-2 hover:bg-brand-deep transition-colors">
-              <Mic size={15}/> Start AI Scribe for this Visit
+              <Mic size={15}/> Start Ai Scribe for this Visit
             </button>
           )}
 

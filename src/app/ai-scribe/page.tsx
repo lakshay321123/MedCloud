@@ -253,7 +253,7 @@ function ProviderView() {
   const [showMacros, setShowMacros] = useState(false)
   const macroCategories = Array.from(new Set(VOICE_MACROS.map(m => m.category)))
 
-  // AI section editor
+  // Ai section editor
   const [refiningSections, setRefiningSections] = useState<Record<string, boolean>>({})
 
   // Referral letter
@@ -350,11 +350,11 @@ function ProviderView() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'AI failed')
+      if (!res.ok) throw new Error(data.error || 'Ai failed')
       let result: AISoapResult
       try {
         result = JSON.parse(data.text.replace(/```json|```/g, '').trim())
-      } catch { throw new Error('AI returned invalid JSON') }
+      } catch { throw new Error('Ai returned invalid JSON') }
 
       setAiResult(result)
       setSoap(result.soap)
@@ -383,11 +383,11 @@ function ProviderView() {
     } catch (err: any) {
       setAiError(err.message)
       setUiState('recording')
-      toast.error(`AI failed: ${err.message}`)
+      toast.error(`Ai failed: ${err.message}`)
     }
   }
 
-  // ── AI Section Refine ────────────────────────────────────────────────────
+  // ── Ai Section Refine ────────────────────────────────────────────────────
   async function refineSection(section: 's' | 'o' | 'a' | 'p') {
     if (!soap[section].trim()) { toast.error('Section is empty'); return }
     setRefiningSections(p => ({ ...p, [section]: true }))
@@ -405,7 +405,7 @@ function ProviderView() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'AI failed')
+      if (!res.ok) throw new Error(data.error || 'Ai failed')
       setSoap(p => ({ ...p, [section]: data.text.trim() }))
       toast.success('Section refined')
     } catch (err: any) {
@@ -438,7 +438,7 @@ function ProviderView() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'AI failed')
+      if (!res.ok) throw new Error(data.error || 'Ai failed')
       setReferralLetter(data.text.trim())
     } catch (err: any) {
       toast.error(`Referral failed: ${err.message}`)
@@ -776,7 +776,7 @@ function ProviderView() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {/* SOAP sections with AI refine */}
+              {/* SOAP sections with Ai refine */}
               {(['s', 'o', 'a', 'p'] as const).map(k => (
                 <div key={k}>
                   <div className="flex items-center justify-between mb-1">
@@ -795,11 +795,11 @@ function ProviderView() {
                 </div>
               ))}
 
-              {/* AI Codes */}
+              {/* Ai Codes */}
               <div className="border-t border-separator pt-3">
                 <div className="flex items-center gap-2 mb-2">
                   <BrainCircuit size={14} className="text-brand" />
-                  <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider">AI Generated Codes</h4>
+                  <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider">Ai Generated Codes</h4>
                   {aiResult?.em_rationale && <span className="ml-auto text-[11px] text-content-tertiary">{aiResult.em_rationale}</span>}
                 </div>
                 {allCodes.map((code, i) => (
@@ -891,7 +891,7 @@ function ProviderView() {
                       soap_note_id: soapResult.id,
                       received_at: new Date().toISOString(),
                       priority: 'medium', status: 'pending',
-                      notes: `AI Scribe: ${selectedVisit.encounterType} · ${selectedVisit.dos} | ICD: ${[...keptIcd.map(c => c.code), ...manualKept.filter(c => c.type === 'icd').map(c => c.code)].join(', ')} | CPT: ${[...keptCpt.map(c => c.code), ...manualKept.filter(c => c.type === 'cpt').map(c => c.code)].join(', ')}`,
+                      notes: `Ai Scribe: ${selectedVisit.encounterType} · ${selectedVisit.dos} | ICD: ${[...keptIcd.map(c => c.code), ...manualKept.filter(c => c.type === 'icd').map(c => c.code)].join(', ')} | CPT: ${[...keptCpt.map(c => c.code), ...manualKept.filter(c => c.type === 'cpt').map(c => c.code)].join(', ')}`,
                     })
 
                     toast.success('✓ Note signed & saved — routing to Coding Queue')
@@ -1034,7 +1034,7 @@ function ProviderView() {
             <div className="w-16 h-16 rounded-full bg-brand/10 flex items-center justify-center mx-auto mb-4">
               <Stethoscope size={32} className="text-brand-dark opacity-60" />
             </div>
-            <p className="text-sm font-medium text-content-secondary mb-1">Real ambient AI documentation</p>
+            <p className="text-sm font-medium text-content-secondary mb-1">Real ambient Ai documentation</p>
             <p className="text-xs text-content-tertiary">Live mic → transcript → Claude generates SOAP + ICD/CPT codes</p>
             <button onClick={() => setUiState('select_patient')} className="mt-4 text-xs text-brand hover:underline flex items-center gap-1 mx-auto">
               Select patient & start <ChevronRight size={12} />
@@ -1102,7 +1102,7 @@ function CoderView() {
           <div className="border-t border-separator pt-3">
             <div className="flex items-center gap-2 mb-2">
               <BrainCircuit size={14} className="text-brand" />
-              <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider">AI Codes</h4>
+              <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider">Ai Codes</h4>
             </div>
             <div className="flex flex-wrap gap-2">
               {selectedVisit.suggestedCodes.map((c, i) => (
@@ -1134,7 +1134,7 @@ export default function AIScribePage() {
       <div className="mb-4 bg-brand/10 border border-brand/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-brand-dark dark:text-brand-dark">
         <Mic size={15} className="shrink-0" />
         <div>
-          <span className="font-semibold">Real AI Scribe</span> — Browser mic → live transcript → Claude generates SOAP + ICD/CPT codes instantly.
+          <span className="font-semibold">Real Ai Scribe</span> — Browser mic → live transcript → Claude generates SOAP + ICD/CPT codes instantly.
           {isProvider && <span className="ml-2 text-xs opacity-70">Use Chrome for best mic support.</span>}
         </div>
       </div>

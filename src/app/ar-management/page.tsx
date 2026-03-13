@@ -58,7 +58,7 @@ type CallLogEntry = {
 }
 
 const initialAccounts: ARAccount[] = [
-  { id: 'AR-001', patient: 'Robert Chen', client: 'Patel Cardiology', payer: 'Medicare', original: 1200, balance: 488, age: 95, lastAction: 'Voice AI call — "In process"', nextFollowup: '2026-03-04', priority: 'urgent', source: 'denied_claim', dos: '2025-11-30' },
+  { id: 'AR-001', patient: 'Robert Chen', client: 'Patel Cardiology', payer: 'Medicare', original: 1200, balance: 488, age: 95, lastAction: 'Voice Ai call — "In process"', nextFollowup: '2026-03-04', priority: 'urgent', source: 'denied_claim', dos: '2025-11-30' },
   { id: 'AR-002', patient: 'Khalid Ibrahim', client: 'Dubai Wellness Clinic', payer: 'NAS', original: 320, balance: 320, age: 46, lastAction: 'Initial submission', nextFollowup: '2026-03-03', priority: 'high', source: 'underpayment', dos: '2026-01-17' },
   { id: 'AR-003', patient: 'Sarah Johnson', client: 'Irvine Family Practice', payer: 'Aetna', original: 350, balance: 126, age: 12, lastAction: 'Partial payment posted', nextFollowup: '2026-03-10', priority: 'medium', source: 'patient_balance', dos: '2026-02-19' },
   { id: 'AR-004', patient: 'John Smith', client: 'Irvine Family Practice', payer: 'UHC', original: 250, balance: 0, age: 5, lastAction: 'Paid in full', nextFollowup: '-', priority: 'low', source: 'denied_claim', dos: '2026-02-26' },
@@ -405,13 +405,13 @@ function ARDrawer({
 
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={() => {
-                  onUpdateAccount({ lastAction: 'Voice AI call queued', nextFollowup: followUpDate || account.nextFollowup })
+                  onUpdateAccount({ lastAction: 'Voice Ai call queued', nextFollowup: followUpDate || account.nextFollowup })
                   toast.success(`Outbound call queued for ${account.payer}`)
                   onClose()
                   router.push(`/voice-ai?payer=${encodeURIComponent(account.payer)}&patient=${encodeURIComponent(account.patient)}&claim=${account.id}`)
                 }}
                   className="bg-brand/10 text-brand rounded-lg py-2.5 text-[13px] font-medium hover:bg-brand/20 transition-colors flex items-center justify-center gap-2">
-                  <Phone size={13} /> Voice AI
+                  <Phone size={13} /> Voice Ai
                 </button>
                 <button onClick={() => setShowCallModal(true)}
                   className="bg-surface-elevated border border-separator rounded-lg py-2.5 text-[13px] font-medium hover:text-content-secondary transition-colors flex items-center justify-center gap-2">
@@ -518,7 +518,7 @@ function ARDrawer({
                   <div className="flex items-center gap-2">
                     {c.type === 'ai' ? (
                       <span className="flex items-center gap-1 text-[11px] bg-brand/10 text-brand px-2 py-0.5 rounded-full font-medium">
-                        <Bot size={10} /> AI Call
+                        <Bot size={10} /> Ai Call
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-[11px] bg-surface-secondary border border-separator text-content-secondary px-2 py-0.5 rounded-full font-medium">

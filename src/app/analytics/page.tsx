@@ -72,14 +72,14 @@ const payerHassle: Record<string, { score: number; color: string }> = {
 const denialCategories = ['Auth','Eligibility','Timely Filing','Duplicate','Non-Covered','Coding','Medical Nec.','Billing Error']
 
 const aiFeatures = [
-  { name: 'AI Auto-Coding', icon: <BrainCircuit size={20}/>, metric: '88.3%', metricLabel: 'accuracy', uses: '847 uses this month', trend: '↑2.1% vs last month', barPct: 88 },
+  { name: 'Ai Auto-Coding', icon: <BrainCircuit size={20}/>, metric: '88.3%', metricLabel: 'accuracy', uses: '847 uses this month', trend: '↑2.1% vs last month', barPct: 88 },
   { name: 'Claim Scrubbing', icon: <CheckCircle2 size={20}/>, metric: '96.1%', metricLabel: 'catch rate', uses: '1,203 claims scrubbed', trend: '↑0.8%', barPct: 96 },
   { name: 'Denial Prediction', icon: <AlertTriangle size={20}/>, metric: '71.4%', metricLabel: 'accuracy', uses: '892 predictions', trend: '↑5.2%', barPct: 71 },
   { name: 'Auto-Posting', icon: <DollarSign size={20}/>, metric: '76.4%', metricLabel: 'auto-post rate', uses: '432 ERAs', trend: '↔ flat', barPct: 76 },
-  { name: 'AI Scribe', icon: <Mic size={20}/>, metric: '94.2%', metricLabel: 'acceptance', uses: '312 notes', trend: 'New', barPct: 94 },
-  { name: 'Voice AI', icon: <Phone size={20}/>, metric: '78.1%', metricLabel: 'success rate', uses: '1,847 calls', trend: '↑3.4%', barPct: 78 },
+  { name: 'Ai Scribe', icon: <Mic size={20}/>, metric: '94.2%', metricLabel: 'acceptance', uses: '312 notes', trend: 'New', barPct: 94 },
+  { name: 'Voice Ai', icon: <Phone size={20}/>, metric: '78.1%', metricLabel: 'success rate', uses: '1,847 calls', trend: '↑3.4%', barPct: 78 },
   { name: 'Auto-Appeals', icon: <ShieldAlert size={20}/>, metric: '64.3%', metricLabel: 'overturn rate', uses: '89 appeals', trend: '↑8.1%', barPct: 64 },
-  { name: 'Eligibility AI', icon: <Activity size={20}/>, metric: '99.1%', metricLabel: 'accuracy', uses: '2,103 checks', trend: '↑0.2%', barPct: 99 },
+  { name: 'Eligibility Ai', icon: <Activity size={20}/>, metric: '99.1%', metricLabel: 'accuracy', uses: '2,103 checks', trend: '↑0.2%', barPct: 99 },
 ]
 
 const PAYER_COLORS: Record<string, string> = {
@@ -307,7 +307,7 @@ export default function AnalyticsPage() {
   const TABS = [
     { id: 'financial', label: 'Financial' },
     { id: 'operational', label: 'Operational' },
-    { id: 'ai', label: 'AI Performance' },
+    { id: 'ai', label: 'Ai Performance' },
     { id: 'payer', label: 'By Payer' },
     { id: 'provider', label: 'Provider' },
   ] as const
@@ -485,7 +485,7 @@ export default function AnalyticsPage() {
             </div>
             <table className="w-full text-[12px]">
               <thead><tr className="border-b border-separator text-[11px] text-content-tertiary tracking-wider">
-                {['Name','Role','Claims Today','AI Accept %','Avg Min/Claim','Accuracy','SLA %'].map(h => (
+                {['Name','Role','Claims Today','Ai Accept %','Avg Min/Claim','Accuracy','SLA %'].map(h => (
                   <th key={h} className="text-left px-4 py-2.5">{h}</th>
                 ))}
               </tr></thead>
@@ -528,7 +528,7 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* ─── AI PERFORMANCE TAB ──────────────────────────────────────────── */}
+      {/* ─── Ai PERFORMANCE TAB ──────────────────────────────────────────── */}
       {tab === 'ai' && (
         <div className="space-y-6">
           <div className="grid grid-cols-5 gap-4">
@@ -635,7 +635,7 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-4 gap-4">
             <KPICard label="Encounters This Month" value={claims.length || 37} icon={<Activity size={20}/>} sub="Total patient visits" />
             <KPICard label="Avg Charges / Visit" value={claims.length > 0 ? `$${Math.round(claims.reduce((s,c)=>s+c.billed,0)/claims.length)}` : '$312'} icon={<DollarSign size={20}/>} sub="Billed per encounter" />
-            <KPICard label="Coding Accuracy" value="—" icon={<CheckCircle2 size={20}/>} sub="AI-coded visits reviewed" />
+            <KPICard label="Coding Accuracy" value="—" icon={<CheckCircle2 size={20}/>} sub="Ai-coded visits reviewed" />
             <KPICard label="Documentation Score" value="8.4/10" icon={<ShieldAlert size={20}/>} sub="SOAP completeness avg" />
           </div>
 

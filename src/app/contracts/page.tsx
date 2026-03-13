@@ -103,7 +103,7 @@ export default function ContractsPage() {
     { id: 'fee', label: 'Fee Schedule' },
     { id: 'underpayments', label: 'Underpayment Report' },
     { id: 'terms', label: 'Contract Terms' },
-    { id: 'extract', label: 'AI Rate Extract' },
+    { id: 'extract', label: 'Ai Rate Extract' },
   ] as const
 
   const [selected, setSelected] = useState<typeof allContracts[0] | null>(null)
@@ -330,8 +330,8 @@ export default function ContractsPage() {
                 {tab === 'extract' && (
                   <div className="space-y-4">
                     <div className="bg-blue-500/10 border border-purple-500/20 rounded-lg p-4">
-                      <h4 className="text-xs font-semibold text-brand-dark mb-2">AI Contract Rate Extraction</h4>
-                      <p className="text-[11px] text-content-secondary mb-3">Upload a payer contract PDF to automatically extract fee schedule rates, payment terms, and key clauses using AI.</p>
+                      <h4 className="text-xs font-semibold text-brand-dark mb-2">Ai Contract Rate Extraction</h4>
+                      <p className="text-[11px] text-content-secondary mb-3">Upload a payer contract PDF to automatically extract fee schedule rates, payment terms, and key clauses using Ai.</p>
                       <div className="flex gap-2">
                         <label className="bg-brand text-white rounded-lg px-4 py-2 text-xs hover:bg-brand-mid transition-colors cursor-pointer">
                           Upload Contract PDF
@@ -349,7 +349,7 @@ export default function ContractsPage() {
                                 file_name: file.name, s3_key: key, document_type: 'contract', doc_type: 'contract',
                                 content_type: 'application/pdf', file_size: file.size,
                               })
-                              toast.success(`${file.name} uploaded — triggering AI extraction...`)
+                              toast.success(`${file.name} uploaded — triggering Ai extraction...`)
                               await api.post(`/documents/${doc.id}/textract`, {})
                               toast.success('Textract processing started — rates will appear shortly')
                             } catch (err) {

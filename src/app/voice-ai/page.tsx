@@ -105,7 +105,7 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
 
         {analysis?.call_summary && (
           <div className="p-4 border-b border-separator">
-            <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-2">AI Summary</h4>
+            <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-2">Ai Summary</h4>
             <p className="text-[13px] text-content-primary leading-relaxed">{analysis.call_summary}</p>
           </div>
         )}
@@ -116,14 +116,14 @@ function CallDetailDrawer({ call, onClose }: { call: RetellCall; onClose: () => 
             {lines.length > 0 ? lines.map((line, i) => (
               <div key={i} className="flex gap-2">
                 <span className={`shrink-0 font-semibold w-8 ${line.role === 'agent' ? 'text-brand' : 'text-content-secondary'}`}>
-                  [{line.role === 'agent' ? 'AI' : 'Rep'}]
+                  [{line.role === 'agent' ? 'Ai' : 'Rep'}]
                 </span>
                 <span className="text-content-primary leading-relaxed">{line.content}</span>
               </div>
             )) : (
               <span className="text-content-tertiary">{isActive ? 'Call in progress…' : 'No transcript available'}</span>
             )}
-            {isActive && <div className="flex gap-2"><span className="text-brand font-semibold">[AI]</span><span className="w-2 h-3 bg-brand animate-pulse rounded-sm inline-block mt-0.5" /></div>}
+            {isActive && <div className="flex gap-2"><span className="text-brand font-semibold">[Ai]</span><span className="w-2 h-3 bg-brand animate-pulse rounded-sm inline-block mt-0.5" /></div>}
           </div>
         </div>
 
@@ -735,7 +735,7 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error ?? 'AI request failed')
+      if (!response.ok) throw new Error(data.error ?? 'Ai request failed')
       setPlaybook(data.text ?? '')
     } catch (err) {
       toast.error(`Generation failed: ${err}`)
@@ -821,7 +821,7 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
           <div className="card p-12 text-center">
             <Brain size={32} className="mx-auto mb-3 text-content-tertiary opacity-40" />
             <p className="text-sm text-content-secondary">Select a payer to generate its IVR playbook</p>
-            <p className="text-xs text-content-tertiary mt-1">AI reads all call transcripts for that payer and writes navigation rules</p>
+            <p className="text-xs text-content-tertiary mt-1">Ai reads all call transcripts for that payer and writes navigation rules</p>
           </div>
         ) : (
           <>
@@ -866,7 +866,7 @@ function PayerIntelligenceTab({ allCalls }: { allCalls: RetellCall[] }) {
                     Analyzing {selectedPayer.total} calls…
                   </span>
                 ) : (
-                  <span><Sparkles size={14} className="inline mr-2" />Generate {selectedPayer.payer} Playbook with AI</span>
+                  <span><Sparkles size={14} className="inline mr-2" />Generate {selectedPayer.payer} Playbook with Ai</span>
                 )}
               </button>
             ) : (
@@ -957,7 +957,7 @@ function PromptEditorTab() {
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error ?? 'AI request failed')
+      if (!response.ok) throw new Error(data.error ?? 'Ai request failed')
       setAiSuggestion(data.text ?? '')
     } catch (err) {
       toast.error(`Analysis failed: ${err}`)
@@ -1036,10 +1036,10 @@ function PromptEditorTab() {
         )}
       </div>
 
-      {/* Right: AI optimizer */}
+      {/* Right: Ai optimizer */}
       <div className="col-span-2 space-y-4">
         <div>
-          <h3 className="text-[13px] font-semibold text-content-secondary tracking-wider mb-1">AI Prompt Optimizer</h3>
+          <h3 className="text-[13px] font-semibold text-content-secondary tracking-wider mb-1">Ai Prompt Optimizer</h3>
           <p className="text-[11px] text-content-tertiary">Reads {activeAgent === 'chris' ? 'Chris' : 'Cindy'}'s last 100 calls and suggests specific prompt improvements based on failure patterns</p>
         </div>
 
@@ -1122,7 +1122,7 @@ export default function VoiceAIPage() {
   const { calls: allCalls, loading: allCallsLoading, fallback: allCallsFallback } = useRetellCalls({ limit: 500 })
 
   return (
-    <ModuleShell title={t('voice', 'title')} subtitle="Powered by Retell AI — real outbound calls to payers and patients">
+    <ModuleShell title={t('voice', 'title')} subtitle="Powered by Retell Ai — real outbound calls to payers and patients">
       <div className="flex gap-2 mb-5 border-b border-separator overflow-x-auto">
         {TABS.map(tb => {
           const Icon = tb.icon

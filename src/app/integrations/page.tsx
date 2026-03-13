@@ -23,7 +23,7 @@ const integrations: Integration[] = [
   { id:'cerner', name:'Cerner HL7', description:'Cerner Millennium HL7 v2.x', initials:'CE', color:'bg-[#065E76]', category:'EHR Systems', status:'not_configured' },
   { id:'athena', name:'athenahealth', description:'Practice management & EHR', initials:'AT', color:'bg-[#616161]', category:'EHR Systems', status:'not_configured' },
   // Communication
-  { id:'retell', name:'Retell AI', description:'Voice AI payer follow-up calls', initials:'RT', color:'bg-brand-mid', category:'Communication', status:'connected', lastSync:'1 min ago' },
+  { id:'retell', name:'Retell Ai', description:'Voice Ai payer follow-up calls', initials:'RT', color:'bg-brand-mid', category:'Communication', status:'connected', lastSync:'1 min ago' },
   { id:'cloudfax', name:'Cloud Fax (SRFax)', description:'Inbound / outbound fax', initials:'CF', color:'bg-gray-500', category:'Communication', status:'error', errorMsg:'Auth failed — token expired' },
   { id:'email', name:'Email Ingest', description:'Automated email parsing', initials:'EM', color:'bg-[#00B5D6]', category:'Communication', status:'connected', lastSync:'8 min ago' },
   // Storage

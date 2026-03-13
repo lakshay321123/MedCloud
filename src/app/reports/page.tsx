@@ -35,7 +35,7 @@ const REPORT_TYPES = [
   {
     id: 'coding_production',
     label: 'Coding Production',
-    description: 'Charts coded per coder, AI acceptance rate, avg time',
+    description: 'Charts coded per coder, Ai acceptance rate, avg time',
     icon: FileText,
     color: 'bg-brand/10 text-brand-dark border-purple-500/20',
     dot: 'bg-brand',

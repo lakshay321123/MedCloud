@@ -18,8 +18,8 @@ import {
 } from 'lucide-react'
 
 // ── Demo code lookup tables ─────────────────────────────────────────────────
-// Manual fallback code lookup — used when AI Coding is unavailable (BM4 requirement)
-// AI down → type-ahead search from these tables + manual entry, flagged 'manually coded'
+// Manual fallback code lookup — used when Ai Coding is unavailable (BM4 requirement)
+// Ai down → type-ahead search from these tables + manual entry, flagged 'manually coded'
 const ICD_FALLBACK_LOOKUP = [
   // Endocrine
   { code: 'E11.9', description: 'Type 2 diabetes mellitus without complications' },
@@ -402,7 +402,7 @@ function CodingRulesPanel() {
         <h4 className="text-[13px] font-semibold text-content-secondary tracking-wider">Payer Coding Rules</h4>
         <button onClick={() => setShowAdd(!showAdd)} className="text-[11px] px-2 py-1 rounded bg-brand text-white">+ Add Rule</button>
       </div>
-      <p className="text-[11px] text-content-tertiary">Rules are automatically applied by AI when generating codes. E.g. &quot;For Aetna, always add modifier 25 to E/M with injection&quot;</p>
+      <p className="text-[11px] text-content-tertiary">Rules are automatically applied by Ai when generating codes. E.g. &quot;For Aetna, always add modifier 25 to E/M with injection&quot;</p>
       {showAdd && (
         <div className="space-y-2 p-3 bg-surface-elevated rounded-lg border border-separator">
           <input value={form.rule_name} onChange={e => setForm(p => ({...p, rule_name: e.target.value}))} placeholder="Rule name (e.g. Aetna modifier 25)" className="w-full bg-surface-default border border-separator rounded px-2 py-1.5 text-[13px] text-content-secondary" />
@@ -443,7 +443,7 @@ function CodingRulesPanel() {
       {loading ? <p className="text-[13px] text-content-tertiary text-center py-4">Loading rules...</p> : rules.length === 0 ? (
         <div className="text-center py-6">
           <p className="text-xs text-content-tertiary">No coding rules configured yet.</p>
-          <p className="text-[11px] text-content-tertiary mt-1">Add rules to customize AI coding by payer, diagnosis, or specialty.</p>
+          <p className="text-[11px] text-content-tertiary mt-1">Add rules to customize Ai coding by payer, diagnosis, or specialty.</p>
         </div>
       ) : (
         <div className="space-y-1.5">
@@ -538,14 +538,14 @@ export default function CodingPage() {
   const [showQueryModal, setShowQueryModal] = useState(false)
   const [queryGenerating, setQueryGenerating] = useState(false)
 
-  // AI Auto-Coding state
+  // Ai Auto-Coding state
   const [aiCoding, setAiCoding] = useState(false)
   const [aiCodeCache, setAiCodeCache] = useState<Record<string, { icd: AISuggestedCode[], cpt: AISuggestedCode[] }>>({})
   const [quickSoap, setQuickSoap] = useState<{ assessment: string; plan: string; specialty: string }>({ assessment: '', plan: '', specialty: '' })
   const [showQuickSoap, setShowQuickSoap] = useState(false)
   const [coderInstructions, setCoderInstructions] = useState('')
 
-  // On-demand document text extraction — ensures AI has superbill data before coding
+  // On-demand document text extraction — ensures Ai has superbill data before coding
   async function ensureDocumentExtracted(codingItem: typeof item) {
     if (!codingItem) return
     try {
@@ -592,7 +592,7 @@ export default function CodingPage() {
     if (!item) return
     setAiCoding(true)
     try {
-      // Extract text from linked documents first (ensures AI has superbill data)
+      // Extract text from linked documents first (ensures Ai has superbill data)
       await ensureDocumentExtracted(item)
       
       // Primary: call Lambda /coding/:id/ai-suggest (persists to ai_coding_suggestions table)
@@ -607,12 +607,12 @@ export default function CodingPage() {
 
       // Async mode: backend returned 202 with suggestion_id — poll for results
       if (result.status === 'processing' && result.suggestion_id) {
-        toast.info('AI coding started — analyzing patient data, visit notes & documents...')
+        toast.info('Ai coding started — analyzing patient data, visit notes & documents...')
         const pollResult = await pollForAISuggestion(result.suggestion_id)
         if (pollResult) {
           applyAIResults(pollResult, item.id)
         } else {
-          toast.warning('AI coding is taking longer than expected — results will appear when ready')
+          toast.warning('Ai coding is taking longer than expected — results will appear when ready')
           setAiCoding(false)
           return
         }
@@ -621,9 +621,9 @@ export default function CodingPage() {
         applyAIResults(result, item.id)
       }
     } catch (e) {
-      console.error('AI coding error:', e)
+      console.error('Ai coding error:', e)
       setAiUnavailable(true)
-      toast.error('AI coding failed — use manual entry below')
+      toast.error('Ai coding failed — use manual entry below')
     } finally {
       setAiCoding(false)
     }
@@ -637,19 +637,19 @@ export default function CodingPage() {
         const poll = await api.get<any>(`/ai-coding-suggestions/${suggestionId}`)
         if (poll.status === 'completed') return poll
         if (poll.status === 'failed') {
-          toast.error(`AI coding failed: ${poll.error_message || 'Unknown error'}`)
+          toast.error(`Ai coding failed: ${poll.error_message || 'Unknown error'}`)
           return null
         }
         // Still processing — continue polling
       } catch (e) {
-        console.warn('[polling] AI suggestion poll error:', e)
+        console.warn('[polling] Ai suggestion poll error:', e)
         // Continue polling on transient errors
       }
     }
     return null // Timed out after maxAttempts
   }
 
-  // Apply AI results to the UI (works for both sync and async responses)
+  // Apply Ai results to the UI (works for both sync and async responses)
   function applyAIResults(result: any, itemId: string) {
     // Map Lambda response format → frontend format
     const icd: AISuggestedCode[] = (result.suggested_icd || []).map((c: any) => ({
@@ -682,9 +682,9 @@ export default function CodingPage() {
 
     const mockLabel = result.mock || result.model_id === 'mock' ? ' (mock — Bedrock unavailable)' : ''
     if (result.documentation_gaps?.length) {
-      toast.warning(`AI generated ${icd.length} ICD + ${cpt.length} CPT codes${mockLabel}. ${result.documentation_gaps.length} documentation gap(s) flagged.`)
+      toast.warning(`Ai generated ${icd.length} ICD + ${cpt.length} CPT codes${mockLabel}. ${result.documentation_gaps.length} documentation gap(s) flagged.`)
     } else {
-      toast.success(`AI generated ${icd.length} ICD + ${cpt.length} CPT codes${mockLabel}`)
+      toast.success(`Ai generated ${icd.length} ICD + ${cpt.length} CPT codes${mockLabel}`)
     }
   }
 
@@ -694,7 +694,7 @@ export default function CodingPage() {
   async function generateCDIQuery() {
     if (!item) return
     setQueryGenerating(true)
-    // Sanitize code descriptions — these may come from a prior AI call (second-order injection defence)
+    // Sanitize code descriptions — these may come from a prior Ai call (second-order injection defence)
     const lowCodes = [
       ...activeCodes.icd.filter(c => (c.confidence ?? 100) < 75).map(c => `ICD ${sanitizeForPrompt(c.code, 20)} (${sanitizeForPrompt(c.desc, 80)})`),
       ...activeCodes.cpt.filter(c => (c.confidence ?? 100) < 75).map(c => `CPT ${sanitizeForPrompt(c.code, 20)} (${sanitizeForPrompt(c.desc, 80)})`),
@@ -731,10 +731,10 @@ export default function CodingPage() {
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       if (data.text) setQueryText(data.text)
-      toast.success('AI query generated')
+      toast.success('Ai query generated')
     } catch (err) {
-      console.error('[CDI query] AI generation failed:', err)
-      toast.error('AI generation failed')
+      console.error('[CDI query] Ai generation failed:', err)
+      toast.error('Ai generation failed')
     } finally {
       setQueryGenerating(false)
     }
@@ -748,7 +748,7 @@ export default function CodingPage() {
   const item = queue.find(q => q.id === selected)
   const cachedCodes = item ? aiCodeCache[item.id] : null
 
-  // Auto-trigger AI coding when selecting an item with SOAP content (only if not already coded)
+  // Auto-trigger Ai coding when selecting an item with SOAP content (only if not already coded)
   React.useEffect(() => {
     if (!item || !item.id) return
     if (aiCodeCache[item.id]) return
@@ -762,7 +762,7 @@ export default function CodingPage() {
   const activeCodes = cachedCodes ?? { icd: item?.aiSuggestedIcd ?? [], cpt: item?.aiSuggestedCpt ?? [] }
   const hasRealCodes = activeCodes.icd.length > 0 || activeCodes.cpt.length > 0
 
-  // Auto-select saved AI codes from backend when switching items
+  // Auto-select saved Ai codes from backend when switching items
   const autoSelectedRef = React.useRef<Set<string>>(new Set())
   React.useEffect(() => {
     if (!item || autoSelectedRef.current.has(item.id)) return
@@ -913,7 +913,7 @@ export default function CodingPage() {
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KPICard label={t('coding','myQueue')} value={kpiMetrics.queueCount} icon={<BrainCircuit size={20} />} />
         <KPICard label={t('coding','codedToday')} value={kpiMetrics.codedTodayCount} icon={<CheckCircle2 size={20} />} />
-        <KPICard label="AI Usage Rate" value={kpiMetrics.aiUsageRate} icon={<Activity size={20} />} />
+        <KPICard label="Ai Usage Rate" value={kpiMetrics.aiUsageRate} icon={<Activity size={20} />} />
         <KPICard label={t('coding','avgTimeChart')} value="—" icon={<Clock size={20} />} />
       </div>
 
@@ -926,7 +926,7 @@ export default function CodingPage() {
             {queue.length > 1 && (
               <button
                 onClick={async () => {
-                  if (!window.confirm(`Batch accept AI codes for all ${queue.length} charts?\n\nThis will auto-approve each chart using its AI-suggested codes and create claims.`)) return
+                  if (!window.confirm(`Batch accept Ai codes for all ${queue.length} charts?\n\nThis will auto-approve each chart using its Ai-suggested codes and create claims.`)) return
                   let done = 0; let failed = 0
                   for (const qItem of queue) {
                     try {
@@ -1068,7 +1068,7 @@ export default function CodingPage() {
                       }`}
                     >
                       <FileText size={12} />
-                      {item.source === 'ai_scribe' ? 'AI Scribe Note' : 'Visit Note'}
+                      {item.source === 'ai_scribe' ? 'Ai Scribe Note' : 'Visit Note'}
                     </button>
                     {item.source === 'upload' && (
                       <button
@@ -1129,7 +1129,7 @@ export default function CodingPage() {
                       ['DOS', item.dos],
                       ['POS', item.placeOfService],
                       ['Specialty', item.providerSpecialty],
-                      ['Source', item.source === 'ai_scribe' ? '🎙 AI Scribe' : '📄 Upload'],
+                      ['Source', item.source === 'ai_scribe' ? '🎙 Ai Scribe' : '📄 Upload'],
                     ].filter(([, v]) => v && v !== '') as [string, string][]
                     return fields.length > 0 ? (
                       <div className="grid grid-cols-4 gap-2 mt-2">
@@ -1245,8 +1245,8 @@ export default function CodingPage() {
                                 <div key={code} className="flex items-center justify-between px-3 py-2 bg-surface-elevated rounded-lg border border-separator">
                                   <span className="font-mono text-[13px] text-content-primary">{code}</span>
                                   {aiCptCodes.includes(code)
-                                    ? <span className="text-[11px] text-brand-dark font-medium">✓ AI matched</span>
-                                    : <span className="text-[11px] text-brand-deep font-medium">⚠ Not in AI suggestion</span>
+                                    ? <span className="text-[11px] text-brand-dark font-medium">✓ Ai matched</span>
+                                    : <span className="text-[11px] text-brand-deep font-medium">⚠ Not in Ai suggestion</span>
                                   }
                                 </div>
                               ))}
@@ -1318,35 +1318,35 @@ export default function CodingPage() {
                   </div>
                 )}
 
-                {/* AI Unavailable Banner */}
+                {/* Ai Unavailable Banner */}
                 {aiUnavailable && (
                   <div className="bg-[#065E76]/10 border border-[#065E76]/30 rounded-lg p-3 mb-3 flex items-start gap-2">
                     <AlertTriangle size={14} className="text-[#065E76] mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-[13px] font-semibold text-[#065E76]">AI Coding Unavailable</p>
+                      <p className="text-[13px] font-semibold text-[#065E76]">Ai Coding Unavailable</p>
                       <p className="text-[12px] text-content-secondary mt-0.5">Bedrock is temporarily unreachable. Use manual code entry below. This chart will be flagged for QA audit.</p>
                     </div>
                   </div>
                 )}
 
-                {/* Dev: Simulate AI Failure */}
+                {/* Dev: Simulate Ai Failure */}
                 {process.env.NODE_ENV === 'development' && (
                   <button
                     onClick={() => setAiUnavailable(p => !p)}
                     className={`text-[11px] px-2 py-0.5 rounded border mb-2 ${aiUnavailable ? 'border-[#065E76]/40 text-[#065E76] bg-[#065E76]/10' : 'border-separator text-content-tertiary'}`}
                   >
-                    {aiUnavailable ? '🔴 AI Unavailable (simulated)' : 'Simulate AI Failure'}
+                    {aiUnavailable ? '🔴 Ai Unavailable (simulated)' : 'Simulate Ai Failure'}
                   </button>
                 )}
 
                 {!aiUnavailable && (
                   <>
-                    {/* ── AI Generate panel ── */}
+                    {/* ── Ai Generate panel ── */}
                     {!hasRealCodes && !aiCoding && (
                       <div className="mb-4 rounded-xl border border-brand/30 bg-blue-500/10 p-4">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-brand-dark text-base">✦</span>
-                          <p className="text-[13px] font-semibold text-content-primary">AI Auto-Coding</p>
+                          <p className="text-[13px] font-semibold text-content-primary">Ai Auto-Coding</p>
                         </div>
                         {!showQuickSoap ? (
                           <>
@@ -1414,7 +1414,7 @@ export default function CodingPage() {
                       </div>
                     )}
 
-                    {/* ── AI generating spinner ── */}
+                    {/* ── Ai generating spinner ── */}
                     {aiCoding && (
                       <div className="mb-4 rounded-xl border border-brand/20 bg-blue-500/10 p-5 flex flex-col items-center gap-3">
                         <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
@@ -1455,7 +1455,7 @@ export default function CodingPage() {
                     )}
 
                     {/* ICD Codes */}
-                    <h4 className="text-[11px] tracking-wider font-semibold text-content-tertiary mb-2 flex items-center gap-2">Diagnosis Codes (ICD-10) <span className="ai-dot" title="AI Suggested" /></h4>
+                    <h4 className="text-[11px] tracking-wider font-semibold text-content-tertiary mb-2 flex items-center gap-2">Diagnosis Codes (ICD-10) <span className="ai-dot" title="Ai Suggested" /></h4>
                     <div className="space-y-2 mb-3">
                       {activeCodes.icd.map(code => {
                         const key = `icd-${code.code}`
@@ -1554,7 +1554,7 @@ export default function CodingPage() {
                     ))}
 
                     {/* CPT Codes */}
-                    <h4 className="text-[11px] tracking-wider font-semibold text-content-tertiary mb-2 mt-3 flex items-center gap-2">Procedure Codes (CPT) <span className="ai-dot" title="AI Suggested" /></h4>
+                    <h4 className="text-[11px] tracking-wider font-semibold text-content-tertiary mb-2 mt-3 flex items-center gap-2">Procedure Codes (CPT) <span className="ai-dot" title="Ai Suggested" /></h4>
                     <div className="space-y-2 mb-3">
                       {activeCodes.cpt.map(code => {
                         const key = `cpt-${code.code}`
@@ -1661,8 +1661,8 @@ export default function CodingPage() {
                           <p className="text-[12px] text-brand-dark dark:text-brand-dark mt-1">✓ All codes match</p>
                         ) : (
                           <div className="text-[12px] text-brand-deep dark:text-brand-deep mt-1 space-y-0.5">
-                            {aiOnly.map(code => <p key={`ai-${code}`}><AlertTriangle size={12} className="inline" /> AI suggests {code} not on superbill</p>)}
-                            {superbillOnly.map(code => <p key={`sb-${code}`}><AlertTriangle size={12} className="inline" /> Superbill has {code} not suggested by AI</p>)}
+                            {aiOnly.map(code => <p key={`ai-${code}`}><AlertTriangle size={12} className="inline" /> Ai suggests {code} not on superbill</p>)}
+                            {superbillOnly.map(code => <p key={`sb-${code}`}><AlertTriangle size={12} className="inline" /> Superbill has {code} not suggested by Ai</p>)}
                           </div>
                         )}
                       </div>
@@ -1695,7 +1695,7 @@ export default function CodingPage() {
                   }} />
                 </div>
 
-                {/* AI Charge Capture — works from encounter SOAP OR patient superbill docs */}
+                {/* Ai Charge Capture — works from encounter SOAP OR patient superbill docs */}
                 {item && (
                   <button
                     onClick={async () => {
@@ -1705,9 +1705,9 @@ export default function CodingPage() {
                           // Path A: Has encounter — use full charge capture with SOAP + docs
                           const result = await api.post<any>(`/encounters/${item.encounter_id}/charge-capture`, {})
                           if (result?.charges?.length > 0) {
-                            toast.success(`AI captured ${result.charges.length} charge(s) — $${result.total_estimated_charge?.toLocaleString() || '0'} estimated`)
+                            toast.success(`Ai captured ${result.charges.length} charge(s) — $${result.total_estimated_charge?.toLocaleString() || '0'} estimated`)
                           } else {
-                            toast.info('AI charge capture complete — no additional charges found')
+                            toast.info('Ai charge capture complete — no additional charges found')
                           }
                           if (result?.missing_documentation?.length > 0) {
                             toast.warning(`Documentation gaps: ${result.missing_documentation.slice(0, 2).join('; ')}`)
@@ -1715,7 +1715,7 @@ export default function CodingPage() {
                         } else {
                           // Path B: No encounter — extract from patient's superbill documents
                           await ensureDocumentExtracted(item)
-                          // Now run AI coding using extracted document data
+                          // Now run Ai coding using extracted document data
                           if (!aiCodeCache[item.id]) {
                             await generateAICodes('', '', item.providerSpecialty || '', 'Extract all billable codes from the uploaded superbill/encounter form. Identify every CPT, ICD-10, modifier, and charge.')
                             toast.success('Charge capture from superbill complete')
@@ -1732,7 +1732,7 @@ export default function CodingPage() {
                     disabled={capturingCharges}
                     className="w-full bg-brand-deep/10 text-brand-deep border border-brand-deep/20 rounded-btn px-3 py-2 text-[13px] font-medium inline-flex items-center justify-center gap-2 hover:bg-brand-deep/20 transition-colors disabled:opacity-50 mt-3 mb-1"
                   >
-                    {capturingCharges ? <><Activity size={14} className="animate-spin" /> Capturing…</> : <><Zap size={14} /> AI Charge Capture</>}
+                    {capturingCharges ? <><Activity size={14} className="animate-spin" /> Capturing…</> : <><Zap size={14} /> Ai Charge Capture</>}
                   </button>
                 )}
 
@@ -1780,7 +1780,7 @@ export default function CodingPage() {
               {queryGenerating ? (
                 <><span className="animate-spin inline-block w-3 h-3 border-2 border-brand border-t-transparent rounded-full"/><span>Generating...</span></>
               ) : (
-                <><span>✦</span><span>Generate CDI Query with AI</span></>
+                <><span>✦</span><span>Generate CDI Query with Ai</span></>
               )}
             </button>
             <textarea
