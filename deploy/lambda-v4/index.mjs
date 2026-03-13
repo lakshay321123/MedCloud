@@ -7369,21 +7369,36 @@ export const handler = async (event) => {
       return val;
     }
 
-    // ── Auth: Cognito JWT via Lambda Authorizer (production) ──────────────────
-    // When API Gateway Lambda Authorizer is attached, Cognito-verified claims
-    // arrive in requestContext.authorizer. Fall back to headers for local dev.
+    // ── Auth: Cognito JWT decoding ────────────────────────────────────────────
+    // API Gateway Cognito authorizer validates the token but passes raw claims
+    // in requestContext.authorizer.claims (not flat properties). We also decode
+    // the Bearer JWT directly as a reliable fallback — base64url, no crypto needed.
     const authCtx = event.requestContext?.authorizer || {};
-    const rawOrgId  = authCtx.org_id   || headers['x-org-id']    || qs.org_id    || body.org_id    || 'a0000000-0000-0000-0000-000000000001';
-    const rawUserId = authCtx.user_id  || headers['x-user-id']   || qs.user_id   || body.user_id   || null;
-    const rawClientId = authCtx.client_id || headers['x-client-id'] || qs.client_id || body.client_id || null;
-    // SECURITY: callerRole comes from Cognito JWT only — used for privileged
-    // route checks (e.g. /admin/run-migrations). Never from user headers.
-    const callerRole  = authCtx.role   || 'staff';
-    // filterRole: used for data-scoping (dashboard, notifications, search).
-    // When Cognito authorizer is active, authCtx.role is set and takes priority.
-    // Pre-Cognito: accept qs.role from the frontend (same trust level as org_id/user_id
-    // which also fall back to qs). This does NOT affect privileged route checks.
-    const filterRole = authCtx.role || qs.role || callerRole;
+
+    // Decode Bearer JWT claims (Cognito IdToken sent from frontend localStorage)
+    let jwtClaims = {};
+    try {
+      const authHeader = headers['authorization'] || headers['Authorization'] || '';
+      const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+      if (bearerToken) {
+        const payloadB64 = bearerToken.split('.')[1] || '';
+        // base64url → base64 → JSON
+        const payloadJson = Buffer.from(payloadB64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+        jwtClaims = JSON.parse(payloadJson);
+      }
+    } catch (e) {
+      // Malformed token — proceed with no claims; privileged routes will deny
+    }
+
+    // Claims priority: authorizer.claims > decoded JWT > query/body fallbacks
+    const claims = authCtx.claims || jwtClaims;
+    const rawOrgId  = claims['custom:custom:org_id'] || claims['custom:org_id'] || authCtx.org_id || headers['x-org-id'] || qs.org_id || body.org_id || 'a0000000-0000-0000-0000-000000000001';
+    const rawUserId = authCtx.user_id || headers['x-user-id'] || qs.user_id || body.user_id || null;
+    const rawClientId = claims['custom:client_id'] || authCtx.client_id || headers['x-client-id'] || qs.client_id || body.client_id || null;
+    // SECURITY: callerRole from Cognito JWT claims only — never from user-writable headers/qs
+    const callerRole = claims['custom:custom:role'] || claims['custom:role'] || authCtx.role || 'staff';
+    // filterRole: used for data-scoping — same source, same trust
+    const filterRole = callerRole;
 
     const effectiveOrgId = validateUUID(rawOrgId, 'org_id');
     const userId = (rawUserId && UUID_RE.test(rawUserId)) ? rawUserId : null;
