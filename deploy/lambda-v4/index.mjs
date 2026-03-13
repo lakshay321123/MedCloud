@@ -1844,6 +1844,45 @@ async function getById(table, id, orgId = null) {
 // Column name whitelist regex — only allow alphanumeric + underscore
 const SAFE_COL = /^[a-z][a-z0-9_]{0,62}$/i;
 
+// ─── JSONB Column Cache ────────────────────────────────────────────────────────
+// PostgreSQL jsonb columns need values to be valid JSON. Plain strings like
+// "456 Main St" fail because PG tries to parse them as JSON tokens.
+// This cache stores jsonb column names per table so create()/update() can
+// auto-stringify values before inserting.
+const _jsonbColumnCache = {};
+async function getJsonbColumns(table) {
+  if (_jsonbColumnCache[table]) return _jsonbColumnCache[table];
+  try {
+    const r = await pool.query(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema = current_schema() AND table_name = $1
+       AND data_type IN ('json', 'jsonb')`, [table]
+    );
+    _jsonbColumnCache[table] = new Set(r.rows.map(row => row.column_name));
+  } catch (e) {
+    _jsonbColumnCache[table] = new Set();
+  }
+  return _jsonbColumnCache[table];
+}
+
+// Prepare values for insert/update: stringify any value going into a jsonb column
+async function prepareValues(table, safeData) {
+  const jsonbCols = await getJsonbColumns(table);
+  if (jsonbCols.size === 0) return;
+  for (const key of Object.keys(safeData)) {
+    if (jsonbCols.has(key) && safeData[key] !== null && safeData[key] !== undefined) {
+      // If already a string, check if it's valid JSON — if not, wrap it
+      if (typeof safeData[key] === 'string') {
+        try { JSON.parse(safeData[key]); } catch (_) {
+          safeData[key] = JSON.stringify(safeData[key]);
+        }
+      } else if (typeof safeData[key] === 'object') {
+        safeData[key] = JSON.stringify(safeData[key]);
+      }
+    }
+  }
+}
+
 async function create(table, data, orgId) {
   data.id = data.id || uuid();
   data.org_id = orgId;
@@ -1852,10 +1891,14 @@ async function create(table, data, orgId) {
   // Strip keys that fail column name validation to prevent SQL injection
   const safeData = {};
   for (const [k, v] of Object.entries(data)) {
-    if (SAFE_COL.test(k)) safeData[k] = v;
+    if (SAFE_COL.test(k)) {
+      // JSONB columns: stringify objects/arrays so pg driver inserts valid JSON
+      safeData[k] = (v !== null && typeof v === 'object') ? JSON.stringify(v) : v;
+    }
     else console.warn(`create(${table}): rejected unsafe column name: ${k}`);
   }
   const keys = Object.keys(safeData);
+  await prepareValues(table, safeData);
   const vals = Object.values(safeData);
   const ph = keys.map((_, i) => `$${i + 1}`).join(', ');
   const q = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${ph}) RETURNING *`;
@@ -1871,12 +1914,15 @@ async function update(table, id, data, orgId = null) {
   // Strip keys that fail column name validation
   const safeData = {};
   for (const [k, v] of Object.entries(data)) {
-    if (SAFE_COL.test(k)) safeData[k] = v;
+    if (SAFE_COL.test(k)) {
+      safeData[k] = (v !== null && typeof v === 'object') ? JSON.stringify(v) : v;
+    }
     else console.warn(`update(${table}): rejected unsafe column name: ${k}`);
   }
   const keys = Object.keys(safeData);
   // updated_at is always added, so if it's the only key there's nothing to update
   if (keys.length <= 1) return await getById(table, id, orgId);
+  await prepareValues(table, safeData);
   const vals = Object.values(safeData);
   const sets = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
   const q = `UPDATE ${table} SET ${sets} WHERE id = $${keys.length + 1} RETURNING *`;
