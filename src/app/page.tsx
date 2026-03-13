@@ -24,9 +24,12 @@ export default function LoginPage() {
       })
       const data = await res.json()
       if (res.ok) {
-        localStorage.setItem('cosentus_region', data.country)
-        localStorage.setItem('cosentus_portal_type', data.portalType)
-        localStorage.setItem('cosentus_role', data.role)
+        localStorage.setItem('cosentus_region',      data.country    || '')
+        localStorage.setItem('cosentus_portal_type', data.portalType || '')
+        localStorage.setItem('cosentus_role',        data.role       || '')
+        localStorage.setItem('cosentus_user_name',   data.name       || '')
+        localStorage.setItem('cosentus_user_email',  data.email      || '')
+        localStorage.setItem('cosentus_org_id',      data.orgId      || '')
         window.location.href = '/dashboard'
       } else {
         setError(data.error || 'Invalid email or password')

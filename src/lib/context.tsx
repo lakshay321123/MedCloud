@@ -108,8 +108,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isScribeRecording, setIsScribeRecording] = useState(false)
   const [hydrated, setHydrated] = useState(false)
   // TODO: Sprint 2 — derive orgId from Cognito JWT claims after authentication
-  // For Sprint 1 dev mode, hardcode to seeded organization UUID
-  const orgId = 'a0000000-0000-0000-0000-000000000001'
+  // orgId comes from the logged-in user's organization_id (populated from localStorage after hydration)
+  const orgId = currentUser.organization_id
 
   // ── Hydration from localStorage (client-only, runs after SSR mount) ──────
   // This MUST be a useEffect — reading localStorage in useState causes React
