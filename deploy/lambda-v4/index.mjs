@@ -8982,6 +8982,82 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     }
 
 
+    // ════ Admin: Enable Login for Existing DB-Only User ═════════════════════
+    // Allows setting Cognito credentials for users created without a password
+    if (path.match(/\/users\/[^/]+\/enable-login/) && method === 'POST') {
+      if (!COGNITO_USER_POOL_ID || !cognitoClient || !CognitoCommands) {
+        return respond(503, { error: 'Cognito not configured' });
+      }
+      if (callerRole !== 'admin') {
+        return respond(403, { error: 'Only admins can enable login for users' });
+      }
+      const { password } = body;
+      const pwdPolicy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+      if (!password || !pwdPolicy.test(password)) {
+        return respond(400, { error: 'Password must be at least 8 characters with 1 uppercase, 1 lowercase, and 1 number' });
+      }
+      // Look up the DB user
+      const targetUserId = pathParams.id;
+      const userRow = (await orgQuery(effectiveOrgId, 'SELECT * FROM users WHERE id = $1 AND org_id = $2', [targetUserId, effectiveOrgId])).rows[0];
+      if (!userRow) return respond(404, { error: 'User not found' });
+      const { email, first_name, last_name, role, client_id: userClientId } = userRow;
+      let createdUsername = null;
+      try {
+        // Create Cognito user if not exists (suppress email; we set password directly)
+        try {
+          const cognitoResult = await cognitoClient.send(new CognitoCommands.AdminCreateUser({
+            UserPoolId: COGNITO_USER_POOL_ID,
+            Username: email,
+            UserAttributes: [
+              { Name: 'email', Value: email },
+              { Name: 'email_verified', Value: 'true' },
+              { Name: 'given_name', Value: first_name || '' },
+              { Name: 'family_name', Value: last_name || '' },
+              { Name: 'custom:org_id', Value: effectiveOrgId },
+              { Name: 'custom:portal_type', Value: 'backoffice' },
+              { Name: 'custom:role', Value: role || 'coder' },
+              ...(userClientId ? [{ Name: 'custom:client_id', Value: userClientId }] : []),
+            ],
+            MessageAction: 'SUPPRESS',
+          }));
+          createdUsername = cognitoResult.User?.Username || email;
+          // Save immutable sub to DB
+          const sub = cognitoResult.User?.Attributes?.find((a: any) => a.Name === 'sub')?.Value;
+          if (sub) await orgQuery(effectiveOrgId, 'UPDATE users SET cognito_sub = $1 WHERE id = $2', [sub, targetUserId]);
+        } catch (createErr: any) {
+          if (createErr.name !== 'UsernameExistsException') throw createErr;
+          // User already exists in Cognito — just update the password
+          createdUsername = email;
+        }
+        // Set permanent password (works for both new and existing Cognito users)
+        await cognitoClient.send(new CognitoCommands.AdminSetUserPassword({
+          UserPoolId: COGNITO_USER_POOL_ID,
+          Username: email,
+          Password: password,
+          Permanent: true,
+        }));
+        // Ensure user is in the correct role group
+        try {
+          await cognitoClient.send(new CognitoCommands.AdminAddUserToGroup({
+            UserPoolId: COGNITO_USER_POOL_ID,
+            Username: email,
+            GroupName: role || 'coder',
+          }));
+        } catch (_) { /* group may already be assigned */ }
+        await auditLog(effectiveOrgId, userId, 'enable_login', 'users', targetUserId, { email, role });
+        safeLog('info', `Admin enabled login for existing user: ${email}`);
+        return respond(200, { success: true, message: `Login enabled for ${email}` });
+      } catch (e: any) {
+        // Rollback Cognito user if we just created it and something failed
+        if (createdUsername && e.name !== 'UsernameExistsException') {
+          try { await cognitoClient.send(new CognitoCommands.AdminDeleteUser({ UserPoolId: COGNITO_USER_POOL_ID, Username: createdUsername })); } catch (_) {}
+        }
+        safeLog('error', `Enable login failed for ${email}: ${e.message}`);
+        return respond(500, { error: `Failed to enable login: ${e.message}` });
+      }
+    }
+
+
     const entityMap = {
       'appointments': 'appointments',
       'providers': 'providers',
