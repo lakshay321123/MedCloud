@@ -63,13 +63,20 @@ function getUserFromStorage(): User {
       const role = (savedRole && ['provider', 'client'].includes(savedRole)) ? savedRole as UserRole : 'provider'
       const orgIdFromToken = getCognitoOrgId()
       const orgId = orgIdFromToken || localStorage.getItem('cosentus_org_id') || DEMO_ORG_IDS[role] || 'a0000000-0000-0000-0000-000000000001'
-      const name = ROLE_DISPLAY_NAMES[role] || 'Provider'
-      return { id: 'demo-001', name, email: 'provider@clinic.com', role, organization_id: orgId }
+      const savedName = localStorage.getItem('cosentus_user_name')
+      const savedEmail = localStorage.getItem('cosentus_user_email')
+      const name = savedName || ROLE_DISPLAY_NAMES[role] || 'Provider'
+      const email = savedEmail || 'provider@clinic.com'
+      return { id: 'demo-001', name, email, role, organization_id: orgId }
     }
     if (savedRole) {
-      const name = ROLE_DISPLAY_NAMES[savedRole] || 'Admin User'
-      // org-001 is not a valid UUID — use the real demo org UUID
-      return { id: 'demo-001', name, email: 'admin@cosentus.ai', role: savedRole as UserRole, organization_id: 'a0000000-0000-0000-0000-000000000001' }
+      const savedName = localStorage.getItem('cosentus_user_name')
+      const savedEmail = localStorage.getItem('cosentus_user_email')
+      const savedOrgId = localStorage.getItem('cosentus_org_id')
+      const name = savedName || ROLE_DISPLAY_NAMES[savedRole] || 'Admin User'
+      const email = savedEmail || 'admin@cosentus.ai'
+      const orgId = savedOrgId || 'a0000000-0000-0000-0000-000000000001'
+      return { id: 'demo-001', name, email, role: savedRole as UserRole, organization_id: orgId }
     }
   } catch { /* localStorage unavailable */ }
   return SERVER_DEFAULT_USER
@@ -107,9 +114,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [portalType, setPortalTypeState] = useState<PortalType | null>(null)
   const [isScribeRecording, setIsScribeRecording] = useState(false)
   const [hydrated, setHydrated] = useState(false)
-  // TODO: Sprint 2 — derive orgId from Cognito JWT claims after authentication
-  // For Sprint 1 dev mode, hardcode to seeded organization UUID
-  const orgId = 'a0000000-0000-0000-0000-000000000001'
+  // orgId derives from the current user's organization — after hydration this
+  // reflects the real Cognito-authenticated org, not a hardcoded demo value.
+  const orgId = currentUser.organization_id
 
   // ── Hydration from localStorage (client-only, runs after SSR mount) ──────
   // This MUST be a useEffect — reading localStorage in useState causes React
