@@ -130,15 +130,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // useClientParams sends the right client_id on every API call.
     // c0000000...102 = Irvine Medical Group (first US client in seed)
     if (portal === 'facility' && (user.role === 'provider' || user.role === 'client')) {
-      const savedClientId = localStorage.getItem('cosentus_selected_client')
-      if (!savedClientId) {
+      // Read client_id set at login from Cognito custom:client_id attribute
+      const loginClientId = localStorage.getItem('cosentus_client_id')
+      if (loginClientId) {
+        // Set with placeholder name — resolved once clients API loads (see effect below)
         setSelectedClientState({
-          id: 'c0000000-0000-0000-0000-000000000102',
-          name: 'Sunrise Cardiology Group',
+          id: loginClientId,
+          name: 'Loading...',
           region: 'us',
           ehr_mode: 'external_ehr',
         })
       }
+      // No hardcoded fallback — if no client_id in Cognito, user sees no data (correct behaviour)
     }
     setHydrated(true)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -151,7 +154,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const mapped: ClientOrg[] = data.map((c: { id: string; name: string; region: string; ehr_mode?: string }) => ({
           id: c.id, name: c.name, region: (c.region || 'us') as 'us' | 'uae', ehr_mode: (c.ehr_mode || 'external_ehr') as 'medcloud_ehr' | 'external_ehr',
         }))
-        if (mapped.length > 0) setApiClients(mapped)
+        if (mapped.length > 0) {
+          setApiClients(mapped)
+          // Resolve placeholder name for facility users whose client was set from login JWT
+          setSelectedClientState(prev => {
+            if (prev && prev.name === 'Loading...') {
+              const match = mapped.find(c => c.id === prev.id)
+              return match || prev
+            }
+            return prev
+          })
+        }
       })
       .catch((err) => { console.error('Failed to fetch clients:', err) })
   }, [])

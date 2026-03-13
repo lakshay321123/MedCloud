@@ -395,6 +395,38 @@ async function runSchemaMigration() {
         USING (org_id::TEXT = current_setting('app.org_id', true) OR current_user = 'medcloud_admin');
     `);
     safeLog('info', 'Schema migration completed successfully');
+
+    // ── User record integrity fixes (idempotent — safe to run on every cold start) ──
+    // Fix 1: Dr Jerry (Dr@cosentus.com) — DB had UCLA Health UUID, should be Sunrise Cardiology
+    await pool.query(`
+      UPDATE users
+      SET client_id = 'c0000000-0000-0000-0000-000000000102'
+      WHERE email = 'Dr@cosentus.com'
+        AND org_id = 'a0000000-0000-0000-0000-000000000001'
+        AND (client_id != 'c0000000-0000-0000-0000-000000000102' OR client_id IS NULL)
+    `).then(r => { if (r.rowCount > 0) safeLog('info', '[fix] Dr Jerry client_id corrected -> Sunrise Cardiology'); })
+      .catch(e => safeLog('warn', '[fix] Dr Jerry client_id fix failed:', e.message));
+
+    // Fix 2: drsmith@metro.com — DB had NULL client_id, should be Metro Internal Medicine
+    // Also update stale cognito_sub from seed placeholder to real Cognito sub
+    await pool.query(`
+      UPDATE users
+      SET client_id = 'c0000000-0000-0000-0000-000000000101',
+          cognito_sub = '3981e56a-653e-4067-9a58-0141243f4bfb'
+      WHERE email = 'drsmith@metro.com'
+        AND org_id = 'a0000000-0000-0000-0000-000000000001'
+        AND (client_id IS NULL OR client_id != 'c0000000-0000-0000-0000-000000000101')
+    `).then(r => { if (r.rowCount > 0) safeLog('info', '[fix] drsmith client_id + cognito_sub corrected -> Metro Internal Medicine'); })
+      .catch(e => safeLog('warn', '[fix] drsmith client_id fix failed:', e.message));
+
+    // Fix 3: Remove UCLA Health (created via UI, not a real seed client)
+    await pool.query(`
+      DELETE FROM clients
+      WHERE org_id = 'a0000000-0000-0000-0000-000000000001'
+        AND name ILIKE '%UCLA%'
+    `).then(r => { if (r.rowCount > 0) safeLog('info', '[fix] UCLA Health client deleted'); })
+      .catch(e => safeLog('warn', '[fix] UCLA Health delete failed:', e.message));
+
   } catch (e) {
     safeLog('error', 'Schema migration error (non-fatal):', e.message);
   }
@@ -6471,6 +6503,8 @@ async function getMessages(orgId, userId, qs) {
   }
   let q = 'SELECT m.*, u.email as sender_email FROM messages m LEFT JOIN users u ON m.sender_id = u.id WHERE m.org_id = $1';
   const p = [orgId];
+  // Scope messages to client when client_id is provided (facility portal users)
+  if (qs.client_id) { p.push(qs.client_id); q += ` AND (m.client_id = $${p.length} OR m.client_id IS NULL)`; }
   if (qs.entity_type && qs.entity_id) {
     q += ` AND m.entity_type = $${p.length + 1} AND m.entity_id = $${p.length + 2}`;
     p.push(qs.entity_type, qs.entity_id);
@@ -7470,7 +7504,16 @@ export const handler = async (event) => {
           LEFT JOIN patients p ON d.patient_id = p.id
           WHERE d.org_id = $1`;
         const params = [effectiveOrgId];
-        if (clientId) { params.push(clientId); q += ` AND (d.client_id = $${params.length} OR d.client_id IS NULL)`; }
+        if (clientId) {
+          params.push(clientId);
+          // Facility/client users see only their own client's docs, not unassigned org-level docs
+          const isStrictScope = filterRole === 'client' || filterRole === 'provider';
+          if (isStrictScope) {
+            q += ` AND d.client_id = $${params.length}`;
+          } else {
+            q += ` AND (d.client_id = $${params.length} OR d.client_id IS NULL)`;
+          }
+        }
         if (qs.patient_id) { params.push(qs.patient_id); q += ` AND d.patient_id = $${params.length}`; }
         q += ' ORDER BY d.created_at DESC LIMIT 500';
         const rows = (await orgQuery(effectiveOrgId, q, params)).rows;
