@@ -471,6 +471,9 @@ async function runSchemaMigration() {
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS cognito_sub VARCHAR(200)",
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_cognito_sub ON users(cognito_sub) WHERE cognito_sub IS NOT NULL",
     // Fix: users table needs client_id to scope client/provider logins to their practice
+    // Composite unique index on clients(id, org_id) is required before the FK below,
+    // so users.client_id can never reference a client belonging to a different org.
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_clients_id_org ON clients(id, org_id)",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS client_id UUID REFERENCES clients(id)",
     "CREATE INDEX IF NOT EXISTS idx_users_client ON users(client_id) WHERE client_id IS NOT NULL",
   ];
@@ -642,15 +645,19 @@ async function runSchemaMigration() {
 }
 
 // ─── Seed Demo Data — fills empty tables once per cold start ────────────────
-let _seedDone = false;
 async function seedDemoData(orgId) {
-  if (_seedDone) return;
-  _seedDone = true;
   try {
-    // Get org context
-    const orgRow = await pool.query(`SELECT id FROM organizations ORDER BY created_at LIMIT 1`);
-    if (!orgRow.rows[0]) return;
-    const _org = orgRow.rows[0].id;
+    // Resolve target org: use passed orgId if provided, else fall back to first org
+    let _org = orgId || null;
+    if (!_org) {
+      const orgRow = await pool.query(`SELECT id FROM organizations ORDER BY created_at LIMIT 1`);
+      if (!orgRow.rows[0]) return;
+      _org = orgRow.rows[0].id;
+    } else {
+      // Verify the org actually exists
+      const orgCheck = await pool.query(`SELECT id FROM organizations WHERE id=$1`, [_org]);
+      if (!orgCheck.rows[0]) { safeLog('warn', `seedDemoData: org ${_org} not found`); return; }
+    }
     const [clientRow, payerRow, provRow, patRow, claimRow] = await Promise.all([
       pool.query(`SELECT id FROM clients WHERE org_id=$1 ORDER BY created_at LIMIT 1`, [_org]),
       pool.query(`SELECT id FROM payers WHERE org_id=$1 ORDER BY created_at LIMIT 3`, [_org]),
@@ -7226,10 +7233,9 @@ async function flagHCCCodes(patientId, orgId) {
 export const handler = async (event) => {
   // ── Run schema migration on first cold start ────────────────────────────────
   await runSchemaMigration();
-  // Seed demo data ONLY when explicitly requested via admin endpoint (?seed=true&seed_secret=...)
+  // Seed demo data ONLY when explicitly requested via admin endpoint.
   // Real clients must start with zero data — auto-seeding on cold start is disabled.
-  // To seed a demo org, call: POST /admin/run-migrations?seed=true (admin role required)
-  // seedDemoData() is still available and called from the /admin/seed-demo endpoint.
+  // To seed a demo org, call: POST /admin/seed-demo  body: { org_id: "..." }  (admin role required)
 
   // ── S3 Event: auto-trigger OCR when document uploaded ──────────────────────
   if (event.Records?.[0]?.eventSource === 'aws:s3') {
@@ -11037,7 +11043,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     // ════ Admin: Seed Demo Data (explicit, admin-only) ════════════════════════
     // POST /admin/seed-demo  body: { org_id: "..." } (optional — defaults to first org)
     // This is the ONLY way to seed demo data. Auto-seed on cold start is disabled.
-    if (path.includes('/admin/seed-demo') && method === 'POST') {
+    if (path.endsWith('/admin/seed-demo') && method === 'POST') {
       if (callerRole !== 'admin') return respond(403, { error: 'Admin only — seed-demo requires admin role' });
       const targetOrgId = body.org_id || effectiveOrgId;
       try {
