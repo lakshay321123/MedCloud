@@ -35,7 +35,7 @@ const actionColors: Record<string,string> = {
   EXPORT: 'bg-brand/10 text-brand',
 }
 
-const users: Array<{ name: string; email: string; role: string; clients: string; lastLogin: string; active: boolean }> = []
+const users: Array<{ name: string; email: string; role: string; clients: string; lastLogin: string; active: boolean; id?: string; clientId?: string }> = []
 
 const orgs: Array<{ name: string; region: string; ehr: string; pricing: string; since: string; active: boolean }> = []
 
@@ -60,22 +60,62 @@ const queues = [
   { name:'Fax Queue', items:2, processing:0, failed:1, flush:'15 min ago' },
 ]
 
+// ── Types ─────────────────────────────────────────────────────────────────
+interface ApiUser {
+  id: string
+  first_name?: string
+  last_name?: string
+  email: string
+  role?: string
+  client_id?: string
+  created_at?: string
+  is_active?: boolean
+  cognito_sub?: string | null
+}
+interface DisplayUser {
+  id?: string
+  name: string
+  email: string
+  role: string
+  clientId?: string
+  clients: string
+  lastLogin: string
+  active: boolean
+}
+
+// Shared Cognito password policy (mirrors backend validation)
+const PWD_POLICY = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+const PWD_POLICY_MSG = 'Password must be at least 8 characters with 1 uppercase, 1 lowercase, and 1 number'
+
 function UsersTab() {
   const { toast } = useToast()
   const [showAdd, setShowAdd] = useState(false)
   const [search, setSearch] = useState('')
   const { data: apiUserResult, refetch: refetchUsers } = useUsers({ limit: 100 })
   const { mutate: createUserAPI } = useCreateUser()
-  const apiUsers = (apiUserResult?.data || []).map((u) => ({
-    name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email, email: u.email, role: u.role || 'coder',
-    clients: 'All', lastLogin: u.created_at?.slice(0, 10) || 'Never',
+  // Clients list — powers the "Assign to Client" dropdowns in Add/Edit User modals
+  const { data: clientsResult } = useClients()
+  const clientList = (clientsResult?.data || []) as { id: string; name?: string }[]
+  // O(1) lookup map — avoids O(N×M) find() inside map()
+  const clientMap = new Map(clientList.map(c => [c.id, c.name]))
+
+  const apiUsers = (apiUserResult?.data || []).map((u: ApiUser): DisplayUser => ({
+    name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email,
+    email: u.email, role: u.role || 'coder',
+    clientId: u.client_id || '',
+    clients: u.client_id ? (clientMap.get(u.client_id) || u.client_id.slice(0, 8)) : 'All Clients',
+    lastLogin: u.created_at?.slice(0, 10) || 'Never',
     active: u.is_active !== false, id: u.id,
   }))
   const [localUsers, setLocalUsers] = useState(users)
   const displayUsers = apiUsers.length > 0 ? apiUsers : localUsers
-  const [newUser, setNewUser] = useState({ name: '', email: '', role: 'coder', clients: '', password: '' })
+  const [newUser, setNewUser] = useState({ name: '', email: '', role: 'coder', clientId: '', password: '' })
   const [creating, setCreating] = useState(false)
-  const [editingUser, setEditingUser] = useState<typeof users[0] | null>(null)
+  const [editingUser, setEditingUser] = useState<DisplayUser | null>(null)
+  // Enable Login modal state (for existing DB-only users like Dr Jerry)
+  const [enableLoginUser, setEnableLoginUser] = useState<DisplayUser | null>(null)
+  const [enablePassword, setEnablePassword] = useState('')
+  const [enablingLogin, setEnablingLogin] = useState(false)
   const filtered = displayUsers.filter(u => !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()))
 
   async function handleCreateUser() {
@@ -83,9 +123,8 @@ function UsersTab() {
     if (!newUser.email.trim() || !newUser.email.includes('@')) { toast.error('Valid email required'); return }
     if (displayUsers.find(u => u.email === newUser.email)) { toast.error('User with this email already exists'); return }
     if (newUser.password) {
-      const pwdPolicy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
-      if (!pwdPolicy.test(newUser.password)) {
-        toast.error('Password must be at least 8 characters with 1 uppercase, 1 lowercase, and 1 number')
+      if (!PWD_POLICY.test(newUser.password)) {
+        toast.error(PWD_POLICY_MSG)
         return
       }
     }
@@ -101,6 +140,7 @@ function UsersTab() {
         const result = await api.post('/users/create-with-auth', {
           email: newUser.email, password: newUser.password,
           first_name: firstName, last_name: lastName, role: newUser.role,
+          ...(newUser.clientId ? { client_id: newUser.clientId } : {}),
         })
         if (result) {
           toast.success(`User "${newUser.name}" created with login credentials (${newUser.role})`)
@@ -110,22 +150,28 @@ function UsersTab() {
         }
       } else {
         // DB-only user (no login credentials)
-        const result = await createUserAPI({ first_name: firstName, last_name: lastName, email: newUser.email, role: newUser.role, is_active: true })
-        if (result) { toast.success(`User "${newUser.name}" created (DB only — no login)`) ; refetchUsers() }
+        const payload: Record<string, unknown> = { first_name: firstName, last_name: lastName, email: newUser.email, role: newUser.role, is_active: true }
+        if (newUser.clientId) payload.client_id = newUser.clientId
+        const result = await createUserAPI(payload)
+        if (result) { toast.success(`User "${newUser.name}" created (DB only — use Login button to enable sign-in)`); refetchUsers() }
         else { toast.error('Failed to create user') }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error'
       toast.error(`Failed: ${msg}`)
+      // Do NOT close modal or reset form on failure — user keeps their input to retry
+      setCreating(false)
+      return
     }
-    setNewUser({ name: '', email: '', role: 'coder', clients: '', password: '' })
+    // Only clear form and close modal on success
+    setNewUser({ name: '', email: '', role: 'coder', clientId: '', password: '' })
     setShowAdd(false)
     setCreating(false)
   }
 
   async function handleToggleActive(email: string, active: boolean) {
     const user = displayUsers.find(u => u.email === email)
-    if (user && 'id' in user && user.id) {
+    if (user && user.id) {
       try {
         const { api } = await import('@/lib/api-client')
         await api.put(`/users/${user.id}`, { is_active: !active })
@@ -138,6 +184,28 @@ function UsersTab() {
     }
   }
 
+  async function handleEnableLogin() {
+    if (!enableLoginUser) return
+    if (!PWD_POLICY.test(enablePassword)) {
+      toast.error(PWD_POLICY_MSG)
+      return
+    }
+    setEnablingLogin(true)
+    try {
+      const { api } = await import('@/lib/api-client')
+      await api.post(`/users/${enableLoginUser.id}/enable-login`, { password: enablePassword })
+      toast.success(`Login enabled for ${enableLoginUser.name} — they can now sign in`)
+      refetchUsers()
+      setEnableLoginUser(null)
+      setEnablePassword('')
+    } catch (err) {
+      toast.error(`Failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
+    setEnablingLogin(false)
+  }
+
+  const inputCls = 'w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40'
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -146,7 +214,7 @@ function UsersTab() {
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search users..."
             className="bg-surface-elevated border border-separator rounded-lg pl-8 pr-3 py-1.5 text-[13px] text-content-secondary w-60"/>
         </div>
-        <button onClick={()=>setShowAdd(true)} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors">
+        <button type="button" onClick={()=>setShowAdd(true)} className="flex items-center gap-2 bg-brand text-white rounded-lg px-4 py-2 text-sm hover:bg-brand-deep transition-colors">
           <Plus size={14}/> Add User
         </button>
       </div>
@@ -154,7 +222,7 @@ function UsersTab() {
         <table className="w-full text-sm">
           <thead><tr className="border-b border-separator text-[13px] text-content-secondary">
             <th className="text-left px-4 py-3">Name</th><th className="text-left px-4 py-3">Email</th>
-            <th className="text-left px-4 py-3">Role</th><th className="text-left px-4 py-3">Clients</th>
+            <th className="text-left px-4 py-3">Role</th><th className="text-left px-4 py-3">Client</th>
             <th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3">Last Login</th>
             <th className="text-left px-4 py-3">Actions</th>
           </tr></thead>
@@ -166,15 +234,19 @@ function UsersTab() {
               <td className="px-4 py-3 text-[13px] text-content-secondary">{u.clients}</td>
               <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full ${u.active?'bg-brand/10 text-brand-dark dark:text-brand-dark':'bg-gray-500/10 text-gray-400'}`}>{u.active?'Active':'Disabled'}</span></td>
               <td className="px-4 py-3 text-[13px] text-content-secondary">{u.lastLogin}</td>
-              <td className="px-4 py-3 flex gap-1">
-                <button onClick={()=>setEditingUser(u)} className="text-[11px] text-brand hover:underline">Edit</button>
+              <td className="px-4 py-3 flex gap-1 flex-wrap">
+                <button type="button" onClick={()=>setEditingUser(u)} className="text-[11px] text-brand hover:underline">Edit</button>
                 <span className="text-content-tertiary">·</span>
-                <button onClick={()=>handleToggleActive(u.email, u.active)} className={`text-[11px] hover:underline ${u.active ? 'text-content-secondary hover:text-brand' : 'text-brand-dark'}`}>{u.active ? 'Disable' : 'Enable'}</button>
+                <button type="button" onClick={()=>handleToggleActive(u.email, u.active)} className={`text-[11px] hover:underline ${u.active ? 'text-content-secondary hover:text-brand' : 'text-brand-dark'}`}>{u.active ? 'Disable' : 'Enable'}</button>
+                {u.id && (<><span className="text-content-tertiary">·</span>
+                <button type="button" onClick={()=>{ setEnableLoginUser(u); setEnablePassword('') }} className="text-[11px] text-content-secondary hover:text-brand hover:underline flex items-center gap-0.5"><KeyRound size={10}/> Login</button></>)}
               </td>
             </tr>
           ))}</tbody>
         </table>
       </div>
+
+      {/* ── Add User Modal ── */}
       {showAdd&&(
         <>
           <div className="fixed inset-0 bg-black/40 z-40" onClick={()=>setShowAdd(false)}/>
@@ -182,25 +254,28 @@ function UsersTab() {
             <div className="bg-surface-secondary rounded-xl p-6 w-full max-w-md shadow-2xl space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-semibold">Add User</h3>
-                <button onClick={()=>setShowAdd(false)}><X size={16} className="text-content-secondary"/></button>
+                <button type="button" onClick={()=>setShowAdd(false)}><X size={16} className="text-content-secondary"/></button>
               </div>
               <div>
                 <label className="text-[13px] text-content-secondary block mb-1">Full Name *</label>
-                <input value={newUser.name} onChange={e=>setNewUser(p=>({...p,name:e.target.value}))} placeholder="Jane Smith" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
+                <input value={newUser.name} onChange={e=>setNewUser(p=>({...p,name:e.target.value}))} placeholder="Jane Smith" className={inputCls}/>
               </div>
               <div>
                 <label className="text-[13px] text-content-secondary block mb-1">Email *</label>
-                <input value={newUser.email} onChange={e=>setNewUser(p=>({...p,email:e.target.value}))} placeholder="jane@cosentus.ai" type="email" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
+                <input value={newUser.email} onChange={e=>setNewUser(p=>({...p,email:e.target.value}))} placeholder="jane@cosentus.ai" type="email" className={inputCls}/>
               </div>
               <div>
                 <label className="text-[13px] text-content-secondary block mb-1">Role</label>
-                <select value={newUser.role} onChange={e=>setNewUser(p=>({...p,role:e.target.value}))} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40">
+                <select value={newUser.role} onChange={e=>setNewUser(p=>({...p,role:e.target.value}))} className={inputCls}>
                   {Object.keys(roleColors).map(r=><option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-[13px] text-content-secondary block mb-1">Assign to Clients</label>
-                <input value={newUser.clients} onChange={e=>setNewUser(p=>({...p,clients:e.target.value}))} placeholder="IFP, GMC (or leave blank for All)" className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
+                <label className="text-[13px] text-content-secondary block mb-1">Assign to Client</label>
+                <select value={newUser.clientId} onChange={e=>setNewUser(p=>({...p,clientId:e.target.value}))} className={inputCls}>
+                  <option value="">All Clients (no restriction)</option>
+                  {clientList.map(c=><option key={c.id} value={c.id}>{c.name || c.id}</option>)}
+                </select>
               </div>
               <div>
                 <label htmlFor="new-user-password" className="text-[13px] text-content-secondary block mb-1">Password {newUser.password ? <span className="text-brand-dark">(will create login)</span> : <span className="text-content-tertiary">(optional — leave blank for DB-only)</span>}</label>
@@ -213,6 +288,8 @@ function UsersTab() {
           </div>
         </>
       )}
+
+      {/* ── Edit User Modal ── */}
       {editingUser&&(
         <>
           <div className="fixed inset-0 bg-black/40 z-40" onClick={()=>setEditingUser(null)}/>
@@ -220,11 +297,11 @@ function UsersTab() {
             <div className="bg-surface-secondary rounded-xl p-6 w-full max-w-md shadow-2xl space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-semibold">Edit User</h3>
-                <button onClick={()=>setEditingUser(null)}><X size={16} className="text-content-secondary"/></button>
+                <button type="button" onClick={()=>setEditingUser(null)}><X size={16} className="text-content-secondary"/></button>
               </div>
               <div>
                 <label className="text-[13px] text-content-secondary block mb-1">Full Name</label>
-                <input value={editingUser.name} onChange={e=>setEditingUser(u=>u?{...u,name:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
+                <input value={editingUser.name} onChange={e=>setEditingUser(u=>u?{...u,name:e.target.value}:u)} className={inputCls}/>
               </div>
               <div>
                 <label className="text-[13px] text-content-secondary block mb-1">Email</label>
@@ -232,23 +309,26 @@ function UsersTab() {
               </div>
               <div>
                 <label className="text-[13px] text-content-secondary block mb-1">Role</label>
-                <select value={editingUser.role} onChange={e=>setEditingUser(u=>u?{...u,role:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40">
+                <select value={editingUser.role} onChange={e=>setEditingUser(u=>u?{...u,role:e.target.value}:u)} className={inputCls}>
                   {Object.keys(roleColors).map(r=><option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-[13px] text-content-secondary block mb-1">Assigned Clients</label>
-                <input value={editingUser.clients} onChange={e=>setEditingUser(u=>u?{...u,clients:e.target.value}:u)} className="w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-brand/40"/>
+                <label className="text-[13px] text-content-secondary block mb-1">Assigned Client</label>
+                <select value={editingUser.clientId || ''} onChange={e=>setEditingUser(u=>u?{...u,clientId:e.target.value}:u)} className={inputCls}>
+                  <option value="">All Clients (no restriction)</option>
+                  {clientList.map(c=><option key={c.id} value={c.id}>{c.name || c.id}</option>)}
+                </select>
               </div>
-              <button onClick={async ()=>{
-                if ('id' in editingUser && editingUser.id) {
+              <button type="button" onClick={async ()=>{
+                if (editingUser.id) {
                   try {
                     const { api } = await import('@/lib/api-client')
                     const nameParts = editingUser.name.trim().split(/\s+/)
-                    await api.put(`/users/${editingUser.id}`, {
-                      first_name: nameParts[0] || '', last_name: nameParts.slice(1).join(' ') || '',
-                      role: editingUser.role, is_active: editingUser.active,
-                    })
+                    const payload: Record<string, unknown> = { first_name: nameParts[0] || '', last_name: nameParts.slice(1).join(' ') || '', role: editingUser.role, is_active: editingUser.active }
+                    if (editingUser.clientId) payload.client_id = editingUser.clientId
+                    else payload.client_id = null
+                    await api.put(`/users/${editingUser.id}`, payload)
                     toast.success(`User "${editingUser.name}" updated`)
                     refetchUsers()
                     setEditingUser(null)
@@ -259,6 +339,31 @@ function UsersTab() {
                   setEditingUser(null)
                 }
               }} className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors">Save Changes</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Enable Login Modal (for DB-only users like Dr Jerry) ── */}
+      {enableLoginUser&&(
+        <>
+          <div className="fixed inset-0 bg-black/40 z-40" onClick={()=>{ setEnableLoginUser(null); setEnablePassword('') }}/>
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            <div className="bg-surface-secondary rounded-xl p-6 w-full max-w-md shadow-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold flex items-center gap-2"><KeyRound size={15}/> Enable Login</h3>
+                <button type="button" onClick={()=>{ setEnableLoginUser(null); setEnablePassword('') }}><X size={16} className="text-content-secondary"/></button>
+              </div>
+              <p className="text-[13px] text-content-secondary">Set a password for <strong>{enableLoginUser.name}</strong> ({enableLoginUser.email}). This will create their login credentials in Cognito so they can sign in immediately.</p>
+              <div>
+                <label htmlFor="enable-login-password" className="text-[13px] text-content-secondary block mb-1">New Password</label>
+                <input id="enable-login-password" type="password" value={enablePassword} onChange={e=>setEnablePassword(e.target.value)} placeholder="Min 8 chars, 1 upper, 1 lower, 1 number" className={inputCls}/>
+                {enablePassword.length > 0 && !PWD_POLICY.test(enablePassword) && <p className="text-[11px] text-brand-deep mt-1">{PWD_POLICY_MSG}</p>}
+              </div>
+              <button type="button" onClick={handleEnableLogin} disabled={enablingLogin || !PWD_POLICY.test(enablePassword)}
+                className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors disabled:opacity-50">
+                {enablingLogin ? 'Enabling…' : 'Enable Login & Set Password'}
+              </button>
             </div>
           </div>
         </>
