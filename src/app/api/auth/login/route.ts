@@ -63,22 +63,20 @@ export async function POST(req: NextRequest) {
     })
 
     // FIX 2: Fail if required Cognito attributes missing — never default to 'admin' (Gemini: security-high)
-    const role   = attrs['custom:custom:role']
-    const orgId  = attrs['custom:custom:org_id']
-    const region = attrs['custom:custom:region']
+    // Attributes are stored WITHOUT double-prefix: custom:role, custom:org_id, custom:portal_type
+    const role       = attrs['custom:role']
+    const orgId      = attrs['custom:org_id']
+    const portalType = attrs['custom:portal_type']   // 'backoffice' | 'facility'
+      || (['provider', 'client'].includes(role || '') ? 'facility' : 'backoffice')
 
-    if (!role || !orgId || !region) {
-      console.error(`[auth/login] User ${username} missing required Cognito attributes: role=${role} org=${orgId} region=${region}`)
+    if (!role || !orgId) {
+      console.error(`[auth/login] User ${username} missing required Cognito attributes: role=${role} org=${orgId}`)
       return NextResponse.json({ error: 'Account configuration error. Please contact support.' }, { status: 500 })
     }
 
-    const name = attrs['name'] || username
-    const sub  = attrs['sub']  || ''
-
-    // Derive portalType from role — facility roles get the clinic portal
-    const facilityRoles = ['provider', 'client']
-    const portalType = facilityRoles.includes(role) ? 'facility' : 'backoffice'
-    const country    = region === 'uae' ? 'uae' : 'usa'
+    const name    = attrs['name'] || username
+    const sub     = attrs['sub']  || ''
+    const country = 'usa'   // UAE on hold — all active users are US
 
     // FIX 3: Store only non-sensitive session data in cookie; drop tokens from cookie (Gemini: security-high)
     // accessToken / refreshToken are NOT stored in the cookie to prevent exposure
