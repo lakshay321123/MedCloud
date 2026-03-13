@@ -8281,7 +8281,26 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
         linesParams.push(...qs._regionClientIds); linesSql += ` AND (p.client_id IN (${ph}) OR p.client_id IS NULL)`;
       }
       linesSql += ' ORDER BY p.created_at';
-      const linesR = await orgQuery(effectiveOrgId, linesSql, linesParams);
+      let linesR = await orgQuery(effectiveOrgId, linesSql, linesParams);
+
+      // Auto-parse: if no DB lines exist but ERA has raw 835 content, parse and save now
+      if (linesR.rows.length === 0 && eraFile.raw_content) {
+        const raw = eraFile.raw_content;
+        if (raw.includes('ISA') || raw.includes('BPR') || raw.includes('CLP')) {
+          // Check for ANY existing payments to prevent duplicate parse
+          const existCheck = await orgQuery(effectiveOrgId,
+            'SELECT COUNT(*)::int AS cnt FROM payments WHERE era_file_id = $1 AND org_id = $2',
+            [pathParams.id, effectiveOrgId]);
+          if (Number(existCheck.rows[0]?.cnt) === 0) {
+            try {
+              await ingest835(pathParams.id, raw, effectiveOrgId, eraFile.client_id || clientId, userId);
+              linesR = await orgQuery(effectiveOrgId, linesSql, linesParams);
+              safeLog('info', `Auto-parsed ERA ${pathParams.id}: ${linesR.rows.length} line items created`);
+            } catch (e) { safeLog('warn', `Auto-parse ERA ${pathParams.id} failed: ${e.message}`); }
+          }
+        }
+      }
+
       return respond(200, { data: linesR.rows, meta: { total: linesR.rows.length } });
     }
 
