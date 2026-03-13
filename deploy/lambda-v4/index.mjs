@@ -4398,15 +4398,20 @@ async function getAnalyticsKPIs(orgId, clientId, dateRange) {
 //   aws s3 sync s3://bucket/{org_id}/{client_id}/ ./export/
 // Falls back to flat key only if org_id/client_id are missing (should not happen in production).
 async function generatePresignedUrl(folder, fileName, contentType, orgId, clientId) {
-  // Build prefix: org_id/client_id if both present, else org_id only, else flat
-  let prefix;
-  if (orgId && clientId) {
-    prefix = `${orgId}/${clientId}/${folder}`;
-  } else if (orgId) {
-    prefix = `${orgId}/${folder}`;
-  } else {
-    prefix = folder; // legacy fallback — should not occur in production
+  // Build S3 key prefix with strict tenant isolation:
+  //   Client-scoped users  (client_id present): {org_id}/{client_id}/{folder}/
+  //   Org-level users      (admin/staff, no client_id): {org_id}/_shared/{folder}/
+  //   Legacy fallback      (no org_id — should never happen in production): _unknown/{folder}/
+  // The '_shared' segment makes org-level uploads explicitly identifiable and
+  // prevents them from being misread as client-scoped data in S3 listings.
+  if (!orgId) {
+    safeLog('warn', 'generatePresignedUrl called without orgId — using _unknown prefix');
   }
+  const prefix = orgId && clientId
+    ? `${orgId}/${clientId}/${folder}`
+    : orgId
+      ? `${orgId}/_shared/${folder}`
+      : `_unknown/${folder}`;
   const key = `${prefix}/${Date.now()}-${fileName}`;
   if (s3Client && getSignedUrl && PutObjectCommand) {
     const cmd = new PutObjectCommand({ Bucket: S3_BUCKET, Key: key, ContentType: contentType || 'application/octet-stream' });
