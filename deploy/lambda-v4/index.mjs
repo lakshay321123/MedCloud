@@ -470,6 +470,9 @@ async function runSchemaMigration() {
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS client_id UUID",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS cognito_sub VARCHAR(200)",
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_cognito_sub ON users(cognito_sub) WHERE cognito_sub IS NOT NULL",
+    // Fix: users table needs client_id to scope client/provider logins to their practice
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS client_id UUID REFERENCES clients(id)",
+    "CREATE INDEX IF NOT EXISTS idx_users_client ON users(client_id) WHERE client_id IS NOT NULL",
   ];
   for (const sql of colFixes) {
     try { await pool.query(sql); } catch (e) { if (e.code !== '42701' && e.code !== '42704') safeLog('warn', `colFix: ${e.message}`); }
@@ -4384,8 +4387,21 @@ async function getAnalyticsKPIs(orgId, clientId, dateRange) {
 }
 
 // ─── Presigned URL Generator ───────────────────────────────────────────────────
-async function generatePresignedUrl(folder, fileName, contentType) {
-  const key = `${folder}/${Date.now()}-${fileName}`;
+// S3 key structure: {org_id}/{client_id}/{folder}/{timestamp}-{filename}
+// This ensures per-client data isolation and enables one-command S3 sync on offboarding:
+//   aws s3 sync s3://bucket/{org_id}/{client_id}/ ./export/
+// Falls back to flat key only if org_id/client_id are missing (should not happen in production).
+async function generatePresignedUrl(folder, fileName, contentType, orgId, clientId) {
+  // Build prefix: org_id/client_id if both present, else org_id only, else flat
+  let prefix;
+  if (orgId && clientId) {
+    prefix = `${orgId}/${clientId}/${folder}`;
+  } else if (orgId) {
+    prefix = `${orgId}/${folder}`;
+  } else {
+    prefix = folder; // legacy fallback — should not occur in production
+  }
+  const key = `${prefix}/${Date.now()}-${fileName}`;
   if (s3Client && getSignedUrl && PutObjectCommand) {
     const cmd = new PutObjectCommand({ Bucket: S3_BUCKET, Key: key, ContentType: contentType || 'application/octet-stream' });
     const url = await getSignedUrl(s3Client, cmd, { expiresIn: 300 });
@@ -7210,9 +7226,10 @@ async function flagHCCCodes(patientId, orgId) {
 export const handler = async (event) => {
   // ── Run schema migration on first cold start ────────────────────────────────
   await runSchemaMigration();
-  // Seed demo data for empty tables (contracts, soap_notes, fee_schedules, edi_transactions, prior_auth, write_offs)
-  const _seedOrgRow = await pool.query(`SELECT id FROM organizations ORDER BY created_at LIMIT 1`).catch(()=>({rows:[]}));
-  if (_seedOrgRow.rows[0]) await seedDemoData(_seedOrgRow.rows[0].id).catch(()=>{});
+  // Seed demo data ONLY when explicitly requested via admin endpoint (?seed=true&seed_secret=...)
+  // Real clients must start with zero data — auto-seeding on cold start is disabled.
+  // To seed a demo org, call: POST /admin/run-migrations?seed=true (admin role required)
+  // seedDemoData() is still available and called from the /admin/seed-demo endpoint.
 
   // ── S3 Event: auto-trigger OCR when document uploaded ──────────────────────
   if (event.Records?.[0]?.eventSource === 'aws:s3') {
@@ -7409,7 +7426,8 @@ export const handler = async (event) => {
     // ════ Document Routes ════════════════════════════════════════════════════
     if (path.includes('/documents/upload-url') && method === 'POST') {
       const { folder, file_name, content_type } = body;
-      const result = await generatePresignedUrl(folder || 'uploads', file_name || 'file', content_type);
+      // Pass effectiveOrgId and clientId so S3 key is scoped: {org_id}/{client_id}/{folder}/{file}
+      const result = await generatePresignedUrl(folder || 'documents', file_name || 'file', content_type, effectiveOrgId, clientId);
       return respond(200, result);
     }
 
@@ -11013,6 +11031,21 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
         return respond(200, { ok: true });
       } catch(e) {
         return respond(500, { error: e.message });
+      }
+    }
+
+    // ════ Admin: Seed Demo Data (explicit, admin-only) ════════════════════════
+    // POST /admin/seed-demo  body: { org_id: "..." } (optional — defaults to first org)
+    // This is the ONLY way to seed demo data. Auto-seed on cold start is disabled.
+    if (path.includes('/admin/seed-demo') && method === 'POST') {
+      if (callerRole !== 'admin') return respond(403, { error: 'Admin only — seed-demo requires admin role' });
+      const targetOrgId = body.org_id || effectiveOrgId;
+      try {
+        await seedDemoData(targetOrgId);
+        return respond(200, { ok: true, message: `Demo data seeded for org ${targetOrgId}` });
+      } catch(e) {
+        safeLog('error', 'seed-demo failed:', e.message);
+        return respond(500, { error: `Seed failed: ${e.message}` });
       }
     }
 
