@@ -8785,10 +8785,10 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       // Recent claims with patient names
       const recentClaims = await pool.query(`SELECT c.id, c.claim_number, c.status, c.total_charges, c.dos_from, c.created_at,
         p.first_name, p.last_name, py.name AS payer_name FROM claims c LEFT JOIN patients p ON p.id = c.patient_id LEFT JOIN payers py ON py.id = c.payer_id
-        WHERE c.org_id = $1 ORDER BY c.created_at DESC LIMIT 10`, [effectiveOrgId]);
+        WHERE c.org_id = $1${cfJoin.replace('c.client_id','c.client_id')} ORDER BY c.created_at DESC LIMIT 10`, pClient);
 
       // Patient count
-      const patientCount = await pool.query(`SELECT COUNT(*)::int as total FROM patients WHERE org_id = $1`, [effectiveOrgId]);
+      const patientCount = await pool.query(`SELECT COUNT(*)::int as total FROM patients WHERE org_id = $1${cf}`, pClient);
 
       // Coding queue count
       const codingCount = await pool.query(`SELECT COUNT(*)::int as total FROM coding_queue WHERE org_id = $1 AND status NOT IN ('approved','billed')`, [effectiveOrgId]);
@@ -8887,6 +8887,203 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     }
     if (path.includes('/rarc-codes')) {
       return respond(200, (await pool.query('SELECT * FROM rarc_codes ORDER BY code')).rows);
+    }
+
+    // ════ ONE-TIME DATA FIX: Align client_id on all records to patient's actual client ════
+    // Records were seeded with random client_ids that don't match the patient.
+    // This fix runs ONCE per cold start, then the flag prevents re-running.
+    if (!global._clientIdFixDone) {
+      try {
+        safeLog('info', '[data-fix] Running one-time client_id alignment...');
+        // Fix eligibility_checks: inherit client_id from the linked patient
+        const ecFix = await pool.query(`
+          UPDATE eligibility_checks ec
+          SET client_id = p.client_id
+          FROM patients p
+          WHERE ec.patient_id = p.id AND ec.org_id = p.org_id
+            AND (ec.client_id IS NULL OR ec.client_id != p.client_id)
+        `);
+        safeLog('info', `[data-fix] eligibility_checks: ${ecFix.rowCount} rows fixed`);
+
+        // Fix documents: inherit client_id from the linked patient
+        const docFix = await pool.query(`
+          UPDATE documents d
+          SET client_id = p.client_id
+          FROM patients p
+          WHERE d.patient_id = p.id AND d.org_id = p.org_id
+            AND (d.client_id IS NULL OR d.client_id != p.client_id)
+        `);
+        safeLog('info', `[data-fix] documents: ${docFix.rowCount} rows fixed`);
+
+        // Fix appointments: inherit client_id from the linked patient
+        const apptFix = await pool.query(`
+          UPDATE appointments a
+          SET client_id = p.client_id
+          FROM patients p
+          WHERE a.patient_id = p.id AND a.org_id = p.org_id
+            AND (a.client_id IS NULL OR a.client_id != p.client_id)
+        `);
+        safeLog('info', `[data-fix] appointments: ${apptFix.rowCount} rows fixed`);
+
+        // Fix messages: inherit client_id from entity_id when entity_type = 'patient'
+        const msgFix = await pool.query(`
+          UPDATE messages m
+          SET client_id = p.client_id
+          FROM patients p
+          WHERE m.entity_id = p.id AND m.entity_type = 'patient' AND m.org_id = p.org_id
+            AND (m.client_id IS NULL OR m.client_id != p.client_id)
+        `);
+        safeLog('info', `[data-fix] messages (patient-linked): ${msgFix.rowCount} rows fixed`);
+
+        // Fix messages linked to claims: inherit client_id from the claim
+        const msgClaimFix = await pool.query(`
+          UPDATE messages m
+          SET client_id = c.client_id
+          FROM claims c
+          WHERE m.entity_id = c.id AND m.entity_type = 'claim' AND m.org_id = c.org_id
+            AND (m.client_id IS NULL OR m.client_id != c.client_id)
+        `);
+        safeLog('info', `[data-fix] messages (claim-linked): ${msgClaimFix.rowCount} rows fixed`);
+
+        // Fix tasks: inherit client_id from linked patient or claim
+        const taskFix = await pool.query(`
+          UPDATE tasks t
+          SET client_id = p.client_id
+          FROM patients p
+          WHERE t.entity_type = 'patient' AND t.entity_id = p.id AND t.org_id = p.org_id
+            AND (t.client_id IS NULL OR t.client_id != p.client_id)
+        `);
+        safeLog('info', `[data-fix] tasks: ${taskFix.rowCount} rows fixed`);
+
+        // Fix encounters: inherit client_id from the linked patient
+        const encFix = await pool.query(`
+          UPDATE encounters e
+          SET client_id = p.client_id
+          FROM patients p
+          WHERE e.patient_id = p.id AND e.org_id = p.org_id
+            AND (e.client_id IS NULL OR e.client_id != p.client_id)
+        `);
+        safeLog('info', `[data-fix] encounters: ${encFix.rowCount} rows fixed`);
+
+        // Fix soap_notes: inherit client_id from the linked patient (via encounter)
+        const soapFix = await pool.query(`
+          UPDATE soap_notes sn
+          SET client_id = e.client_id
+          FROM encounters e
+          WHERE sn.encounter_id = e.id AND sn.org_id = e.org_id
+            AND (sn.client_id IS NULL OR sn.client_id != e.client_id)
+        `);
+        safeLog('info', `[data-fix] soap_notes: ${soapFix.rowCount} rows fixed`);
+
+        global._clientIdFixDone = true;
+        safeLog('info', '[data-fix] ✅ All client_id alignment complete');
+      } catch (err) {
+        safeLog('error', '[data-fix] Failed:', err.message);
+        global._clientIdFixDone = true; // Don't retry on error
+      }
+    }
+
+    // ════ ADMIN: Fix client_id alignment (callable endpoint) ════════════
+    if (resource === 'admin' && path.includes('/fix-client-ids') && method === 'POST') {
+      const fixes = {};
+      // Fix eligibility_checks: inherit client_id from the linked patient
+      const ecFix = await pool.query(`
+        UPDATE eligibility_checks ec SET client_id = p.client_id
+        FROM patients p WHERE ec.patient_id = p.id AND ec.org_id = p.org_id
+        AND (ec.client_id IS NULL OR ec.client_id != p.client_id)
+      `);
+      fixes.eligibility_checks = ecFix.rowCount;
+
+      // Fix documents
+      const docFix = await pool.query(`
+        UPDATE documents d SET client_id = p.client_id
+        FROM patients p WHERE d.patient_id = p.id AND d.org_id = p.org_id
+        AND (d.client_id IS NULL OR d.client_id != p.client_id)
+      `);
+      fixes.documents = docFix.rowCount;
+
+      // Fix appointments
+      const apptFix = await pool.query(`
+        UPDATE appointments a SET client_id = p.client_id
+        FROM patients p WHERE a.patient_id = p.id AND a.org_id = p.org_id
+        AND (a.client_id IS NULL OR a.client_id != p.client_id)
+      `);
+      fixes.appointments = apptFix.rowCount;
+
+      // Fix encounters
+      const encFix = await pool.query(`
+        UPDATE encounters e SET client_id = p.client_id
+        FROM patients p WHERE e.patient_id = p.id AND e.org_id = p.org_id
+        AND (e.client_id IS NULL OR e.client_id != p.client_id)
+      `);
+      fixes.encounters = encFix.rowCount;
+
+      // Fix claims
+      const claimFix = await pool.query(`
+        UPDATE claims c SET client_id = p.client_id
+        FROM patients p WHERE c.patient_id = p.id AND c.org_id = p.org_id
+        AND (c.client_id IS NULL OR c.client_id != p.client_id)
+      `);
+      fixes.claims = claimFix.rowCount;
+
+      // Fix messages linked to patients
+      const msgPatFix = await pool.query(`
+        UPDATE messages m SET client_id = p.client_id
+        FROM patients p WHERE m.entity_id = p.id AND m.entity_type = 'patient' AND m.org_id = p.org_id
+        AND (m.client_id IS NULL OR m.client_id != p.client_id)
+      `);
+      fixes.messages_patient = msgPatFix.rowCount;
+
+      // Fix messages linked to claims
+      const msgClmFix = await pool.query(`
+        UPDATE messages m SET client_id = c.client_id
+        FROM claims c WHERE m.entity_id = c.id AND m.entity_type = 'claim' AND m.org_id = c.org_id
+        AND (m.client_id IS NULL OR m.client_id != c.client_id)
+      `);
+      fixes.messages_claim = msgClmFix.rowCount;
+
+      // Fix tasks
+      const taskFix = await pool.query(`
+        UPDATE tasks t SET client_id = p.client_id
+        FROM patients p WHERE t.entity_id::text = p.id::text AND t.org_id = p.org_id
+        AND (t.client_id IS NULL OR t.client_id != p.client_id)
+      `).catch(() => ({ rowCount: 0 }));
+      fixes.tasks = taskFix.rowCount;
+
+      // Fix soap_notes via encounters
+      const soapFix = await pool.query(`
+        UPDATE soap_notes sn SET client_id = e.client_id
+        FROM encounters e WHERE sn.encounter_id = e.id AND sn.org_id = e.org_id
+        AND e.client_id IS NOT NULL AND (sn.client_id IS NULL OR sn.client_id != e.client_id)
+      `).catch(() => ({ rowCount: 0 }));
+      fixes.soap_notes = soapFix.rowCount;
+
+      // Fix coding_queue via patients
+      const cqFix = await pool.query(`
+        UPDATE coding_queue cq SET client_id = p.client_id
+        FROM patients p WHERE cq.patient_id = p.id AND cq.org_id = p.org_id
+        AND (cq.client_id IS NULL OR cq.client_id != p.client_id)
+      `).catch(() => ({ rowCount: 0 }));
+      fixes.coding_queue = cqFix.rowCount;
+
+      // Fix payments via claims
+      const payFix = await pool.query(`
+        UPDATE payments pm SET client_id = c.client_id
+        FROM claims c WHERE pm.claim_id = c.id AND pm.org_id = c.org_id
+        AND (pm.client_id IS NULL OR pm.client_id != c.client_id)
+      `).catch(() => ({ rowCount: 0 }));
+      fixes.payments = payFix.rowCount;
+
+      // Fix denials via claims
+      const denFix = await pool.query(`
+        UPDATE denials d SET client_id = c.client_id
+        FROM claims c WHERE d.claim_id = c.id AND d.org_id = c.org_id
+        AND (d.client_id IS NULL OR d.client_id != c.client_id)
+      `).catch(() => ({ rowCount: 0 }));
+      fixes.denials = denFix.rowCount;
+
+      const totalFixed = Object.values(fixes).reduce((a, b) => a + b, 0);
+      return respond(200, { message: `Fixed ${totalFixed} records`, fixes });
     }
 
     // ════ Generic Entity Routes ════════════════════════════════════════════
