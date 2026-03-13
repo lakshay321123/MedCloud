@@ -59,17 +59,22 @@ function getUserFromStorage(): User {
   try {
     const pt = localStorage.getItem('cosentus_portal_type') as PortalType | null
     const savedRole = localStorage.getItem('cosentus_role') as UserRole | null
+    const savedName = localStorage.getItem('cosentus_user_name')
+    const savedEmail = localStorage.getItem('cosentus_user_email')
+    const savedOrgId = localStorage.getItem('cosentus_org_id')
     if (pt === 'facility') {
       const role = (savedRole && ['provider', 'client'].includes(savedRole)) ? savedRole as UserRole : 'provider'
       const orgIdFromToken = getCognitoOrgId()
-      const orgId = orgIdFromToken || localStorage.getItem('cosentus_org_id') || DEMO_ORG_IDS[role] || 'a0000000-0000-0000-0000-000000000001'
-      const name = ROLE_DISPLAY_NAMES[role] || 'Provider'
-      return { id: 'demo-001', name, email: 'provider@clinic.com', role, organization_id: orgId }
+      const orgId = orgIdFromToken || savedOrgId || DEMO_ORG_IDS[role] || 'a0000000-0000-0000-0000-000000000001'
+      const name = savedName || ROLE_DISPLAY_NAMES[role] || 'Provider'
+      const email = savedEmail || 'provider@clinic.com'
+      return { id: 'demo-001', name, email, role, organization_id: orgId }
     }
     if (savedRole) {
-      const name = ROLE_DISPLAY_NAMES[savedRole] || 'Admin User'
-      // org-001 is not a valid UUID — use the real demo org UUID
-      return { id: 'demo-001', name, email: 'admin@cosentus.ai', role: savedRole as UserRole, organization_id: 'a0000000-0000-0000-0000-000000000001' }
+      const name = savedName || ROLE_DISPLAY_NAMES[savedRole] || 'Admin User'
+      const email = savedEmail || 'admin@cosentus.ai'
+      const orgId = savedOrgId || 'a0000000-0000-0000-0000-000000000001'
+      return { id: 'demo-001', name, email, role: savedRole as UserRole, organization_id: orgId }
     }
   } catch { /* localStorage unavailable */ }
   return SERVER_DEFAULT_USER
@@ -107,9 +112,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [portalType, setPortalTypeState] = useState<PortalType | null>(null)
   const [isScribeRecording, setIsScribeRecording] = useState(false)
   const [hydrated, setHydrated] = useState(false)
-  // TODO: Sprint 2 — derive orgId from Cognito JWT claims after authentication
-  // For Sprint 1 dev mode, hardcode to seeded organization UUID
-  const orgId = 'a0000000-0000-0000-0000-000000000001'
+  // orgId derives from the current user — after hydration this reflects
+  // the real logged-in user's org. Before hydration, SERVER_DEFAULT_USER
+  // provides the same demo org UUID as fallback.
+  const orgId = currentUser.organization_id
 
   // ── Hydration from localStorage (client-only, runs after SSR mount) ──────
   // This MUST be a useEffect — reading localStorage in useState causes React
@@ -128,14 +134,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Auto-select client for provider/client facility portal roles.
     // These users belong to exactly one practice — pre-select it so
     // useClientParams sends the right client_id on every API call.
-    // c0000000...102 = Irvine Medical Group (first US client in seed)
     if (portal === 'facility' && (user.role === 'provider' || user.role === 'client')) {
-      const savedClientId = localStorage.getItem('cosentus_selected_client')
-      if (!savedClientId) {
+      const loginClientId = localStorage.getItem('cosentus_client_id')
+      if (loginClientId) {
+        // Set with placeholder name — resolved once clients API loads (see effect below)
+        const clientRegion = region === 'uae' ? 'uae' : 'us'
         setSelectedClientState({
-          id: 'c0000000-0000-0000-0000-000000000102',
-          name: 'Sunrise Cardiology Group',
-          region: 'us',
+          id: loginClientId,
+          name: 'Loading...',
+          region: clientRegion,
           ehr_mode: 'external_ehr',
         })
       }
@@ -151,7 +158,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const mapped: ClientOrg[] = data.map((c: { id: string; name: string; region: string; ehr_mode?: string }) => ({
           id: c.id, name: c.name, region: (c.region || 'us') as 'us' | 'uae', ehr_mode: (c.ehr_mode || 'external_ehr') as 'medcloud_ehr' | 'external_ehr',
         }))
-        if (mapped.length > 0) setApiClients(mapped)
+        if (mapped.length > 0) {
+          setApiClients(mapped)
+          // Resolve placeholder name for facility users whose client was set from login
+          setSelectedClientState(prev => {
+            if (prev && prev.name === 'Loading...') {
+              const match = mapped.find(c => c.id === prev.id)
+              return match || prev
+            }
+            return prev
+          })
+        }
       })
       .catch((err) => { console.error('Failed to fetch clients:', err) })
   }, [])

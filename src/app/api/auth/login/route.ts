@@ -114,7 +114,8 @@ export async function POST(req: NextRequest) {
   //   Legacy users:            custom:role / custom:org_id
   const role   = attrs['custom:custom:role']  || attrs['custom:role']
   const orgId  = attrs['custom:custom:org_id'] || attrs['custom:org_id']
-  const region = attrs['custom:custom:region'] || 'us'
+  const region   = attrs['custom:custom:region'] || 'us'
+  const clientId = attrs['custom:client_id'] || null
 
   if (!role || !orgId) {
     console.error(`[auth/login] User ${emailTrimmed} missing required attributes: role=${role} org=${orgId}`)
@@ -148,5 +149,9 @@ export async function POST(req: NextRequest) {
     path: '/',
   })
 
-  return NextResponse.json({ ok: true, role, name, email: canonicalEmail, country, portalType, orgId })
+  const idToken = authRes.result?.AuthenticationResult?.IdToken
+  if (!idToken) {
+    return NextResponse.json({ error: 'Authentication failed — no token issued' }, { status: 401 })
+  }
+  return NextResponse.json({ ok: true, role, name, email: canonicalEmail, country, portalType, orgId, clientId, idToken })
 }

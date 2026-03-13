@@ -24,9 +24,18 @@ export default function LoginPage() {
       })
       const data = await res.json()
       if (res.ok) {
+        // Clear any previous session data to prevent cross-user leakage
+        const { clearAllSession } = await import('@/lib/auth')
+        clearAllSession()
+        // Always write all keys — never conditionally, so stale values never persist
         localStorage.setItem('cosentus_region', data.country)
         localStorage.setItem('cosentus_portal_type', data.portalType)
         localStorage.setItem('cosentus_role', data.role)
+        localStorage.setItem('cosentus_user_name', data.name || '')
+        localStorage.setItem('cosentus_user_email', data.email || '')
+        localStorage.setItem('cosentus_org_id', data.orgId || '')
+        localStorage.setItem('cosentus_client_id', data.clientId || '')
+        localStorage.setItem('cosentus_auth_token', data.idToken || '')
         window.location.href = '/dashboard'
       } else {
         setError(data.error || 'Invalid email or password')
