@@ -77,7 +77,7 @@ interface DisplayUser {
   name: string
   email: string
   role: string
-  clientId: string
+  clientId?: string
   clients: string
   lastLogin: string
   active: boolean
