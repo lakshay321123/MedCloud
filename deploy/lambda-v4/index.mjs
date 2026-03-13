@@ -9007,6 +9007,9 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     }
 
 
+    // Shared Cognito password policy (min 8 chars + uppercase + lowercase + number)
+    const COGNITO_PWD_POLICY = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
     // ════ Admin: Enable Login for Existing DB-Only User ═════════════════════
     // Allows setting Cognito credentials for users created without a password
     if (path.match(/\/users\/[^/]+\/enable-login/) && method === 'POST') {
@@ -9017,15 +9020,15 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
         return respond(403, { error: 'Only admins can enable login for users' });
       }
       const { password } = body;
-      const pwdPolicy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-      if (!password || !pwdPolicy.test(password)) {
+      if (!password || !COGNITO_PWD_POLICY.test(password)) {
         return respond(400, { error: 'Password must be at least 8 characters with 1 uppercase, 1 lowercase, and 1 number' });
       }
       const targetUserId = pathParams.id;
       const userRow = (await orgQuery(effectiveOrgId, 'SELECT * FROM users WHERE id = $1 AND org_id = $2', [targetUserId, effectiveOrgId])).rows[0];
       if (!userRow) return respond(404, { error: 'User not found' });
       const { email, first_name, last_name, role, client_id: userClientId } = userRow;
-      let createdUsername = null;
+      // Track only truly new Cognito users for rollback — never delete a pre-existing account
+      let cognitoUserCreated = false;
       try {
         try {
           const cognitoResult = await cognitoClient.send(new CognitoCommands.AdminCreateUser({
@@ -9043,12 +9046,23 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
             ],
             MessageAction: 'SUPPRESS',
           }));
-          createdUsername = cognitoResult.User?.Username || email;
+          cognitoUserCreated = true; // only true for brand-new users — not pre-existing
           const sub = cognitoResult.User?.Attributes?.find(a => a.Name === 'sub')?.Value;
           if (sub) await orgQuery(effectiveOrgId, 'UPDATE users SET cognito_sub = $1 WHERE id = $2', [sub, targetUserId]);
         } catch (createErr) {
           if (createErr.name !== 'UsernameExistsException') throw createErr;
-          createdUsername = email;
+          // User already exists in Cognito — fetch their sub so DB stays in sync
+          safeLog('info', `Cognito user already exists for ${email} — fetching sub for DB sync`);
+          try {
+            const existingUser = await cognitoClient.send(new CognitoCommands.AdminGetUser({
+              UserPoolId: COGNITO_USER_POOL_ID,
+              Username: email,
+            }));
+            const existingSub = existingUser.UserAttributes?.find(a => a.Name === 'sub')?.Value;
+            if (existingSub) await orgQuery(effectiveOrgId, 'UPDATE users SET cognito_sub = $1 WHERE id = $2', [existingSub, targetUserId]);
+          } catch (subErr) {
+            safeLog('warn', `Could not fetch existing cognito_sub for ${email}: ${subErr.message}`);
+          }
         }
         await cognitoClient.send(new CognitoCommands.AdminSetUserPassword({
           UserPoolId: COGNITO_USER_POOL_ID,
@@ -9062,13 +9076,22 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
             Username: email,
             GroupName: role || 'coder',
           }));
-        } catch (_) { /* group may already be assigned */ }
+        } catch (groupErr) {
+          // Non-fatal: group may already be assigned — log but continue
+          safeLog('warn', `Group assignment for ${email} to ${role}: ${groupErr.message}`);
+        }
         await auditLog(effectiveOrgId, userId, 'enable_login', 'users', targetUserId, { email, role });
         safeLog('info', `Admin enabled login for existing user: ${email}`);
         return respond(200, { success: true, message: `Login enabled for ${email}` });
       } catch (e) {
-        if (createdUsername && e.name !== 'UsernameExistsException') {
-          try { await cognitoClient.send(new CognitoCommands.AdminDeleteUser({ UserPoolId: COGNITO_USER_POOL_ID, Username: createdUsername })); } catch (_) {}
+        // Only rollback (delete) if WE created the user — never delete a pre-existing Cognito account
+        if (cognitoUserCreated) {
+          try {
+            await cognitoClient.send(new CognitoCommands.AdminDeleteUser({ UserPoolId: COGNITO_USER_POOL_ID, Username: email }));
+            safeLog('info', `Rolled back newly created Cognito user ${email} after enable-login failure`);
+          } catch (rollbackErr) {
+            safeLog('error', `Rollback failed for ${email}: ${rollbackErr.message}`);
+          }
         }
         safeLog('error', `Enable login failed for ${email}: ${e.message}`);
         return respond(500, { error: `Failed to enable login: ${e.message}` });
@@ -9088,8 +9111,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       if (!email || !password || !first_name || !role) {
         return respond(400, { error: 'email, password, first_name, and role are required' });
       }
-      const pwdPolicy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-      if (!pwdPolicy.test(password)) {
+      if (!COGNITO_PWD_POLICY.test(password)) {
         return respond(400, { error: 'Password must be at least 8 characters and contain 1 uppercase, 1 lowercase, and 1 number' });
       }
       const validRoles = ['admin','biller','coder','ar_team','posting_team','provider','client','supervisor','manager','director'];

@@ -60,6 +60,33 @@ const queues = [
   { name:'Fax Queue', items:2, processing:0, failed:1, flush:'15 min ago' },
 ]
 
+// ── Types ─────────────────────────────────────────────────────────────────
+interface ApiUser {
+  id: string
+  first_name?: string
+  last_name?: string
+  email: string
+  role?: string
+  client_id?: string
+  created_at?: string
+  is_active?: boolean
+  cognito_sub?: string | null
+}
+interface DisplayUser {
+  id: string
+  name: string
+  email: string
+  role: string
+  clientId: string
+  clients: string
+  lastLogin: string
+  active: boolean
+}
+
+// Shared Cognito password policy (mirrors backend validation)
+const PWD_POLICY = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+const PWD_POLICY_MSG = 'Password must be at least 8 characters with 1 uppercase, 1 lowercase, and 1 number'
+
 function UsersTab() {
   const { toast } = useToast()
   const [showAdd, setShowAdd] = useState(false)
@@ -69,15 +96,14 @@ function UsersTab() {
   // Clients list — powers the "Assign to Client" dropdowns in Add/Edit User modals
   const { data: clientsResult } = useClients()
   const clientList = (clientsResult?.data || []) as { id: string; name?: string }[]
+  // O(1) lookup map — avoids O(N×M) find() inside map()
+  const clientMap = new Map(clientList.map(c => [c.id, c.name]))
 
-  const apiUsers = (apiUserResult?.data || []).map((u: any) => ({
+  const apiUsers = (apiUserResult?.data || []).map((u: ApiUser): DisplayUser => ({
     name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email,
     email: u.email, role: u.role || 'coder',
     clientId: u.client_id || '',
-    // Show real client name if assigned, otherwise "All Clients"
-    clients: u.client_id
-      ? (clientList.find(c => c.id === u.client_id)?.name || u.client_id.slice(0, 8))
-      : 'All Clients',
+    clients: u.client_id ? (clientMap.get(u.client_id) || u.client_id.slice(0, 8)) : 'All Clients',
     lastLogin: u.created_at?.slice(0, 10) || 'Never',
     active: u.is_active !== false, id: u.id,
   }))
@@ -85,9 +111,9 @@ function UsersTab() {
   const displayUsers = apiUsers.length > 0 ? apiUsers : localUsers
   const [newUser, setNewUser] = useState({ name: '', email: '', role: 'coder', clientId: '', password: '' })
   const [creating, setCreating] = useState(false)
-  const [editingUser, setEditingUser] = useState<any>(null)
+  const [editingUser, setEditingUser] = useState<DisplayUser | null>(null)
   // Enable Login modal state (for existing DB-only users like Dr Jerry)
-  const [enableLoginUser, setEnableLoginUser] = useState<any>(null)
+  const [enableLoginUser, setEnableLoginUser] = useState<DisplayUser | null>(null)
   const [enablePassword, setEnablePassword] = useState('')
   const [enablingLogin, setEnablingLogin] = useState(false)
   const filtered = displayUsers.filter(u => !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()))
@@ -97,9 +123,8 @@ function UsersTab() {
     if (!newUser.email.trim() || !newUser.email.includes('@')) { toast.error('Valid email required'); return }
     if (displayUsers.find(u => u.email === newUser.email)) { toast.error('User with this email already exists'); return }
     if (newUser.password) {
-      const pwdPolicy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
-      if (!pwdPolicy.test(newUser.password)) {
-        toast.error('Password must be at least 8 characters with 1 uppercase, 1 lowercase, and 1 number')
+      if (!PWD_POLICY.test(newUser.password)) {
+        toast.error(PWD_POLICY_MSG)
         return
       }
     }
@@ -125,7 +150,7 @@ function UsersTab() {
         }
       } else {
         // DB-only user (no login credentials)
-        const payload: any = { first_name: firstName, last_name: lastName, email: newUser.email, role: newUser.role, is_active: true }
+        const payload: Record<string, unknown> = { first_name: firstName, last_name: lastName, email: newUser.email, role: newUser.role, is_active: true }
         if (newUser.clientId) payload.client_id = newUser.clientId
         const result = await createUserAPI(payload)
         if (result) { toast.success(`User "${newUser.name}" created (DB only — use Login button to enable sign-in)`); refetchUsers() }
@@ -134,7 +159,11 @@ function UsersTab() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error'
       toast.error(`Failed: ${msg}`)
+      // Do NOT close modal or reset form on failure — user keeps their input to retry
+      setCreating(false)
+      return
     }
+    // Only clear form and close modal on success
     setNewUser({ name: '', email: '', role: 'coder', clientId: '', password: '' })
     setShowAdd(false)
     setCreating(false)
@@ -157,9 +186,8 @@ function UsersTab() {
 
   async function handleEnableLogin() {
     if (!enableLoginUser) return
-    const pwdPolicy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
-    if (!pwdPolicy.test(enablePassword)) {
-      toast.error('Password must be at least 8 characters with 1 uppercase, 1 lowercase, and 1 number')
+    if (!PWD_POLICY.test(enablePassword)) {
+      toast.error(PWD_POLICY_MSG)
       return
     }
     setEnablingLogin(true)
@@ -273,7 +301,7 @@ function UsersTab() {
               </div>
               <div>
                 <label className="text-[13px] text-content-secondary block mb-1">Full Name</label>
-                <input value={editingUser.name} onChange={e=>setEditingUser((u: any)=>u?{...u,name:e.target.value}:u)} className={inputCls}/>
+                <input value={editingUser.name} onChange={e=>setEditingUser(u=>u?{...u,name:e.target.value}:u)} className={inputCls}/>
               </div>
               <div>
                 <label className="text-[13px] text-content-secondary block mb-1">Email</label>
@@ -281,13 +309,13 @@ function UsersTab() {
               </div>
               <div>
                 <label className="text-[13px] text-content-secondary block mb-1">Role</label>
-                <select value={editingUser.role} onChange={e=>setEditingUser((u: any)=>u?{...u,role:e.target.value}:u)} className={inputCls}>
+                <select value={editingUser.role} onChange={e=>setEditingUser(u=>u?{...u,role:e.target.value}:u)} className={inputCls}>
                   {Object.keys(roleColors).map(r=><option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-[13px] text-content-secondary block mb-1">Assigned Client</label>
-                <select value={editingUser.clientId || ''} onChange={e=>setEditingUser((u: any)=>u?{...u,clientId:e.target.value}:u)} className={inputCls}>
+                <select value={editingUser.clientId || ''} onChange={e=>setEditingUser(u=>u?{...u,clientId:e.target.value}:u)} className={inputCls}>
                   <option value="">All Clients (no restriction)</option>
                   {clientList.map(c=><option key={c.id} value={c.id}>{c.name || c.id}</option>)}
                 </select>
@@ -297,7 +325,7 @@ function UsersTab() {
                   try {
                     const { api } = await import('@/lib/api-client')
                     const nameParts = editingUser.name.trim().split(/\s+/)
-                    const payload: any = { first_name: nameParts[0] || '', last_name: nameParts.slice(1).join(' ') || '', role: editingUser.role, is_active: editingUser.active }
+                    const payload: Record<string, unknown> = { first_name: nameParts[0] || '', last_name: nameParts.slice(1).join(' ') || '', role: editingUser.role, is_active: editingUser.active }
                     if (editingUser.clientId) payload.client_id = editingUser.clientId
                     else payload.client_id = null
                     await api.put(`/users/${editingUser.id}`, payload)
@@ -330,9 +358,9 @@ function UsersTab() {
               <div>
                 <label htmlFor="enable-login-password" className="text-[13px] text-content-secondary block mb-1">New Password</label>
                 <input id="enable-login-password" type="password" value={enablePassword} onChange={e=>setEnablePassword(e.target.value)} placeholder="Min 8 chars, 1 upper, 1 lower, 1 number" className={inputCls}/>
-                {enablePassword.length > 0 && enablePassword.length < 8 && <p className="text-[11px] text-brand-deep mt-1">Must be at least 8 characters</p>}
+                {enablePassword.length > 0 && !PWD_POLICY.test(enablePassword) && <p className="text-[11px] text-brand-deep mt-1">{PWD_POLICY_MSG}</p>}
               </div>
-              <button type="button" onClick={handleEnableLogin} disabled={enablingLogin || enablePassword.length < 8}
+              <button type="button" onClick={handleEnableLogin} disabled={enablingLogin || !PWD_POLICY.test(enablePassword)}
                 className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep transition-colors disabled:opacity-50">
                 {enablingLogin ? 'Enabling…' : 'Enable Login & Set Password'}
               </button>
