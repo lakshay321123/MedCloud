@@ -467,7 +467,6 @@ async function runSchemaMigration() {
     "ALTER TABLE clients ADD COLUMN IF NOT EXISTS contact_email VARCHAR(200)",
     "ALTER TABLE clients ADD COLUMN IF NOT EXISTS pricing_model VARCHAR(50) DEFAULT '% Revenue'",
     "ALTER TABLE clients ADD COLUMN IF NOT EXISTS ehr_mode VARCHAR(50) DEFAULT 'external_ehr'",
-    "ALTER TABLE users ADD COLUMN IF NOT EXISTS client_id UUID",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS cognito_sub VARCHAR(200)",
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_cognito_sub ON users(cognito_sub) WHERE cognito_sub IS NOT NULL",
     // Fix: users table needs client_id to scope client/provider logins to their practice
@@ -7235,7 +7234,7 @@ export const handler = async (event) => {
   await runSchemaMigration();
   // Seed demo data ONLY when explicitly requested via admin endpoint.
   // Real clients must start with zero data — auto-seeding on cold start is disabled.
-  // To seed a demo org, call: POST /admin/seed-demo  body: { org_id: "..." }  (admin role required)
+  // To seed a demo org, call: POST /admin/seed-demo  (admin role required, seeds caller's own org)
 
   // ── S3 Event: auto-trigger OCR when document uploaded ──────────────────────
   if (event.Records?.[0]?.eventSource === 'aws:s3') {
@@ -11041,11 +11040,12 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     }
 
     // ════ Admin: Seed Demo Data (explicit, admin-only) ════════════════════════
-    // POST /admin/seed-demo  body: { org_id: "..." } (optional — defaults to first org)
+    // POST /admin/seed-demo — seeds demo data for the caller's own org only.
     // This is the ONLY way to seed demo data. Auto-seed on cold start is disabled.
     if (path.endsWith('/admin/seed-demo') && method === 'POST') {
       if (callerRole !== 'admin') return respond(403, { error: 'Admin only — seed-demo requires admin role' });
-      const targetOrgId = body.org_id || effectiveOrgId;
+      // Always seed the caller's own org — cross-org seeding is not permitted
+      const targetOrgId = effectiveOrgId;
       try {
         await seedDemoData(targetOrgId);
         return respond(200, { ok: true, message: `Demo data seeded for org ${targetOrgId}` });
