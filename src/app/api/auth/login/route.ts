@@ -149,6 +149,9 @@ export async function POST(req: NextRequest) {
     path: '/',
   })
 
-  const idToken = authRes.result?.AuthenticationResult?.IdToken || null
+  const idToken = authRes.result?.AuthenticationResult?.IdToken
+  if (!idToken) {
+    return NextResponse.json({ error: 'Authentication failed — no token issued' }, { status: 401 })
+  }
   return NextResponse.json({ ok: true, role, name, email: canonicalEmail, country, portalType, orgId, clientId, idToken })
 }

@@ -138,10 +138,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const loginClientId = localStorage.getItem('cosentus_client_id')
       if (loginClientId) {
         // Set with placeholder name — resolved once clients API loads (see effect below)
+        const clientRegion = region === 'uae' ? 'uae' : 'us'
         setSelectedClientState({
           id: loginClientId,
           name: 'Loading...',
-          region: 'us',
+          region: clientRegion,
           ehr_mode: 'external_ehr',
         })
       }
