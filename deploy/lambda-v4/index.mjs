@@ -7492,10 +7492,17 @@ export const handler = async (event) => {
             await _tenantConn.query(`SET search_path TO ${_tSchema}, public`);
             // Redirect all pool.query calls to the tenant-scoped connection
             pool.query = (...args) => _tenantConn.query(...args);
-            // pool.connect returns new connections with search_path pre-set
+            // pool.connect returns connections with search_path pre-set.
+            // CRITICAL: wrap release() to reset search_path before returning
+            // to the pool — prevents stale tenant routing on next admin request.
             pool.connect = async () => {
               const c = await _origPoolConnect();
               await c.query(`SET search_path TO ${_tSchema}, public`);
+              const _origRelease = c.release.bind(c);
+              c.release = () => {
+                c.query('SET search_path TO public').catch(() => {});
+                return _origRelease();
+              };
               return c;
             };
             safeLog('info', `[tenant] Routing to schema ${_tSchema} for client ${clientId}`);
@@ -11542,6 +11549,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     pool.query = _origPoolQuery;
     pool.connect = _origPoolConnect;
     if (_tenantConn) {
+      try { await _tenantConn.query('SET search_path TO public'); } catch (_) {}
       try { _tenantConn.release(); } catch (_) {}
       _tenantConn = null;
     }
