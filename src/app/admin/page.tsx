@@ -35,7 +35,7 @@ const actionColors: Record<string,string> = {
   EXPORT: 'bg-brand/10 text-brand',
 }
 
-const users: Array<{ name: string; email: string; role: string; clients: string; lastLogin: string; active: boolean }> = []
+const users: Array<{ name: string; email: string; role: string; clients: string; lastLogin: string; active: boolean; id?: string; clientId?: string }> = []
 
 const orgs: Array<{ name: string; region: string; ehr: string; pricing: string; since: string; active: boolean }> = []
 
