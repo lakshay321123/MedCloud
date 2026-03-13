@@ -174,6 +174,7 @@ function EDIContent() {
           <option value="sent">Sent</option>
           <option value="accepted">Accepted</option>
           <option value="received">Received</option>
+          <option value="processing">Processing</option>
           <option value="rejected">Rejected</option>
           <option value="error">Error</option>
         </select>
@@ -378,7 +379,7 @@ function EDIDetailDrawer({ tx, onClose }: { tx: ApiEDITransaction; onClose: () =
               )}
               {tx.response_at && (
                 <TimelineEntry label="Response Received" time={tx.response_at}
-                  icon={tx.status === 'accepted' || tx.status === 'received' || tx.status === 'processing' ? <CheckCircle2 size={12} className="text-brand-dark" /> : <AlertTriangle size={12} className="text-[#065E76]" />} />
+                  icon={tx.status === 'accepted' || tx.status === 'received' || tx.status === 'processing' || tx.status === 'parsed' ? <CheckCircle2 size={12} className="text-brand-dark" /> : <AlertTriangle size={12} className="text-[#065E76]" />} />
               )}
             </div>
           </div>

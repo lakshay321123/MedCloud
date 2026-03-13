@@ -275,10 +275,12 @@ export default function PaymentPostingPage() {
 
     // Strategy: try loading persisted line items from DB first → fallback to client-side 835 parse
     setLoadingLines(true)
+    let loadedAnyLines = false
     api.get<{ data: Array<any> }>(`/era-files/${selectedEra}/line-items`)
       .then(resp => {
         const dbLines = resp.data || []
         if (dbLines.length > 0) {
+          loadedAnyLines = true
           // Map DB payment rows → frontend LineItem format
           const mapped: LineItem[] = dbLines.map((p: any) => ({
             id: p.id,
@@ -287,7 +289,7 @@ export default function PaymentPostingPage() {
             patientName: p.patient_name || 'Unknown',
             cpt: p.cpt_code || '',
             cptDesc: '',
-            dos: p.dos_from ? new Date(p.dos_from).toLocaleDateString() : '',
+            dos: p.dos_from ? String(p.dos_from).slice(0, 10) : '',
             billed: Number(p.billed_amount) || 0,
             allowed: Number(p.allowed_amount) || 0,
             paid: Number(p.amount_paid) || 0,
@@ -311,6 +313,7 @@ export default function PaymentPostingPage() {
           if (raw.includes('ISA') || raw.includes('BPR') || raw.includes('CLP')) {
             const parsed = parse835(selectedEra, raw)
             if (parsed.lines.length > 0) {
+              loadedAnyLines = true
               setLineItems((prev: LineItem[]) => {
                 const existingIds = new Set(prev.filter(l => l.eraId === selectedEra).map(l => l.id))
                 const newLines = parsed.lines.filter(l => !existingIds.has(l.id))
@@ -324,7 +327,10 @@ export default function PaymentPostingPage() {
         console.error('[payment-posting] Failed to load ERA lines:', error)
         loadedEraIds.current.delete(selectedEra) // allow retry on error
       })
-      .finally(() => setLoadingLines(false))
+      .finally(() => {
+        if (!loadedAnyLines) loadedEraIds.current.delete(selectedEra) // allow retry if no lines loaded
+        setLoadingLines(false)
+      })
   }, [selectedEra, eras]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const totals = useMemo(() => eraLines.reduce((acc, row) => ({
@@ -337,11 +343,6 @@ export default function PaymentPostingPage() {
 
   // Update local state + persist to DB via API (with rollback on failure)
   const setValue = (id: string, field: string, value: number | string) => {
-    // Capture old value before optimistic update (for rollback)
-    const oldRow = lineItems.find(row => row.id === id)
-    const oldValue = oldRow ? (oldRow as any)[field] : value
-    // Optimistic update
-    setLineItems(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row))
     // Map frontend field names → DB column names for persistence
     const dbFieldMap: Record<string, string> = {
       billed: 'billed_amount', allowed: 'allowed_amount', paid: 'amount_paid',
@@ -350,14 +351,23 @@ export default function PaymentPostingPage() {
       patBalance: 'patient_responsibility',
     }
     const dbField = dbFieldMap[field]
-    if (dbField) {
-      api.patch(`/era-lines/${id}`, { [dbField]: value } as any).catch(err => {
-        console.warn('[payment-posting] Failed to save line edit:', err)
-        // Revert optimistic update
-        setLineItems(prev => prev.map(row => row.id === id ? { ...row, [field]: oldValue } : row))
-        toast.error('Failed to save edit — reverted')
-      })
-    }
+    if (!dbField) return // Block edits for unmapped fields (e.g. denied)
+    // Capture old value before optimistic update (for rollback)
+    const oldRow = lineItems.find(row => row.id === id)
+    const oldValue = oldRow ? (oldRow as any)[field] : value
+    // Optimistic update
+    setLineItems(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row))
+    const optimisticValue = value
+    api.patch(`/era-lines/${id}`, { [dbField]: optimisticValue } as any).catch(err => {
+      console.warn('[payment-posting] Failed to save line edit:', err)
+      // Only revert if cell still holds the optimistic value (don't clobber newer edits)
+      setLineItems(prev => prev.map(row =>
+        row.id === id && (row as any)[field] === optimisticValue
+          ? { ...row, [field]: oldValue }
+          : row
+      ))
+      toast.error('Failed to save edit — reverted')
+    })
   }
 
   // Silent denials: ERA lines with denied > 0 that have action 'post' (not yet routed)

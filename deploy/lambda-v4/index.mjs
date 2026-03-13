@@ -8278,7 +8278,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       if (clientId) { linesParams.push(clientId); linesSql += ` AND p.client_id = $${linesParams.length}`; }
       else if (qs._regionClientIds?.length > 0) {
         const ph = qs._regionClientIds.map((_, i) => `$${linesParams.length + 1 + i}`).join(',');
-        linesParams.push(...qs._regionClientIds); linesSql += ` AND (p.client_id IN (${ph}) OR p.client_id IS NULL)`;
+        linesParams.push(...qs._regionClientIds); linesSql += ` AND p.client_id IN (${ph})`;
       }
       linesSql += ' ORDER BY p.created_at';
       let linesR = await orgQuery(effectiveOrgId, linesSql, linesParams);
@@ -8301,6 +8301,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
         }
       }
 
+      await auditLog(effectiveOrgId, userId, 'read_era_line_items', 'payments', pathParams.id, { rows_returned: linesR.rows.length });
       return respond(200, { data: linesR.rows, meta: { total: linesR.rows.length } });
     }
 
@@ -8312,14 +8313,16 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       if (payment.status !== 'line_detail' || !payment.era_file_id) {
         return respond(400, { error: 'Only ERA line-detail payments can be edited here' });
       }
-      // Client-level scoping: if caller is scoped to a client, verify this line belongs to them
-      if (clientId && payment.client_id && payment.client_id !== clientId) {
+      // Client-level scoping: enforce caller's allowed clients
+      const allowedClientIds = clientId ? [clientId] : (qs._regionClientIds || []);
+      if (allowedClientIds.length > 0 && !allowedClientIds.includes(payment.client_id)) {
         return respond(404, { error: 'Line item not found' });
       }
       const allowed = ['billed_amount', 'allowed_amount', 'amount_paid', 'adjustment_amount',
         'cpt_code', 'adj_reason_code', 'posting_notes', 'action', 'patient_responsibility'];
       const safeBody = {};
       for (const k of allowed) { if (body[k] !== undefined) safeBody[k] = body[k]; }
+      if (Object.keys(safeBody).length === 0) return respond(400, { error: 'No valid fields to update' });
       const updated = await update('payments', pathParams.id, safeBody, effectiveOrgId);
       await auditLog(effectiveOrgId, userId, 'edit_era_line', 'payments', pathParams.id, safeBody);
       return respond(200, updated);

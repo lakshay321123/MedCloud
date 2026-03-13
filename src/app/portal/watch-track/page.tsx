@@ -33,7 +33,7 @@ export default function WatchTrackPage() {
   const apiClaims = (Array.isArray(apiResult) ? apiResult : apiResult?.data || []).map((c: any) => ({
     id: c.claim_number || c.id, patientName: c.patient_name || '', payer: c.payer_name || '',
     billed: Number(c.total_charges || 0), paid: Number(c.paid_amount || 0), status: c.status || '',
-    dos: c.dos_from ? new Date(c.dos_from).toLocaleDateString(country === 'uae' ? 'en-AE' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—', age: c.dos_from ? Math.ceil((Date.now() - new Date(c.dos_from).getTime()) / 86400000) : 0,
+    dos: c.dos_from ? String(c.dos_from).slice(0, 10) : '—', age: c.dos_from ? Math.ceil((Date.now() - new Date(c.dos_from + 'T12:00:00').getTime()) / 86400000) : 0,
     cptCodes: [], icdCodes: [], clientId: c.client_id || '',
   }))
 
