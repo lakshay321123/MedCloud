@@ -63,6 +63,8 @@ export async function POST(req: NextRequest) {
     })
 
     // FIX 2: Fail if required Cognito attributes missing — never default to 'admin' (Gemini: security-high)
+    // Attributes use double-prefix custom:custom:* — this matches ALL existing Cognito users
+    // (admin, maria, james, lisa, david, emily, drsmith, dr.m, Dr@cosentus.com)
     const role   = attrs['custom:custom:role']
     const orgId  = attrs['custom:custom:org_id']
     const region = attrs['custom:custom:region']
@@ -72,13 +74,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Account configuration error. Please contact support.' }, { status: 500 })
     }
 
-    const name = attrs['name'] || username
-    const sub  = attrs['sub']  || ''
+    const name    = attrs['name'] || username
+    const sub     = attrs['sub']  || ''
+    const country = region === 'uae' ? 'uae' : 'usa'
 
     // Derive portalType from role — facility roles get the clinic portal
     const facilityRoles = ['provider', 'client']
     const portalType = facilityRoles.includes(role) ? 'facility' : 'backoffice'
-    const country    = region === 'uae' ? 'uae' : 'usa'
 
     // FIX 3: Store only non-sensitive session data in cookie; drop tokens from cookie (Gemini: security-high)
     // accessToken / refreshToken are NOT stored in the cookie to prevent exposure
