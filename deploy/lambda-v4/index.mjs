@@ -1530,6 +1530,7 @@ const respond = (code, body) => ({
 });
 
 const uuid = () => crypto.randomUUID();
+const NIL_UUID = '00000000-0000-0000-0000-000000000000'; // System/background operations (audit log)
 
 // ─── RLS-Aware Query Wrapper ────────────────────────────────────────────────────
 // Activates PostgreSQL Row Level Security by setting app.org_id for the connection.
@@ -1831,7 +1832,7 @@ async function auditLog(orgId, userId, action, entityType, entityId, details = {
     await pool.query(
       `INSERT INTO audit_log (id, org_id, user_id, action, entity_type, entity_id, details, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-      [uuid(), orgId, userId || '00000000-0000-0000-0000-000000000000', action, entityType, entityId, JSON.stringify(details)]
+      [uuid(), orgId, userId || NIL_UUID, action, entityType, entityId, JSON.stringify(details)]
     );
   } catch (e) { console.error('Audit log error:', e.message); }
 }
@@ -2858,21 +2859,35 @@ Respond ONLY with valid JSON (no markdown, no backticks):
     const aiText = await callAI(prompt, { max_tokens: 4096, timeoutMs: 120000 });
     if (aiText) {
       let cleaned = aiText.replace(/```json|```/g, '').trim();
-      // Repair truncated JSON: close any open arrays/brackets
+      // Repair truncated JSON: use stack-based approach to close brackets in correct nesting order
       try { suggestion = JSON.parse(cleaned); } catch (parseErr) {
-        // Try to repair truncated JSON by closing open brackets
-        let repaired = cleaned;
-        const opens = (repaired.match(/\[/g) || []).length;
-        const closes = (repaired.match(/\]/g) || []).length;
-        const openBraces = (repaired.match(/\{/g) || []).length;
-        const closeBraces = (repaired.match(/\}/g) || []).length;
-        // Trim trailing comma if present
-        repaired = repaired.replace(/,\s*$/, '');
-        // Close unclosed arrays and objects
-        for (let i = 0; i < opens - closes; i++) repaired += ']';
-        for (let i = 0; i < openBraces - closeBraces; i++) repaired += '}';
-        try { suggestion = JSON.parse(repaired); safeLog('info', 'Repaired truncated Bedrock JSON successfully'); }
-        catch (e2) { safeLog('warn', `JSON repair failed: ${e2.message}`); suggestion = null; }
+        let repaired = cleaned.replace(/,\s*$/, ''); // trim trailing comma
+        // Walk chars to track nesting order
+        const stack = [];
+        let inString = false, escaped = false;
+        for (const ch of repaired) {
+          if (escaped) { escaped = false; continue; }
+          if (ch === '\\') { escaped = true; continue; }
+          if (ch === '"') { inString = !inString; continue; }
+          if (inString) continue;
+          if (ch === '{' || ch === '[') stack.push(ch);
+          else if (ch === '}' || ch === ']') stack.pop();
+        }
+        // Close in reverse nesting order
+        while (stack.length > 0) {
+          const open = stack.pop();
+          repaired += open === '{' ? '}' : ']';
+        }
+        try {
+          suggestion = JSON.parse(repaired);
+          // Validate required coding fields exist — truncation may produce valid JSON missing data
+          if (!suggestion.suggested_icd?.length && !suggestion.suggested_cpt?.length) {
+            safeLog('warn', 'Repaired JSON missing required coding fields — discarding');
+            suggestion = null;
+          } else {
+            safeLog('info', `Repaired truncated Bedrock JSON: ${suggestion.suggested_icd?.length || 0} ICD + ${suggestion.suggested_cpt?.length || 0} CPT`);
+          }
+        } catch (e2) { safeLog('warn', `JSON repair failed: ${e2.message}`); suggestion = null; }
       }
     }
   } catch (e) {
