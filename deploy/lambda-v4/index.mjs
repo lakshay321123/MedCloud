@@ -118,6 +118,31 @@ try {
 // Cognito SDK for admin user creation (creates login credentials from backend)
 let cognitoClient = null, CognitoCommands = null;
 const COGNITO_USER_POOL_ID = process.env.COGNITO_USER_POOL_ID;
+
+// ─── Tenant Schema Support ─────────────────────────────────────────────────────
+// Each client gets their own PostgreSQL schema (tenant_101, tenant_102, etc.)
+// All patient/clinical/financial tables are cloned per tenant.
+// Admin/staff users query public schema (all data). Provider/client users
+// automatically query their tenant schema via SET search_path.
+// Shared reference tables (organizations, clients, users, payers, providers, etc.)
+// stay in public schema and are accessible via search_path fallback.
+function clientIdToSchema(cid) {
+  if (!cid) return null;
+  const n = parseInt(cid.slice(-3));
+  return isNaN(n) ? null : `tenant_${n}`;
+}
+
+// Tables cloned into each tenant schema (client-specific data)
+const TENANT_TABLES = [
+  'patients', 'claims', 'claim_lines', 'claim_diagnoses', 'payments',
+  'encounters', 'appointments', 'documents', 'messages', 'eligibility_checks',
+  'denials', 'appeals', 'coding_queue', 'soap_notes', 'tasks', 'ar_call_log',
+  'edi_transactions', 'era_files', 'charge_captures', 'ai_coding_suggestions',
+  'scrub_results', 'underpayments', 'credit_balances', 'notifications',
+  'patient_statements', 'coding_feedback', 'coding_qa_audits', 'fee_schedules',
+  'contracts', 'payer_config', 'credentialing', 'prior_auth_requests',
+  'write_off_requests', 'client_onboarding', 'note_addendums', 'invoices'
+];
 if (!COGNITO_USER_POOL_ID) {
   console.error('FATAL: COGNITO_USER_POOL_ID env var is not set — /users/create-with-auth will be unavailable');
 }
@@ -7313,6 +7338,11 @@ export const handler = async (event) => {
     }
   }
 
+  // ── Tenant schema connection state (declared here so finally block can access) ──
+  let _tenantConn = null;
+  const _origPoolQuery = pool.query.bind(pool);
+  const _origPoolConnect = pool.connect.bind(pool);
+
   try {
     const method = event.httpMethod || event.requestContext?.http?.method || 'GET';
     const path = event.path || event.rawPath || event.resource || '';
@@ -7394,6 +7424,38 @@ export const handler = async (event) => {
         if (part.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
           pathParams.id = part;
           break;
+        }
+      }
+    }
+
+    // ─── Tenant Schema Routing ──────────────────────────────────────────────────
+    // For facility users (provider/client with client_id), route ALL database
+    // queries to their tenant schema. Admin/staff users stay on public schema.
+    // This monkey-patches pool.query and pool.connect for the duration of this
+    // request. Lambda is single-concurrent per instance, so this is safe.
+    // The finally block ALWAYS restores the originals before audit logging.
+    if (clientId) {
+      const _tSchema = clientIdToSchema(clientId);
+      if (_tSchema) {
+        try {
+          const _schemaCheck = await _origPoolQuery(
+            "SELECT 1 FROM information_schema.schemata WHERE schema_name = $1", [_tSchema]
+          );
+          if (_schemaCheck.rows.length > 0) {
+            _tenantConn = await _origPoolConnect();
+            await _tenantConn.query(`SET search_path TO ${_tSchema}, public`);
+            // Redirect all pool.query calls to the tenant-scoped connection
+            pool.query = (...args) => _tenantConn.query(...args);
+            // pool.connect returns new connections with search_path pre-set
+            pool.connect = async () => {
+              const c = await _origPoolConnect();
+              await c.query(`SET search_path TO ${_tSchema}, public`);
+              return c;
+            };
+            safeLog('info', `[tenant] Routing to schema ${_tSchema} for client ${clientId}`);
+          }
+        } catch (e) {
+          safeLog('warn', '[tenant] Schema routing failed, using public:', e.message);
         }
       }
     }
@@ -11222,6 +11284,76 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       }
     }
 
+    // ════ Admin: Provision Tenant Schemas ══════════════════════════════════════
+    // POST /admin/provision-schemas — creates per-client PostgreSQL schemas
+    // Each client gets tenant_NNN schema with cloned tables + migrated data.
+    // Admin/staff continue using public schema. Provider/client users get
+    // routed to their schema automatically via SET search_path (see above).
+    if (path.includes('/admin/provision-schemas') && method === 'POST') {
+      if (callerRole !== 'admin') return respond(403, { error: 'Admin only' });
+      const results = {};
+      try {
+        // Get all clients
+        const clientsR = await _origPoolQuery(
+          'SELECT id, name FROM clients WHERE org_id = $1 ORDER BY id', [effectiveOrgId]
+        );
+        for (const client of clientsR.rows) {
+          const schema = clientIdToSchema(client.id);
+          if (!schema) { results[client.name] = 'skipped — invalid id'; continue; }
+
+          // Create schema
+          await _origPoolQuery(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
+
+          // Clone each tenant table from public schema
+          let tablesCreated = 0, rowsMigrated = 0;
+          for (const tbl of TENANT_TABLES) {
+            // Check if table exists in public
+            const exists = await _origPoolQuery(
+              `SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name=$1`, [tbl]
+            );
+            if (exists.rows.length === 0) continue;
+
+            // Create table in tenant schema (clone structure)
+            await _origPoolQuery(
+              `CREATE TABLE IF NOT EXISTS ${schema}.${tbl} (LIKE public.${tbl} INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES)`
+            ).catch(e => {
+              // If LIKE fails (FK refs), create minimal clone
+              safeLog('warn', `[provision] LIKE failed for ${schema}.${tbl}: ${e.message}, trying SELECT INTO`);
+              return _origPoolQuery(`CREATE TABLE IF NOT EXISTS ${schema}.${tbl} AS SELECT * FROM public.${tbl} WHERE 1=0`);
+            });
+            tablesCreated++;
+
+            // Migrate data for this client
+            const countR = await _origPoolQuery(
+              `SELECT COUNT(*)::int as c FROM public.${tbl} WHERE client_id = $1`, [client.id]
+            ).catch(() => ({ rows: [{ c: 0 }] }));
+            const rowCount = countR.rows[0]?.c || 0;
+
+            if (rowCount > 0) {
+              // Insert rows that don't already exist in tenant schema
+              await _origPoolQuery(
+                `INSERT INTO ${schema}.${tbl} SELECT * FROM public.${tbl} WHERE client_id = $1
+                 ON CONFLICT DO NOTHING`, [client.id]
+              ).catch(async (e) => {
+                // If ON CONFLICT fails (no PK), try delete+insert
+                safeLog('warn', `[provision] ON CONFLICT failed for ${schema}.${tbl}: ${e.message}, trying truncate+insert`);
+                await _origPoolQuery(`DELETE FROM ${schema}.${tbl}`).catch(() => {});
+                return _origPoolQuery(
+                  `INSERT INTO ${schema}.${tbl} SELECT * FROM public.${tbl} WHERE client_id = $1`, [client.id]
+                );
+              });
+              rowsMigrated += rowCount;
+            }
+          }
+          results[client.name] = { schema, tables: tablesCreated, rows_migrated: rowsMigrated };
+        }
+        return respond(200, { ok: true, schemas_provisioned: results });
+      } catch (e) {
+        safeLog('error', 'provision-schemas failed:', e.message, e.stack);
+        return respond(500, { error: e.message, partial_results: results });
+      }
+    }
+
     // ════ BAA Tracking ═══════════════════════════════════════════════════
     if (path.includes('/baa-tracking')) {
       if (method === 'GET') {
@@ -11360,6 +11492,14 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     console.error('Handler error:', err);
     return respond(500, { error: err.message });
   } finally {
+    // ── Tenant cleanup: restore pool.query/pool.connect before audit logging ──
+    pool.query = _origPoolQuery;
+    pool.connect = _origPoolConnect;
+    if (_tenantConn) {
+      try { _tenantConn.release(); } catch (_) {}
+      _tenantConn = null;
+    }
+
     // ── HIPAA Audit Middleware — log every request ─────────────────────────
     // This covers the missing read-event audit logging for PHI access
     try {
