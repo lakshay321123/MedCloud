@@ -32,7 +32,7 @@ async function tryAuth(
   username: string,
   password: string
 ): Promise<
-  | { result: Awaited<ReturnType<typeof cognito.send<InitiateAuthCommand>>>; usedUsername: string }
+  | { result: { AuthenticationResult?: { AccessToken?: string; IdToken?: string; RefreshToken?: string } }; usedUsername: string }
   | { errorName: string; errorMsg: string }
 > {
   try {
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
   const usedUsername = authRes.usedUsername
 
   // Fetch user attributes using the access token
-  let userRes: Awaited<ReturnType<typeof cognito.send<GetUserCommand>>>
+  let userRes: { UserAttributes?: Array<{ Name?: string; Value?: string }> }
   try {
     userRes = await cognito.send(new GetUserCommand({
       AccessToken: authRes.result.AuthenticationResult.AccessToken,
