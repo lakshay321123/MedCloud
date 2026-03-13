@@ -98,16 +98,16 @@ async function verifyJWT(token) {
 // ─── Role → Permission Mapping ──────────────────────────────────────────────────
 // Maps Cognito group name to internal role string
 const GROUP_ROLE_MAP = {
-  'medcloud-admin':      'admin',
-  'medcloud-director':   'director',
-  'medcloud-supervisor': 'supervisor',
-  'medcloud-manager':    'manager',
-  'medcloud-coder':      'coder',
-  'medcloud-biller':     'biller',
-  'medcloud-ar-team':    'ar_team',
-  'medcloud-posting':    'posting_team',
-  'medcloud-provider':   'provider',
-  'medcloud-client':     'client',
+  'admin':        'admin',
+  'director':     'director',
+  'supervisor':   'supervisor',
+  'manager':      'manager',
+  'coder':        'coder',
+  'biller':       'biller',
+  'ar_team':      'ar_team',
+  'posting_team': 'posting_team',
+  'provider':     'provider',
+  'client':       'client',
 };
 
 // ─── IAM Policy Generator ───────────────────────────────────────────────────────
