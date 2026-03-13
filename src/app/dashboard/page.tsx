@@ -118,7 +118,7 @@ function ExecutiveDashboard() {
   return (
     <div className="space-y-6 stagger-children">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
-        <KPICard label={t("dashboard","totalRevenueMTD")} value={loading ? '…' : totalCollectionsMtd > 0 ? `$${(totalCollectionsMtd / 1000000).toFixed(1)}M` : `$${(totalBilled / 1000).toFixed(0)}K`} icon={<DollarSign size={20} />} />
+        <KPICard label={t("dashboard","totalRevenueMTD")} value={loading ? '…' : (() => { const v = totalBilled || totalCollectionsMtd; if (v >= 1000000) return `$${(v/1000000).toFixed(1)}M`; if (v >= 1000) return `$${(v/1000).toFixed(0)}K`; return `$${v.toFixed(0)}`; })()} icon={<DollarSign size={20} />} />
         <KPICard label={t("dashboard","claimsSubmitted")} value={loading ? '…' : totalClaims.toLocaleString()} icon={<FileText size={20} />} />
         <KPICard label={t("dashboard","denialRate")} value={loading ? '…' : `${denialRate}%`} icon={<AlertTriangle size={20} />} />
         <KPICard label={t("dashboard","daysInAR")} value={loading ? '…' : String(avgDaysInAR)} icon={<Clock size={20} />} />
