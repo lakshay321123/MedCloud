@@ -6434,7 +6434,7 @@ async function getMessages(orgId, userId, clientId, qs) {
   let q = 'SELECT m.*, u.email as sender_email FROM messages m LEFT JOIN users u ON m.sender_id = u.id WHERE m.org_id = $1';
   const p = [orgId];
   // ── Client isolation: facility users only see their practice's messages ──
-  if (clientId) { p.push(clientId); q += ` AND (m.client_id = $${p.length} OR m.client_id IS NULL)`; }
+  if (clientId) { p.push(clientId); q += ` AND m.client_id = $${p.length}`; }
   if (qs.entity_type && qs.entity_id) {
     q += ` AND m.entity_type = $${p.length + 1} AND m.entity_id = $${p.length + 2}`;
     p.push(qs.entity_type, qs.entity_id);
@@ -6454,7 +6454,7 @@ async function getMessages(orgId, userId, clientId, qs) {
     try {
       let unreadWhere = 'WHERE m.org_id = $1';
       const unreadP = [orgId];
-      if (clientId) { unreadP.push(clientId); unreadWhere += ` AND (m.client_id = $${unreadP.length} OR m.client_id IS NULL)`; }
+      if (clientId) { unreadP.push(clientId); unreadWhere += ` AND m.client_id = $${unreadP.length}`; }
       if (qs.entity_type && qs.entity_id) { unreadWhere += ` AND m.entity_type = $${unreadP.length + 1} AND m.entity_id = $${unreadP.length + 2}`; unreadP.push(qs.entity_type, qs.entity_id); }
       else if (qs.entity_type) { unreadWhere += ` AND m.entity_type = $${unreadP.length + 1}`; unreadP.push(qs.entity_type); }
       if (qs.parent_id && qs.parent_id !== 'null') { unreadWhere += ` AND m.parent_id = $${unreadP.length + 1}`; unreadP.push(qs.parent_id); }
@@ -7420,7 +7420,7 @@ export const handler = async (event) => {
           LEFT JOIN patients p ON d.patient_id = p.id
           WHERE d.org_id = $1`;
         const params = [effectiveOrgId];
-        if (clientId) { params.push(clientId); q += ` AND (d.client_id = $${params.length} OR d.client_id IS NULL)`; }
+        if (clientId) { params.push(clientId); q += ` AND d.client_id = $${params.length}`; }
         if (qs.patient_id) { params.push(qs.patient_id); q += ` AND d.patient_id = $${params.length}`; }
         q += ' ORDER BY d.created_at DESC LIMIT 500';
         const rows = (await orgQuery(effectiveOrgId, q, params)).rows;
@@ -8720,7 +8720,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
                  LEFT JOIN patients p ON ec.patient_id = p.id
                  WHERE ec.org_id = $1`;
         const params = [effectiveOrgId];
-        if (clientId) { params.push(clientId); q += ` AND (ec.client_id = $${params.length} OR ec.client_id IS NULL)`; }
+        if (clientId) { params.push(clientId); q += ` AND ec.client_id = $${params.length}`; }
         q += ' ORDER BY ec.created_at DESC';
         const rows = (await pool.query(q, params)).rows;
         return respond(200, { data: rows, meta: { total: rows.length } });
