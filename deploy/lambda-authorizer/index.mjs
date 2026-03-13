@@ -137,32 +137,48 @@ export const handler = async (event) => {
   try {
     const payload = await verifyJWT(token);
 
-    // Extract custom Cognito attributes
-    // Custom attributes use prefix 'custom:' in Cognito user pool
-    const sub         = payload.sub;
-    const email       = payload.email || payload['cognito:username'] || sub;
-    const orgId       = payload['custom:org_id']     || 'a0000000-0000-0000-0000-000000000001';
-    const clientId    = payload['custom:client_id']  || null;
-    const portalType  = payload['custom:portal_type'] || 'backoffice';
+    const sub   = payload.sub;
+    const email = payload.email || payload['cognito:username'] || sub;
 
-    // Determine role from Cognito groups (prefer explicit custom:role attribute)
-    let role = payload['custom:role'] || null;
+    // ── Dual-key claim extraction ─────────────────────────────────────────────
+    // Users created via Admin panel (PR #108+) carry custom:custom:* attributes.
+    // Legacy/manual Cognito users carry custom:* attributes.
+    // We check the NEW key first, fall back to OLD key — zero-downtime migration.
+    // custom:client_id stays single-prefix (not used in AdminCreateUser attrs).
+    const orgId    = payload['custom:custom:org_id']  || payload['custom:org_id']    || null;
+    const clientId = payload['custom:client_id']                                      || null;
+    const region   = payload['custom:custom:region']  || null; // new users only
+
+    // Role: new-style custom:custom:role → old-style custom:role → Cognito groups
+    let role = payload['custom:custom:role'] || payload['custom:role'] || null;
     if (!role) {
       const groups = payload['cognito:groups'] || [];
       for (const g of groups) {
         if (GROUP_ROLE_MAP[g]) { role = GROUP_ROLE_MAP[g]; break; }
       }
     }
-    role = role || 'unknown';
+    role = role || null;
+
+    // Fail closed — deny if org or role cannot be determined
+    if (!orgId || !role) {
+      console.error(`[Authorizer] Missing required claims — orgId=${orgId} role=${role} sub=${sub}`);
+      return generatePolicy('unknown', 'Deny', event.methodArn, {});
+    }
+
+    // Derive portalType: explicit attribute → fallback from role
+    const facilityRoles = new Set(['provider', 'client']);
+    const portalType = payload['custom:portal_type']
+      || (facilityRoles.has(role) ? 'facility' : 'backoffice');
 
     // Build authorizer context — available in Lambda as event.requestContext.authorizer
     const context = {
       user_id:      sub,
       email,
       org_id:       orgId,
-      client_id:    clientId    || '',
+      client_id:    clientId   || '',
       role,
       portal_type:  portalType,
+      region:       region     || 'us',
       token_use:    payload.token_use,
     };
 
