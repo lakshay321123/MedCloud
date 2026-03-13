@@ -1500,15 +1500,16 @@ export default function CodingPage() {
                             </div>
                             {expanded[key] && code.reasoning && <p className="mt-1 text-[12px] italic text-content-secondary pl-6">{code.reasoning}</p>}
                             {removingCode === key && (
-                              <div className="mt-2 pl-6 space-y-1">
+                              <div className="mt-2 pl-6 space-y-1 relative z-10">
                                 <p className="text-[11px] text-content-tertiary font-semibold">Reason for removal:</p>
                                 {removeReasons.map(reason => (
-                                  <button key={reason} onClick={() => {
+                                  <button type="button" key={reason} onClick={(e) => {
+                                    e.stopPropagation()
                                     setCodeOverrides(p => ({ ...p, [key]: { action: 'removed', reason, originalCode: code.code } }))
                                     setSelectedCodes(p => { const n = { ...p }; delete n[key]; return n })
                                     setRemovingCode(null)
                                     toast.success(`${code.code} removed — ${reason}`)
-                                  }} className="block w-full text-left text-[12px] px-2 py-1 rounded hover:bg-surface-elevated text-content-secondary hover:text-content-primary">
+                                  }} className="block w-full text-left text-[12px] px-3 py-1.5 rounded border border-separator cursor-pointer hover:bg-brand/5 hover:border-brand/30 text-content-secondary hover:text-content-primary transition-colors">
                                     {reason}
                                   </button>
                                 ))}
@@ -1598,15 +1599,16 @@ export default function CodingPage() {
                             </div>
                             {expanded[key] && code.reasoning && <p className="mt-1 text-[12px] italic text-content-secondary pl-6">{code.reasoning}</p>}
                             {removingCode === key && (
-                              <div className="mt-2 pl-6 space-y-1">
+                              <div className="mt-2 pl-6 space-y-1 relative z-10">
                                 <p className="text-[11px] text-content-tertiary font-semibold">Reason for removal:</p>
                                 {removeReasons.map(reason => (
-                                  <button key={reason} onClick={() => {
+                                  <button type="button" key={reason} onClick={(e) => {
+                                    e.stopPropagation()
                                     setCodeOverrides(p => ({ ...p, [key]: { action: 'removed', reason, originalCode: code.code } }))
                                     setSelectedCodes(p => { const n = { ...p }; delete n[key]; return n })
                                     setRemovingCode(null)
                                     toast.success(`${code.code} removed — ${reason}`)
-                                  }} className="block w-full text-left text-[12px] px-2 py-1 rounded hover:bg-surface-elevated text-content-secondary hover:text-content-primary">
+                                  }} className="block w-full text-left text-[12px] px-3 py-1.5 rounded border border-separator cursor-pointer hover:bg-brand/5 hover:border-brand/30 text-content-secondary hover:text-content-primary transition-colors">
                                     {reason}
                                   </button>
                                 ))}

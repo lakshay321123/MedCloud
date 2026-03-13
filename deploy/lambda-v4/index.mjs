@@ -444,6 +444,7 @@ async function runSchemaMigration() {
     "ALTER TABLE soap_notes ALTER COLUMN provider_id DROP NOT NULL",
     "ALTER TABLE soap_notes ALTER COLUMN encounter_id DROP NOT NULL",
     "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS target_role VARCHAR(50)",
+    "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
   ];
   for (const sql of colFixes) {
     try { await pool.query(sql); } catch (e) { if (e.code !== '42701' && e.code !== '42704') safeLog('warn', `colFix: ${e.message}`); }
@@ -1529,6 +1530,7 @@ const respond = (code, body) => ({
 });
 
 const uuid = () => crypto.randomUUID();
+const NIL_UUID = '00000000-0000-0000-0000-000000000000'; // System/background operations (audit log)
 
 // ─── RLS-Aware Query Wrapper ────────────────────────────────────────────────────
 // Activates PostgreSQL Row Level Security by setting app.org_id for the connection.
@@ -1830,7 +1832,7 @@ async function auditLog(orgId, userId, action, entityType, entityId, details = {
     await pool.query(
       `INSERT INTO audit_log (id, org_id, user_id, action, entity_type, entity_id, details, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-      [uuid(), orgId, userId || 'system', action, entityType, entityId, JSON.stringify(details)]
+      [uuid(), orgId, userId || NIL_UUID, action, entityType, entityId, JSON.stringify(details)]
     );
   } catch (e) { console.error('Audit log error:', e.message); }
 }
@@ -2854,9 +2856,39 @@ Respond ONLY with valid JSON (no markdown, no backticks):
 
   // Use callAI() — calls Bedrock for AI suggestions; returns null on failure (no external fallback)
   try {
-    const aiText = await callAI(prompt, { max_tokens: 2048, timeoutMs: 120000 });
+    const aiText = await callAI(prompt, { max_tokens: 4096, timeoutMs: 120000 });
     if (aiText) {
-      suggestion = JSON.parse(aiText.replace(/```json|```/g, '').trim());
+      let cleaned = aiText.replace(/```json|```/g, '').trim();
+      // Repair truncated JSON: use stack-based approach to close brackets in correct nesting order
+      try { suggestion = JSON.parse(cleaned); } catch (parseErr) {
+        let repaired = cleaned.replace(/,\s*$/, ''); // trim trailing comma
+        // Walk chars to track nesting order
+        const stack = [];
+        let inString = false, escaped = false;
+        for (const ch of repaired) {
+          if (escaped) { escaped = false; continue; }
+          if (ch === '\\') { escaped = true; continue; }
+          if (ch === '"') { inString = !inString; continue; }
+          if (inString) continue;
+          if (ch === '{' || ch === '[') stack.push(ch);
+          else if (ch === '}' || ch === ']') stack.pop();
+        }
+        // Close in reverse nesting order
+        while (stack.length > 0) {
+          const open = stack.pop();
+          repaired += open === '{' ? '}' : ']';
+        }
+        try {
+          suggestion = JSON.parse(repaired);
+          // Validate required coding fields exist — truncation may produce valid JSON missing data
+          if (!suggestion.suggested_icd?.length && !suggestion.suggested_cpt?.length) {
+            safeLog('warn', 'Repaired JSON missing required coding fields — discarding');
+            suggestion = null;
+          } else {
+            safeLog('info', `Repaired truncated Bedrock JSON: ${suggestion.suggested_icd?.length || 0} ICD + ${suggestion.suggested_cpt?.length || 0} CPT`);
+          }
+        } catch (e2) { safeLog('warn', `JSON repair failed: ${e2.message}`); suggestion = null; }
+      }
     }
   } catch (e) {
     safeLog('warn', 'AI coding call failed, using smart mock:', e.message);
