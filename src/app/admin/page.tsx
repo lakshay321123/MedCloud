@@ -73,7 +73,7 @@ interface ApiUser {
   cognito_sub?: string | null
 }
 interface DisplayUser {
-  id: string
+  id?: string
   name: string
   email: string
   role: string
