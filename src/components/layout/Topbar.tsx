@@ -94,7 +94,8 @@ export default function Topbar() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  const availableRoles = portalType === 'facility' ? facilityRoles : portalType === 'backoffice' ? backofficeRoles : [...backofficeRoles, ...facilityRoles]
+  // portalType is null until hydration — show no roles during SSR to prevent flashing wrong options
+  const availableRoles = portalType === 'facility' ? facilityRoles : portalType === 'backoffice' ? backofficeRoles : []
   const roleOptions: DropdownOption[] = availableRoles.map(r => ({ value: r, label: roleDisplayLabels[r] }))
 
   const clientOptions: DropdownOption[] = [
@@ -107,6 +108,10 @@ export default function Topbar() {
     localStorage.removeItem('cosentus_region')
     localStorage.removeItem('cosentus_portal_type')
     localStorage.removeItem('cosentus_role')
+    localStorage.removeItem('cosentus_user_name')
+    localStorage.removeItem('cosentus_org_id')
+    localStorage.removeItem('cosentus_user_email')
+    localStorage.removeItem('cosentus_selected_client')
     window.location.href = '/'
   }
 
@@ -274,7 +279,8 @@ export default function Topbar() {
                   <p className="text-[11px] text-gray-400 mt-0.5 capitalize">{roleLabel}</p>
                 </div>
 
-                {/* Role switcher */}
+                {/* Role switcher — only for backoffice staff, not facility users */}
+                {portalType !== 'facility' && (
                 <div className="px-4 py-3 border-b border-separator">
                   <p className="text-[11px] font-semibold text-gray-400 tracking-wider mb-2">Switch Role</p>
                   <div className="flex flex-col gap-1">
@@ -291,8 +297,10 @@ export default function Topbar() {
                     ))}
                   </div>
                 </div>
+                )}
 
-                {/* Country toggle */}
+                {/* Region toggle — only for backoffice staff, not facility users */}
+                {portalType !== 'facility' && (
                 <div className="px-4 py-3 border-b border-separator">
                   <p className="text-[11px] font-semibold text-gray-400 tracking-wider mb-2">Region</p>
                   <div className="flex gap-2">
@@ -314,6 +322,7 @@ export default function Topbar() {
                     </button>
                   </div>
                 </div>
+                )}
 
                 {/* Menu items */}
                 <div className="py-1">

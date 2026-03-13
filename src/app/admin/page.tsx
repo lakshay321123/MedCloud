@@ -372,19 +372,79 @@ function UsersTab() {
   )
 }
 
+interface ApiOrg {
+  id: string
+  name: string
+  region: string
+  ehr_mode?: string
+  contact_name?: string
+  contact_email?: string
+  pricing_model?: string
+  created_at?: string
+  is_active?: boolean
+}
+
 function OrgsTab() {
   const { toast } = useToast()
   const { data: clientsResult, refetch: refetchClients } = useClients()
   const [showAddOrg, setShowAddOrg] = useState(false)
+  const [editingOrg, setEditingOrg] = useState<ApiOrg | null>(null)
   const [orgData, setOrgData] = useState({
     name: '', contact: '', email: '', region: 'us', pricing: '% Revenue'
   })
-  const apiOrgs = (clientsResult?.data || []).map((c: any) => ({
-    name: c.name, region: c.region === 'uae' ? '🇦🇪 UAE' : '🇺🇸 US',
-    ehr: c.ehr_mode === 'medcloud_ehr' ? 'MedCloud EHR' : 'External EHR',
-    pricing: '% Revenue', since: c.created_at?.slice(0, 10) || '—', active: true,
+  const [editForm, setEditForm] = useState({
+    name: '', contact_name: '', contact_email: '', region: 'us', ehr_mode: 'external_ehr', pricing_model: '% Revenue'
+  })
+  const [saving, setSaving] = useState(false)
+
+  const apiOrgs: ApiOrg[] = (clientsResult?.data || []).map((c: any) => ({
+    id: c.id, name: c.name, region: c.region,
+    ehr_mode: c.ehr_mode || 'external_ehr',
+    contact_name: c.contact_name || '',
+    contact_email: c.contact_email || '',
+    pricing_model: c.pricing_model || '% Revenue',
+    created_at: c.created_at?.slice(0, 10) || '—',
+    is_active: c.is_active !== false,
   }))
-  const displayOrgs = apiOrgs.length > 0 ? apiOrgs : orgs
+  const displayOrgs = apiOrgs.length > 0 ? apiOrgs : (orgs as any[]).map((o: any) => ({
+    id: o.name, name: o.name, region: o.region === '🇦🇪 UAE' ? 'uae' : 'us',
+    ehr_mode: o.ehr === 'MedCloud EHR' ? 'medcloud_ehr' : 'external_ehr',
+    contact_name: '', contact_email: '', pricing_model: o.pricing, created_at: o.since, is_active: true
+  }))
+
+  function openEdit(o: ApiOrg) {
+    setEditingOrg(o)
+    setEditForm({
+      name: o.name, contact_name: o.contact_name || '', contact_email: o.contact_email || '',
+      region: o.region, ehr_mode: o.ehr_mode || 'external_ehr',
+      pricing_model: o.pricing_model || '% Revenue',
+    })
+  }
+
+  async function handleSaveOrg() {
+    if (!editingOrg?.id) return
+    setSaving(true)
+    try {
+      const { api } = await import('@/lib/api-client')
+      await api.put(`/clients/${editingOrg.id}`, {
+        name: editForm.name,
+        contact_name: editForm.contact_name,
+        contact_email: editForm.contact_email,
+        region: editForm.region,
+        ehr_mode: editForm.ehr_mode,
+        pricing_model: editForm.pricing_model,
+      })
+      toast.success(`${editForm.name} settings saved`)
+      setEditingOrg(null)
+      refetchClients()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error'
+      toast.error(`Failed to save: ${msg}`)
+    } finally { setSaving(false) }
+  }
+
+  const inputCls = 'w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm text-content-primary outline-none focus:border-brand/40 transition-colors'
+
   return (
     <div>
       <div className="flex justify-end mb-4">
@@ -400,17 +460,77 @@ function OrgsTab() {
             <th className="text-left px-4 py-3">Active Since</th><th className="text-left px-4 py-3">Status</th>
           </tr></thead>
           <tbody>{displayOrgs.map(o=>(
-            <tr key={o.name} onClick={()=>toast.info(`Opening ${o.name} settings`)} className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
+            <tr key={o.id} onClick={()=>openEdit(o)} className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
               <td className="px-4 py-3 font-medium">{o.name}</td>
-              <td className="px-4 py-3 text-xs">{o.region}</td>
-              <td className="px-4 py-3 text-[13px] text-content-secondary">{o.ehr}</td>
-              <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${pricingColors[o.pricing]??'bg-surface-elevated text-content-secondary'}`}>{o.pricing}</span></td>
-              <td className="px-4 py-3 text-[13px] text-content-secondary">{o.since}</td>
-              <td className="px-4 py-3"><span className="text-[11px] bg-brand/10 text-brand-dark dark:text-brand-dark px-2 py-0.5 rounded-full">Active</span></td>
+              <td className="px-4 py-3 text-xs">{o.region === 'uae' ? '🇦🇪 UAE' : '🇺🇸 US'}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{o.ehr_mode === 'medcloud_ehr' ? 'MedCloud EHR' : 'External EHR'}</td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${pricingColors[o.pricing_model||'']??'bg-surface-elevated text-content-secondary'}`}>{o.pricing_model || '% Revenue'}</span></td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{o.created_at}</td>
+              <td className="px-4 py-3"><span className="text-[11px] bg-brand/10 text-brand-dark px-2 py-0.5 rounded-full">Active</span></td>
             </tr>
           ))}</tbody>
         </table>
       </div>
+
+      {/* ── Org Settings Modal ── */}
+      {editingOrg && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-40" onClick={()=>setEditingOrg(null)}/>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-separator">
+                <h3 className="text-base font-semibold text-black">Organization Settings</h3>
+                <button onClick={()=>setEditingOrg(null)} className="p-1 hover:bg-surface-elevated rounded-lg transition-colors"><X size={16} className="text-content-secondary"/></button>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                <div>
+                  <label className="text-[12px] font-semibold text-content-secondary block mb-1">Organization Name</label>
+                  <input value={editForm.name} onChange={e=>setEditForm(p=>({...p,name:e.target.value}))} className={inputCls}/>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[12px] font-semibold text-content-secondary block mb-1">Region</label>
+                    <select value={editForm.region} onChange={e=>setEditForm(p=>({...p,region:e.target.value}))} className={inputCls}>
+                      <option value="us">🇺🇸 US</option>
+                      <option value="uae">🇦🇪 UAE</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[12px] font-semibold text-content-secondary block mb-1">EHR Mode</label>
+                    <select value={editForm.ehr_mode} onChange={e=>setEditForm(p=>({...p,ehr_mode:e.target.value}))} className={inputCls}>
+                      <option value="external_ehr">External EHR</option>
+                      <option value="medcloud_ehr">MedCloud EHR</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[12px] font-semibold text-content-secondary block mb-1">Pricing Model</label>
+                  <select value={editForm.pricing_model} onChange={e=>setEditForm(p=>({...p,pricing_model:e.target.value}))} className={inputCls}>
+                    <option>% Revenue</option>
+                    <option>Per-Claim</option>
+                    <option>Flat Fee</option>
+                    <option>Hybrid</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[12px] font-semibold text-content-secondary block mb-1">Contact Name</label>
+                  <input value={editForm.contact_name} onChange={e=>setEditForm(p=>({...p,contact_name:e.target.value}))} placeholder="Primary contact at this org" className={inputCls}/>
+                </div>
+                <div>
+                  <label className="text-[12px] font-semibold text-content-secondary block mb-1">Contact Email</label>
+                  <input type="email" value={editForm.contact_email} onChange={e=>setEditForm(p=>({...p,contact_email:e.target.value}))} placeholder="contact@clinic.com" className={inputCls}/>
+                </div>
+              </div>
+              <div className="px-6 pb-5">
+                <button onClick={handleSaveOrg} disabled={saving || !editForm.name.trim()}
+                  className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-brand-deep transition-colors disabled:opacity-50">
+                  {saving ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
       {showAddOrg&&(
         <>
           <div className="fixed inset-0 bg-black/40 z-40" onClick={()=>setShowAddOrg(false)}/>

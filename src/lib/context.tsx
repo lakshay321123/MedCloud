@@ -59,17 +59,25 @@ function getUserFromStorage(): User {
   try {
     const pt = localStorage.getItem('cosentus_portal_type') as PortalType | null
     const savedRole = localStorage.getItem('cosentus_role') as UserRole | null
+    const savedName = localStorage.getItem('cosentus_user_name')
+    const savedOrgId = localStorage.getItem('cosentus_org_id')
+    const savedEmail = localStorage.getItem('cosentus_user_email')
+
     if (pt === 'facility') {
       const role = (savedRole && ['provider', 'client'].includes(savedRole)) ? savedRole as UserRole : 'provider'
       const orgIdFromToken = getCognitoOrgId()
-      const orgId = orgIdFromToken || localStorage.getItem('cosentus_org_id') || DEMO_ORG_IDS[role] || 'a0000000-0000-0000-0000-000000000001'
-      const name = ROLE_DISPLAY_NAMES[role] || 'Provider'
-      return { id: 'demo-001', name, email: 'provider@clinic.com', role, organization_id: orgId }
+      const orgId = orgIdFromToken || savedOrgId || DEMO_ORG_IDS[role] || 'a0000000-0000-0000-0000-000000000001'
+      // Use saved real name from login; fall back to role label only if no name stored
+      const name = savedName || ROLE_DISPLAY_NAMES[role] || 'Provider'
+      return { id: 'demo-001', name, email: savedEmail || 'provider@clinic.com', role, organization_id: orgId }
     }
     if (savedRole) {
-      const name = ROLE_DISPLAY_NAMES[savedRole] || 'Admin User'
-      // org-001 is not a valid UUID — use the real demo org UUID
-      return { id: 'demo-001', name, email: 'admin@cosentus.ai', role: savedRole as UserRole, organization_id: 'a0000000-0000-0000-0000-000000000001' }
+      const name = savedName || ROLE_DISPLAY_NAMES[savedRole] || 'Admin User'
+      // Do not fall back to a demo org — missing orgId means the session is incomplete.
+      // Return SERVER_DEFAULT_USER so middleware redirects to login.
+      if (!savedOrgId) return SERVER_DEFAULT_USER
+      const orgId = savedOrgId
+      return { id: 'demo-001', name, email: savedEmail || 'admin@cosentus.ai', role: savedRole as UserRole, organization_id: orgId }
     }
   } catch { /* localStorage unavailable */ }
   return SERVER_DEFAULT_USER
@@ -107,9 +115,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [portalType, setPortalTypeState] = useState<PortalType | null>(null)
   const [isScribeRecording, setIsScribeRecording] = useState(false)
   const [hydrated, setHydrated] = useState(false)
-  // TODO: Sprint 2 — derive orgId from Cognito JWT claims after authentication
-  // For Sprint 1 dev mode, hardcode to seeded organization UUID
-  const orgId = 'a0000000-0000-0000-0000-000000000001'
+  // orgId is derived from the logged-in user's organization — never hardcoded.
+  // getUserFromStorage() reads cosentus_org_id saved by the login route.
+  // If no org is available after hydration, the session is invalid — middleware
+  // will redirect to login. We do NOT fall back to a demo org ID.
+  const orgId = currentUser.organization_id || null
 
   // ── Hydration from localStorage (client-only, runs after SSR mount) ──────
   // This MUST be a useEffect — reading localStorage in useState causes React
@@ -143,8 +153,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setHydrated(true)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch real clients from API
+  // Fetch real clients from API — only after hydration so orgId is correct from localStorage
   useEffect(() => {
+    if (!hydrated || !orgId) return
     api.get<{ data: Array<{ id: string; name: string; region: string; ehr_mode?: string }> }>('/clients')
       .then(res => {
         const data = Array.isArray(res) ? res : res?.data || []
@@ -154,7 +165,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (mapped.length > 0) setApiClients(mapped)
       })
       .catch((err) => { console.error('Failed to fetch clients:', err) })
-  }, [])
+  }, [hydrated, orgId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const direction = getDirection(language)
 
