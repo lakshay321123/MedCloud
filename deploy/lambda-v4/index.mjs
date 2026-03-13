@@ -6426,51 +6426,15 @@ async function getNotifications(orgId, userId, qs) {
 
 
 // ─── Contextual Messages ────────────────────────────────────────────────────
-async function getMessages(orgId, userId, qs) {
+async function getMessages(orgId, userId, clientId, qs) {
 
-  // Auto-seed sample messages if inbox is empty
-  const countCheck = await pool.query('SELECT COUNT(*)::int as n FROM messages WHERE org_id = $1', [orgId]);
-  if (Number(countCheck.rows[0]?.n) === 0) {
-    // Get a patient and claim to reference
-    const pt = await pool.query('SELECT id, first_name, last_name FROM patients WHERE org_id = $1 LIMIT 3', [orgId]);
-    const cl = await pool.query('SELECT id, claim_number FROM claims WHERE org_id = $1 LIMIT 2', [orgId]);
-    const clientR = await pool.query('SELECT id, name FROM clients WHERE org_id = $1 LIMIT 1', [orgId]);
-    const clientId = clientR.rows[0]?.id || null;
-    const seeds = [];
-    if (pt.rows[0]) seeds.push({
-      org_id: orgId, client_id: clientId, entity_type: 'patient', entity_id: pt.rows[0].id,
-      sender_id: userId, sender_role: 'staff', sender_name: 'Billing Team',
-      recipient_ids: null, subject: `Insurance verification needed — ${pt.rows[0].first_name} ${pt.rows[0].last_name}`,
-      body: "Please confirm the patient's insurance is active before the upcoming appointment. Eligibility check shows potential coverage gap.",
-      attachments: [], is_internal: false, is_system: false, read_by: [], priority: 'high',
-    });
-    if (cl.rows[0]) seeds.push({
-      org_id: orgId, client_id: clientId, entity_type: 'claim', entity_id: cl.rows[0].id,
-      sender_id: userId, sender_role: 'client', sender_name: 'Provider Office',
-      recipient_ids: null, subject: `Claim ${cl.rows[0].claim_number} — additional documentation`,
-      body: 'The payer is requesting additional clinical documentation to support medical necessity. Can you provide the progress note from the date of service?',
-      attachments: [], is_internal: false, is_system: false, read_by: [], priority: 'normal',
-    });
-    if (pt.rows[1]) seeds.push({
-      org_id: orgId, client_id: clientId, entity_type: 'general', entity_id: null,
-      sender_id: userId, sender_role: 'staff', sender_name: 'AR Team',
-      recipient_ids: null, subject: 'ERA file received — 27 payments posted',
-      body: '835 ERA file from UnitedHealthcare processed successfully. 27 payments auto-posted, 2 lines flagged for manual review due to contractual adjustment discrepancy.',
-      attachments: [], is_internal: true, is_system: false, read_by: [], priority: 'normal',
-    });
-    if (cl.rows[1]) seeds.push({
-      org_id: orgId, client_id: clientId, entity_type: 'claim', entity_id: cl.rows[1].id,
-      sender_id: userId, sender_role: 'client', sender_name: 'Provider Office',
-      recipient_ids: null, subject: `Appeal submitted — ${cl.rows[1].claim_number}`,
-      body: 'We have submitted a Level 1 appeal for this claim. The denial reason was CO-50 (medical necessity). Appeal letter and supporting documentation have been uploaded.',
-      attachments: [], is_internal: false, is_system: false, read_by: [], priority: 'normal',
-    });
-    for (const s of seeds) {
-      await create('messages', s, orgId).catch((err) => console.error('[seed-messages] Failed to seed message:', err));
-    }
-  }
+  // Auto-seed removed — new practices start with an empty inbox.
+  // Messages are created organically via sendMessage or system events.
+
   let q = 'SELECT m.*, u.email as sender_email FROM messages m LEFT JOIN users u ON m.sender_id = u.id WHERE m.org_id = $1';
   const p = [orgId];
+  // ── Client isolation: facility users only see their practice's messages ──
+  if (clientId) { p.push(clientId); q += ` AND (m.client_id = $${p.length} OR m.client_id IS NULL)`; }
   if (qs.entity_type && qs.entity_id) {
     q += ` AND m.entity_type = $${p.length + 1} AND m.entity_id = $${p.length + 2}`;
     p.push(qs.entity_type, qs.entity_id);
@@ -6490,6 +6454,7 @@ async function getMessages(orgId, userId, qs) {
     try {
       let unreadWhere = 'WHERE m.org_id = $1';
       const unreadP = [orgId];
+      if (clientId) { unreadP.push(clientId); unreadWhere += ` AND (m.client_id = $${unreadP.length} OR m.client_id IS NULL)`; }
       if (qs.entity_type && qs.entity_id) { unreadWhere += ` AND m.entity_type = $${unreadP.length + 1} AND m.entity_id = $${unreadP.length + 2}`; unreadP.push(qs.entity_type, qs.entity_id); }
       else if (qs.entity_type) { unreadWhere += ` AND m.entity_type = $${unreadP.length + 1}`; unreadP.push(qs.entity_type); }
       if (qs.parent_id && qs.parent_id !== 'null') { unreadWhere += ` AND m.parent_id = $${unreadP.length + 1}`; unreadP.push(qs.parent_id); }
@@ -6503,7 +6468,7 @@ async function getMessages(orgId, userId, qs) {
   return { data: r.rows, total: r.rows.length, unread_count: unread };
 }
 
-async function sendMessage(body, orgId, userId) {
+async function sendMessage(body, orgId, userId, clientId) {
   const { entity_type, entity_id, parent_id, subject, body: msgBody, recipient_ids, is_internal, priority, attachments } = body;
   if (!msgBody) throw new Error('Message body required');
   // Look up sender name from users table if not provided
@@ -6513,7 +6478,7 @@ async function sendMessage(body, orgId, userId) {
     senderName = userRow.rows[0]?.name || userRow.rows[0]?.email || body.sender_role || 'Staff';
   }
   const msg = await create('messages', {
-    org_id: orgId, client_id: body.client_id, entity_type: entity_type || 'general',
+    org_id: orgId, client_id: body.client_id || clientId, entity_type: entity_type || 'general',
     entity_id, parent_id, sender_id: userId, sender_role: body.sender_role,
     sender_name: senderName,
     recipient_ids: recipient_ids || null, subject, body: msgBody,
@@ -9531,10 +9496,10 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
         }
       }
       if (method === 'GET' && !pathParams.id) {
-        return respond(200, await getMessages(effectiveOrgId, userId, qs));
+        return respond(200, await getMessages(effectiveOrgId, userId, clientId, qs));
       }
       if (method === 'POST' && !pathParams.id) {
-        return respond(201, await sendMessage(body, effectiveOrgId, userId));
+        return respond(201, await sendMessage(body, effectiveOrgId, userId, clientId));
       }
       if (method === 'PUT' && pathParams.id && path.includes('/read')) {
         return respond(200, await markMessageRead(pathParams.id, effectiveOrgId, userId));
