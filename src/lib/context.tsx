@@ -116,10 +116,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isScribeRecording, setIsScribeRecording] = useState(false)
   const [hydrated, setHydrated] = useState(false)
   // orgId is derived from the logged-in user's organization — never hardcoded.
-  // getUserFromStorage() reads cosentus_org_id saved by the login route.
-  // If no org is available after hydration, the session is invalid — middleware
-  // will redirect to login. We do NOT fall back to a demo org ID.
-  const orgId = currentUser.organization_id || null
+  // Empty string when not hydrated yet — all useEntities hooks guard with if (!orgId) return.
+  const orgId = currentUser.organization_id || ''
 
   // ── Hydration from localStorage (client-only, runs after SSR mount) ──────
   // This MUST be a useEffect — reading localStorage in useState causes React
