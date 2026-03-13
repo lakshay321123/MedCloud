@@ -26,6 +26,7 @@ interface LineItem {
   allowed: number
   paid: number
   denied: number
+  adjustment: number // stored for recalc — denied = max(0, billed - paid - adjustment)
   patBalance: number
   adjCode?: string
   adjReason?: string
@@ -105,7 +106,7 @@ function parse835(eraId: string, raw: string): ParsedERA {
         patientName: currentPatient || `Patient ${claimIdx}`,
         cpt, cptDesc: '', dos: currentDOS || result.paymentDate,
         billed, allowed: billed,
-        paid, denied: billed - paid > 0 ? billed - paid : 0,
+        paid, adjustment: 0, denied: billed - paid > 0 ? billed - paid : 0,
         patBalance: currentClaimPatResp,
         adjCode: currentClaimAdj, adjReason: currentClaimAdjReason,
         action: paid === 0 ? 'review' : 'post', notes: '',
@@ -119,7 +120,8 @@ function parse835(eraId: string, raw: string): ParsedERA {
       const adjAmt = parseFloat(e[3]) || 0
       last.adjCode = adj
       last.adjReason = reason
-      last.denied = adjAmt
+      last.adjustment = adjAmt
+      last.denied = Math.max(0, last.billed - last.paid - adjAmt)
       last.patBalance = e[1] === 'PR' ? adjAmt : last.patBalance
       last.allowed = last.billed - (e[1] === 'CO' ? adjAmt : 0)
     }
@@ -132,7 +134,7 @@ function parse835(eraId: string, raw: string): ParsedERA {
       patientName: currentPatient || 'Unknown Patient',
       cpt: '', cptDesc: 'See 835 file', dos: currentDOS || result.paymentDate,
       billed: currentClaimBilled, allowed: currentClaimBilled,
-      paid: currentClaimPaid, denied: currentClaimBilled - currentClaimPaid,
+      paid: currentClaimPaid, adjustment: 0, denied: currentClaimBilled - currentClaimPaid,
       patBalance: currentClaimPatResp,
       adjCode: currentClaimAdj, adjReason: currentClaimAdjReason,
       action: currentClaimPaid === 0 ? 'review' : 'post', notes: '',
@@ -293,6 +295,7 @@ export default function PaymentPostingPage() {
             billed: Number(p.billed_amount) || 0,
             allowed: Number(p.allowed_amount) || 0,
             paid: Number(p.amount_paid) || 0,
+            adjustment: Number(p.adjustment_amount) || 0,
             denied: Math.max(0, (Number(p.billed_amount) || 0) - (Number(p.amount_paid) || 0) - (Number(p.adjustment_amount) || 0)),
             patBalance: Number(p.patient_responsibility) || 0,
             adjCode: p.adj_reason_code || '',
@@ -352,18 +355,26 @@ export default function PaymentPostingPage() {
     }
     const dbField = dbFieldMap[field]
     if (!dbField) return // Block edits for unmapped fields (e.g. denied)
-    // Capture old value before optimistic update (for rollback)
+    // Capture old row for rollback
     const oldRow = lineItems.find(row => row.id === id)
     const oldValue = oldRow ? (oldRow as any)[field] : value
-    // Optimistic update
-    setLineItems(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row))
+    const oldDenied = oldRow?.denied ?? 0
+    // Optimistic update — auto-recalculate denied when monetary fields change
+    setLineItems(prev => prev.map(row => {
+      if (row.id !== id) return row
+      const updated = { ...row, [field]: value }
+      if (field === 'paid' || field === 'billed' || field === 'allowed') {
+        updated.denied = Math.max(0, updated.billed - Number(updated.paid) - updated.adjustment)
+      }
+      return updated
+    }))
     const optimisticValue = value
     api.patch(`/era-lines/${id}`, { [dbField]: optimisticValue } as any).catch(err => {
       console.warn('[payment-posting] Failed to save line edit:', err)
       // Only revert if cell still holds the optimistic value (don't clobber newer edits)
       setLineItems(prev => prev.map(row =>
         row.id === id && (row as any)[field] === optimisticValue
-          ? { ...row, [field]: oldValue }
+          ? { ...row, [field]: oldValue, denied: oldDenied }
           : row
       ))
       toast.error('Failed to save edit — reverted')
