@@ -467,6 +467,7 @@ async function runSchemaMigration() {
     "ALTER TABLE clients ADD COLUMN IF NOT EXISTS contact_email VARCHAR(200)",
     "ALTER TABLE clients ADD COLUMN IF NOT EXISTS pricing_model VARCHAR(50) DEFAULT '% Revenue'",
     "ALTER TABLE clients ADD COLUMN IF NOT EXISTS ehr_mode VARCHAR(50) DEFAULT 'external_ehr'",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS client_id UUID",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS cognito_sub VARCHAR(200)",
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_cognito_sub ON users(cognito_sub) WHERE cognito_sub IS NOT NULL",
   ];
