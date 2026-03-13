@@ -126,16 +126,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.add('light')
     localStorage.setItem('cosentus_theme', 'light')
     // Auto-select client for provider/client facility portal roles.
-    // These users belong to exactly one practice — pre-select it so
-    // useClientParams sends the right client_id on every API call.
-    // c0000000...102 = Irvine Medical Group (first US client in seed)
+    // Read client_id from localStorage (saved at login from Cognito custom:client_id).
+    // This scopes every API call to the correct practice — no hardcoding.
     if (portal === 'facility' && (user.role === 'provider' || user.role === 'client')) {
-      const savedClientId = localStorage.getItem('cosentus_selected_client')
-      if (!savedClientId) {
+      const clientId = localStorage.getItem('cosentus_client_id') || ''
+      if (clientId) {
         setSelectedClientState({
-          id: 'c0000000-0000-0000-0000-000000000102',
-          name: 'Sunrise Cardiology Group',
-          region: 'us',
+          id: clientId,
+          name: '', // placeholder — overwritten when clients list loads
+          region: (region as 'us' | 'uae') || 'us',
           ehr_mode: 'external_ehr',
         })
       }
@@ -174,6 +173,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const region = country === 'usa' ? 'us' : 'uae'
     return source.filter(c => c.region === region)
   }, [country, apiClients])
+
+  // Patch selectedClient name once the full clients list is available.
+  // At hydration time we only have the client ID — resolve the real name here.
+  useEffect(() => {
+    if (selectedClient && selectedClient.id && !selectedClient.name && clients.length > 0) {
+      const match = clients.find(c => c.id === selectedClient.id)
+      if (match) setSelectedClientState(match)
+    }
+  }, [clients, selectedClient])
 
   // Clear selectedClient if it doesn't match current region
   useEffect(() => {

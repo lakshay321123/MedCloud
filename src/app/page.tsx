@@ -30,6 +30,7 @@ export default function LoginPage() {
         localStorage.setItem('cosentus_user_name',   data.name       || '')
         localStorage.setItem('cosentus_user_email',  data.email      || '')
         localStorage.setItem('cosentus_org_id',      data.orgId      || '')
+        localStorage.setItem('cosentus_client_id',   data.clientId   || '')
         window.location.href = '/dashboard'
       } else {
         setError(data.error || 'Invalid email or password')

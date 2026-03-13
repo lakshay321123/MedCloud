@@ -274,46 +274,50 @@ export default function Topbar() {
                   <p className="text-[11px] text-gray-400 mt-0.5 capitalize">{roleLabel}</p>
                 </div>
 
-                {/* Role switcher */}
-                <div className="px-4 py-3 border-b border-separator">
-                  <p className="text-[11px] font-semibold text-gray-400 tracking-wider mb-2">Switch Role</p>
-                  <div className="flex flex-col gap-1">
-                    {availableRoles.map(r => (
+                {/* Role switcher — backoffice staff only */}
+                {isStaff && (
+                  <div className="px-4 py-3 border-b border-separator">
+                    <p className="text-[11px] font-semibold text-gray-400 tracking-wider mb-2">Switch Role</p>
+                    <div className="flex flex-col gap-1">
+                      {availableRoles.map(r => (
+                        <button
+                          key={r}
+                          onClick={() => { setRole(r as UserRole); setUserMenuOpen(false) }}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-btn text-[12px] font-semibold transition-colors text-left ${
+                            currentUser.role === r ? 'bg-brand text-white' : 'text-black hover:bg-brand/10'
+                          }`}
+                        >
+                          {roleDisplayLabels[r]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Country toggle — backoffice staff only */}
+                {isStaff && (
+                  <div className="px-4 py-3 border-b border-separator">
+                    <p className="text-[11px] font-semibold text-gray-400 tracking-wider mb-2">Region</p>
+                    <div className="flex gap-2">
                       <button
-                        key={r}
-                        onClick={() => { setRole(r as UserRole); setUserMenuOpen(false) }}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-btn text-[12px] font-semibold transition-colors text-left ${
-                          currentUser.role === r ? 'bg-brand text-white' : 'text-black hover:bg-brand/10'
+                        onClick={() => { setCountry('usa') }}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-btn text-[12px] font-semibold transition-colors ${
+                          country === 'usa' ? 'bg-brand text-white' : 'bg-surface-elevated text-black hover:bg-brand/10'
                         }`}
                       >
-                        {roleDisplayLabels[r]}
+                        <span>🇺🇸</span> USA
                       </button>
-                    ))}
+                      <button
+                        onClick={() => { setCountry('uae') }}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-btn text-[12px] font-semibold transition-colors ${
+                          country === 'uae' ? 'bg-brand text-white' : 'bg-surface-elevated text-black hover:bg-brand/10'
+                        }`}
+                      >
+                        <span>🇦🇪</span> UAE
+                      </button>
+                    </div>
                   </div>
-                </div>
-
-                {/* Country toggle */}
-                <div className="px-4 py-3 border-b border-separator">
-                  <p className="text-[11px] font-semibold text-gray-400 tracking-wider mb-2">Region</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => { setCountry('usa') }}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-btn text-[12px] font-semibold transition-colors ${
-                        country === 'usa' ? 'bg-brand text-white' : 'bg-surface-elevated text-black hover:bg-brand/10'
-                      }`}
-                    >
-                      <span>🇺🇸</span> USA
-                    </button>
-                    <button
-                      onClick={() => { setCountry('uae') }}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-btn text-[12px] font-semibold transition-colors ${
-                        country === 'uae' ? 'bg-brand text-white' : 'bg-surface-elevated text-black hover:bg-brand/10'
-                      }`}
-                    >
-                      <span>🇦🇪</span> UAE
-                    </button>
-                  </div>
-                </div>
+                )}
 
                 {/* Menu items — Settings only visible to backoffice/admin staff */}
                 {isStaff && (

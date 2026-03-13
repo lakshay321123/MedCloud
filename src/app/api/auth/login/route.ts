@@ -112,9 +112,10 @@ export async function POST(req: NextRequest) {
   // Dual-key lookup — mirrors the Lambda authorizer:
   //   New users (Admin panel): custom:custom:role / custom:custom:org_id / custom:custom:region
   //   Legacy users:            custom:role / custom:org_id
-  const role   = attrs['custom:custom:role']  || attrs['custom:role']
-  const orgId  = attrs['custom:custom:org_id'] || attrs['custom:org_id']
-  const region = attrs['custom:custom:region'] || 'us'
+  const role     = attrs['custom:custom:role']   || attrs['custom:role']
+  const orgId    = attrs['custom:custom:org_id']  || attrs['custom:org_id']
+  const region   = attrs['custom:custom:region']  || 'us'
+  const clientId = attrs['custom:client_id']      || ''
 
   if (!role || !orgId) {
     console.error(`[auth/login] User ${emailTrimmed} missing required attributes: role=${role} org=${orgId}`)
@@ -148,5 +149,5 @@ export async function POST(req: NextRequest) {
     path: '/',
   })
 
-  return NextResponse.json({ ok: true, role, name, email: canonicalEmail, country, portalType, orgId })
+  return NextResponse.json({ ok: true, role, name, email: canonicalEmail, country, portalType, orgId, clientId })
 }
