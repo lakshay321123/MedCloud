@@ -296,7 +296,7 @@ export default function PaymentPostingPage() {
             allowed: Number(p.allowed_amount) || 0,
             paid: Number(p.amount_paid) || 0,
             adjustment: Number(p.adjustment_amount) || 0,
-            denied: Math.max(0, (Number(p.billed_amount) || 0) - (Number(p.amount_paid) || 0) - (Number(p.adjustment_amount) || 0)),
+            denied: Math.max(0, (Number(p.allowed_amount) || 0) - (Number(p.amount_paid) || 0)),
             patBalance: Number(p.patient_responsibility) || 0,
             adjCode: p.adj_reason_code || '',
             adjReason: p.adj_reason_code ? (p.adj_reason_code.split(',')[0] || '') : '',
@@ -364,7 +364,8 @@ export default function PaymentPostingPage() {
       if (row.id !== id) return row
       const updated = { ...row, [field]: value }
       if (field === 'paid' || field === 'billed' || field === 'allowed') {
-        updated.denied = Math.max(0, updated.billed - Number(updated.paid) - updated.adjustment)
+        // Denied = shortfall between what payer allows and what they actually paid
+        updated.denied = Math.max(0, updated.allowed - Number(updated.paid))
       }
       return updated
     }))
