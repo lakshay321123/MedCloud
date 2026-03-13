@@ -11,14 +11,14 @@ const translations = {
   nav: {
     dashboard:     { en: 'Dashboard',          ar: 'لوحة التحكم',         es: 'Panel Principal' },
     claims:        { en: 'Claims Center',      ar: 'مركز المطالبات',      es: 'Centro de Reclamaciones' },
-    coding:        { en: 'AI Coding',          ar: 'الترميز الذكي',       es: 'Codificación IA' },
+    coding:        { en: 'Ai Coding',          ar: 'الترميز الذكي',       es: 'Codificación IA' },
     eligibility:   { en: 'Eligibility',        ar: 'التأهيلية',            es: 'Elegibilidad' },
     denials:       { en: 'Denials & Appeals',  ar: 'الرفض والطعون',       es: 'Denegaciones y Apelaciones' },
     ar:            { en: 'A/R Management',     ar: 'إدارة الذمم',          es: 'Gestión de Cuentas por Cobrar' },
     posting:       { en: 'Payment Posting',    ar: 'ترحيل المدفوعات',    es: 'Registro de Pagos' },
     contracts:     { en: 'Contract Manager',   ar: 'إدارة العقود',         es: 'Gestión de Contratos' },
-    voice:         { en: 'Voice AI',           ar: 'الذكاء الصوتي',       es: 'IA de Voz' },
-    scribe:        { en: 'AI Scribe',          ar: 'الكاتب الذكي',        es: 'Transcriptor IA' },
+    voice:         { en: 'Voice Ai',           ar: 'الذكاء الصوتي',       es: 'IA de Voz' },
+    scribe:        { en: 'Ai Scribe',          ar: 'الكاتب الذكي',        es: 'Transcriptor IA' },
     tasks:         { en: 'Tasks & Workflows',  ar: 'المهام والسير',        es: 'Tareas y Flujos' },
     documents:     { en: 'Documents',          ar: 'المستندات',             es: 'Documentos' },
     credentialing: { en: 'Credentialing',      ar: 'الاعتماد المهني',     es: 'Acreditación' },
@@ -34,7 +34,7 @@ const translations = {
 
   sections: {
     operations: { en: 'OPERATIONS',       ar: 'العمليات',           es: 'OPERACIONES' },
-    ai:         { en: 'AI & AUTOMATION',  ar: 'الذكاء والأتمتة',   es: 'IA Y AUTOMATIZACIÓN' },
+    ai:         { en: 'Ai & AUTOMATION',  ar: 'الذكاء والأتمتة',   es: 'IA Y AUTOMATIZACIÓN' },
     management: { en: 'MANAGEMENT',       ar: 'الإدارة',             es: 'GESTIÓN' },
     portal:     { en: 'CLIENT PORTAL',    ar: 'بوابة العميل',       es: 'PORTAL DEL CLIENTE' },
     system:     { en: 'SYSTEM',           ar: 'النظام',              es: 'SISTEMA' },
@@ -64,7 +64,7 @@ const translations = {
     approve:       { en: 'Approve',            ar: 'موافقة',            es: 'Aprobar' },
     reject:        { en: 'Reject',             ar: 'رفض',               es: 'Rechazar' },
     generate:      { en: 'Generate',           ar: 'توليد',             es: 'Generar' },
-    generateAI:    { en: 'Generate with AI',   ar: 'توليد بالذكاء',    es: 'Generar con IA' },
+    generateAI:    { en: 'Generate with Ai',   ar: 'توليد بالذكاء',    es: 'Generar con IA' },
     runBatch:      { en: 'Run Batch',          ar: 'تشغيل دفعة',       es: 'Ejecutar Lote' },
     logout:        { en: 'Logout',             ar: 'تسجيل خروج',       es: 'Cerrar Sesión' },
     link:          { en: 'Link',               ar: 'ربط',               es: 'Vincular' },
@@ -120,13 +120,13 @@ const translations = {
     totalRevenueMTD:  { en: 'Total Revenue (MTD) Billed',  ar: 'إجمالي الإيراد المفوتر (الشهر)',  es: 'Ingresos Totales Facturados (Mes)' },
     revenueTrend:     { en: 'Revenue Trend',              ar: 'اتجاه الإيرادات',              es: 'Tendencia de Ingresos' },
     arAgingBuckets:   { en: 'A/R Aging Buckets',          ar: 'أعمار الذمم المدينة',          es: 'Antigüedad de Cuentas' },
-    aiCallsToday:     { en: 'AI Calls Today',            ar: 'مكالمات الذكاء اليوم',         es: 'Llamadas IA Hoy' },
-    aiCodingAcc:      { en: 'AI Coding Accuracy',        ar: 'دقة الترميز الذكي',            es: 'Precisión Codificación IA' },
+    aiCallsToday:     { en: 'Ai Calls Today',            ar: 'مكالمات الذكاء اليوم',         es: 'Llamadas IA Hoy' },
+    aiCodingAcc:      { en: 'Ai Coding Accuracy',        ar: 'دقة الترميز الذكي',            es: 'Precisión Codificación IA' },
     overdueAccounts:  { en: 'Overdue (60+ days)',        ar: 'متأخرة (+60 يوماً)',            es: 'Vencidas (+60 días)' },
     unworkedDenials:  { en: 'Unworked Denials',          ar: 'رفوض غير معالجة',              es: 'Denegaciones Sin Trabajar' },
     appealsDeadline:  { en: 'Appeals Near Deadline',     ar: 'طعون قرب الموعد',              es: 'Apelaciones Próximas al Plazo' },
     accountsWorked:   { en: 'Accounts Worked Today',     ar: 'حسابات معالجة اليوم',          es: 'Cuentas Trabajadas Hoy' },
-    aiPerformance:    { en: 'AI Performance (15 Features)', ar: 'أداء الذكاء الاصطناعي (15 ميزة)', es: 'Rendimiento IA (15 Funciones)' },
+    aiPerformance:    { en: 'Ai Performance (15 Features)', ar: 'أداء الذكاء الاصطناعي (15 ميزة)', es: 'Rendimiento IA (15 Funciones)' },
     chartsWaiting:    { en: 'Charts Waiting',              ar: 'سجلات بانتظار الترميز',        es: 'Registros en Espera' },
     past24hSLA:       { en: 'Past 24h SLA',                ar: 'تجاوز SLA خلال 24 ساعة',       es: 'Fuera de SLA 24h' },
     queriesPending:   { en: 'Queries Pending',             ar: 'استفسارات معلّقة',              es: 'Consultas Pendientes' },
@@ -164,11 +164,11 @@ const translations = {
   },
 
   coding: {
-    title:           { en: 'AI Coding',            ar: 'الترميز الذكي',          es: 'Codificación IA' },
-    subtitle:        { en: 'AI-assisted medical coding queue', ar: 'قائمة الترميز الطبي بالذكاء', es: 'Cola de codificación médica asistida por IA' },
+    title:           { en: 'Ai Coding',            ar: 'الترميز الذكي',          es: 'Codificación IA' },
+    subtitle:        { en: 'Ai-assisted medical coding queue', ar: 'قائمة الترميز الطبي بالذكاء', es: 'Cola de codificación médica asistida por IA' },
     myQueue:         { en: 'My Queue',             ar: 'قائمتي',                  es: 'Mi Cola' },
     codedToday:      { en: 'Coded Today',          ar: 'مُرمَّز اليوم',           es: 'Codificados Hoy' },
-    aiAcceptance:    { en: 'AI Acceptance',        ar: 'قبول الذكاء',             es: 'Aceptación IA' },
+    aiAcceptance:    { en: 'Ai Acceptance',        ar: 'قبول الذكاء',             es: 'Aceptación IA' },
     avgTimeChart:    { en: 'Avg Time/Chart',       ar: 'متوسط الوقت/مخطط',      es: 'Tiempo Prom/Expediente' },
     generateCDI:     { en: 'Generate CDI Query',   ar: 'توليد استفسار CDI',      es: 'Generar Consulta CDI' },
     noChartsQueue:   { en: 'No charts in queue',   ar: 'لا مخططات في القائمة',  es: 'Sin expedientes en cola' },
@@ -255,8 +255,8 @@ const translations = {
   },
 
   voice: {
-    title:          { en: 'Voice AI',                ar: 'الذكاء الصوتي',          es: 'IA de Voz' },
-    subtitle:       { en: 'AI-powered payer follow-up calls', ar: 'مكالمات متابعة بالذكاء الاصطناعي', es: 'Llamadas de seguimiento con IA' },
+    title:          { en: 'Voice Ai',                ar: 'الذكاء الصوتي',          es: 'IA de Voz' },
+    subtitle:       { en: 'Ai-powered payer follow-up calls', ar: 'مكالمات متابعة بالذكاء الاصطناعي', es: 'Llamadas de seguimiento con IA' },
     callsToday:     { en: 'Calls Today',             ar: 'مكالمات اليوم',          es: 'Llamadas Hoy' },
     successRate:    { en: 'Success Rate',            ar: 'معدل النجاح',            es: 'Tasa de Éxito' },
     avgDuration:    { en: 'Avg Duration',            ar: 'متوسط المدة',            es: 'Duración Promedio' },
@@ -266,7 +266,7 @@ const translations = {
   },
 
   scribe: {
-    title:          { en: 'AI Scribe',               ar: 'الكاتب الذكي',          es: 'Transcriptor IA' },
+    title:          { en: 'Ai Scribe',               ar: 'الكاتب الذكي',          es: 'Transcriptor IA' },
     subtitle:       { en: 'Clinical documentation assistant', ar: 'مساعد التوثيق السريري', es: 'Asistente de documentación clínica' },
     notesToday:     { en: 'Notes Today',             ar: 'ملاحظات اليوم',         es: 'Notas Hoy' },
     pendingSignOff: { en: 'Pending Sign-Off',        ar: 'بانتظار التوقيع',       es: 'Pendiente de Firma' },
@@ -275,7 +275,7 @@ const translations = {
     transcript:     { en: 'Transcript',              ar: 'النص',                   es: 'Transcripción' },
     keep:             { en: 'Keep',                  ar: 'احتفظ',                  es: 'Conservar' },
     subtitleProvider: { en: 'Dictate and review clinical notes', ar: 'إملاء ومراجعة الملاحظات السريرية', es: 'Dictar y revisar notas clínicas' },
-    subtitleCoder:    { en: 'Review AI-generated clinical notes', ar: 'مراجعة الملاحظات السريرية المُولَّدة بالذكاء', es: 'Revisar notas clínicas generadas por IA' },
+    subtitleCoder:    { en: 'Review Ai-generated clinical notes', ar: 'مراجعة الملاحظات السريرية المُولَّدة بالذكاء', es: 'Revisar notas clínicas generadas por IA' },
   },
 
   analytics: {
@@ -289,7 +289,7 @@ const translations = {
     firstPassRate:    { en: 'First-Pass Rate',          ar: 'معدل التمرير الأول',     es: 'Tasa de Primera Pasada' },
     denialAtRisk:     { en: 'Denial At-Risk',           ar: 'رفض مُعرَّض للخطر',     es: 'Denegación en Riesgo' },
     autoCodingAcc:    { en: 'Auto-Coding Accuracy',     ar: 'دقة الترميز التلقائي',  es: 'Precisión Codificación Automática' },
-    aiAcceptRate:     { en: 'AI Accept Rate',           ar: 'معدل قبول الذكاء',      es: 'Tasa de Aceptación IA' },
+    aiAcceptRate:     { en: 'Ai Accept Rate',           ar: 'معدل قبول الذكاء',      es: 'Tasa de Aceptación IA' },
     autoPostRate:     { en: 'Auto-Post Rate',           ar: 'معدل الترحيل التلقائي', es: 'Tasa de Registro Automático' },
     voiceSuccess:     { en: 'Voice Success Rate',       ar: 'معدل نجاح الصوت',       es: 'Tasa de Éxito de Voz' },
     textractConf:     { en: 'Textract Confidence',      ar: 'ثقة Textract',           es: 'Confianza Textract' },
@@ -394,7 +394,7 @@ const translations = {
 
   scan: {
     title:         { en: 'Scan & Submit',       ar: 'مسح وإرسال',            es: 'Escanear y Enviar' },
-    subtitle:      { en: 'Upload documents for AI processing', ar: 'رفع المستندات للمعالجة بالذكاء', es: 'Subir documentos para procesamiento con IA' },
+    subtitle:      { en: 'Upload documents for Ai processing', ar: 'رفع المستندات للمعالجة بالذكاء', es: 'Subir documentos para procesamiento con IA' },
     searchPatient: { en: 'Search patient…',     ar: 'ابحث عن مريض…',         es: 'Buscar paciente…' },
     billingNotes:  { en: 'Billing Notes',       ar: 'ملاحظات الفوترة',       es: 'Notas de Facturación' },
     reviewSubmit:  { en: 'Review & Submit',     ar: 'مراجعة وإرسال',         es: 'Revisar y Enviar' },

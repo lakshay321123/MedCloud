@@ -217,10 +217,10 @@ export default function DenialsPage() {
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       setAppealTexts(prev => ({ ...prev, [key]: data.text || buildAppealLetter(denial, appealLevel) }))
-      toast.success('AI appeal letter generated')
+      toast.success('Ai appeal letter generated')
     } catch (err) {
-      console.error('[appeal generator] AI failed:', err)
-      toast.error('AI generation failed — using template')
+      console.error('[appeal generator] Ai failed:', err)
+      toast.error('Ai generation failed — using template')
       setAppealTexts(prev => ({ ...prev, [key]: buildAppealLetter(denial, appealLevel) }))
     } finally {
       setAiGenerating(false)
@@ -391,7 +391,7 @@ export default function DenialsPage() {
                   {aiGenerating ? (
                     <><span className="animate-spin inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full"/><span>Generating...</span></>
                   ) : (
-                    <><span>✦</span><span>Generate with AI</span></>
+                    <><span>✦</span><span>Generate with Ai</span></>
                   )}
                 </button>
               <button

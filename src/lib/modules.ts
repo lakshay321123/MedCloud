@@ -9,7 +9,7 @@ export const modules: ModuleConfig[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'LayoutDashboard', path: '/dashboard', section: 'operations', roles: allRoles },
   { id: 'claims', label: 'Claims Center', icon: 'FileText', path: '/claims', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
   { id: 'edi', label: 'EDI Transactions', icon: 'ArrowLeftRight', path: '/edi', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller'] },
-  { id: 'coding', label: 'AI Coding', icon: 'BrainCircuit', path: '/coding', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'coder'] },
+  { id: 'coding', label: 'Ai Coding', icon: 'BrainCircuit', path: '/coding', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'coder'] },
   { id: 'coding-rules', label: 'Coding Rules', icon: 'Zap', path: '/coding-rules', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'coder'] },
   { id: 'eligibility', label: 'Eligibility', icon: 'ShieldCheck', path: '/eligibility', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller', 'client'] },
   { id: 'denials', label: 'Denials & Appeals', icon: 'ShieldAlert', path: '/denials', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'biller', 'ar_team'] },
@@ -17,9 +17,9 @@ export const modules: ModuleConfig[] = [
   { id: 'posting', label: 'Payment Posting', icon: 'Receipt', path: '/payment-posting', section: 'operations', roles: ['admin', 'director', 'supervisor', 'manager', 'posting_team'] },
   { id: 'contracts', label: 'Contract Manager', icon: 'Scale', path: '/contracts', section: 'operations', roles: leaderRoles },
 
-  // AI & AUTOMATION
-  { id: 'voice', label: 'Voice AI', icon: 'Phone', path: '/voice-ai', section: 'ai', roles: ['admin', 'director', 'supervisor', 'manager', 'ar_team'] },
-  { id: 'scribe', label: 'AI Scribe', icon: 'Mic', path: '/ai-scribe', section: 'ai', roles: ['admin', 'director', 'supervisor', 'manager', 'provider'] },
+  // Ai & AUTOMATION
+  { id: 'voice', label: 'Voice Ai', icon: 'Phone', path: '/voice-ai', section: 'ai', roles: ['admin', 'director', 'supervisor', 'manager', 'ar_team'] },
+  { id: 'scribe', label: 'Ai Scribe', icon: 'Mic', path: '/ai-scribe', section: 'ai', roles: ['admin', 'director', 'supervisor', 'manager', 'provider'] },
   { id: 'tasks', label: 'Tasks & Workflows', icon: 'ListChecks', path: '/tasks', section: 'ai', roles: staffRoles },
 
   // MANAGEMENT — 'client' added so front-office (facility) can see Documents
@@ -41,10 +41,10 @@ export const modules: ModuleConfig[] = [
 const facilityModuleIds = ['dashboard', 'scribe', 'documents', 'appointments', 'messages', 'portal-patients', 'scan', 'eligibility']
 
 export const sectionLabels: Record<string, Record<string, string>> = {
-  facility: { operations: 'OVERVIEW', ai: 'AI TOOLS', management: 'FILES', portal: 'CLINICAL' },
-  provider: { operations: 'OVERVIEW', ai: 'AI TOOLS', management: 'FILES', portal: 'CLINICAL' },
+  facility: { operations: 'OVERVIEW', ai: 'Ai TOOLS', management: 'FILES', portal: 'CLINICAL' },
+  provider: { operations: 'OVERVIEW', ai: 'Ai TOOLS', management: 'FILES', portal: 'CLINICAL' },
   client: { portal: 'MY PRACTICE' },
-  default: { operations: 'OPERATIONS', ai: 'AI & AUTOMATION', management: 'MANAGEMENT', portal: 'CLIENT PORTAL', system: 'SYSTEM' },
+  default: { operations: 'OPERATIONS', ai: 'Ai & AUTOMATION', management: 'MANAGEMENT', portal: 'CLIENT PORTAL', system: 'SYSTEM' },
 }
 
 export function getSectionLabel(role: UserRole, section: string, portalType?: PortalType | null): string {

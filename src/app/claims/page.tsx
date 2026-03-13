@@ -797,17 +797,17 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   <div className="p-3 border-t border-separator">
                     <button onClick={handleScrub} disabled={scrubbing}
                       className="w-full bg-brand text-white rounded-btn py-2 text-[12px] font-medium disabled:opacity-50">
-                      {scrubbing ? 'Running AI Scrub…' : 'Run AI Scrub'}
+                      {scrubbing ? 'Running Ai Scrub…' : 'Run Ai Scrub'}
                     </button>
                   </div>
                 )}
               </div>
-              {/* Right: AI scrub results + manual checklist */}
+              {/* Right: Ai scrub results + manual checklist */}
               <div className="card overflow-y-auto p-4 space-y-4">
                 {scrubResults.length > 0 ? (
                   <>
                     <div className="flex items-center justify-between">
-                      <p className="text-[13px] font-semibold text-content-primary tracking-wider">AI Scrub Results</p>
+                      <p className="text-[13px] font-semibold text-content-primary tracking-wider">Ai Scrub Results</p>
                       <div className="flex gap-2 text-[11px]">
                         <span className="text-brand-dark">{scrubResults.filter(r => r.passed).length} passed</span>
                         <span className="text-[#065E76]">{scrubResults.filter(r => !r.passed && r.severity === 'error').length} errors</span>
@@ -844,7 +844,7 @@ function ClaimDrawer({ claim, onClose, onRefetch, apiScrubRules }: {
                   <div className="flex items-start gap-2 bg-brand/10 border border-brand/20 rounded-lg p-3">
                     <CheckSquare size={14} className="text-brand mt-0.5 shrink-0" />
                     <p className="text-[12px] text-brand">
-                      Click &quot;Run AI Scrub&quot; to check rules automatically, or complete the manual checklist below.
+                      Click &quot;Run Ai Scrub&quot; to check rules automatically, or complete the manual checklist below.
                     </p>
                   </div>
                 )}

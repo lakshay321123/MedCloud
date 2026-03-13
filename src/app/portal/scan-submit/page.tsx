@@ -154,13 +154,13 @@ export default function ScanSubmitPage() {
             aiType = classResult.classification || aiType
             aiConfidence = Math.round((classResult.confidence || 0) * 100)
           } catch {
-            // AI classification unavailable — use filename guess
+            // Ai classification unavailable — use filename guess
           }
         }
 
         setFileField(id, { status: 'done', documentId, aiType, aiConfidence, approvedType: aiType })
 
-        // Extract text from PDF/image for AI coding (fire & forget — don't block upload)
+        // Extract text from PDF/image for Ai coding (fire & forget — don't block upload)
         if (documentId) {
           (async () => {
             try {
@@ -366,7 +366,7 @@ export default function ScanSubmitPage() {
             <div className="space-y-4">
               <div>
                 <h3 className="text-sm font-semibold text-content-primary">Drop everything for {(selectedPatient as any)?.name || 'New Patient'}</h3>
-                <p className="text-xs text-content-tertiary mt-0.5">Superbills, visit notes, insurance cards, referrals, licenses — dump them all at once. AI will tag each one.</p>
+                <p className="text-xs text-content-tertiary mt-0.5">Superbills, visit notes, insurance cards, referrals, licenses — dump them all at once. Ai will tag each one.</p>
               </div>
               <div
                 onDragOver={e => { e.preventDefault(); setDragging(true) }}
@@ -405,7 +405,7 @@ export default function ScanSubmitPage() {
                 <button onClick={() => setStep(1)} className="px-4 py-2.5 border border-separator text-content-secondary rounded-lg text-sm hover:text-content-secondary transition-colors">← Back</button>
                 <button onClick={uploadAndClassifyAll} disabled={files.length === 0}
                   className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-brand-deep disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors">
-                  <Upload size={14} /> Upload & AI Tag ({files.length} file{files.length !== 1 ? 's' : ''}) →
+                  <Upload size={14} /> Upload & Ai Tag ({files.length} file{files.length !== 1 ? 's' : ''}) →
                 </button>
               </div>
             </div>
@@ -416,7 +416,7 @@ export default function ScanSubmitPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-content-primary">AI is reading your documents</h3>
+                  <h3 className="text-sm font-semibold text-content-primary">Ai is reading your documents</h3>
                   <p className="text-xs text-content-tertiary mt-0.5">Review each tag — correct if needed — then confirm.</p>
                 </div>
                 {uploadingCount > 0 && (
@@ -493,10 +493,10 @@ function FileReviewRow({ entry, onTypeChange }: { entry: FileEntry; onTypeChange
           <p className="text-sm font-medium truncate">{entry.name}</p>
           <div className="flex items-center gap-2 mt-0.5">
             {entry.status === 'uploading' && <span className="flex items-center gap-1 text-[11px] text-blue-500"><Loader2 size={10} className="animate-spin" />Uploading…</span>}
-            {entry.status === 'classifying' && <span className="flex items-center gap-1 text-[11px] text-brand"><Loader2 size={10} className="animate-spin" />AI reading…</span>}
+            {entry.status === 'classifying' && <span className="flex items-center gap-1 text-[11px] text-brand"><Loader2 size={10} className="animate-spin" />Ai reading…</span>}
             {entry.status === 'done' && (
               <span className={`text-[11px] font-medium ${(entry.aiConfidence || 0) >= 80 ? 'text-brand-dark' : (entry.aiConfidence || 0) >= 50 ? 'text-brand-deep' : 'text-[#065E76]'}`}>
-                {(entry.aiConfidence || 0) > 0 ? `AI: ${entry.aiConfidence}% confident` : '⚠ Review needed'}
+                {(entry.aiConfidence || 0) > 0 ? `Ai: ${entry.aiConfidence}% confident` : '⚠ Review needed'}
               </span>
             )}
             {entry.status === 'error' && <span className="text-[11px] text-[#065E76]">{entry.error || 'Upload failed'}</span>}

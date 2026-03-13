@@ -174,7 +174,7 @@ function DocPreviewDrawer({ doc, onClose }: { doc: DemoDocRecord; onClose: () =>
             <h4 className="text-[13px] font-semibold text-content-secondary tracking-wider mb-3">Link to Patient</h4>
             {doc.aiConfidence && (
               <div className="bg-brand/10 border border-brand/20 rounded-lg p-2 mb-3 text-[11px] text-brand flex items-center gap-2">
-                <span>AI Classification: {doc.type}</span>
+                <span>Ai Classification: {doc.type}</span>
                 <span className="ml-auto font-bold">{doc.aiConfidence}% confidence</span>
               </div>
             )}
@@ -398,7 +398,7 @@ function UnlinkedQueueTab() {
                 <p className="text-sm font-medium font-mono">{d.name}</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className={`text-[11px] px-2 py-0.5 rounded-full ${sourceBadge(d.source)}`}>{d.source}</span>
-                  {d.aiConfidence&&<span className="text-[11px] text-brand">AI: {d.type} · {d.aiConfidence}% conf</span>}
+                  {d.aiConfidence&&<span className="text-[11px] text-brand">Ai: {d.type} · {d.aiConfidence}% conf</span>}
                   <span className="text-[11px] text-content-tertiary">Arrived: {d.uploadDate ? new Date(d.uploadDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</span>
                 </div>
               </div>
@@ -612,7 +612,7 @@ function AIProcessingTab() {
         </div>
         <div className="card p-4 text-center">
           <p className="text-2xl font-bold text-brand-dark">{avgConfidence || '—'}%</p>
-          <p className="text-[11px] text-content-tertiary mt-1">Avg AI Confidence</p>
+          <p className="text-[11px] text-content-tertiary mt-1">Avg Ai Confidence</p>
         </div>
         <div className="card p-4 text-center">
           <p className="text-2xl font-bold text-brand-deep">{pending}</p>
@@ -636,7 +636,7 @@ function AIProcessingTab() {
                 <div className="flex gap-2">
                   <button onClick={() => handleClassify(d.id)} disabled={!!processing[d.id]}
                     className="text-[11px] bg-brand text-white px-3 py-1.5 rounded-lg hover:bg-brand-deep transition-colors disabled:opacity-50 shadow-sm">
-                    {processing[d.id] === 'classifying' ? 'Classifying…' : 'AI Classify'}
+                    {processing[d.id] === 'classifying' ? 'Classifying…' : 'Ai Classify'}
                   </button>
                   <button onClick={() => handleTrigger(d.id)} disabled={!!processing[d.id]}
                     className="text-[11px] bg-brand/10 text-brand-dark border border-brand/20 px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors disabled:opacity-50">
@@ -693,7 +693,7 @@ const TABS = [
   { id: 'all', label: 'All Documents' },
   { id: 'unlinked', label: 'Unlinked' },
   { id: 'fax', label: 'Fax Center' },
-  { id: 'ai', label: 'AI Processing' },
+  { id: 'ai', label: 'Ai Processing' },
 ] as const
 type TabId = typeof TABS[number]['id']
 

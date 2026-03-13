@@ -4,7 +4,7 @@ const translations: Record<Language, Record<string, string>> = {
   en: {
     // Navigation sections
     'nav.operations': 'Operations',
-    'nav.ai': 'AI & Automation',
+    'nav.ai': 'Ai & Automation',
     'nav.management': 'Management',
     'nav.portal': 'Client Portal',
     'nav.system': 'System',
@@ -12,7 +12,7 @@ const translations: Record<Language, Record<string, string>> = {
     // 23 Modules
     'mod.dashboard': 'Dashboard',
     'mod.claims': 'Claims Center',
-    'mod.coding': 'AI Coding',
+    'mod.coding': 'Ai Coding',
     'mod.eligibility': 'Eligibility',
     'mod.denials': 'Denials & Appeals',
     'mod.ar': 'A/R Management',
@@ -22,8 +22,8 @@ const translations: Record<Language, Record<string, string>> = {
     'mod.tasks': 'Tasks & Workflows',
     'mod.documents': 'Documents',
     'mod.credentialing': 'Credentialing',
-    'mod.voice': 'Voice AI',
-    'mod.scribe': 'AI Scribe',
+    'mod.voice': 'Voice Ai',
+    'mod.scribe': 'Ai Scribe',
     'mod.analytics': 'Analytics',
     'mod.admin': 'Admin & Settings',
     'mod.integrations': 'Integration Hub',

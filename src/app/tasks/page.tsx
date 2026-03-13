@@ -89,7 +89,7 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
               <label className="text-xs text-content-secondary block mb-1">Assign To</label>
               <select value={form.assigned} onChange={e=>setForm(p=>({...p,assigned:e.target.value}))} className={ic}>
                 <option value="">Unassigned</option>
-                {['Sarah K.','Mike R.','Lisa T.','Amy C.','Tom B.','Voice AI'].map(s=><option key={s}>{s}</option>)}
+                {['Sarah K.','Mike R.','Lisa T.','Amy C.','Tom B.','Voice Ai'].map(s=><option key={s}>{s}</option>)}
               </select>
             </div>
             <div>

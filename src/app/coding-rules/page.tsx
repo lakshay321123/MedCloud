@@ -39,7 +39,7 @@ export default function CodingRulesPage() {
     rule_name: '', payer_name: '', client_id: '',
     condition_field: 'diagnosis', condition_operator: 'contains', condition_value: '',
     action_type: 'auto_code', action_value: '', priority: 100,
-    english_rule: '' // Natural language rule that AI converts
+    english_rule: '' // Natural language rule that Ai converts
   })
 
   useEffect(() => {
@@ -114,7 +114,7 @@ export default function CodingRulesPage() {
   }
 
   return (
-    <ModuleShell title="Coding Rules Engine" subtitle="Configure payer-specific and client-specific AI coding rules">
+    <ModuleShell title="Coding Rules Engine" subtitle="Configure payer-specific and client-specific Ai coding rules">
       <div className="space-y-6">
         {/* Filters */}
         <div className="card p-4">
@@ -161,7 +161,7 @@ export default function CodingRulesPage() {
                   <Zap size={13} /> Convert
                 </button>
               </div>
-              <p className="text-[11px] text-brand-dark mt-1">AI will interpret your English rule and fill in the structured fields below. Review and adjust before saving.</p>
+              <p className="text-[11px] text-brand-dark mt-1">Ai will interpret your English rule and fill in the structured fields below. Review and adjust before saving.</p>
             </div>
 
             {/* Structured fields */}
@@ -230,7 +230,7 @@ export default function CodingRulesPage() {
                   <option value="deny_code">→ Never use this code</option>
                   <option value="add_diagnosis">→ Add diagnosis</option>
                   <option value="set_em_level">→ Override E/M level</option>
-                  <option value="custom_prompt">→ Custom AI instruction</option>
+                  <option value="custom_prompt">→ Custom Ai instruction</option>
                 </select>
                 <input value={form.action_value} onChange={e => setForm(p => ({ ...p, action_value: e.target.value }))}
                   placeholder="e.g. 99214-25, E11.65, or custom instruction..."
@@ -270,7 +270,7 @@ export default function CodingRulesPage() {
                   <tr><td colSpan={7} className="px-4 py-12 text-center">
                     <Zap size={28} className="mx-auto mb-2 text-content-tertiary opacity-30" />
                     <p className="text-sm text-content-primary font-medium mb-1">No coding rules yet</p>
-                    <p className="text-xs text-content-tertiary">Add rules to customize how AI assigns codes per payer and client</p>
+                    <p className="text-xs text-content-tertiary">Add rules to customize how Ai assigns codes per payer and client</p>
                   </td></tr>
                 ) : filtered.map(r => (
                   <tr key={r.id} className="border-b border-separator last:border-0 hover:bg-surface-elevated transition-colors">
