@@ -444,6 +444,7 @@ async function runSchemaMigration() {
     "ALTER TABLE soap_notes ALTER COLUMN provider_id DROP NOT NULL",
     "ALTER TABLE soap_notes ALTER COLUMN encounter_id DROP NOT NULL",
     "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS target_role VARCHAR(50)",
+    "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
   ];
   for (const sql of colFixes) {
     try { await pool.query(sql); } catch (e) { if (e.code !== '42701' && e.code !== '42704') safeLog('warn', `colFix: ${e.message}`); }
@@ -1830,7 +1831,7 @@ async function auditLog(orgId, userId, action, entityType, entityId, details = {
     await pool.query(
       `INSERT INTO audit_log (id, org_id, user_id, action, entity_type, entity_id, details, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-      [uuid(), orgId, userId || 'system', action, entityType, entityId, JSON.stringify(details)]
+      [uuid(), orgId, userId || '00000000-0000-0000-0000-000000000000', action, entityType, entityId, JSON.stringify(details)]
     );
   } catch (e) { console.error('Audit log error:', e.message); }
 }
@@ -2854,9 +2855,25 @@ Respond ONLY with valid JSON (no markdown, no backticks):
 
   // Use callAI() — calls Bedrock for AI suggestions; returns null on failure (no external fallback)
   try {
-    const aiText = await callAI(prompt, { max_tokens: 2048, timeoutMs: 120000 });
+    const aiText = await callAI(prompt, { max_tokens: 4096, timeoutMs: 120000 });
     if (aiText) {
-      suggestion = JSON.parse(aiText.replace(/```json|```/g, '').trim());
+      let cleaned = aiText.replace(/```json|```/g, '').trim();
+      // Repair truncated JSON: close any open arrays/brackets
+      try { suggestion = JSON.parse(cleaned); } catch (parseErr) {
+        // Try to repair truncated JSON by closing open brackets
+        let repaired = cleaned;
+        const opens = (repaired.match(/\[/g) || []).length;
+        const closes = (repaired.match(/\]/g) || []).length;
+        const openBraces = (repaired.match(/\{/g) || []).length;
+        const closeBraces = (repaired.match(/\}/g) || []).length;
+        // Trim trailing comma if present
+        repaired = repaired.replace(/,\s*$/, '');
+        // Close unclosed arrays and objects
+        for (let i = 0; i < opens - closes; i++) repaired += ']';
+        for (let i = 0; i < openBraces - closeBraces; i++) repaired += '}';
+        try { suggestion = JSON.parse(repaired); safeLog('info', 'Repaired truncated Bedrock JSON successfully'); }
+        catch (e2) { safeLog('warn', `JSON repair failed: ${e2.message}`); suggestion = null; }
+      }
     }
   } catch (e) {
     safeLog('warn', 'AI coding call failed, using smart mock:', e.message);
