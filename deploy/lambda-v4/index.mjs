@@ -398,6 +398,17 @@ async function runSchemaMigration() {
   } catch (e) {
     safeLog('error', 'Schema migration error (non-fatal):', e.message);
   }
+  // ── Demo data cleanup: remove UCLA Health rogue client record ────────────
+  try {
+    const uclaCheck = await pool.query("SELECT id FROM clients WHERE name ILIKE '%UCLA%' LIMIT 1");
+    if (uclaCheck.rows.length > 0) {
+      await pool.query("DELETE FROM clients WHERE name ILIKE '%UCLA%'");
+      safeLog('info', '[cleanup] UCLA Health demo client removed from clients table');
+    }
+  } catch (e) {
+    safeLog('warn', '[cleanup] UCLA cleanup skipped:', e.message);
+  }
+  // ────────────────────────────────────────────────────────────────────────
   // Individual column fixes (run outside try/catch so one failure doesn't block others)
   const colFixes = [
     "ALTER TABLE coding_queue ADD COLUMN IF NOT EXISTS soap_note_id UUID",

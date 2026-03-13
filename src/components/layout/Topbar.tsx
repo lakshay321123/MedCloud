@@ -315,16 +315,18 @@ export default function Topbar() {
                   </div>
                 </div>
 
-                {/* Menu items */}
-                <div className="py-1">
-                  <button
-                    onClick={() => { setUserMenuOpen(false); router.push('/admin') }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-elevated text-[13px] text-black transition-colors"
-                  >
-                    <Settings size={15} className="text-gray-400" />
-                    Settings
-                  </button>
-                </div>
+                {/* Menu items — Settings only visible to backoffice/admin staff */}
+                {isStaff && (
+                  <div className="py-1">
+                    <button
+                      onClick={() => { setUserMenuOpen(false); router.push('/admin') }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-elevated text-[13px] text-black transition-colors"
+                    >
+                      <Settings size={15} className="text-gray-400" />
+                      Settings
+                    </button>
+                  </div>
+                )}
 
                 {/* Logout */}
                 <div className="border-t border-separator py-1">
