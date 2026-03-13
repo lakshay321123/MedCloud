@@ -460,6 +460,10 @@ async function runSchemaMigration() {
     "ALTER TABLE soap_notes ALTER COLUMN encounter_id DROP NOT NULL",
     "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS target_role VARCHAR(50)",
     "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
+    "ALTER TABLE clients ADD COLUMN IF NOT EXISTS contact_name VARCHAR(200)",
+    "ALTER TABLE clients ADD COLUMN IF NOT EXISTS contact_email VARCHAR(200)",
+    "ALTER TABLE clients ADD COLUMN IF NOT EXISTS pricing_model VARCHAR(50) DEFAULT '% Revenue'",
+    "ALTER TABLE clients ADD COLUMN IF NOT EXISTS ehr_mode VARCHAR(50) DEFAULT 'external_ehr'",
   ];
   for (const sql of colFixes) {
     try { await pool.query(sql); } catch (e) { if (e.code !== '42701' && e.code !== '42704') safeLog('warn', `colFix: ${e.message}`); }
