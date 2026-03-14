@@ -465,6 +465,8 @@ async function runSchemaMigration() {
 
     // ── Credentialing depth: CAQH tracking + payer enrollment status ─────────
     await pool.query(`
+      ALTER TABLE credentialing ADD COLUMN IF NOT EXISTS client_id UUID;
+      ALTER TABLE credentialing ADD COLUMN IF NOT EXISTS credential_type TEXT DEFAULT 'initial';
       ALTER TABLE credentialing ADD COLUMN IF NOT EXISTS provider_name VARCHAR(200);
       ALTER TABLE credentialing ADD COLUMN IF NOT EXISTS payer_enrollment_count INTEGER DEFAULT 0;
       ALTER TABLE credentialing ADD COLUMN IF NOT EXISTS caqh_provider_id VARCHAR(20);
@@ -485,6 +487,9 @@ async function runSchemaMigration() {
       ALTER TABLE credentialing ADD COLUMN IF NOT EXISTS documents JSONB DEFAULT '[]';
       ALTER TABLE credentialing ADD COLUMN IF NOT EXISTS timeline JSONB DEFAULT '[]';
     `).catch(e => safeLog('warn', 'credentialing depth migration:', e.message));
+    // Fix status constraint to allow all valid credentialing statuses
+    await pool.query(`ALTER TABLE credentialing DROP CONSTRAINT IF EXISTS credentialing_status_check`).catch(()=>{});
+    await pool.query(`ALTER TABLE credentialing ADD CONSTRAINT credentialing_status_check CHECK (status IN ('approved','pending','expiring','submitted','in_review','denied','renewal_pending','expired','onboarding','active'))`).catch(e => safeLog('warn', 'credentialing status constraint:', e.message));
 
     safeLog('info', 'Schema migration completed successfully');
   } catch (e) {
@@ -11505,23 +11510,26 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       }
       if (path.includes('/enrollment') && method === 'POST') {
         const { provider_id, payer_id, enrollment_type } = body;
-        const enrollment = await create('credentialing', {
-          provider_id, payer_id, enrollment_type: enrollment_type || 'initial',
-          credentialing_status: 'submitted', status: 'submitted',
-          submitted_date: new Date().toISOString().slice(0, 10),
-          expected_approval_date: new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10), // 60 days
-          client_id: clientId,
-        }, effectiveOrgId);
+        const enrollment = await pool.query(
+          `INSERT INTO credentialing (id, org_id, client_id, provider_id, payer_id,
+            credential_type, status, application_date, effective_date, notes, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, 'submitted', NOW(), $7, $8, NOW(), NOW()) RETURNING *`,
+          [uuid(), effectiveOrgId, clientId || null, provider_id, payer_id,
+           enrollment_type || 'initial',
+           new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10),
+           body.notes || null]
+        );
+        const enrollRow = enrollment.rows[0];
         // Create follow-up task at 30 days
-        await create('tasks', {
-          title: `Follow up: Credentialing enrollment ${provider_id}`,
-          description: `Check enrollment status for provider ${provider_id} with payer ${payer_id}`,
-          status: 'open', priority: 'normal',
-          due_date: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
-          entity_type: 'credentialing', entity_id: enrollment.id, client_id: clientId,
-        }, effectiveOrgId).catch(() => {});
-        await auditLog(effectiveOrgId, userId, 'credentialing_submitted', 'credentialing', enrollment.id, { provider_id, payer_id });
-        return respond(201, enrollment);
+        await pool.query(
+          `INSERT INTO tasks (id, org_id, title, description, status, priority, due_date, created_at)
+           VALUES ($1, $2, $3, $4, 'open', 'medium', $5, NOW())`,
+          [uuid(), effectiveOrgId, `Follow up: Credentialing enrollment ${provider_id}`,
+           `Check enrollment status for provider ${provider_id} with payer ${payer_id}`,
+           new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)]
+        ).catch(() => {});
+        await auditLog(effectiveOrgId, userId, 'credentialing_submitted', 'credentialing', enrollRow?.id, { provider_id, payer_id });
+        return respond(201, enrollRow || { status: 'submitted' });
       }
       if (method === 'GET' && !pathParams.id) {
         const credRows = await orgQuery(effectiveOrgId, `
