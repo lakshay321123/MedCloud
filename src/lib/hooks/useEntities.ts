@@ -320,8 +320,27 @@ export interface ApiCredentialing {
   provider_name?: string
   credential_type?: string
   status?: string
-  expiration_date?: string
+  expiry_date?: string
   payer_enrollment_count?: number
+  license_number?: string
+  license_state?: string
+  license_expiry?: string
+  malpractice_carrier?: string
+  malpractice_policy_number?: string
+  malpractice_expiry?: string
+  dea_number?: string
+  dea_expiry?: string
+  board_certified?: boolean
+  board_certification_date?: string
+  caqh_provider_id?: string
+  caqh_status?: string
+  caqh_last_attested?: string
+  caqh_next_attestation?: string
+  payer_enrollment_status?: Record<string, string>
+  timeline?: Array<{ event: string; date: string; by?: string; notes?: string }>
+  npi?: string
+  specialty?: string
+  client_name?: string
   created_at?: string
   updated_at?: string
 }
@@ -1150,11 +1169,15 @@ export function useUpdateEncounter(id: string) {
 // ── Credentialing CRUD ──────────────────────────────────────────────────────
 
 export function useCreateCredentialing() {
-  return useMutation<ApiCredentialing, Partial<ApiCredentialing>>('post', '/credentialing')
+  return useMutation<ApiCredentialing, Partial<ApiCredentialing>>('post', '/credentialing/enrollment')
 }
 
 export function useUpdateCredentialing(id: string) {
   return useMutation<ApiCredentialing, Partial<ApiCredentialing>>('put', `/credentialing/${id}`)
+}
+
+export function useRecredential(id: string) {
+  return useMutation<ApiCredentialing, { notes?: string; assigned_to?: string }>('post', `/credentialing/${id}/recredential`)
 }
 
 // ── Sprint 2 v5: New Routes ─────────────────────────────────────────────────
@@ -1465,15 +1488,37 @@ export function useCredentialingDashboard() {
   return useApi<ApiCredentialingDashboard>('/credentialing/dashboard', params)
 }
 
-export function useCreateEnrollment() {
-  return useMutation<{ id: string; status: string }, {
-    provider_id: string
-    payer_id: string
-    enrollment_type?: string
-    effective_date?: string
-    notes?: string
-  }>('post', '/credentialing/enrollment')
+export function useCredentialingExpiring(days = 90) {
+  const params = useClientParams({ days: days.toString() })
+  return useApi<ApiListResponse<ApiCredentialing>>('/credentialing/expiring', params)
 }
+
+export function useCredentialingRiskScores() {
+  const params = useClientParams()
+  return useApi<{ data: Array<{ id: string; provider_name: string; risk_score: number; risk_level: string; flags: string[]; recommended_actions: string[] }>; summary: { total: number; critical: number; high: number; medium: number; low: number; avg_score: number } }>('/credentialing/risk-scores', params)
+}
+
+export function useVerifyDEA(id: string) {
+  return useMutation<{ dea_number: string; valid: boolean; reason: string; registrant_type: string; name_match: boolean | null; days_until_expiry: number | null }, { dea_number?: string }>('post', `/credentialing/${id}/verify-dea`)
+}
+
+export function useVerifyNPI(id: string) {
+  return useMutation<{ verified: boolean | null; npi: string; provider_name?: string; specialty?: string; error?: string }, { npi?: string }>('post', `/credentialing/${id}/verify-npi`)
+}
+
+export function useVerifyExclusions(id: string) {
+  return useMutation<{ provider_name: string; alert: boolean; sam_gov: { searched: boolean; excluded?: boolean; total_records?: number }; oig_leie: { manual_check_url: string } }, { first_name?: string; last_name?: string }>('post', `/credentialing/${id}/verify-exclusions`)
+}
+
+export function useVerifyAll(id: string) {
+  return useMutation<{ npi: any; dea: any; exclusions: any; timestamp: string }, Record<string, never>>('post', `/credentialing/${id}/verify-all`)
+}
+
+export function useExtractDocument(id: string) {
+  return useMutation<{ extracted: Record<string, any>; fields_updated: string[]; ai_confidence: number | null }, { s3_key: string; document_type?: string }>('post', `/credentialing/${id}/extract-document`)
+}
+
+// useCreateEnrollment removed — duplicate of useCreateCredentialing (both POST /credentialing/enrollment)
 
 // ── Sprint 2 v7: Report Export ───────────────────────────────────────────────
 export interface ApiReport {

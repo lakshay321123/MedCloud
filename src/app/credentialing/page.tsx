@@ -4,68 +4,124 @@ import React, { useState, useEffect, useRef } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
-import { BadgeCheck, AlertTriangle, X } from 'lucide-react'
-import { useCredentialing, useUpdateCredentialing, useCreateCredentialing, useCredentialingDashboard, useCreateEnrollment } from '@/lib/hooks'
+import { BadgeCheck, AlertTriangle, X, Upload, FileCheck, Loader2 } from 'lucide-react'
+import { useCredentialing, useUpdateCredentialing, useCreateCredentialing, useCredentialingExpiring, useRecredential, useCredentialingRiskScores, useVerifyAll, useVerifyDEA, useRequestUploadUrl, useExtractDocument, ApiCredentialing } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
 import { useSearchParams, useRouter } from 'next/navigation'
-// Region filtering handled by backend
 
-const providers: Array<{ id: string; name: string; npi: string; client: string; license: string; malpractice: string; dea: string; caqh: string; payers: number; status: string }> = []
+function formatDate(d?: string | null) {
+  if (!d) return '—'
+  const dt = new Date(d)
+  if (isNaN(dt.getTime())) return '—'
+  return dt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+function daysUntil(d?: string | null) {
+  if (!d) return null
+  const dt = new Date(d)
+  if (isNaN(dt.getTime())) return null
+  return Math.ceil((dt.getTime() - Date.now()) / 86400000)
+}
 
-type Provider = typeof providers[0]
+type CredRow = {
+  id: string; name: string; npi: string; client: string; clientId: string
+  license: string; licenseExpiry: string | null
+  malpractice: string; malpracticeExpiry: string | null
+  dea: string; deaExpiry: string | null
+  caqh: string; caqhId: string; caqhStatus: string
+  payers: number; status: string; boardCertified: boolean
+  raw: ApiCredentialing
+}
 
 export default function CredentialingPage() {
   const { toast } = useToast()
   const { t } = useT()
   const { selectedClient } = useApp()
   const router = useRouter()
-  const [selected, setSelected] = useState<Provider | null>(null)
-  const { data: apiCredResult } = useCredentialing({ limit: 50 })
+  const [selected, setSelected] = useState(null as CredRow | null)
+  const { data: apiCredResult } = useCredentialing({ limit: 100 })
+  const { data: expiringResult } = useCredentialingExpiring(90)
+  const { data: riskData } = useCredentialingRiskScores()
   const { mutate: updateCred } = useUpdateCredentialing(selected?.id || '')
+  const { mutate: recredential } = useRecredential(selected?.id || '')
   const { mutate: createCred } = useCreateCredentialing()
+  const { mutate: verifyAll, loading: verifyingAll } = useVerifyAll(selected?.id || '')
+  const { mutate: verifyDEA, loading: verifyingDEA } = useVerifyDEA(selected?.id || '')
+  const { mutate: requestUrl } = useRequestUploadUrl()
+  const { mutate: extractDoc, loading: extracting } = useExtractDocument(selected?.id || '')
+  const [verifyResult, setVerifyResult] = useState(null as any)
+  const [uploadFile, setUploadFile] = useState(null as File | null)
+  const [uploading, setUploading] = useState(false)
+  const [extractResult, setExtractResult] = useState(null as any)
+  const fileInputRef = useRef(null as HTMLInputElement | null)
 
-  const apiRows = apiCredResult?.data?.length
-    ? apiCredResult.data.map(p => ({
-        id: p.id,
-        name: p.provider_name || '',
-        status: p.status || '',
-        payers: p.payer_enrollment_count || 0,
-        client: (p as Record<string, any>).client_name
-             || (p as Record<string, any>).org_name
-             || '',
-        license: '—',
-        malpractice: '—',
-        dea: '—',
-        caqh: '—',
-        npi: '',
-      }))
-    : null
-  // Use API data when available; fall back to seed providers if DB is empty
-  const baseProviders = (apiRows && apiRows.length > 0) ? apiRows : providers
+  const apiRows: CredRow[] = (apiCredResult?.data || []).map((p) => ({
+    id: p.id,
+    name: p.provider_name || '',
+    npi: p.npi || '',
+    status: p.status || '',
+    payers: p.payer_enrollment_count || 0,
+    client: p.client_name || '',
+    clientId: p.client_id || '',
+    license: p.license_number ? `${p.license_state || ''} ${p.license_number}` : '—',
+    licenseExpiry: p.license_expiry || null,
+    malpractice: p.malpractice_carrier || '—',
+    malpracticeExpiry: p.malpractice_expiry || null,
+    dea: p.dea_number || '—',
+    deaExpiry: p.dea_expiry || null,
+    caqh: p.caqh_provider_id || '—',
+    caqhId: p.caqh_provider_id || '',
+    caqhStatus: p.caqh_status || 'not_started',
+    boardCertified: p.board_certified || false,
+    raw: p,
+  }))
 
-  const filteredProviders = baseProviders.filter(p => {
-    if (selectedClient) return p.client === selectedClient.name
-    // Region filtering handled by backend via useClientParams
+  const filteredProviders = apiRows.filter(p => {
+    if (selectedClient) return p.clientId === selectedClient.id
     return true
   })
 
-  // Auto-open provider drawer when navigated from global search with ?openId=
   const searchParams = useSearchParams()
   const openId = searchParams.get('openId')
-  const consumedOpenId = useRef<string | null>(null)
+  const consumedOpenId = useRef(null as string | null)
   useEffect(() => {
     if (!openId || openId === consumedOpenId.current) return
-    const match = filteredProviders.find(p => p.id === openId)
-    if (match) { setSelected(match); consumedOpenId.current = openId; return }
-    const baseMatch = baseProviders.find(p => p.id === openId)
-    if (baseMatch) { setSelected(baseMatch); consumedOpenId.current = openId }
-  }, [openId, filteredProviders, baseProviders])
+    const match = filteredProviders.find(p => p.id === openId) || apiRows.find(p => p.id === openId)
+    if (match) { setSelected(match); consumedOpenId.current = openId }
+  }, [openId, filteredProviders, apiRows])
 
-  const activeCount = filteredProviders.filter(p => p.status === 'active').length
-  const expiringCount = filteredProviders.filter(p => p.status === 'expiring').length
-  const onboardingCount = filteredProviders.filter(p => p.status === 'onboarding').length
+  const activeCount = filteredProviders.filter(p => p.status === 'active' || p.status === 'approved').length
+  const expiringCount = filteredProviders.filter(p => {
+    // Count providers with ANY credential expiring within 30 days (date-based, not status-based)
+    const dates = [p.licenseExpiry, p.malpracticeExpiry, p.deaExpiry, p.raw?.caqh_next_attestation]
+    return dates.some(d => { const dd = daysUntil(d); return dd !== null && dd >= 0 && dd <= 30 })
+  }).length
+  const onboardingCount = filteredProviders.filter(p => ['pending', 'submitted', 'in_review', 'onboarding'].includes(p.status)).length
   const totalEnrollments = filteredProviders.reduce((s, p) => s + p.payers, 0)
-  const expiring = expiringCount
+
+  const pipelineCounts = {
+    submitted: filteredProviders.filter(p => p.status === 'submitted').length,
+    inReview: filteredProviders.filter(p => p.status === 'in_review').length,
+    approved: filteredProviders.filter(p => ['active', 'approved'].includes(p.status)).length,
+    denied: filteredProviders.filter(p => p.status === 'denied').length,
+    recredentialing: filteredProviders.filter(p => ['expiring', 'renewal_pending', 'recredentialing'].includes(p.status)).length,
+  }
+
+  const expiringItems = (expiringResult?.data || []).map((c) => {
+    const malpDays = daysUntil(c.malpractice_expiry)
+    const licDays = daysUntil(c.license_expiry)
+    const caqhDays = daysUntil(c.caqh_next_attestation)
+    const deaDays = daysUntil(c.dea_expiry)
+    // Find the soonest expiring credential and use ITS date
+    const candidates = [
+      { name: 'Malpractice Insurance', days: malpDays, date: c.malpractice_expiry },
+      { name: 'Medical License', days: licDays, date: c.license_expiry },
+      { name: 'CAQH Attestation', days: caqhDays, date: c.caqh_next_attestation },
+      { name: 'DEA Registration', days: deaDays, date: c.dea_expiry },
+    ].filter(x => x.days !== null && x.days >= 0 && x.days <= 90)
+    const soonest = candidates.sort((a, b) => (a.days ?? 999) - (b.days ?? 999))[0]
+    if (!soonest) return null
+    return { name: c.provider_name || 'Unknown', item: soonest.name, date: formatDate(soonest.date), days: soonest.days ?? 999 }
+  }).filter(Boolean).sort((a, b) => (a?.days ?? 999) - (b?.days ?? 999)).slice(0, 5) as Array<{name:string; item:string; date:string; days:number}>
 
   return (
     <ModuleShell title={t("credentialing","title")} subtitle={t("credentialing","subtitle")}>
@@ -75,9 +131,9 @@ export default function CredentialingPage() {
         <KPICard label={t('credentialing','onboarding')} value={onboardingCount}/>
         <KPICard label={t('credentialing','totalEnrollments')} value={totalEnrollments}/>
       </div>
-      {expiring > 0 && (
+      {expiringCount > 0 && (
         <div className="bg-brand-pale0/10 border border-brand-light/20 rounded-lg p-3 mb-4 text-xs text-brand-deep dark:text-brand-deep flex items-center gap-2">
-          <AlertTriangle size={14}/> {expiring} provider(s) have credentials expiring within 30 days
+          <AlertTriangle size={14}/> {expiringCount} provider(s) have credentials expiring within 30 days
         </div>
       )}
       <div className="card overflow-hidden">
@@ -91,15 +147,17 @@ export default function CredentialingPage() {
           <tbody>{filteredProviders.map(p=>(
             <tr key={p.id}
               onClick={() => setSelected(p)}
-              className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(p) } }}
+              tabIndex={0} role="button"
+              className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors focus:bg-surface-elevated focus:outline-none">
               <td className="px-4 py-3 font-medium">{p.name}</td>
-              <td className="px-4 py-3 font-mono text-[13px] text-content-secondary">{p.npi}</td>
+              <td className="px-4 py-3 font-mono text-[13px] text-content-secondary">{p.npi || '—'}</td>
               <td className="px-4 py-3 text-[13px] text-content-secondary">{p.client}</td>
-              <td className="px-4 py-3 text-xs">{p.license}</td>
-              <td className="px-4 py-3 text-xs">{p.malpractice}</td>
-              <td className="px-4 py-3 text-[13px] text-content-secondary">{p.caqh}</td>
+              <td className={`px-4 py-3 text-xs ${p.licenseExpiry && daysUntil(p.licenseExpiry) !== null && daysUntil(p.licenseExpiry)! < 60 ? 'text-brand-deep font-medium' : ''}`}>{formatDate(p.licenseExpiry)}</td>
+              <td className={`px-4 py-3 text-xs ${p.malpracticeExpiry && daysUntil(p.malpracticeExpiry) !== null && daysUntil(p.malpracticeExpiry)! < 60 ? 'text-brand-deep font-medium' : ''}`}>{formatDate(p.malpracticeExpiry)}</td>
+              <td className="px-4 py-3 text-[13px] text-content-secondary">{p.caqhStatus === 'attested' ? '✓ Attested' : p.caqhStatus === 'attestation_due' ? '⚠ Due' : p.caqh !== '—' ? p.caqh : '—'}</td>
               <td className="px-4 py-3 text-right">{p.payers}</td>
-              <td className="px-4 py-3"><span className={`text-[11px] px-1.5 py-0.5 rounded-full border ${p.status==='active'?'bg-brand/10 text-brand-dark dark:text-brand-dark border-brand/20':p.status==='expiring'?'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep border-brand-light/20':'bg-brand/10 text-brand-dark border-brand/20'}`}>{p.status}</span></td>
+              <td className="px-4 py-3"><span className={`text-[11px] px-1.5 py-0.5 rounded-full border ${p.status==='active'?'bg-brand/10 text-brand-dark dark:text-brand-dark border-brand/20':p.status==='expiring'?'bg-brand-pale0/10 text-brand-deep dark:text-brand-deep border-brand-light/20':p.status==='pending'?'bg-brand/5 text-brand border-brand/15':'bg-brand/10 text-brand-dark border-brand/20'}`}>{p.status}</span></td>
             </tr>
           ))}</tbody>
         </table>
@@ -111,11 +169,10 @@ export default function CredentialingPage() {
           <div className="fixed right-0 top-0 h-full w-[420px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl">
             <div className="flex gap-2 items-center justify-between p-4 border-b border-separator pb-1">
               <h3 className="font-semibold text-content-primary">{selected.name}</h3>
-              <button onClick={() => { setSelected(null); if (searchParams.get('openId')) router.replace('/credentialing', { scroll: false }) }} className="p-1 hover:bg-surface-elevated rounded-btn">
+              <button type="button" onClick={() => { setSelected(null); if (searchParams.get('openId')) router.replace('/credentialing', { scroll: false }) }} className="p-1 hover:bg-surface-elevated rounded-btn">
                 <X size={16} className="text-content-secondary" />
               </button>
             </div>
-
             <div className="p-4 space-y-4 flex-1 overflow-y-auto">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-brand/10 flex items-center justify-center text-brand font-bold text-lg">
@@ -123,83 +180,186 @@ export default function CredentialingPage() {
                 </div>
                 <div>
                   <div className="font-semibold text-content-primary">{selected.name}</div>
-                  <div className="text-[13px] text-content-secondary">NPI: {selected.npi} · {selected.client}</div>
+                  <div className="text-[13px] text-content-secondary">NPI: {selected.npi || '—'} · {selected.client}</div>
                 </div>
               </div>
-
               {[
-                { label: 'Medical License', value: selected.license },
-                { label: 'Malpractice', value: selected.malpractice },
-                { label: 'DEA', value: selected.dea },
-                { label: 'CAQH', value: selected.caqh },
+                { label: 'Medical License', value: selected.license !== '—' ? selected.license : '—', sub: selected.licenseExpiry ? `Exp: ${formatDate(selected.licenseExpiry)}` : null, alert: selected.licenseExpiry && daysUntil(selected.licenseExpiry) !== null && (daysUntil(selected.licenseExpiry) as number) < 60 },
+                { label: 'Malpractice', value: selected.malpractice, sub: selected.malpracticeExpiry ? `Exp: ${formatDate(selected.malpracticeExpiry)}` : null, alert: selected.malpracticeExpiry && daysUntil(selected.malpracticeExpiry) !== null && (daysUntil(selected.malpracticeExpiry) as number) < 60 },
+                { label: 'Malpractice Policy #', value: selected.raw?.malpractice_policy_number || '—', sub: null, alert: false },
+                { label: 'DEA', value: selected.dea, sub: selected.deaExpiry ? `Exp: ${formatDate(selected.deaExpiry)}` : null, alert: selected.deaExpiry && daysUntil(selected.deaExpiry) !== null && (daysUntil(selected.deaExpiry) as number) < 90 },
+                { label: 'CAQH', value: selected.caqhId ? `#${selected.caqhId}` : '—', sub: selected.caqhStatus === 'attested' ? `Attested · Last: ${formatDate(selected.raw?.caqh_last_attested)}` : selected.caqhStatus === 'attestation_due' ? `Due: ${formatDate(selected.raw?.caqh_next_attestation)}` : selected.caqhStatus === 'not_started' ? 'Not Started' : selected.caqhStatus, alert: selected.caqhStatus === 'attestation_due' },
+                { label: 'Board Certified', value: selected.boardCertified ? 'Yes' : 'No', sub: selected.raw?.board_certification_date ? `Since: ${formatDate(selected.raw.board_certification_date)}` : null, alert: false },
               ].map(item => (
                 <div key={item.label} className="flex gap-2 items-center justify-between py-2 border-b border-separator pb-1">
                   <span className="text-[13px] text-content-secondary">{item.label}</span>
-                  <span className={`text-[13px] font-medium ${item.value === 'Pending' ? 'text-brand-deep' : item.value === 'N/A' ? 'text-content-tertiary' : 'text-content-primary'}`}>
-                    {item.value}
-                  </span>
+                  <div className="text-right">
+                    <span className={`text-[13px] font-medium ${item.alert ? 'text-brand-deep' : item.value === '—' || item.value === 'No' ? 'text-content-tertiary' : 'text-content-primary'}`}>{item.value}</span>
+                    {item.sub && <div className={`text-[11px] ${item.alert ? 'text-brand-deep font-medium' : 'text-content-tertiary'}`}>{item.sub}</div>}
+                  </div>
                 </div>
               ))}
-
-              <div>
-                <div className="text-[13px] text-content-secondary mb-2">Active Payer Enrollments: {selected.payers}</div>
-              </div>
-
+              <div className="text-[13px] text-content-secondary mb-2">Active Payer Enrollments: {selected.payers}</div>
+              {/* Payer Enrollment Status Breakdown */}
+              {selected.raw?.payer_enrollment_status && typeof selected.raw.payer_enrollment_status === 'object' && Object.keys(selected.raw.payer_enrollment_status).length > 0 && (
+                <div className="bg-surface-elevated rounded-lg p-2 mb-2 text-[11px] space-y-1">
+                  {Object.entries(selected.raw.payer_enrollment_status).map(([payer, status]) => (
+                    <div key={payer} className="flex justify-between"><span className="text-content-tertiary truncate max-w-[200px]">{payer}</span><span className="text-content-primary">{String(status)}</span></div>
+                  ))}
+                </div>
+              )}
+              {/* Timeline */}
+              {selected.raw?.timeline && Array.isArray(selected.raw.timeline) && selected.raw.timeline.length > 0 && (
+                <div className="mb-2">
+                  <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-1">Timeline</h4>
+                  <div className="space-y-1">
+                    {selected.raw.timeline.slice(0, 5).map((ev, i) => (
+                      <div key={i} className="flex items-center gap-2 text-[11px]">
+                        <span className="text-content-tertiary w-[70px] shrink-0">{formatDate(ev.date)}</span>
+                        <span className="text-content-primary">{ev.event}</span>
+                        {ev.by && <span className="text-content-tertiary">by {ev.by}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
-                <button onClick={async () => {
-                  try {
-                    await updateCred({ status: 'recredentialing', credential_type: 'recredentialing' })
-                    toast.success('Re-credentialing initiated')
-                  } catch (err) {
-                    console.error('[credentialing] re-cred failed:', err)
-                    toast.error('Failed to initiate re-credentialing')
-                  }
-                }}
-                  className="bg-brand/10 text-brand rounded-lg py-2 text-[13px] font-medium hover:bg-brand/20 transition-colors">
-                  Initiate Re-credentialing
-                </button>
-                <button onClick={() => { window.open('https://proview.caqh.org/PR', '_blank'); toast.success('CAQH ProView opened') }}
-                  className="bg-surface-elevated border border-separator rounded-lg py-2 text-[13px] font-medium">
-                  Update CAQH
-                </button>
-                <button onClick={async () => {
-                  try {
-                    await createCred({ provider_id: selected?.id, status: 'pending', credential_type: 'payer_enrollment' })
-                    toast.success('Enrollment started')
-                  } catch (err) {
-                    console.error('[credentialing] enrollment failed:', err)
-                    toast.error('Failed to start enrollment')
-                  }
-                }}
-                  className="bg-surface-elevated border border-separator rounded-lg py-2 text-[13px] font-medium col-span-2">
-                  Add Payer Enrollment
-                </button>
+                <button type="button" onClick={async () => {
+                  try { await recredential({ notes: 'Re-credentialing initiated from dashboard' }); toast.success('Re-credentialing initiated') }
+                  catch { toast.error('Failed to initiate re-credentialing') }
+                }} className="bg-brand/10 text-brand rounded-lg py-2 text-[13px] font-medium hover:bg-brand/20 transition-colors">Initiate Re-credentialing</button>
+                <button type="button" onClick={() => { window.open('https://proview.caqh.org/PR', '_blank'); toast.success('CAQH ProView opened') }}
+                  className="bg-surface-elevated border border-separator rounded-lg py-2 text-[13px] font-medium">Update CAQH</button>
+                <button type="button" onClick={() => {
+                  toast.error('Payer enrollment requires selecting a payer. Use the Credentialing module payer enrollment form.')
+                }} className="bg-surface-elevated border border-separator rounded-lg py-2 text-[13px] font-medium col-span-2">Add Payer Enrollment</button>
               </div>
+
+              {/* Document Upload + AI Extract */}
+              <div className="border-t border-separator pt-3 mt-2">
+                <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-2">Upload Credential Document</h4>
+                <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => { if (e.target.files?.[0]) setUploadFile(e.target.files[0]) }} />
+                {!uploadFile ? (
+                  <button type="button" onClick={() => fileInputRef.current?.click()}
+                    className="w-full border-2 border-dashed border-separator rounded-lg py-4 flex flex-col items-center gap-1 hover:border-brand/40 hover:bg-brand/5 transition-colors">
+                    <Upload size={18} className="text-content-tertiary" />
+                    <span className="text-[12px] text-content-secondary">Upload license, malpractice, or DEA certificate</span>
+                    <span className="text-[10px] text-content-tertiary">PDF, JPG, or PNG</span>
+                  </button>
+                ) : (
+                  <div className="bg-surface-elevated rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileCheck size={16} className="text-brand" />
+                        <span className="text-[12px] font-medium truncate max-w-[200px]">{uploadFile.name}</span>
+                        <span className="text-[10px] text-content-tertiary">{(uploadFile.size / 1024).toFixed(0)} KB</span>
+                      </div>
+                      <button type="button" onClick={() => { setUploadFile(null); setExtractResult(null) }} className="text-content-tertiary hover:text-content-primary">
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <button type="button" onClick={async () => {
+                      if (!uploadFile || !selected) return;
+                      setUploading(true); setExtractResult(null);
+                      try {
+                        const urlResult = await requestUrl({ file_name: uploadFile.name, content_type: uploadFile.type || 'application/pdf', folder: 'credentialing' });
+                        if (!urlResult?.upload_url || !urlResult?.s3_key) throw new Error('Could not get upload URL');
+                        const s3Res = await fetch(urlResult.upload_url, { method: 'PUT', body: uploadFile, headers: { 'Content-Type': uploadFile.type || 'application/pdf' } });
+                        if (!s3Res.ok) throw new Error('S3 upload failed');
+                        toast.success('Document uploaded, extracting data...');
+                        const result = await extractDoc({ s3_key: urlResult.s3_key, document_type: uploadFile.name.toLowerCase().includes('license') ? 'medical_license' : uploadFile.name.toLowerCase().includes('malp') ? 'malpractice_certificate' : uploadFile.name.toLowerCase().includes('dea') ? 'dea_certificate' : 'unknown' });
+                        setExtractResult(result);
+                        if (result && result.fields_updated && result.fields_updated.length > 0) {
+                          toast.success('Credentials auto-populated: ' + result.fields_updated.join(', '));
+                        } else {
+                          toast.success('Document processed');
+                        }
+                      } catch (err) {
+                        toast.error('Upload failed: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                      } finally { setUploading(false); }
+                    }} disabled={uploading || extracting}
+                      className="w-full bg-brand text-white rounded-lg py-2 text-[13px] font-medium hover:bg-brand/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                      {uploading || extracting ? <><Loader2 size={14} className="animate-spin" /> Extracting credentials...</> : <><Upload size={14} /> Upload and Extract with Ai</>}
+                    </button>
+                  </div>
+                )}
+                {extractResult?.extracted && (
+                  <div className="mt-2 bg-surface-elevated rounded-lg p-3 text-[11px] space-y-1">
+                    <div className="text-[11px] font-semibold text-brand mb-1">Ai Extracted Data {extractResult.ai_confidence ? `(${Math.round(extractResult.ai_confidence * 100)}% confidence)` : ''}</div>
+                    {extractResult.extracted.document_type && <div className="flex justify-between"><span className="text-content-tertiary">Type:</span><span>{extractResult.extracted.document_type}</span></div>}
+                    {extractResult.extracted.license_number && <div className="flex justify-between"><span className="text-content-tertiary">License:</span><span>{extractResult.extracted.license_state} {extractResult.extracted.license_number}</span></div>}
+                    {extractResult.extracted.license_expiry && <div className="flex justify-between"><span className="text-content-tertiary">License Exp:</span><span>{extractResult.extracted.license_expiry}</span></div>}
+                    {extractResult.extracted.malpractice_carrier && <div className="flex justify-between"><span className="text-content-tertiary">Carrier:</span><span>{extractResult.extracted.malpractice_carrier}</span></div>}
+                    {extractResult.extracted.malpractice_expiry && <div className="flex justify-between"><span className="text-content-tertiary">Malp Exp:</span><span>{extractResult.extracted.malpractice_expiry}</span></div>}
+                    {extractResult.extracted.dea_number && <div className="flex justify-between"><span className="text-content-tertiary">DEA:</span><span>{extractResult.extracted.dea_number}</span></div>}
+                    {extractResult.extracted.dea_expiry && <div className="flex justify-between"><span className="text-content-tertiary">DEA Exp:</span><span>{extractResult.extracted.dea_expiry}</span></div>}
+                    {extractResult.fields_updated?.length > 0 && <div className="mt-1 text-brand font-medium">Auto-updated: {extractResult.fields_updated.join(', ')}</div>}
+                  </div>
+                )}
+              </div>
+
+              {/* AI Verification Section */}
+              <div className="border-t border-separator pt-3 mt-2">
+                <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-2">AI Verification</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={async () => {
+                    try {
+                      const result = await verifyAll({});
+                      setVerifyResult(result);
+                      toast.success('Verification complete');
+                    } catch { toast.error('Verification failed'); }
+                  }} disabled={verifyingAll} className="bg-brand/10 text-brand rounded-lg py-2 text-[13px] font-medium hover:bg-brand/20 transition-colors col-span-2 disabled:opacity-50">
+                    {verifyingAll ? 'Verifying...' : 'Run Full Verification'}
+                  </button>
+                  <button type="button" onClick={async () => {
+                    try {
+                      const result = await verifyDEA({});
+                      setVerifyResult({ dea: result });
+                      toast.success(result?.valid ? 'DEA checksum valid' : 'DEA checksum failed');
+                    } catch { toast.error('DEA check failed'); }
+                  }} disabled={verifyingDEA} className="bg-surface-elevated border border-separator rounded-lg py-2 text-[11px] font-medium disabled:opacity-50">
+                    {verifyingDEA ? '...' : 'Verify DEA'}
+                  </button>
+                  <button type="button" onClick={() => { window.open('https://exclusions.oig.hhs.gov/', '_blank'); toast.success('OIG LEIE opened'); }}
+                    className="bg-surface-elevated border border-separator rounded-lg py-2 text-[11px] font-medium">
+                    Check OIG LEIE
+                  </button>
+                </div>
+                {verifyResult && (
+                  <div className="mt-2 bg-surface-elevated rounded-lg p-3 text-[11px] space-y-1">
+                    {verifyResult.dea && (
+                      <div className="flex justify-between"><span>DEA:</span><span className={verifyResult.dea.valid ? 'text-brand' : 'text-brand-deep font-medium'}>{verifyResult.dea.valid ? '✓ Valid' : '✗ Invalid'} {verifyResult.dea.reason?.slice(0, 30)}</span></div>
+                    )}
+                    {verifyResult.npi && (
+                      <div className="flex justify-between"><span>NPI:</span><span className={verifyResult.npi.verified ? 'text-brand' : 'text-content-tertiary'}>{verifyResult.npi.verified ? `✓ ${verifyResult.npi.name}` : verifyResult.npi.error ? 'Manual check needed' : '✗ Not found'}</span></div>
+                    )}
+                    {verifyResult.exclusions && (
+                      <div className="flex justify-between"><span>Exclusions:</span><span className={verifyResult.exclusions.excluded ? 'text-brand-deep font-bold' : 'text-brand'}>{verifyResult.exclusions.excluded === false ? '✓ Clear' : verifyResult.exclusions.excluded ? '⚠ EXCLUDED' : 'Manual check needed'}</span></div>
+                    )}
+                  </div>
+                )}
             </div>
+          </div>
           </div>
         </>
       )}
 
-      {/* ── Payer Enrollment Pipeline ── */}
       <div className="card p-4 mt-4">
         <h3 className="text-sm font-semibold mb-3">Payer Enrollment Pipeline</h3>
         <div className="grid grid-cols-5 gap-2 mb-4">
-          {[{stage:'Submitted',count:4,color:'bg-brand/60'},{stage:'In Review',count:7,color:'bg-brand-light'},{stage:'Approved',count:23,color:'bg-brand'},{stage:'Denied',count:1,color:'bg-[#065E76]'},{stage:'Re-credentialing',count:3,color:'bg-brand-dark'}].map(s=>(
+          {[{stage:'Submitted',count:pipelineCounts.submitted,color:'bg-brand/60'},{stage:'In Review',count:pipelineCounts.inReview,color:'bg-brand-light'},{stage:'Approved',count:pipelineCounts.approved,color:'bg-brand'},{stage:'Denied',count:pipelineCounts.denied,color:'bg-[#065E76]'},{stage:'Re-credentialing',count:pipelineCounts.recredentialing,color:'bg-brand-dark'}].map(s=>(
             <div key={s.stage} className="text-center">
-              <div className={`${s.color} text-white rounded-lg py-3 mb-1`}>
-                <span className="text-lg font-bold">{s.count}</span>
-              </div>
+              <div className={`${s.color} text-white rounded-lg py-3 mb-1`}><span className="text-lg font-bold">{s.count}</span></div>
               <span className="text-[11px] text-content-secondary">{s.stage}</span>
             </div>
           ))}
         </div>
         <div className="space-y-2">
           <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider">Upcoming Expirations</h4>
-          {[{name:'Dr. Patel',item:'Malpractice Insurance',date:'2026-04-15',days:42},
-            {name:'Dr. Martinez',item:'State License',date:'2026-05-10',days:67},
-            {name:'Dr. Williams',item:'CAQH Attestation',date:'2026-04-01',days:28}
-          ].sort((a,b)=>a.days-b.days).map(e=>(
-            <div key={`${e.name}-${e.item}`} className={`flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2 ${e.days<=30?'border border-brand-light/30':''}`}>
+          {expiringItems.length === 0 && <div className="text-[13px] text-content-tertiary py-2">No credentials expiring in the next 90 days</div>}
+          {expiringItems.map((e, idx)=>(
+            <div key={`${e.name}-${idx}`} className={`flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2 ${e.days<=30?'border border-brand-light/30':''}`}>
               <div className="flex items-center gap-3">
                 <span className="text-[13px] font-medium">{e.name}</span>
                 <span className="text-[11px] text-content-secondary">{e.item}</span>
@@ -212,6 +372,36 @@ export default function CredentialingPage() {
           ))}
         </div>
       </div>
+
+      {/* ── AI Credential Risk Scores ── */}
+      {riskData?.data && riskData.data.length > 0 && (
+        <div className="card p-4 mt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold">Ai Credential Risk Scores</h3>
+            <div className="flex gap-2 text-[11px]">
+              {riskData.summary?.critical > 0 && <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">{riskData.summary.critical} Critical</span>}
+              {riskData.summary?.high > 0 && <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">{riskData.summary.high} High</span>}
+              <span className="px-2 py-0.5 rounded-full bg-brand/10 text-brand font-medium">Avg: {riskData.summary?.avg_score}/100</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {riskData.data.slice(0, 8).map((p, idx) => (
+              <div key={`risk-${idx}`} className="flex items-center gap-3 bg-surface-elevated rounded-lg px-3 py-2">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-[13px] ${p.risk_level === 'critical' ? 'bg-red-500' : p.risk_level === 'high' ? 'bg-orange-500' : p.risk_level === 'medium' ? 'bg-yellow-500' : 'bg-brand'}`}>
+                  {p.risk_score}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-medium truncate">{p.provider_name}</div>
+                  <div className="text-[11px] text-content-tertiary truncate">{p.flags.slice(0, 2).join(' · ')}</div>
+                </div>
+                <span className={`text-[11px] px-1.5 py-0.5 rounded-full border font-medium ${p.risk_level === 'critical' ? 'bg-red-50 text-red-700 border-red-200' : p.risk_level === 'high' ? 'bg-orange-50 text-orange-700 border-orange-200' : p.risk_level === 'medium' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-brand/10 text-brand border-brand/20'}`}>
+                  {p.risk_level}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </ModuleShell>
   )
 }
