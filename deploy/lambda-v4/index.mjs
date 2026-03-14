@@ -466,6 +466,7 @@ async function runSchemaMigration() {
     // ── Credentialing depth: CAQH tracking + payer enrollment status ─────────
     await pool.query(`
       ALTER TABLE credentialing ADD COLUMN IF NOT EXISTS provider_name VARCHAR(200);
+      ALTER TABLE credentialing ADD COLUMN IF NOT EXISTS payer_enrollment_count INTEGER DEFAULT 0;
       ALTER TABLE credentialing ADD COLUMN IF NOT EXISTS caqh_provider_id VARCHAR(20);
       ALTER TABLE credentialing ADD COLUMN IF NOT EXISTS caqh_status VARCHAR(30) DEFAULT 'not_started';
       ALTER TABLE credentialing ADD COLUMN IF NOT EXISTS caqh_last_attested DATE;
@@ -1130,6 +1131,59 @@ async function seedDemoData(orgId) {
 
     // ── Fix NULL client_ids for per-client views ──────────────────────────────
     // Distribute org-level records across US clients so per-client filtering works
+
+    // ── Credentialing depth: ensure all records have rich data ────────────────
+    const credDepthCheck = await pool.query(`SELECT COUNT(*) FROM credentialing WHERE org_id=$1 AND license_number IS NOT NULL`, [_org]);
+    if (parseInt(credDepthCheck.rows[0].count) === 0) {
+      safeLog('info', 'Credentialing depth seed: populating rich credential data...');
+      await pool.query(`DELETE FROM credentialing WHERE org_id = $1`, [_org]).catch(()=>{});
+      const allProvs = await pool.query(`SELECT id, first_name, last_name, specialty, npi, client_id FROM providers WHERE org_id=$1 ORDER BY created_at LIMIT 5`, [_org]);
+      const usClsForCred = await pool.query(`SELECT id, name, region FROM clients WHERE org_id=$1 AND region='us' ORDER BY created_at`, [_org]);
+      const ucIds = usClsForCred.rows.map(r => r.id);
+      const credSeedData = [
+        { licNum: 'MD-2019-44821', licState: 'CA', licExp: 120, malpCarrier: 'The Doctors Company', malpPol: 'TDC-2024-991002', malpExp: 210, dea: 'FA1234567', deaExp: 730, boardCert: true, boardDate: '2019-06-15', caqhId: '14923847', caqhStatus: 'attested', caqhAttested: 30, caqhNext: 150, payerEnroll: 5, status: 'active', type: 'initial_credentialing' },
+        { licNum: 'MD-2020-55103', licState: 'CA', licExp: 25, malpCarrier: 'NORCAL Mutual', malpPol: 'NM-2025-330441', malpExp: 22, dea: 'BO9876543', deaExp: 45, boardCert: true, boardDate: '2020-03-20', caqhId: '15839201', caqhStatus: 'attestation_due', caqhAttested: 180, caqhNext: 15, payerEnroll: 4, status: 'expiring', type: 'recredentialing' },
+        { licNum: 'MD-2021-67290', licState: 'TX', licExp: 400, malpCarrier: 'Medical Protective', malpPol: 'MP-2025-771234', malpExp: 365, dea: 'CS2345678', deaExp: 600, boardCert: true, boardDate: '2021-09-01', caqhId: '16720394', caqhStatus: 'attested', caqhAttested: 60, caqhNext: 120, payerEnroll: 6, status: 'active', type: 'initial_credentialing' },
+        { licNum: 'MD-2018-33107', licState: 'NY', licExp: 180, malpCarrier: 'ProAssurance', malpPol: 'PA-2024-882100', malpExp: 90, dea: 'DP3456789', deaExp: 300, boardCert: false, boardDate: null, caqhId: '13847261', caqhStatus: 'attested', caqhAttested: 45, caqhNext: 135, payerEnroll: 3, status: 'active', type: 'initial_credentialing' },
+        { licNum: 'MD-2022-78455', licState: 'FL', licExp: 550, malpCarrier: 'Coverys', malpPol: 'CV-2025-443210', malpExp: 500, dea: 'EP4567890', deaExp: 800, boardCert: true, boardDate: '2022-11-10', caqhId: '17934058', caqhStatus: 'not_started', caqhAttested: null, caqhNext: null, payerEnroll: 2, status: 'pending', type: 'initial_credentialing' },
+      ];
+      const nowMs = Date.now();
+      for (let pi = 0; pi < Math.min(allProvs.rows.length, credSeedData.length); pi++) {
+        const prov = allProvs.rows[pi];
+        const cd = credSeedData[pi];
+        const clientForProv = prov.client_id || ucIds[pi % ucIds.length] || null;
+        await pool.query(`INSERT INTO credentialing (id, org_id, client_id, provider_id, provider_name, status, credential_type,
+            expiry_date, payer_enrollment_count, license_number, license_state, license_expiry,
+            malpractice_carrier, malpractice_policy_number, malpractice_expiry,
+            dea_number, dea_expiry, board_certified, board_certification_date,
+            caqh_provider_id, caqh_status, caqh_last_attested, caqh_next_attestation,
+            payer_enrollment_status, timeline, created_at)
+          VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,NOW()) ON CONFLICT DO NOTHING`,
+          [_org, clientForProv, prov.id, `${prov.first_name} ${prov.last_name}`,
+           cd.status, cd.type,
+           new Date(nowMs + cd.licExp * 86400000).toISOString().split('T')[0],
+           cd.payerEnroll,
+           cd.licNum, cd.licState,
+           new Date(nowMs + cd.licExp * 86400000).toISOString().split('T')[0],
+           cd.malpCarrier, cd.malpPol,
+           new Date(nowMs + cd.malpExp * 86400000).toISOString().split('T')[0],
+           cd.dea,
+           new Date(nowMs + cd.deaExp * 86400000).toISOString().split('T')[0],
+           cd.boardCert, cd.boardDate,
+           cd.caqhId, cd.caqhStatus,
+           cd.caqhAttested ? new Date(nowMs - cd.caqhAttested * 86400000).toISOString().split('T')[0] : null,
+           cd.caqhNext ? new Date(nowMs + cd.caqhNext * 86400000).toISOString().split('T')[0] : null,
+           JSON.stringify({ aetna: 'enrolled', bcbs: 'enrolled', united: pi < 3 ? 'enrolled' : 'pending', cigna: pi < 2 ? 'enrolled' : 'not_started', medicare: 'enrolled' }),
+           JSON.stringify([
+             { event: 'application_submitted', date: new Date(nowMs - 300 * 86400000).toISOString(), by: 'system' },
+             { event: 'primary_source_verified', date: new Date(nowMs - 280 * 86400000).toISOString(), by: 'system' },
+             { event: cd.status === 'active' ? 'approved' : 'renewal_due', date: new Date(nowMs - 260 * 86400000).toISOString(), by: 'system' },
+           ]),
+          ]).catch(e => safeLog('warn', `Cred depth seed ${pi}:`, e.message));
+      }
+      safeLog('info', `Seeded ${Math.min(allProvs.rows.length, credSeedData.length)} credentialing depth records`);
+    }
+
     const usClientRows = await pool.query(`SELECT id FROM clients WHERE org_id = $1 AND region = 'us' ORDER BY created_at`, [_org]);
     const usIds = usClientRows.rows.map(r => r.id);
     if (usIds.length > 0) {
@@ -5454,7 +5508,7 @@ async function getCredentialingDashboard(orgId, clientId) {
 
   return {
     total: items.length,
-    active: items.filter(i => i.status === 'active').length,
+    active: items.filter(i => i.status === 'active' || i.status === 'approved').length,
     pending: pending.length,
     expiring_soon: expiringSoon.length,
     expired: expired.length,
@@ -11436,9 +11490,9 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
         const data = await orgQuery(effectiveOrgId, `
           SELECT
             COUNT(*) as total_providers,
-            COUNT(*) FILTER (WHERE credentialing_status = 'approved') as credentialed,
-            COUNT(*) FILTER (WHERE credentialing_status = 'pending') as pending,
-            COUNT(*) FILTER (WHERE credentialing_status = 'expired' OR (expiry_date IS NOT NULL AND expiry_date < NOW())) as expired,
+            COUNT(*) FILTER (WHERE status = 'approved' OR status = 'active') as credentialed,
+            COUNT(*) FILTER (WHERE status = 'pending' OR status = 'submitted') as pending,
+            COUNT(*) FILTER (WHERE status = 'expired' OR (expiry_date IS NOT NULL AND expiry_date < NOW())) as expired,
             COUNT(*) FILTER (WHERE expiry_date IS NOT NULL AND expiry_date BETWEEN NOW() AND NOW() + INTERVAL '90 days') as expiring_soon
           FROM credentialing WHERE org_id = $1`,
           [effectiveOrgId]);
@@ -11453,7 +11507,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
         const { provider_id, payer_id, enrollment_type } = body;
         const enrollment = await create('credentialing', {
           provider_id, payer_id, enrollment_type: enrollment_type || 'initial',
-          credentialing_status: 'submitted',
+          credentialing_status: 'submitted', status: 'submitted',
           submitted_date: new Date().toISOString().slice(0, 10),
           expected_approval_date: new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10), // 60 days
           client_id: clientId,

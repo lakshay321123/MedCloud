@@ -77,7 +77,7 @@ export default function CredentialingPage() {
     if (match) { setSelected(match); consumedOpenId.current = openId }
   }, [openId, filteredProviders, apiRows])
 
-  const activeCount = filteredProviders.filter(p => p.status === 'active').length
+  const activeCount = filteredProviders.filter(p => p.status === 'active' || p.status === 'approved').length
   const expiringCount = filteredProviders.filter(p => p.status === 'expiring').length
   const onboardingCount = filteredProviders.filter(p => ['pending', 'submitted', 'in_review', 'onboarding'].includes(p.status)).length
   const totalEnrollments = filteredProviders.reduce((s, p) => s + p.payers, 0)
