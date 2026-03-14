@@ -90,7 +90,11 @@ export default function CredentialingPage() {
   }, [openId, filteredProviders, apiRows])
 
   const activeCount = filteredProviders.filter(p => p.status === 'active' || p.status === 'approved').length
-  const expiringCount = filteredProviders.filter(p => p.status === 'expiring').length
+  const expiringCount = filteredProviders.filter(p => {
+    // Count providers with ANY credential expiring within 30 days (date-based, not status-based)
+    const dates = [p.licenseExpiry, p.malpracticeExpiry, p.deaExpiry, p.raw?.caqh_next_attestation]
+    return dates.some(d => { const dd = daysUntil(d); return dd !== null && dd >= 0 && dd <= 30 })
+  }).length
   const onboardingCount = filteredProviders.filter(p => ['pending', 'submitted', 'in_review', 'onboarding'].includes(p.status)).length
   const totalEnrollments = filteredProviders.reduce((s, p) => s + p.payers, 0)
 
@@ -106,13 +110,18 @@ export default function CredentialingPage() {
     const malpDays = daysUntil(c.malpractice_expiry)
     const licDays = daysUntil(c.license_expiry)
     const caqhDays = daysUntil(c.caqh_next_attestation)
-    const expDays = daysUntil(c.expiry_date || c.license_expiry)
-    let itemName = 'Credential Expiry'
-    if (malpDays !== null && malpDays <= 90) itemName = 'Malpractice Insurance'
-    else if (licDays !== null && licDays <= 90) itemName = 'Medical License'
-    else if (caqhDays !== null && caqhDays <= 90) itemName = 'CAQH Attestation'
-    return { name: c.provider_name || 'Unknown', item: itemName, date: formatDate(c.expiry_date || c.license_expiry), days: expDays ?? 999 }
-  }).sort((a, b) => a.days - b.days).slice(0, 5)
+    const deaDays = daysUntil(c.dea_expiry)
+    // Find the soonest expiring credential and use ITS date
+    const candidates = [
+      { name: 'Malpractice Insurance', days: malpDays, date: c.malpractice_expiry },
+      { name: 'Medical License', days: licDays, date: c.license_expiry },
+      { name: 'CAQH Attestation', days: caqhDays, date: c.caqh_next_attestation },
+      { name: 'DEA Registration', days: deaDays, date: c.dea_expiry },
+    ].filter(x => x.days !== null && x.days >= 0 && x.days <= 90)
+    const soonest = candidates.sort((a, b) => (a.days ?? 999) - (b.days ?? 999))[0]
+    if (!soonest) return null
+    return { name: c.provider_name || 'Unknown', item: soonest.name, date: formatDate(soonest.date), days: soonest.days ?? 999 }
+  }).filter(Boolean).sort((a, b) => (a?.days ?? 999) - (b?.days ?? 999)).slice(0, 5) as Array<{name:string; item:string; date:string; days:number}>
 
   return (
     <ModuleShell title={t("credentialing","title")} subtitle={t("credentialing","subtitle")}>
@@ -138,7 +147,9 @@ export default function CredentialingPage() {
           <tbody>{filteredProviders.map(p=>(
             <tr key={p.id}
               onClick={() => setSelected(p)}
-              className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors">
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(p) } }}
+              tabIndex={0} role="button"
+              className="border-b border-separator last:border-0 table-row cursor-pointer hover:bg-surface-elevated transition-colors focus:bg-surface-elevated focus:outline-none">
               <td className="px-4 py-3 font-medium">{p.name}</td>
               <td className="px-4 py-3 font-mono text-[13px] text-content-secondary">{p.npi || '—'}</td>
               <td className="px-4 py-3 text-[13px] text-content-secondary">{p.client}</td>
@@ -158,7 +169,7 @@ export default function CredentialingPage() {
           <div className="fixed right-0 top-0 h-full w-[420px] bg-surface-secondary border-l border-separator z-40 flex flex-col shadow-2xl">
             <div className="flex gap-2 items-center justify-between p-4 border-b border-separator pb-1">
               <h3 className="font-semibold text-content-primary">{selected.name}</h3>
-              <button onClick={() => { setSelected(null); if (searchParams.get('openId')) router.replace('/credentialing', { scroll: false }) }} className="p-1 hover:bg-surface-elevated rounded-btn">
+              <button type="button" onClick={() => { setSelected(null); if (searchParams.get('openId')) router.replace('/credentialing', { scroll: false }) }} className="p-1 hover:bg-surface-elevated rounded-btn">
                 <X size={16} className="text-content-secondary" />
               </button>
             </div>
@@ -175,9 +186,10 @@ export default function CredentialingPage() {
               {[
                 { label: 'Medical License', value: selected.license !== '—' ? selected.license : '—', sub: selected.licenseExpiry ? `Exp: ${formatDate(selected.licenseExpiry)}` : null, alert: selected.licenseExpiry && daysUntil(selected.licenseExpiry) !== null && (daysUntil(selected.licenseExpiry) as number) < 60 },
                 { label: 'Malpractice', value: selected.malpractice, sub: selected.malpracticeExpiry ? `Exp: ${formatDate(selected.malpracticeExpiry)}` : null, alert: selected.malpracticeExpiry && daysUntil(selected.malpracticeExpiry) !== null && (daysUntil(selected.malpracticeExpiry) as number) < 60 },
-                { label: 'DEA', value: selected.dea, sub: selected.deaExpiry ? `Exp: ${formatDate(selected.deaExpiry)}` : null, alert: false },
-                { label: 'CAQH', value: selected.caqhId ? `#${selected.caqhId}` : '—', sub: selected.caqhStatus === 'attested' ? 'Attested' : selected.caqhStatus === 'attestation_due' ? 'Attestation Due' : selected.caqhStatus === 'not_started' ? 'Not Started' : selected.caqhStatus, alert: selected.caqhStatus === 'attestation_due' },
-                { label: 'Board Certified', value: selected.boardCertified ? 'Yes' : 'No', sub: null, alert: false },
+                { label: 'Malpractice Policy #', value: selected.raw?.malpractice_policy_number || '—', sub: null, alert: false },
+                { label: 'DEA', value: selected.dea, sub: selected.deaExpiry ? `Exp: ${formatDate(selected.deaExpiry)}` : null, alert: selected.deaExpiry && daysUntil(selected.deaExpiry) !== null && (daysUntil(selected.deaExpiry) as number) < 90 },
+                { label: 'CAQH', value: selected.caqhId ? `#${selected.caqhId}` : '—', sub: selected.caqhStatus === 'attested' ? `Attested · Last: ${formatDate(selected.raw?.caqh_last_attested)}` : selected.caqhStatus === 'attestation_due' ? `Due: ${formatDate(selected.raw?.caqh_next_attestation)}` : selected.caqhStatus === 'not_started' ? 'Not Started' : selected.caqhStatus, alert: selected.caqhStatus === 'attestation_due' },
+                { label: 'Board Certified', value: selected.boardCertified ? 'Yes' : 'No', sub: selected.raw?.board_certification_date ? `Since: ${formatDate(selected.raw.board_certification_date)}` : null, alert: false },
               ].map(item => (
                 <div key={item.label} className="flex gap-2 items-center justify-between py-2 border-b border-separator pb-1">
                   <span className="text-[13px] text-content-secondary">{item.label}</span>
@@ -188,16 +200,38 @@ export default function CredentialingPage() {
                 </div>
               ))}
               <div className="text-[13px] text-content-secondary mb-2">Active Payer Enrollments: {selected.payers}</div>
+              {/* Payer Enrollment Status Breakdown */}
+              {selected.raw?.payer_enrollment_status && typeof selected.raw.payer_enrollment_status === 'object' && Object.keys(selected.raw.payer_enrollment_status).length > 0 && (
+                <div className="bg-surface-elevated rounded-lg p-2 mb-2 text-[11px] space-y-1">
+                  {Object.entries(selected.raw.payer_enrollment_status).map(([payer, status]) => (
+                    <div key={payer} className="flex justify-between"><span className="text-content-tertiary truncate max-w-[200px]">{payer}</span><span className="text-content-primary">{String(status)}</span></div>
+                  ))}
+                </div>
+              )}
+              {/* Timeline */}
+              {selected.raw?.timeline && Array.isArray(selected.raw.timeline) && selected.raw.timeline.length > 0 && (
+                <div className="mb-2">
+                  <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-1">Timeline</h4>
+                  <div className="space-y-1">
+                    {selected.raw.timeline.slice(0, 5).map((ev, i) => (
+                      <div key={i} className="flex items-center gap-2 text-[11px]">
+                        <span className="text-content-tertiary w-[70px] shrink-0">{formatDate(ev.date)}</span>
+                        <span className="text-content-primary">{ev.event}</span>
+                        {ev.by && <span className="text-content-tertiary">by {ev.by}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
-                <button onClick={async () => {
+                <button type="button" onClick={async () => {
                   try { await recredential({ notes: 'Re-credentialing initiated from dashboard' }); toast.success('Re-credentialing initiated') }
                   catch { toast.error('Failed to initiate re-credentialing') }
                 }} className="bg-brand/10 text-brand rounded-lg py-2 text-[13px] font-medium hover:bg-brand/20 transition-colors">Initiate Re-credentialing</button>
-                <button onClick={() => { window.open('https://proview.caqh.org/PR', '_blank'); toast.success('CAQH ProView opened') }}
+                <button type="button" onClick={() => { window.open('https://proview.caqh.org/PR', '_blank'); toast.success('CAQH ProView opened') }}
                   className="bg-surface-elevated border border-separator rounded-lg py-2 text-[13px] font-medium">Update CAQH</button>
-                <button onClick={async () => {
-                  try { await createCred({ provider_id: selected?.raw?.provider_id || selected?.id } as any); toast.success('Enrollment started') }
-                  catch { toast.error('Failed to start enrollment') }
+                <button type="button" onClick={() => {
+                  toast.error('Payer enrollment requires selecting a payer. Use the Credentialing module payer enrollment form.')
                 }} className="bg-surface-elevated border border-separator rounded-lg py-2 text-[13px] font-medium col-span-2">Add Payer Enrollment</button>
               </div>
 
@@ -207,7 +241,7 @@ export default function CredentialingPage() {
                 <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.jpg,.jpeg,.png"
                   onChange={(e) => { if (e.target.files?.[0]) setUploadFile(e.target.files[0]) }} />
                 {!uploadFile ? (
-                  <button onClick={() => fileInputRef.current?.click()}
+                  <button type="button" onClick={() => fileInputRef.current?.click()}
                     className="w-full border-2 border-dashed border-separator rounded-lg py-4 flex flex-col items-center gap-1 hover:border-brand/40 hover:bg-brand/5 transition-colors">
                     <Upload size={18} className="text-content-tertiary" />
                     <span className="text-[12px] text-content-secondary">Upload license, malpractice, or DEA certificate</span>
@@ -221,11 +255,11 @@ export default function CredentialingPage() {
                         <span className="text-[12px] font-medium truncate max-w-[200px]">{uploadFile.name}</span>
                         <span className="text-[10px] text-content-tertiary">{(uploadFile.size / 1024).toFixed(0)} KB</span>
                       </div>
-                      <button onClick={() => { setUploadFile(null); setExtractResult(null) }} className="text-content-tertiary hover:text-content-primary">
+                      <button type="button" onClick={() => { setUploadFile(null); setExtractResult(null) }} className="text-content-tertiary hover:text-content-primary">
                         <X size={14} />
                       </button>
                     </div>
-                    <button onClick={async () => {
+                    <button type="button" onClick={async () => {
                       if (!uploadFile || !selected) return;
                       setUploading(true); setExtractResult(null);
                       try {
@@ -269,7 +303,7 @@ export default function CredentialingPage() {
               <div className="border-t border-separator pt-3 mt-2">
                 <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-2">AI Verification</h4>
                 <div className="grid grid-cols-2 gap-2">
-                  <button onClick={async () => {
+                  <button type="button" onClick={async () => {
                     try {
                       const result = await verifyAll({});
                       setVerifyResult(result);
@@ -278,7 +312,7 @@ export default function CredentialingPage() {
                   }} disabled={verifyingAll} className="bg-brand/10 text-brand rounded-lg py-2 text-[13px] font-medium hover:bg-brand/20 transition-colors col-span-2 disabled:opacity-50">
                     {verifyingAll ? 'Verifying...' : 'Run Full Verification'}
                   </button>
-                  <button onClick={async () => {
+                  <button type="button" onClick={async () => {
                     try {
                       const result = await verifyDEA({});
                       setVerifyResult({ dea: result });
@@ -287,7 +321,7 @@ export default function CredentialingPage() {
                   }} disabled={verifyingDEA} className="bg-surface-elevated border border-separator rounded-lg py-2 text-[11px] font-medium disabled:opacity-50">
                     {verifyingDEA ? '...' : 'Verify DEA'}
                   </button>
-                  <button onClick={() => { window.open('https://exclusions.oig.hhs.gov/', '_blank'); toast.success('OIG LEIE opened'); }}
+                  <button type="button" onClick={() => { window.open('https://exclusions.oig.hhs.gov/', '_blank'); toast.success('OIG LEIE opened'); }}
                     className="bg-surface-elevated border border-separator rounded-lg py-2 text-[11px] font-medium">
                     Check OIG LEIE
                   </button>

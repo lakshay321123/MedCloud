@@ -1518,15 +1518,7 @@ export function useExtractDocument(id: string) {
   return useMutation<{ extracted: Record<string, any>; fields_updated: string[]; ai_confidence: number | null }, { s3_key: string; document_type?: string }>('post', `/credentialing/${id}/extract-document`)
 }
 
-export function useCreateEnrollment() {
-  return useMutation<{ id: string; status: string }, {
-    provider_id: string
-    payer_id: string
-    enrollment_type?: string
-    effective_date?: string
-    notes?: string
-  }>('post', '/credentialing/enrollment')
-}
+// useCreateEnrollment removed — duplicate of useCreateCredentialing (both POST /credentialing/enrollment)
 
 // ── Sprint 2 v7: Report Export ───────────────────────────────────────────────
 export interface ApiReport {

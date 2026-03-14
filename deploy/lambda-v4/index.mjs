@@ -159,6 +159,8 @@ try {
 } catch (e) { console.log('Cognito SDK not available:', e.message); }
 
 const S3_BUCKET = process.env.S3_BUCKET || 'medcloud-documents-us-prod';
+const SAM_GOV_API_KEY = process.env.SAM_GOV_API_KEY || 'DEMO_KEY';
+const MS_IN_DAY = 24 * 60 * 60 * 1000; // 86400000
 
 // ─── Schema Migration — adds missing columns that were omitted from v4-seed.sql ──
 // Idempotent: uses ADD COLUMN IF NOT EXISTS. Runs once per cold start.
@@ -462,6 +464,13 @@ async function runSchemaMigration() {
       CREATE INDEX IF NOT EXISTS idx_wf_templates_org ON workflow_templates(org_id);
       CREATE INDEX IF NOT EXISTS idx_wf_templates_trigger ON workflow_templates(trigger_event);
     `).catch(e => safeLog('warn', 'workflow_templates migration:', e.message));
+
+    // ── RLS on new tables (defense in depth) ──────────────────────────────────
+    for (const tbl of ['consent_records', 'workflow_templates']) {
+      await pool.query(`ALTER TABLE ${tbl} ENABLE ROW LEVEL SECURITY`).catch(() => {});
+      await pool.query(`DROP POLICY IF EXISTS ${tbl}_org_isolation ON ${tbl}`).catch(() => {});
+      await pool.query(`CREATE POLICY ${tbl}_org_isolation ON ${tbl} USING (org_id = current_setting('app.current_org_id', true)::uuid)`).catch(e => safeLog('warn', `RLS policy ${tbl}:`, e.message));
+    }
 
     // ── Credentialing depth: CAQH tracking + payer enrollment status ─────────
     await pool.query(`
@@ -987,7 +996,7 @@ async function seedDemoData(orgId) {
             await pool.query(`INSERT INTO payments (id, org_id, client_id, claim_id, payer_id, amount_paid, payment_date, check_number, status, created_at)
               VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,'posted',NOW()) ON CONFLICT DO NOTHING`,
               [_org, j.client, claimId, j.payer, Math.round(j.charges * j.paidPct * 100) / 100,
-               new Date(new Date(j.dos).getTime() + 21 * 86400000).toISOString().split('T')[0],
+               new Date(new Date(j.dos).getTime() + 21 * MS_IN_DAY).toISOString().split('T')[0],
                `CHK-${40000 + jIdx}`]).catch(()=>{});
           }
 
@@ -1045,7 +1054,7 @@ async function seedDemoData(orgId) {
                usPayers[bulkIdx % usPayers.length]?.id || usPayers[0]?.id,
                `CLM-2026-B${bulkIdx.toString().padStart(3, '0')}`, status,
                dosDate.toISOString().split('T')[0], amt,
-               new Date(dosDate.getTime() + 3 * 86400000).toISOString()]).catch(()=>{});
+               new Date(dosDate.getTime() + 3 * MS_IN_DAY).toISOString()]).catch(()=>{});
 
             await pool.query(`INSERT INTO claim_lines (id, org_id, claim_id, cpt_code, units, charge_amount, line_number)
               VALUES (gen_random_uuid(),$1,$2,$3,1,$4,1) ON CONFLICT DO NOTHING`,
@@ -1056,7 +1065,7 @@ async function seedDemoData(orgId) {
                 VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,'posted',NOW()) ON CONFLICT DO NOTHING`,
                 [_org, bulkIdx % 3 === 0 ? uc2 : uc1, claimId, usPayers[bulkIdx % usPayers.length]?.id || usPayers[0]?.id,
                  Math.round(amt * (0.85 + Math.random() * 0.12) * 100) / 100,
-                 new Date(dosDate.getTime() + (14 + Math.floor(Math.random() * 21)) * 86400000).toISOString().split('T')[0],
+                 new Date(dosDate.getTime() + (14 + Math.floor(Math.random() * 21)) * MS_IN_DAY).toISOString().split('T')[0],
                  `CHK-${50000 + bulkIdx}`]).catch(()=>{});
             }
             if (isDenied) {
@@ -1121,23 +1130,23 @@ async function seedDemoData(orgId) {
           VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,NOW()) ON CONFLICT DO NOTHING`,
           [_org, clientForProv, prov.id, `${prov.first_name} ${prov.last_name}`,
            cd.status, cd.type,
-           new Date(nowMs + cd.licExp * 86400000).toISOString().split('T')[0],
+           new Date(nowMs + cd.licExp * MS_IN_DAY).toISOString().split('T')[0],
            cd.payerEnroll,
            cd.licNum, cd.licState,
-           new Date(nowMs + cd.licExp * 86400000).toISOString().split('T')[0],
+           new Date(nowMs + cd.licExp * MS_IN_DAY).toISOString().split('T')[0],
            cd.malpCarrier, cd.malpPol,
-           new Date(nowMs + cd.malpExp * 86400000).toISOString().split('T')[0],
+           new Date(nowMs + cd.malpExp * MS_IN_DAY).toISOString().split('T')[0],
            cd.dea,
-           new Date(nowMs + cd.deaExp * 86400000).toISOString().split('T')[0],
+           new Date(nowMs + cd.deaExp * MS_IN_DAY).toISOString().split('T')[0],
            cd.boardCert, cd.boardDate,
            cd.caqhId, cd.caqhStatus,
-           cd.caqhAttested ? new Date(nowMs - cd.caqhAttested * 86400000).toISOString().split('T')[0] : null,
-           cd.caqhNext ? new Date(nowMs + cd.caqhNext * 86400000).toISOString().split('T')[0] : null,
+           cd.caqhAttested ? new Date(nowMs - cd.caqhAttested * MS_IN_DAY).toISOString().split('T')[0] : null,
+           cd.caqhNext ? new Date(nowMs + cd.caqhNext * MS_IN_DAY).toISOString().split('T')[0] : null,
            JSON.stringify({ aetna: 'enrolled', bcbs: 'enrolled', united: pi < 3 ? 'enrolled' : 'pending', cigna: pi < 2 ? 'enrolled' : 'not_started', medicare: 'enrolled' }),
            JSON.stringify([
-             { event: 'application_submitted', date: new Date(nowMs - 300 * 86400000).toISOString(), by: 'system' },
-             { event: 'primary_source_verified', date: new Date(nowMs - 280 * 86400000).toISOString(), by: 'system' },
-             { event: cd.status === 'active' ? 'approved' : 'renewal_due', date: new Date(nowMs - 260 * 86400000).toISOString(), by: 'system' },
+             { event: 'application_submitted', date: new Date(nowMs - 300 * MS_IN_DAY).toISOString(), by: 'system' },
+             { event: 'primary_source_verified', date: new Date(nowMs - 280 * MS_IN_DAY).toISOString(), by: 'system' },
+             { event: cd.status === 'active' ? 'approved' : 'renewal_due', date: new Date(nowMs - 260 * MS_IN_DAY).toISOString(), by: 'system' },
            ]),
           ]).catch(e => safeLog('warn', `Cred depth seed ${pi}:`, e.message));
       }
@@ -1520,7 +1529,7 @@ Extract and return ONLY a JSON object:
 
   const referenceNumber = bedrockExtraction?.reference_number || null;
   const callNotes = bedrockExtraction?.call_notes || summary.substring(0, 200);
-  const nextFollowUp = new Date(Date.now() + nextFollowUpDays * 86400000).toISOString().slice(0, 10);
+  const nextFollowUp = new Date(Date.now() + nextFollowUpDays * MS_IN_DAY).toISOString().slice(0, 10);
 
   // 1. Log the call in ar_call_log
   const callLog = await create('ar_call_log', {
@@ -2771,7 +2780,7 @@ async function scrubClaim(claimId, orgId, userId) {
   // ── Patient / Demographics (31-37) ──────────────────────────────────────
   check('patient_dob', 'Patient DOB present', 'warning', !patient || !!patient.date_of_birth, 'Patient date of birth missing');
 
-  const patientAge = patient?.date_of_birth ? Math.floor((new Date() - new Date(patient.date_of_birth)) / (365.25 * 86400000)) : null;
+  const patientAge = patient?.date_of_birth ? Math.floor((new Date() - new Date(patient.date_of_birth)) / (365.25 * MS_IN_DAY)) : null;
   const pedCpts = lines.filter(l => ['99381','99382','99383','99391','99392','99393','90460','90461'].includes(l.cpt_code));
   check('age_pediatric', 'Pediatric CPTs match patient age', 'warning',
     pedCpts.length === 0 || (patientAge !== null && patientAge < 18),
@@ -2799,7 +2808,7 @@ async function scrubClaim(claimId, orgId, userId) {
   // ── Timely Filing / Date Rules (38-42) ──────────────────────────────────
   if (claim.dos_from) {
     const dosDate = new Date(claim.dos_from);
-    const daysSinceDOS = Math.floor((new Date() - dosDate) / 86400000);
+    const daysSinceDOS = Math.floor((new Date() - dosDate) / MS_IN_DAY);
     check('timely_filing_90', 'Timely filing — 90 days', 'warning', daysSinceDOS <= 90,
       `${daysSinceDOS} days since DOS — approaching timely filing limits`);
     check('timely_filing_365', 'Timely filing — 365 days', 'error', daysSinceDOS <= 365,
@@ -2812,7 +2821,7 @@ async function scrubClaim(claimId, orgId, userId) {
     'DOS from is after DOS to');
   check('dos_range_reasonable', 'DOS range not excessive (>30 days for professional)', 'warning',
     claim.claim_type !== '837P' || !claim.dos_from || !claim.dos_to ||
-    (new Date(claim.dos_to) - new Date(claim.dos_from)) / 86400000 <= 30,
+    (new Date(claim.dos_to) - new Date(claim.dos_from)) / MS_IN_DAY <= 30,
     'Professional claim spans >30 days — unusual for 837P');
 
   // ── Payer / Insurance Rules (43-47) ─────────────────────────────────────
@@ -4416,7 +4425,7 @@ async function predictDenial(claimId, orgId, userId) {
 
   // 4. Timely filing risk
   if (claim.dos_from) {
-    const days = Math.floor((new Date() - new Date(claim.dos_from)) / 86400000);
+    const days = Math.floor((new Date() - new Date(claim.dos_from)) / MS_IN_DAY);
     if (days > 60) { const sc = Math.min(20, Math.floor(days / 30) * 5); riskScore += sc; risks.push({ category: 'timely_filing', score: sc, detail: `${days} days since DOS` }); }
   }
 
@@ -5261,7 +5270,7 @@ async function createPriorAuth(body, orgId, userId) {
     [uuid(), orgId, body.client_id, `Prior Auth Required: ${authNumber}`,
      `CPT: ${(cpt_codes || []).join(', ')} | Patient: ${patient_id} | Payer: ${payer_id}`,
      urgency === 'urgent' ? 'high' : 'medium', userId,
-     new Date(Date.now() + (urgency === 'urgent' ? 1 : 3) * 86400000).toISOString().slice(0, 10)]
+     new Date(Date.now() + (urgency === 'urgent' ? 1 : 3) * MS_IN_DAY).toISOString().slice(0, 10)]
   );
 
   return { id, auth_number: authNumber, status: 'pending' };
@@ -5467,7 +5476,7 @@ async function getCredentialingDashboard(orgId, clientId) {
   const now = new Date();
   const items = activeR.rows.map(c => {
     const expiry = c.expiry_date ? new Date(c.expiry_date) : null;
-    const daysUntilExpiry = expiry ? Math.ceil((expiry.getTime() - now.getTime()) / 86400000) : null;
+    const daysUntilExpiry = expiry ? Math.ceil((expiry.getTime() - now.getTime()) / MS_IN_DAY) : null;
     let alert = 'none';
     if (daysUntilExpiry !== null) {
       if (daysUntilExpiry < 0) alert = 'expired';
@@ -5495,6 +5504,8 @@ async function getCredentialingDashboard(orgId, clientId) {
 
 async function createEnrollment(body, orgId, userId) {
   const { provider_id, payer_id, enrollment_type, effective_date, notes } = body;
+  if (!provider_id) throw new Error('provider_id is required');
+  if (!payer_id) throw new Error('payer_id is required for enrollment');
   const id = uuid();
 
   await pool.query(
@@ -5511,7 +5522,7 @@ async function createEnrollment(body, orgId, userId) {
      VALUES ($1, $2, $3, $4, 'open', 'medium', $5, NOW())`,
     [uuid(), orgId, `Credentialing Follow-up: Provider ${provider_id}`,
      `Track enrollment status with payer ${payer_id}`,
-     new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10)]
+     new Date(Date.now() + 14 * MS_IN_DAY).toISOString().slice(0, 10)]
   );
 
   return { id, status: 'pending', enrollment_type: enrollment_type || 'initial' };
@@ -5521,7 +5532,7 @@ async function createEnrollment(body, orgId, userId) {
 async function generateReport(reportType, orgId, clientId, params) {
   let cf = ''; const qp = [orgId]; let pidx = 2;
   if (clientId) { cf = ` AND client_id = $${pidx}`; qp.push(clientId); pidx++; }
-  const dateFrom = params.from || new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+  const dateFrom = params.from || new Date(Date.now() - 90 * MS_IN_DAY).toISOString().slice(0, 10);
   const dateTo = params.to || new Date().toISOString().slice(0, 10);
   cf += ` AND created_at >= $${pidx}`; qp.push(dateFrom); pidx++;
   cf += ` AND created_at <= $${pidx}`; qp.push(dateTo + 'T23:59:59Z'); pidx++;
@@ -6221,7 +6232,7 @@ Return ONLY JSON (no markdown):
       [uuid(), orgId, encounter.client_id, `Documentation Query: ${encounter.patient_name || 'Patient'}`,
        `Encounter ${encounter.encounter_date || 'N/A'} — incomplete documentation (${completenessScore}%).\nMissing: ${missingFields.join('; ')}${aiAnalysis?.query_message ? '\n\nSuggested query: ' + aiAnalysis.query_message : ''}`,
        encounter.provider_id,
-       new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10)]
+       new Date(Date.now() + 2 * MS_IN_DAY).toISOString().slice(0, 10)]
     );
   }
 
@@ -6603,7 +6614,7 @@ async function requestWriteOff(body, orgId, userId) {
        `Write-Off Approval: ${claim.claim_number} ($${writeOffAmount.toFixed(2)})`,
        `Claim: ${claim.claim_number}\nAmount: $${writeOffAmount.toFixed(2)}\nReason: ${reason || 'Not specified'}\nApproval Level: ${approvalRequired}`,
        writeOffAmount > 500 ? 'high' : 'medium',
-       new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10)]
+       new Date(Date.now() + 3 * MS_IN_DAY).toISOString().slice(0, 10)]
     );
   }
 
@@ -8509,7 +8520,12 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     }
 
     // ════ Analytics KPIs ═══════════════════════════════════════════════════
-    if (path.includes('/analytics') && method === 'GET') {
+    // Exclude depth endpoints: /analytics/trends, /payer-performance, /provider-productivity, /forecasting
+    if (path.includes('/analytics') && method === 'GET'
+        && !path.includes('/analytics/trends')
+        && !path.includes('/analytics/payer-performance')
+        && !path.includes('/analytics/provider-productivity')
+        && !path.includes('/analytics/forecasting')) {
       const dateRange = { from: qs.from || null, to: qs.to || null };
       const result = await getAnalyticsKPIs(effectiveOrgId, clientId, dateRange);
       return respond(200, result);
@@ -9179,6 +9195,9 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       if (method === 'GET' && pathParams.id) {
         const p = await getById('patients', pathParams.id);
         if (!p || p.org_id !== effectiveOrgId) return respond(404, { error: 'Patient not found' });
+        // Enforce client/region scoping — practice-scoped callers cannot fetch other practices' patients
+        if (clientId && p.client_id && p.client_id !== clientId) return respond(404, { error: 'Patient not found' });
+        if (qs._regionClientIds && qs._regionClientIds.length > 0 && p.client_id && !qs._regionClientIds.includes(p.client_id)) return respond(404, { error: 'Patient not found' });
         return respond(200, maskPHIFields(p, filterRole));
       }
       if (method === 'POST') return respond(201, await create('patients', body, effectiveOrgId));
@@ -9908,7 +9927,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
          VALUES ($1, $2, $3, $4, $5, 'pending', 'urgent', 'credentialing', $6, $7, NOW())`,
         [uuid(), effectiveOrgId, cred.client_id, `Re-credential: ${cred.provider_name} - ${cred.credential_type}`,
          `${cred.credential_type} expiring ${cred.expiry_date}. Initiate re-credentialing process.`,
-         new Date(Date.now() + 30 * 86400000).toISOString(), body.assigned_to || null]
+         new Date(Date.now() + 30 * MS_IN_DAY).toISOString(), body.assigned_to || null]
       ).catch(e => safeLog('warn', 'Failed to create re-cred task:', e.message));
       await auditLog(effectiveOrgId, userId, 'recredential_initiated', 'credentialing', pathParams.id, { credential_type: cred.credential_type });
       return respond(200, { ...updated, timeline });
@@ -9927,6 +9946,10 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       if (!cred || cred.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
       const { s3_key, document_type } = body;
       if (!s3_key) return respond(400, { error: 's3_key required (path to uploaded document in S3)' });
+      // Security: validate S3 key belongs to this org (keys are prefixed orgId/clientId/folder/)
+      if (!s3_key.startsWith(`${effectiveOrgId}/`)) {
+        return respond(403, { error: 'S3 key does not belong to this organization' });
+      }
 
       try {
         // Step 1: Run Textract on the document
@@ -10076,7 +10099,7 @@ Return ONLY the JSON, no other text.`;
 
       // SAM.gov Exclusions API (free, public)
       try {
-        const samResp = await fetch(`https://api.sam.gov/entity-information/v3/exclusions?api_key=DEMO_KEY&lastName=${encodeURIComponent(lastName)}&firstName=${encodeURIComponent(firstName || '')}`, { signal: AbortSignal.timeout(15000) });
+        const samResp = await fetch(`https://api.sam.gov/entity-information/v3/exclusions?api_key=${SAM_GOV_API_KEY}&lastName=${encodeURIComponent(lastName)}&firstName=${encodeURIComponent(firstName || '')}`, { signal: AbortSignal.timeout(15000) });
         const samData = await samResp.json();
         results.sam_gov = {
           searched: true, total_records: samData.totalRecords || 0,
@@ -10105,6 +10128,8 @@ Return ONLY the JSON, no other text.`;
     }
 
     // ── 4. DEA Number Validation (checksum algorithm) ─────────────────────────
+    // NOTE: DEA checksum, NPI validation, and SAM.gov exclusion logic is shared with /verify-all.
+    // TODO: Extract into reusable verifyDEAChecksum(), verifyNPILookup(), verifySAMExclusions() helpers.
     if (path.includes('/credentialing') && path.includes('/verify-dea') && method === 'POST' && pathParams.id) {
       const cred = await getById('credentialing', pathParams.id);
       if (!cred || cred.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
@@ -10141,7 +10166,7 @@ Return ONLY the JSON, no other text.`;
       return respond(200, {
         dea_number: deaNumber, valid, reason, registrant_type: registrantType,
         name_match: nameMatch, expiry: cred.dea_expiry,
-        days_until_expiry: cred.dea_expiry ? Math.ceil((new Date(cred.dea_expiry).getTime() - Date.now()) / 86400000) : null,
+        days_until_expiry: cred.dea_expiry ? Math.ceil((new Date(cred.dea_expiry).getTime() - Date.now()) / MS_IN_DAY) : null,
       });
     }
 
@@ -10163,7 +10188,7 @@ Return ONLY the JSON, no other text.`;
         // Check each credential expiry
         const checkExpiry = (date, label, weight) => {
           if (!date) { risk += weight * 0.3; flags.push(`${label}: no date on file`); return; }
-          const days = Math.ceil((new Date(date).getTime() - now) / 86400000);
+          const days = Math.ceil((new Date(date).getTime() - now) / MS_IN_DAY);
           if (days < 0) { risk += weight; flags.push(`${label}: EXPIRED ${Math.abs(days)}d ago`); }
           else if (days <= 30) { risk += weight * 0.8; flags.push(`${label}: expires in ${days}d`); }
           else if (days <= 60) { risk += weight * 0.5; flags.push(`${label}: expires in ${days}d`); }
@@ -10207,7 +10232,7 @@ Return ONLY the JSON, no other text.`;
              VALUES ($1, $2, $3, $4, $5, 'pending', 'urgent', 'credentialing', $6, NOW())`,
             [uuid(), effectiveOrgId, clientId, `CRITICAL: ${p.provider_name} credential risk score ${p.risk_score}/100`,
              `Flags: ${p.flags.join('; ')}. Recommended: ${p.recommended_actions.join('; ')}`,
-             new Date(Date.now() + 7 * 86400000).toISOString()]
+             new Date(Date.now() + 7 * MS_IN_DAY).toISOString()]
           ).catch(e => safeLog('warn', 'Auto-task creation failed:', e.message));
         }
       }
@@ -10261,7 +10286,7 @@ Return ONLY the JSON, no other text.`;
       // SAM exclusion check (external)
       if (provider?.last_name) {
         try {
-          const samResp2 = await fetch(`https://api.sam.gov/entity-information/v3/exclusions?api_key=DEMO_KEY&lastName=${encodeURIComponent(provider.last_name)}`, { signal: AbortSignal.timeout(15000) });
+          const samResp2 = await fetch(`https://api.sam.gov/entity-information/v3/exclusions?api_key=${SAM_GOV_API_KEY}&lastName=${encodeURIComponent(provider.last_name)}`, { signal: AbortSignal.timeout(15000) });
           const samData = await samResp2.json();
           results.exclusions = { excluded: (samData.totalRecords || 0) > 0, total_records: samData.totalRecords || 0 };
         } catch (e) { results.exclusions = { excluded: null, error: e.message }; }
@@ -10347,7 +10372,7 @@ Return ONLY the JSON, no other text.`;
               [uuid(), effectiveOrgId, clientId, action.title || tpl.name,
                action.description || `Auto-created by workflow: ${tpl.name}`,
                action.priority || 'medium', action.task_type || 'workflow',
-               action.due_days ? new Date(Date.now() + action.due_days * 86400000).toISOString() : null]
+               action.due_days ? new Date(Date.now() + action.due_days * MS_IN_DAY).toISOString() : null]
             ).catch(e => safeLog('warn', 'Workflow task creation failed:', e.message));
             results.push({ workflow: tpl.name, action: 'create_task', status: 'executed' });
           }
@@ -10424,12 +10449,14 @@ Return ONLY the JSON, no other text.`;
         if (qs.consent_type) { params.push(qs.consent_type); q += ` AND cr.consent_type = $${params.length}`; }
         q += ' ORDER BY cr.created_at DESC LIMIT 500';
         const r = await pool.query(q, params);
+        await auditLog(effectiveOrgId, userId, 'consent_records_read', 'consent_records', null, { count: r.rows.length, filters: { patient_id: qs.patient_id, consent_type: qs.consent_type } }).catch(() => {});
         return respond(200, { data: r.rows, meta: { total: r.rows.length } });
       }
       if (method === 'GET' && pathParams.id) {
         const cr = await getById('consent_records', pathParams.id);
         if (!cr || cr.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
         if (clientId && cr.client_id && cr.client_id !== clientId) return respond(404, { error: 'Not found' });
+        await auditLog(effectiveOrgId, userId, 'consent_record_read', 'consent_records', pathParams.id, {}).catch(() => {});
         return respond(200, cr);
       }
       if (method === 'POST') {
@@ -10500,21 +10527,23 @@ Return ONLY the JSON, no other text.`;
       return respond(200, { data: r.rows, meta: { total: r.rows.length } });
     }
     if (path.includes('/analytics/provider-productivity') && method === 'GET') {
-      const cf = clientId ? ' AND c.client_id = $2' : '';
+      const cf = clientId ? ' AND client_id = $2' : '';
       const params = clientId ? [effectiveOrgId, clientId] : [effectiveOrgId];
       const r = await pool.query(
         `SELECT pr.id AS provider_id, pr.first_name || ' ' || pr.last_name AS provider_name,
                 pr.npi, pr.specialty,
-                COUNT(DISTINCT c.id)::int AS total_claims,
-                COUNT(DISTINCT e.id)::int AS total_encounters,
-                COALESCE(SUM(c.total_charges), 0)::numeric AS total_billed,
-                COUNT(DISTINCT cq.id)::int AS coding_items
+                COALESCE(cl.total_claims, 0)::int AS total_claims,
+                COALESCE(cl.total_billed, 0)::numeric AS total_billed,
+                COALESCE(enc.total_encounters, 0)::int AS total_encounters,
+                COALESCE(cq.coding_items, 0)::int AS coding_items
          FROM providers pr
-         LEFT JOIN claims c ON c.provider_id = pr.id AND c.org_id = $1${cf}
-         LEFT JOIN encounters e ON e.provider_id = pr.id AND e.org_id = $1
-         LEFT JOIN coding_queue cq ON cq.provider_id = pr.id AND cq.org_id = $1
+         LEFT JOIN (SELECT provider_id, COUNT(*)::int AS total_claims, COALESCE(SUM(total_charges),0) AS total_billed
+                    FROM claims WHERE org_id = $1${cf} GROUP BY provider_id) cl ON cl.provider_id = pr.id
+         LEFT JOIN (SELECT provider_id, COUNT(*)::int AS total_encounters
+                    FROM encounters WHERE org_id = $1 GROUP BY provider_id) enc ON enc.provider_id = pr.id
+         LEFT JOIN (SELECT provider_id, COUNT(*)::int AS coding_items
+                    FROM coding_queue WHERE org_id = $1 GROUP BY provider_id) cq ON cq.provider_id = pr.id
          WHERE pr.org_id = $1
-         GROUP BY pr.id, pr.first_name, pr.last_name, pr.npi, pr.specialty
          ORDER BY total_billed DESC`, params
       ).catch(() => ({ rows: [] }));
       return respond(200, { data: r.rows, meta: { total: r.rows.length } });
@@ -11315,7 +11344,7 @@ Return ONLY the JSON, no other text.`;
         const report = clients.rows.map(c => {
           const baa = baaMap[c.id];
           const expiry = baa?.baa_expiry_date ? new Date(baa.baa_expiry_date) : null;
-          const daysToExpiry = expiry ? Math.floor((expiry - today) / 86400000) : null;
+          const daysToExpiry = expiry ? Math.floor((expiry - today) / MS_IN_DAY) : null;
           return {
             client_id: c.id, client_name: c.name,
             baa_signed: baa?.baa_signed || false,
@@ -11500,7 +11529,7 @@ Return ONLY the JSON, no other text.`;
         const dos = new Date(claim.dos_from);
         const deadline = new Date(dos);
         deadline.setDate(deadline.getDate() + tfDays);
-        const daysLeft = Math.floor((deadline - new Date()) / 86400000);
+        const daysLeft = Math.floor((deadline - new Date()) / MS_IN_DAY);
         await pool.query(
           `UPDATE claims SET timely_filing_deadline = $1, timely_filing_risk = $2 WHERE id = $3`,
           [deadline.toISOString().slice(0, 10), daysLeft < 30, claim.id]
@@ -11821,7 +11850,7 @@ Return ONLY the JSON, no other text.`;
           dos, urgency: urgency || 'routine',
           status: 'pending_submission', client_id: clientId,
           requested_by: userId,
-          submission_deadline: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10), // 3 days
+          submission_deadline: new Date(Date.now() + 3 * MS_IN_DAY).toISOString().slice(0, 10), // 3 days
         }, effectiveOrgId);
         // Create task for submission
         await create('tasks', {
@@ -11879,7 +11908,7 @@ Return ONLY the JSON, no other text.`;
            VALUES ($1, $2, $3, $4, $5, $6, 'submitted', NOW(), $7, $8, NOW(), NOW()) RETURNING *`,
           [uuid(), effectiveOrgId, clientId || null, provider_id, payer_id,
            enrollment_type || 'initial',
-           new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10),
+           new Date(Date.now() + 60 * MS_IN_DAY).toISOString().slice(0, 10),
            body.notes || null]
         );
         const enrollRow = enrollment.rows[0];
@@ -11889,7 +11918,7 @@ Return ONLY the JSON, no other text.`;
            VALUES ($1, $2, $3, $4, 'open', 'medium', $5, NOW())`,
           [uuid(), effectiveOrgId, `Follow up: Credentialing enrollment ${provider_id}`,
            `Check enrollment status for provider ${provider_id} with payer ${payer_id}`,
-           new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)]
+           new Date(Date.now() + 30 * MS_IN_DAY).toISOString().slice(0, 10)]
         ).catch(() => {});
         await auditLog(effectiveOrgId, userId, 'credentialing_submitted', 'credentialing', enrollRow?.id, { provider_id, payer_id });
         return respond(201, enrollRow || { status: 'submitted' });
@@ -12071,7 +12100,7 @@ Return ONLY the JSON, no other text.`;
         per_claim_rate: perClaimRate, flat_fee: flatFee,
         amount: totalAmount, status: 'draft',
         issued_date: new Date().toISOString().slice(0, 10),
-        due_date: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+        due_date: new Date(Date.now() + 30 * MS_IN_DAY).toISOString().slice(0, 10),
         invoice_number: `INV-${Date.now()}`,
       }, effectiveOrgId);
       await auditLog(effectiveOrgId, userId, 'invoice_generated', 'invoices', invoice.id, { amount: totalAmount, claims_count: count });
