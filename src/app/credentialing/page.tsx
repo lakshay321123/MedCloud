@@ -4,8 +4,8 @@ import React, { useState, useEffect, useRef } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
-import { BadgeCheck, AlertTriangle, X } from 'lucide-react'
-import { useCredentialing, useUpdateCredentialing, useCreateCredentialing, useCredentialingExpiring, useRecredential, useCredentialingRiskScores, useVerifyAll, useVerifyDEA, ApiCredentialing } from '@/lib/hooks'
+import { BadgeCheck, AlertTriangle, X, Upload, FileCheck, Loader2 } from 'lucide-react'
+import { useCredentialing, useUpdateCredentialing, useCreateCredentialing, useCredentialingExpiring, useRecredential, useCredentialingRiskScores, useVerifyAll, useVerifyDEA, useRequestUploadUrl, useExtractDocument, ApiCredentialing } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
 import { useSearchParams, useRouter } from 'next/navigation'
 
@@ -46,7 +46,13 @@ export default function CredentialingPage() {
   const { mutate: createCred } = useCreateCredentialing()
   const { mutate: verifyAll, loading: verifyingAll } = useVerifyAll(selected?.id || '')
   const { mutate: verifyDEA, loading: verifyingDEA } = useVerifyDEA(selected?.id || '')
+  const { mutate: requestUrl } = useRequestUploadUrl()
+  const { mutate: extractDoc, loading: extracting } = useExtractDocument(selected?.id || '')
   const [verifyResult, setVerifyResult] = useState(null as any)
+  const [uploadFile, setUploadFile] = useState(null as File | null)
+  const [uploading, setUploading] = useState(false)
+  const [extractResult, setExtractResult] = useState(null as any)
+  const fileInputRef = useRef(null as HTMLInputElement | null)
 
   const apiRows: CredRow[] = (apiCredResult?.data || []).map((p) => ({
     id: p.id,
@@ -193,6 +199,70 @@ export default function CredentialingPage() {
                   try { await createCred({ provider_id: selected?.raw?.provider_id || selected?.id } as any); toast.success('Enrollment started') }
                   catch { toast.error('Failed to start enrollment') }
                 }} className="bg-surface-elevated border border-separator rounded-lg py-2 text-[13px] font-medium col-span-2">Add Payer Enrollment</button>
+              </div>
+
+              {/* Document Upload + AI Extract */}
+              <div className="border-t border-separator pt-3 mt-2">
+                <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-2">Upload Credential Document</h4>
+                <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => { if (e.target.files?.[0]) setUploadFile(e.target.files[0]) }} />
+                {!uploadFile ? (
+                  <button onClick={() => fileInputRef.current?.click()}
+                    className="w-full border-2 border-dashed border-separator rounded-lg py-4 flex flex-col items-center gap-1 hover:border-brand/40 hover:bg-brand/5 transition-colors">
+                    <Upload size={18} className="text-content-tertiary" />
+                    <span className="text-[12px] text-content-secondary">Upload license, malpractice, or DEA certificate</span>
+                    <span className="text-[10px] text-content-tertiary">PDF, JPG, or PNG</span>
+                  </button>
+                ) : (
+                  <div className="bg-surface-elevated rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileCheck size={16} className="text-brand" />
+                        <span className="text-[12px] font-medium truncate max-w-[200px]">{uploadFile.name}</span>
+                        <span className="text-[10px] text-content-tertiary">{(uploadFile.size / 1024).toFixed(0)} KB</span>
+                      </div>
+                      <button onClick={() => { setUploadFile(null); setExtractResult(null) }} className="text-content-tertiary hover:text-content-primary">
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <button onClick={async () => {
+                      if (!uploadFile || !selected) return;
+                      setUploading(true); setExtractResult(null);
+                      try {
+                        const urlResult = await requestUrl({ file_name: uploadFile.name, content_type: uploadFile.type || 'application/pdf', folder: 'credentialing' });
+                        if (!urlResult?.upload_url || !urlResult?.s3_key) throw new Error('Could not get upload URL');
+                        const s3Res = await fetch(urlResult.upload_url, { method: 'PUT', body: uploadFile, headers: { 'Content-Type': uploadFile.type || 'application/pdf' } });
+                        if (!s3Res.ok) throw new Error('S3 upload failed');
+                        toast.success('Document uploaded, extracting data...');
+                        const result = await extractDoc({ s3_key: urlResult.s3_key, document_type: uploadFile.name.toLowerCase().includes('license') ? 'medical_license' : uploadFile.name.toLowerCase().includes('malp') ? 'malpractice_certificate' : uploadFile.name.toLowerCase().includes('dea') ? 'dea_certificate' : 'unknown' });
+                        setExtractResult(result);
+                        if (result && result.fields_updated && result.fields_updated.length > 0) {
+                          toast.success('Credentials auto-populated: ' + result.fields_updated.join(', '));
+                        } else {
+                          toast.success('Document processed');
+                        }
+                      } catch (err) {
+                        toast.error('Upload failed: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                      } finally { setUploading(false); }
+                    }} disabled={uploading || extracting}
+                      className="w-full bg-brand text-white rounded-lg py-2 text-[13px] font-medium hover:bg-brand/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                      {uploading || extracting ? <><Loader2 size={14} className="animate-spin" /> Extracting credentials...</> : <><Upload size={14} /> Upload and Extract with Ai</>}
+                    </button>
+                  </div>
+                )}
+                {extractResult?.extracted && (
+                  <div className="mt-2 bg-surface-elevated rounded-lg p-3 text-[11px] space-y-1">
+                    <div className="text-[11px] font-semibold text-brand mb-1">Ai Extracted Data {extractResult.ai_confidence ? `(${Math.round(extractResult.ai_confidence * 100)}% confidence)` : ''}</div>
+                    {extractResult.extracted.document_type && <div className="flex justify-between"><span className="text-content-tertiary">Type:</span><span>{extractResult.extracted.document_type}</span></div>}
+                    {extractResult.extracted.license_number && <div className="flex justify-between"><span className="text-content-tertiary">License:</span><span>{extractResult.extracted.license_state} {extractResult.extracted.license_number}</span></div>}
+                    {extractResult.extracted.license_expiry && <div className="flex justify-between"><span className="text-content-tertiary">License Exp:</span><span>{extractResult.extracted.license_expiry}</span></div>}
+                    {extractResult.extracted.malpractice_carrier && <div className="flex justify-between"><span className="text-content-tertiary">Carrier:</span><span>{extractResult.extracted.malpractice_carrier}</span></div>}
+                    {extractResult.extracted.malpractice_expiry && <div className="flex justify-between"><span className="text-content-tertiary">Malp Exp:</span><span>{extractResult.extracted.malpractice_expiry}</span></div>}
+                    {extractResult.extracted.dea_number && <div className="flex justify-between"><span className="text-content-tertiary">DEA:</span><span>{extractResult.extracted.dea_number}</span></div>}
+                    {extractResult.extracted.dea_expiry && <div className="flex justify-between"><span className="text-content-tertiary">DEA Exp:</span><span>{extractResult.extracted.dea_expiry}</span></div>}
+                    {extractResult.fields_updated?.length > 0 && <div className="mt-1 text-brand font-medium">Auto-updated: {extractResult.fields_updated.join(', ')}</div>}
+                  </div>
+                )}
               </div>
 
               {/* AI Verification Section */}
