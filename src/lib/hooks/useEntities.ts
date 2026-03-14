@@ -1169,11 +1169,15 @@ export function useUpdateEncounter(id: string) {
 // ── Credentialing CRUD ──────────────────────────────────────────────────────
 
 export function useCreateCredentialing() {
-  return useMutation<ApiCredentialing, Partial<ApiCredentialing>>('post', '/credentialing')
+  return useMutation<ApiCredentialing, Partial<ApiCredentialing>>('post', '/credentialing/enrollment')
 }
 
 export function useUpdateCredentialing(id: string) {
   return useMutation<ApiCredentialing, Partial<ApiCredentialing>>('put', `/credentialing/${id}`)
+}
+
+export function useRecredential(id: string) {
+  return useMutation<ApiCredentialing, { notes?: string; assigned_to?: string }>('post', `/credentialing/${id}/recredential`)
 }
 
 // ── Sprint 2 v5: New Routes ─────────────────────────────────────────────────

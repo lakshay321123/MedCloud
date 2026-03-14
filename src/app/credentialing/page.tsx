@@ -5,7 +5,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import { BadgeCheck, AlertTriangle, X } from 'lucide-react'
-import { useCredentialing, useUpdateCredentialing, useCreateCredentialing, useCredentialingExpiring, ApiCredentialing } from '@/lib/hooks'
+import { useCredentialing, useUpdateCredentialing, useCreateCredentialing, useCredentialingExpiring, useRecredential, ApiCredentialing } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
 import { useSearchParams, useRouter } from 'next/navigation'
 
@@ -41,6 +41,7 @@ export default function CredentialingPage() {
   const { data: apiCredResult } = useCredentialing({ limit: 100 })
   const { data: expiringResult } = useCredentialingExpiring(90)
   const { mutate: updateCred } = useUpdateCredentialing(selected?.id || '')
+  const { mutate: recredential } = useRecredential(selected?.id || '')
   const { mutate: createCred } = useCreateCredentialing()
 
   const apiRows: CredRow[] = (apiCredResult?.data || []).map((p: ApiCredentialing) => ({
@@ -100,7 +101,7 @@ export default function CredentialingPage() {
     if (malpDays !== null && malpDays <= 90) itemName = 'Malpractice Insurance'
     else if (licDays !== null && licDays <= 90) itemName = 'Medical License'
     else if (caqhDays !== null && caqhDays <= 90) itemName = 'CAQH Attestation'
-    return { name: c.provider_name || 'Unknown', item: itemName, date: formatDate(c.expiry_date || c.license_expiry), days: expDays ?? 999 }
+    return { name: c.provider_name || (c as any).provider_full_name || 'Unknown', item: itemName, date: formatDate(c.expiry_date || c.license_expiry), days: expDays ?? 999 }
   }).sort((a: { days: number }, b: { days: number }) => a.days - b.days).slice(0, 5)
 
   return (
@@ -179,13 +180,13 @@ export default function CredentialingPage() {
               <div className="text-[13px] text-content-secondary mb-2">Active Payer Enrollments: {selected.payers}</div>
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={async () => {
-                  try { await updateCred({ status: 'recredentialing', credential_type: 'recredentialing' }); toast.success('Re-credentialing initiated') }
+                  try { await recredential({ notes: 'Re-credentialing initiated from dashboard' }); toast.success('Re-credentialing initiated') }
                   catch { toast.error('Failed to initiate re-credentialing') }
                 }} className="bg-brand/10 text-brand rounded-lg py-2 text-[13px] font-medium hover:bg-brand/20 transition-colors">Initiate Re-credentialing</button>
                 <button onClick={() => { window.open('https://proview.caqh.org/PR', '_blank'); toast.success('CAQH ProView opened') }}
                   className="bg-surface-elevated border border-separator rounded-lg py-2 text-[13px] font-medium">Update CAQH</button>
                 <button onClick={async () => {
-                  try { await createCred({ provider_id: selected?.raw?.provider_id || selected?.id, status: 'pending', credential_type: 'payer_enrollment' }); toast.success('Enrollment started') }
+                  try { await createCred({ provider_id: selected?.raw?.provider_id || selected?.id } as any); toast.success('Enrollment started') }
                   catch { toast.error('Failed to start enrollment') }
                 }} className="bg-surface-elevated border border-separator rounded-lg py-2 text-[13px] font-medium col-span-2">Add Payer Enrollment</button>
               </div>
