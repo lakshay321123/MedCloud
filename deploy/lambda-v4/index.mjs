@@ -4755,11 +4755,28 @@ async function approveCoding(codingQueueId, body, orgId, userId) {
 
   // Create claim from approved codes
   const claimNumber = await nextClaimNumber(orgId);
+
+  // Look up patient's payer from their insurance or from their most recent claim
+  let payerId = null;
+  try {
+    const patientRow = await pool.query('SELECT insurance_payer FROM patients WHERE id = $1 AND org_id = $2', [item.patient_id, orgId]);
+    if (patientRow.rows[0]?.insurance_payer) {
+      const payerRow = await pool.query('SELECT id FROM payers WHERE org_id = $1 AND name ILIKE $2 LIMIT 1', [orgId, patientRow.rows[0].insurance_payer]);
+      payerId = payerRow.rows[0]?.id || null;
+    }
+    // Fallback: check most recent claim for this patient that has a payer
+    if (!payerId) {
+      const prevClaim = await pool.query('SELECT payer_id FROM claims WHERE patient_id = $1 AND org_id = $2 AND payer_id IS NOT NULL ORDER BY created_at DESC LIMIT 1', [item.patient_id, orgId]);
+      payerId = prevClaim.rows[0]?.payer_id || null;
+    }
+  } catch (e) { safeLog('warn', 'Payer lookup for coding approval failed:', e.message); }
+
   const claimData = {
     org_id: orgId,
     client_id: item.client_id,
     patient_id: item.patient_id,
     provider_id: providerId,
+    payer_id: payerId,
     claim_number: claimNumber,
     status: 'draft',
     claim_type: '837P',
@@ -5516,12 +5533,22 @@ async function createEnrollment(body, orgId, userId) {
      enrollment_type || 'initial', effective_date || null, notes || null]
   );
 
-  // Create follow-up task
+  // Create follow-up task — look up provider name for readable title
+  let providerLabel = provider_id;
+  try {
+    const provRow = await pool.query('SELECT first_name, last_name FROM providers WHERE id = $1', [provider_id]);
+    if (provRow.rows[0]) providerLabel = `Dr. ${provRow.rows[0].first_name} ${provRow.rows[0].last_name}`;
+  } catch (_) {}
+  let payerLabel = payer_id;
+  try {
+    const payRow = await pool.query('SELECT name FROM payers WHERE id = $1', [payer_id]);
+    if (payRow.rows[0]) payerLabel = payRow.rows[0].name;
+  } catch (_) {}
   await pool.query(
     `INSERT INTO tasks (id, org_id, title, description, status, priority, due_date, created_at)
      VALUES ($1, $2, $3, $4, 'open', 'medium', $5, NOW())`,
-    [uuid(), orgId, `Credentialing Follow-up: Provider ${provider_id}`,
-     `Track enrollment status with payer ${payer_id}`,
+    [uuid(), orgId, `Credentialing Follow-up: ${providerLabel}`,
+     `Track enrollment status with ${payerLabel}`,
      new Date(Date.now() + 14 * MS_IN_DAY).toISOString().slice(0, 10)]
   );
 

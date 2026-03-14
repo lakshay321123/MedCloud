@@ -518,8 +518,9 @@ export default function AnalyticsPage() {
 
           {/* Staff Productivity */}
           <div className="card overflow-hidden">
-            <div className="px-5 py-4 border-b border-separator">
+            <div className="px-5 py-4 border-b border-separator flex items-center justify-between">
               <h3 className="text-[14px] font-semibold text-content-primary">Staff Productivity</h3>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20">Sample Data</span>
             </div>
             <table className="w-full text-[12px]">
               <thead><tr className="border-b border-separator text-[11px] text-content-tertiary tracking-wider">
@@ -569,6 +570,9 @@ export default function AnalyticsPage() {
       {/* ─── Ai PERFORMANCE TAB ──────────────────────────────────────────── */}
       {tab === 'ai' && (
         <div className="space-y-6">
+          <div className="bg-brand/5 border border-brand/20 rounded-lg px-3 py-2 text-[11px] text-brand flex items-center gap-2">
+            <Info size={12} /> AI performance metrics shown below are sample data. Live tracking will be available when AI usage logging is enabled.
+          </div>
           <div className="grid grid-cols-5 gap-4">
             <KPICard label={t('analytics','autoCodingAcc')} value="—" icon={<BrainCircuit size={20}/>} />
             <KPICard label={t('analytics','aiAcceptRate')} value="—" icon={<CheckCircle2 size={20}/>} />
@@ -671,8 +675,8 @@ export default function AnalyticsPage() {
       {tab === 'provider' && (
         <div className="space-y-6">
           <div className="grid grid-cols-4 gap-4">
-            <KPICard label="Encounters This Month" value={claims.length || 37} icon={<Activity size={20}/>} sub="Total patient visits" />
-            <KPICard label="Avg Charges / Visit" value={claims.length > 0 ? `$${Math.round(claims.reduce((s,c)=>s+c.billed,0)/claims.length)}` : '$312'} icon={<DollarSign size={20}/>} sub="Billed per encounter" />
+            <KPICard label="Claims This Month" value={claims.length || 0} icon={<Activity size={20}/>} sub="Total claims in current view" />
+            <KPICard label="Avg Charges / Claim" value={claims.length > 0 ? `$${Math.round(claims.reduce((s,c)=>s+c.billed,0)/claims.length)}` : '$0'} icon={<DollarSign size={20}/>} sub="Billed per claim" />
             <KPICard label="Coding Accuracy" value="—" icon={<CheckCircle2 size={20}/>} sub="Ai-coded visits reviewed" />
             <KPICard label="Documentation Score" value="8.4/10" icon={<ShieldAlert size={20}/>} sub="SOAP completeness avg" />
           </div>
