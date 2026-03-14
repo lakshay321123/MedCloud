@@ -231,6 +231,11 @@ async function runSchemaMigration() {
       ALTER TABLE eligibility_checks ADD COLUMN IF NOT EXISTS benefits_json     JSONB;
       ALTER TABLE scrub_rules ADD COLUMN IF NOT EXISTS rule_order INTEGER DEFAULT 0;
 
+      -- ── tasks: add created_by and completed_by columns ──────────────────────
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS created_by UUID;
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS completed_by UUID;
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+
       -- ── notifications: create if not exists ─────────────────────────────────
       CREATE TABLE IF NOT EXISTS notifications (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -12021,8 +12026,8 @@ Return ONLY the JSON, no other text.`;
         return respond(200, r);
       }
       if (method === 'POST' && !pathParams.id) {
-        const task = await create('tasks', { ...body, created_by: userId, status: body.status || 'open' }, effectiveOrgId);
-        await auditLog(effectiveOrgId, userId, 'task_created', 'tasks', task.id, { title: body.title });
+        const task = await create('tasks', { ...body, status: body.status || 'open' }, effectiveOrgId);
+        await auditLog(effectiveOrgId, userId, 'task_created', 'tasks', task.id, { title: body.title, created_by: userId });
         return respond(201, task);
       }
       if (method === 'PUT' && pathParams.id) {
