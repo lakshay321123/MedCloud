@@ -465,6 +465,7 @@ async function runSchemaMigration() {
 
     // ── Credentialing depth: CAQH tracking + payer enrollment status ─────────
     await pool.query(`
+      ALTER TABLE credentialing ADD COLUMN IF NOT EXISTS provider_name VARCHAR(200);
       ALTER TABLE credentialing ADD COLUMN IF NOT EXISTS caqh_provider_id VARCHAR(20);
       ALTER TABLE credentialing ADD COLUMN IF NOT EXISTS caqh_status VARCHAR(30) DEFAULT 'not_started';
       ALTER TABLE credentialing ADD COLUMN IF NOT EXISTS caqh_last_attested DATE;
@@ -1066,15 +1067,48 @@ async function seedDemoData(orgId) {
         safeLog('info', `Seeded ${bulkIdx} additional monthly US claims for analytics charts`);
 
         // ── Credentialing records for US providers ─────────────────────────────
-        for (let pi = 0; pi < Math.min(usProviders.length, 3); pi++) {
+        // First: delete old thin records to avoid duplicates on re-seed
+        await pool.query(`DELETE FROM credentialing WHERE org_id = $1`, [_org]).catch(()=>{});
+        const credData = [
+          { licNum: 'MD-2019-44821', licState: 'CA', licExp: 120, malpCarrier: 'The Doctors Company', malpPol: 'TDC-2024-991002', malpExp: 210, dea: 'FA1234567', deaExp: 730, boardCert: true, boardDate: '2019-06-15', caqhId: '14923847', caqhStatus: 'attested', caqhAttested: 30, caqhNext: 150, payerEnroll: 5, status: 'active', type: 'initial_credentialing' },
+          { licNum: 'MD-2020-55103', licState: 'CA', licExp: 25, malpCarrier: 'NORCAL Mutual', malpPol: 'NM-2025-330441', malpExp: 22, dea: 'BO9876543', deaExp: 45, boardCert: true, boardDate: '2020-03-20', caqhId: '15839201', caqhStatus: 'attestation_due', caqhAttested: 180, caqhNext: 15, payerEnroll: 4, status: 'expiring', type: 'recredentialing' },
+          { licNum: 'MD-2021-67290', licState: 'TX', licExp: 400, malpCarrier: 'Medical Protective', malpPol: 'MP-2025-771234', malpExp: 365, dea: 'CS2345678', deaExp: 600, boardCert: true, boardDate: '2021-09-01', caqhId: '16720394', caqhStatus: 'attested', caqhAttested: 60, caqhNext: 120, payerEnroll: 6, status: 'active', type: 'initial_credentialing' },
+          { licNum: 'MD-2018-33107', licState: 'NY', licExp: 180, malpCarrier: 'ProAssurance', malpPol: 'PA-2024-882100', malpExp: 90, dea: 'DP3456789', deaExp: 300, boardCert: false, boardDate: null, caqhId: '13847261', caqhStatus: 'attested', caqhAttested: 45, caqhNext: 135, payerEnroll: 3, status: 'active', type: 'initial_credentialing' },
+          { licNum: 'MD-2022-78455', licState: 'FL', licExp: 550, malpCarrier: 'Coverys', malpPol: 'CV-2025-443210', malpExp: 500, dea: 'EP4567890', deaExp: 800, boardCert: true, boardDate: '2022-11-10', caqhId: '17934058', caqhStatus: 'not_started', caqhAttested: null, caqhNext: null, payerEnroll: 2, status: 'pending', type: 'initial_credentialing' },
+        ];
+        const now = Date.now();
+        for (let pi = 0; pi < Math.min(usProviders.length, credData.length); pi++) {
           const prov = usProviders[pi];
-          await pool.query(`INSERT INTO credentialing (id, org_id, client_id, provider_id, provider_name, status, credential_type, expiry_date, payer_enrollment_count, created_at)
-            VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$8,NOW()) ON CONFLICT DO NOTHING`,
-            [_org, pi % 2 === 0 ? uc1 : uc2, prov.id, `${prov.first_name} ${prov.last_name}`,
-             pi === 0 ? 'active' : pi === 1 ? 'expiring' : 'active',
-             'initial_credentialing',
-             new Date(Date.now() + (pi === 1 ? 45 : 365) * 86400000).toISOString().split('T')[0],
-             3 + pi]).catch(()=>{});
+          const cd = credData[pi];
+          const clientForProv = pi % 3 === 0 ? uc1 : pi % 3 === 1 ? uc2 : (usClients[2]?.id || uc1);
+          await pool.query(`INSERT INTO credentialing (id, org_id, client_id, provider_id, provider_name, status, credential_type,
+              expiry_date, payer_enrollment_count, license_number, license_state, license_expiry,
+              malpractice_carrier, malpractice_policy_number, malpractice_expiry,
+              dea_number, dea_expiry, board_certified, board_certification_date,
+              caqh_provider_id, caqh_status, caqh_last_attested, caqh_next_attestation,
+              payer_enrollment_status, timeline, created_at)
+            VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,NOW()) ON CONFLICT DO NOTHING`,
+            [_org, clientForProv, prov.id, `${prov.first_name} ${prov.last_name}`,
+             cd.status, cd.type,
+             new Date(now + cd.licExp * 86400000).toISOString().split('T')[0],
+             cd.payerEnroll,
+             cd.licNum, cd.licState,
+             new Date(now + cd.licExp * 86400000).toISOString().split('T')[0],
+             cd.malpCarrier, cd.malpPol,
+             new Date(now + cd.malpExp * 86400000).toISOString().split('T')[0],
+             cd.dea,
+             new Date(now + cd.deaExp * 86400000).toISOString().split('T')[0],
+             cd.boardCert, cd.boardDate,
+             cd.caqhId, cd.caqhStatus,
+             cd.caqhAttested ? new Date(now - cd.caqhAttested * 86400000).toISOString().split('T')[0] : null,
+             cd.caqhNext ? new Date(now + cd.caqhNext * 86400000).toISOString().split('T')[0] : null,
+             JSON.stringify({ aetna: 'enrolled', bcbs: 'enrolled', united: pi < 3 ? 'enrolled' : 'pending', cigna: pi < 2 ? 'enrolled' : 'not_started', medicare: 'enrolled' }),
+             JSON.stringify([
+               { event: 'application_submitted', date: new Date(now - 300 * 86400000).toISOString(), by: 'system' },
+               { event: 'primary_source_verified', date: new Date(now - 280 * 86400000).toISOString(), by: 'system' },
+               { event: cd.status === 'active' ? 'approved' : 'renewal_due', date: new Date(now - 260 * 86400000).toISOString(), by: 'system' },
+             ]),
+            ]).catch(e => safeLog('warn', `Cred seed ${pi}:`, e.message));
         }
 
         // ── Tasks for various workflow items ──────────────────────────────────
@@ -5392,7 +5426,7 @@ async function getCredentialingDashboard(orgId, clientId) {
 
   // Active credentialing items with expiry tracking
   const activeR = await pool.query(
-    `SELECT c.*, p.name AS provider_name, p.npi, py.name AS payer_name
+    `SELECT c.*, p.first_name || ' ' || p.last_name AS provider_full_name, p.npi, py.name AS payer_name
      FROM credentialing c
      LEFT JOIN providers p ON c.provider_id = p.id
      LEFT JOIN payers py ON c.payer_id = py.id
@@ -9793,8 +9827,11 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     // CAQH status tracking, expiring credentials, re-credentialing, timeline
     if (path.includes('/credentialing/caqh-status') && method === 'GET') {
       const r = await pool.query(
-        `SELECT c.id, c.provider_name, c.caqh_provider_id, c.caqh_status, c.caqh_last_attested,
-                c.caqh_next_attestation, c.status, p.npi, p.specialty
+        `SELECT c.id, COALESCE(c.provider_name, p.first_name || ' ' || p.last_name) AS provider_name,
+                c.caqh_provider_id, c.caqh_status, c.caqh_last_attested,
+                c.caqh_next_attestation, c.status, c.license_number, c.license_expiry,
+                c.malpractice_expiry, c.dea_number, c.dea_expiry, c.board_certified,
+                c.payer_enrollment_count, p.npi, p.specialty
          FROM credentialing c LEFT JOIN providers p ON c.provider_id = p.id
          WHERE c.org_id = $1 ORDER BY c.caqh_next_attestation ASC NULLS LAST`, [effectiveOrgId]
       );

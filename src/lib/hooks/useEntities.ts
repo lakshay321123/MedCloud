@@ -321,7 +321,27 @@ export interface ApiCredentialing {
   credential_type?: string
   status?: string
   expiration_date?: string
+  expiry_date?: string
   payer_enrollment_count?: number
+  license_number?: string
+  license_state?: string
+  license_expiry?: string
+  malpractice_carrier?: string
+  malpractice_policy_number?: string
+  malpractice_expiry?: string
+  dea_number?: string
+  dea_expiry?: string
+  board_certified?: boolean
+  board_certification_date?: string
+  caqh_provider_id?: string
+  caqh_status?: string
+  caqh_last_attested?: string
+  caqh_next_attestation?: string
+  payer_enrollment_status?: Record<string, string>
+  timeline?: Array<{ event: string; date: string; by?: string; notes?: string }>
+  npi?: string
+  specialty?: string
+  client_name?: string
   created_at?: string
   updated_at?: string
 }
@@ -1463,6 +1483,11 @@ export interface ApiCredentialingDashboard {
 export function useCredentialingDashboard() {
   const params = useClientParams()
   return useApi<ApiCredentialingDashboard>('/credentialing/dashboard', params)
+}
+
+export function useCredentialingExpiring(days = 90) {
+  const params = useClientParams({ days: days.toString() })
+  return useApi<ApiListResponse<ApiCredentialing>>('/credentialing/expiring', params)
 }
 
 export function useCreateEnrollment() {
