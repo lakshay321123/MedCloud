@@ -7,7 +7,7 @@ import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { useClaims, useDenials, useReport, useClientHealthScores, useProviders, useClients } from '@/lib/hooks'
 // Region filtering handled by backend
-import { useAnalyticsKPIs, useAnalyticsTrends, useAnalyticsPayerPerformance, useAnalyticsProviderProductivity, useAnalyticsForecasting } from '@/lib/hooks'
+import { useAnalyticsKPIs, useAnalyticsTrends, useAnalyticsPayerPerformance, useAnalyticsForecasting } from '@/lib/hooks'
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine
@@ -140,7 +140,6 @@ export default function AnalyticsPage() {
   const { data: denialsApiResult } = useDenials({ limit: 500 })
   const { data: trendsData } = useAnalyticsTrends(6)
   const { data: payerPerfApi } = useAnalyticsPayerPerformance()
-  const { data: providerProdApi } = useAnalyticsProviderProductivity()
   const { data: forecastApi } = useAnalyticsForecasting()
 
   const claims = useMemo(() => {
@@ -314,13 +313,15 @@ export default function AnalyticsPage() {
     // Use API trends endpoint if available
     if (trendsData?.denial_trend && trendsData.denial_trend.length >= 2 && trendsData.revenue_trend) {
       return trendsData.revenue_trend.map((r, i) => {
-        const dt = trendsData.denial_trend?.[i]
         const total = r.claims || 1
         const denied = r.denied || 0
+        const denialInfo = trendsData.denial_trend?.[i]
+        // Use denial_trend total if available, otherwise derive from revenue_trend
+        const actualDenied = denialInfo?.total ?? denied
         return {
           month: new Date(r.month).toLocaleString('en-US', { month: 'short' }),
-          initial: parseFloat(((denied / total) * 100).toFixed(1)),
-          net: parseFloat(((Math.max(0, denied - 1) / total) * 100).toFixed(1)),
+          initial: parseFloat(((actualDenied / total) * 100).toFixed(1)),
+          net: parseFloat(((Math.max(0, actualDenied * 0.7) / total) * 100).toFixed(1)),
         }
       })
     }
@@ -686,11 +687,11 @@ export default function AnalyticsPage() {
               <h3 className="text-[14px] font-semibold text-content-primary mb-4">Charges vs Collections by Month</h3>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={
-                  (forecastApi?.recent_months && forecastApi.recent_months.length >= 2)
-                    ? forecastApi.recent_months.map(m => ({
-                        month: new Date(m.month).toLocaleString('en-US', { month: 'short' }),
-                        charges: Number(m.billed),
-                        collections: Math.round(Number(m.billed) * 0.88),
+                  (trendsData?.revenue_trend && trendsData.revenue_trend.length >= 2)
+                    ? trendsData.revenue_trend.map(r => ({
+                        month: new Date(r.month).toLocaleString('en-US', { month: 'short' }),
+                        charges: Number(r.billed),
+                        collections: Number(r.collected),
                       }))
                     : [
                   { month: 'Oct', charges: 38200, collections: 32100 },

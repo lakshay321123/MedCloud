@@ -2141,11 +2141,14 @@ export function useEvaluateWorkflow() {
 
 // ── Integrations Hub ───────────────────────────────────────────────────────
 export interface ApiIntegrationStatus {
+  id?: string
   name: string
   status: string
   type?: string
   last_check?: string
+  last_tested?: string
   details?: string
+  config_status?: string
 }
 
 export function useIntegrationsStatus() {
@@ -2154,7 +2157,7 @@ export function useIntegrationsStatus() {
 }
 
 export function useTestIntegration() {
-  return useMutation<{ integration: string; status: string; tested_at: string; latency_ms?: number; error?: string }, { integration: string }>('post', '/integrations/test')
+  return useMutation<{ integration: string; status: string; tested_at: string; latency_ms?: number; error?: string }, { integration_id: string }>('post', '/integrations/test')
 }
 
 // ── Analytics Depth ────────────────────────────────────────────────────────

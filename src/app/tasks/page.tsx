@@ -83,8 +83,10 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
       due: form.due,
       sla: 'green',
     }
-    // Attach extra fields for API call (not part of Task type but needed by handleCreateTask)
-    Object.assign(newTask, { _clientId: form.clientId || undefined, _assignedId: form.assignedId || undefined, _description: form.description || undefined })
+    // Pass extra API fields via expando properties
+    ;(newTask as any)._clientId = form.clientId || undefined
+    ;(newTask as any)._assignedId = form.assignedId || undefined
+    ;(newTask as any)._description = form.description || undefined
     onSave(newTask)
     toast.success(`Task created — ${newTask.id}`)
     onClose()
@@ -114,8 +116,8 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
             </div>
           </div>
           <div className="relative">
-            <label className="text-xs text-content-secondary block mb-1">Title / Entity *</label>
-            <input value={form.entity}
+            <label htmlFor="task-entity" className="text-xs text-content-secondary block mb-1">Title / Entity *</label>
+            <input id="task-entity" value={form.entity}
               onChange={e => { setForm(p=>({...p,entity:e.target.value})); setSearchQ(e.target.value); setShowSearch(true) }}
               onFocus={() => { if (form.entity.length >= 2) setShowSearch(true) }}
               onBlur={() => setTimeout(() => setShowSearch(false), 200)}
@@ -374,8 +376,8 @@ export default function TasksPage() {
 
 function WorkflowTemplatesSection() {
   const { toast } = useToast()
-  const { data: templatesResult, refetch } = useWorkflowTemplates()
-  const { mutate: createTemplate } = useCreateWorkflowTemplate()
+  const { data: templatesResult, loading: templatesLoading, refetch } = useWorkflowTemplates()
+  const { mutate: createTemplate, loading: creating } = useCreateWorkflowTemplate()
   const { mutate: evaluate } = useEvaluateWorkflow()
   const [expanded, setExpanded] = useState(false)
   const templates = templatesResult?.data || []
@@ -389,7 +391,10 @@ function WorkflowTemplatesSection() {
       </button>
       {expanded && (
         <div className="border-t border-separator px-4 py-3 space-y-3">
-          {templates.length === 0 && (
+          {templatesLoading && templates.length === 0 && (
+            <div className="text-[13px] text-content-tertiary py-2">Loading workflow templates...</div>
+          )}
+          {!templatesLoading && templates.length === 0 && (
             <div className="text-[13px] text-content-tertiary py-2">No workflow templates configured. Create one to automate task assignment.</div>
           )}
           {templates.map(tpl => (
@@ -410,7 +415,7 @@ function WorkflowTemplatesSection() {
               }} className="text-[11px] text-brand hover:underline">Test</button>
             </div>
           ))}
-          <button type="button" onClick={async () => {
+          <button type="button" disabled={creating} onClick={async () => {
             try {
               await createTemplate({
                 name: 'New Workflow',
@@ -421,8 +426,8 @@ function WorkflowTemplatesSection() {
               toast.success('Template created (inactive). Edit to configure.')
               refetch()
             } catch { toast.error('Failed to create template') }
-          }} className="w-full border-2 border-dashed border-separator rounded-lg py-2 text-[12px] text-content-tertiary hover:border-brand/40 hover:text-brand transition-colors">
-            + Add Workflow Template
+          }} className="w-full border-2 border-dashed border-separator rounded-lg py-2 text-[12px] text-content-tertiary hover:border-brand/40 hover:text-brand transition-colors disabled:opacity-50">
+            {creating ? 'Creating...' : '+ Add Workflow Template'}
           </button>
         </div>
       )}

@@ -152,23 +152,34 @@ export default function IntegrationsPage() {
 
   // Merge live AWS status into static integrations list
   const mergedIntegrations = useMemo(() => {
-    const liveMap = new Map((liveStatus?.data || []).map(i => [i.name, i]))
+    // Map static card IDs to backend integration IDs
+    const ID_MAP: Record<string, string> = {
+      's3': 'aws_s3', 'retell': 'retell_ai', 'availity': 'availity',
+      'eclinical': 'eclinical', 'epic': 'epic', 'cerner': 'cerner', 'athena': 'athena',
+      'cloudfax': 'cloudfax', 'email': 'email', 'sharepoint': 'sharepoint', 'sftp': 'sftp',
+      'dha': 'dha',
+    }
+    const liveMap = new Map((liveStatus?.data || []).map(i => [i.id || i.name, i]))
     return integrations.map(ig => {
-      // Map static IDs to API names
-      const apiName = ig.id === 's3' ? 'aws_s3' : ig.id === 'retell' ? 'retell_ai' : null
-      if (apiName && liveMap.has(apiName)) {
-        const live = liveMap.get(apiName)!
-        return { ...ig, status: (live.status === 'connected' ? 'connected' : live.status === 'failed' ? 'error' : ig.status) as Integration['status'], lastSync: live.last_check ? 'Live' : ig.lastSync }
+      const apiId = ID_MAP[ig.id] || ig.id
+      const live = liveMap.get(apiId)
+      if (live) {
+        const mappedStatus = live.status === 'connected' ? 'connected' : live.status === 'configured' ? 'connected' : live.status === 'failed' || live.status === 'unavailable' ? 'error' : live.status === 'pending_enrollment' ? 'pending' : ig.status
+        return { ...ig, status: mappedStatus as Integration['status'], lastSync: live.last_tested ? 'Live' : ig.lastSync }
       }
       return ig
     })
   }, [liveStatus])
 
+  // Testable integrations (ones with real backend test endpoints)
+  const TESTABLE: Record<string, string> = { 's3': 'aws_s3', 'retell': 'retell_ai', 'availity': 'clearinghouse' }
+
   async function handleTestConnection(integrationId: string) {
+    const apiId = TESTABLE[integrationId]
+    if (!apiId) { toast.warning(`${integrationId}: no backend test available`); return }
     setTesting(integrationId)
     try {
-      const apiName = integrationId === 's3' ? 'aws_s3' : integrationId === 'retell' ? 'retell_ai' : integrationId === 'availity' ? 'clearinghouse' : 'aws_bedrock'
-      const result = await testIntegration({ integration: apiName })
+      const result = await testIntegration({ integration_id: apiId })
       if (result?.status === 'connected') toast.success(`${integrationId} connection verified`)
       else toast.warning(`${integrationId}: ${result?.status || 'unknown'} — ${result?.error || 'manual check needed'}`)
     } catch { toast.error('Connection test failed') }
@@ -238,7 +249,7 @@ export default function IntegrationsPage() {
                 </div>
                 <div className="flex gap-1.5">
                   <button onClick={()=>setConfigFor(intg)} className="flex-1 text-[11px] font-medium border border-brand/30 text-brand py-1.5 rounded hover:bg-brand/10 transition-colors">Configure</button>
-                  {intg.status==='connected'&&<button onClick={()=>handleTestConnection(intg.id)} disabled={testing===intg.id} className="flex-1 text-[11px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-secondary transition-colors disabled:opacity-50">{testing===intg.id?'Testing...':'Test'}</button>}
+                  {intg.status==='connected'&&(['s3','retell','availity'].includes(intg.id))&&<button type="button" onClick={()=>handleTestConnection(intg.id)} disabled={testing===intg.id} className="flex-1 text-[11px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-secondary transition-colors disabled:opacity-50">{testing===intg.id?'Testing...':'Test'}</button>}
                   <button onClick={()=>setLogsFor(intg)} className="flex-1 text-[11px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-secondary transition-colors">Logs</button>
                 </div>
               </div>

@@ -4764,11 +4764,13 @@ async function approveCoding(codingQueueId, body, orgId, userId) {
   // Look up patient's payer from their insurance or from their most recent claim
   let payerId = null;
   try {
-    const patientRow = await pool.query('SELECT insurance_payer FROM patients WHERE id = $1 AND org_id = $2', [item.patient_id, orgId]);
-    if (patientRow.rows[0]?.insurance_payer) {
-      const payerRow = await pool.query('SELECT id FROM payers WHERE org_id = $1 AND name ILIKE $2 LIMIT 1', [orgId, patientRow.rows[0].insurance_payer]);
-      payerId = payerRow.rows[0]?.id || null;
-    }
+    // Single query: JOIN patients → payers on exact name match (case-insensitive, no wildcards)
+    const payerJoin = await pool.query(
+      `SELECT py.id FROM patients p JOIN payers py ON LOWER(py.name) = LOWER(p.insurance_payer) AND py.org_id = $2
+       WHERE p.id = $1 AND p.org_id = $2 AND p.insurance_payer IS NOT NULL LIMIT 1`,
+      [item.patient_id, orgId]
+    );
+    payerId = payerJoin.rows[0]?.id || null;
     // Fallback: check most recent claim for this patient that has a payer
     if (!payerId) {
       const prevClaim = await pool.query('SELECT payer_id FROM claims WHERE patient_id = $1 AND org_id = $2 AND payer_id IS NOT NULL ORDER BY created_at DESC LIMIT 1', [item.patient_id, orgId]);
@@ -5538,17 +5540,19 @@ async function createEnrollment(body, orgId, userId) {
      enrollment_type || 'initial', effective_date || null, notes || null]
   );
 
-  // Create follow-up task — look up provider name for readable title
+  // Create follow-up task — look up provider/payer names (parallel, org-scoped)
   let providerLabel = provider_id;
-  try {
-    const provRow = await pool.query('SELECT first_name, last_name FROM providers WHERE id = $1', [provider_id]);
-    if (provRow.rows[0]) providerLabel = `Dr. ${provRow.rows[0].first_name} ${provRow.rows[0].last_name}`;
-  } catch (_) {}
   let payerLabel = payer_id;
-  try {
-    const payRow = await pool.query('SELECT name FROM payers WHERE id = $1', [payer_id]);
-    if (payRow.rows[0]) payerLabel = payRow.rows[0].name;
-  } catch (_) {}
+  const [provResult, payResult] = await Promise.allSettled([
+    pool.query('SELECT first_name, last_name FROM providers WHERE id = $1 AND org_id = $2', [provider_id, orgId]),
+    pool.query('SELECT name FROM payers WHERE id = $1 AND org_id = $2', [payer_id, orgId]),
+  ]);
+  if (provResult.status === 'fulfilled' && provResult.value.rows[0]) {
+    providerLabel = `Dr. ${provResult.value.rows[0].first_name} ${provResult.value.rows[0].last_name}`;
+  } else if (provResult.status === 'rejected') { safeLog('warn', 'createEnrollment provider lookup failed:', provResult.reason?.message); }
+  if (payResult.status === 'fulfilled' && payResult.value.rows[0]) {
+    payerLabel = payResult.value.rows[0].name;
+  } else if (payResult.status === 'rejected') { safeLog('warn', 'createEnrollment payer lookup failed:', payResult.reason?.message); }
   await pool.query(
     `INSERT INTO tasks (id, org_id, title, description, status, priority, due_date, created_at)
      VALUES ($1, $2, $3, $4, 'open', 'medium', $5, NOW())`,
@@ -12026,8 +12030,8 @@ Return ONLY the JSON, no other text.`;
         return respond(200, r);
       }
       if (method === 'POST' && !pathParams.id) {
-        const task = await create('tasks', { ...body, status: body.status || 'open' }, effectiveOrgId);
-        await auditLog(effectiveOrgId, userId, 'task_created', 'tasks', task.id, { title: body.title, created_by: userId });
+        const task = await create('tasks', { ...body, created_by: userId, status: body.status || 'open' }, effectiveOrgId);
+        await auditLog(effectiveOrgId, userId, 'task_created', 'tasks', task.id, { title: body.title });
         return respond(201, task);
       }
       if (method === 'PUT' && pathParams.id) {
