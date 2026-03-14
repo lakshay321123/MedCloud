@@ -105,7 +105,7 @@ export default function CredentialingPage() {
     if (malpDays !== null && malpDays <= 90) itemName = 'Malpractice Insurance'
     else if (licDays !== null && licDays <= 90) itemName = 'Medical License'
     else if (caqhDays !== null && caqhDays <= 90) itemName = 'CAQH Attestation'
-    return { name: c.provider_name || (c['provider_full_name'] || '') || 'Unknown', item: itemName, date: formatDate(c.expiry_date || c.license_expiry), days: expDays ?? 999 }
+    return { name: c.provider_name || 'Unknown', item: itemName, date: formatDate(c.expiry_date || c.license_expiry), days: expDays ?? 999 }
   }).sort((a, b) => a.days - b.days).slice(0, 5)
 
   return (
