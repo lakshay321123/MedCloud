@@ -274,7 +274,8 @@ export default function Topbar() {
                   <p className="text-[11px] text-gray-400 mt-0.5 capitalize">{roleLabel}</p>
                 </div>
 
-                {/* Role switcher */}
+                {/* Role switcher — only for backoffice/admin staff, NOT facility users */}
+                {portalType !== 'facility' && (
                 <div className="px-4 py-3 border-b border-separator">
                   <p className="text-[11px] font-semibold text-gray-400 tracking-wider mb-2">Switch Role</p>
                   <div className="flex flex-col gap-1">
@@ -291,8 +292,10 @@ export default function Topbar() {
                     ))}
                   </div>
                 </div>
+                )}
 
-                {/* Country toggle */}
+                {/* Country toggle — only for backoffice/admin staff, NOT facility users */}
+                {portalType !== 'facility' && (
                 <div className="px-4 py-3 border-b border-separator">
                   <p className="text-[11px] font-semibold text-gray-400 tracking-wider mb-2">Region</p>
                   <div className="flex gap-2">
@@ -314,8 +317,10 @@ export default function Topbar() {
                     </button>
                   </div>
                 </div>
+                )}
 
-                {/* Menu items */}
+                {/* Menu items — Settings only visible for backoffice staff */}
+                {portalType !== 'facility' && (
                 <div className="py-1">
                   <button
                     onClick={() => { setUserMenuOpen(false); router.push('/admin') }}
@@ -325,6 +330,7 @@ export default function Topbar() {
                     Settings
                   </button>
                 </div>
+                )}
 
                 {/* Logout */}
                 <div className="border-t border-separator py-1">

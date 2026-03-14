@@ -118,6 +118,31 @@ try {
 // Cognito SDK for admin user creation (creates login credentials from backend)
 let cognitoClient = null, CognitoCommands = null;
 const COGNITO_USER_POOL_ID = process.env.COGNITO_USER_POOL_ID;
+
+// ─── Tenant Schema Support ─────────────────────────────────────────────────────
+// Each client gets their own PostgreSQL schema (tenant_101, tenant_102, etc.)
+// All patient/clinical/financial tables are cloned per tenant.
+// Admin/staff users query public schema (all data). Provider/client users
+// automatically query their tenant schema via SET search_path.
+// Shared reference tables (organizations, clients, users, payers, providers, etc.)
+// stay in public schema and are accessible via search_path fallback.
+function clientIdToSchema(cid) {
+  if (!cid) return null;
+  const n = parseInt(cid.slice(-3));
+  return isNaN(n) ? null : `tenant_${n}`;
+}
+
+// Tables cloned into each tenant schema (client-specific data)
+const TENANT_TABLES = [
+  'patients', 'claims', 'claim_lines', 'claim_diagnoses', 'payments',
+  'encounters', 'appointments', 'documents', 'messages', 'eligibility_checks',
+  'denials', 'appeals', 'coding_queue', 'soap_notes', 'tasks', 'ar_call_log',
+  'edi_transactions', 'era_files', 'charge_captures', 'ai_coding_suggestions',
+  'scrub_results', 'underpayments', 'credit_balances', 'notifications',
+  'patient_statements', 'coding_feedback', 'coding_qa_audits', 'fee_schedules',
+  'contracts', 'payer_config', 'credentialing', 'prior_auth_requests',
+  'write_off_requests', 'client_onboarding', 'note_addendums', 'invoices'
+];
 if (!COGNITO_USER_POOL_ID) {
   console.error('FATAL: COGNITO_USER_POOL_ID env var is not set — /users/create-with-auth will be unavailable');
 }
@@ -1819,6 +1844,45 @@ async function getById(table, id, orgId = null) {
 // Column name whitelist regex — only allow alphanumeric + underscore
 const SAFE_COL = /^[a-z][a-z0-9_]{0,62}$/i;
 
+// ─── JSONB Column Cache ────────────────────────────────────────────────────────
+// PostgreSQL jsonb columns need values to be valid JSON. Plain strings like
+// "456 Main St" fail because PG tries to parse them as JSON tokens.
+// This cache stores jsonb column names per table so create()/update() can
+// auto-stringify values before inserting.
+const _jsonbColumnCache = {};
+async function getJsonbColumns(table) {
+  if (_jsonbColumnCache[table]) return _jsonbColumnCache[table];
+  try {
+    const r = await pool.query(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema = current_schema() AND table_name = $1
+       AND data_type IN ('json', 'jsonb')`, [table]
+    );
+    _jsonbColumnCache[table] = new Set(r.rows.map(row => row.column_name));
+  } catch (e) {
+    _jsonbColumnCache[table] = new Set();
+  }
+  return _jsonbColumnCache[table];
+}
+
+// Prepare values for insert/update: stringify any value going into a jsonb column
+async function prepareValues(table, safeData) {
+  const jsonbCols = await getJsonbColumns(table);
+  if (jsonbCols.size === 0) return;
+  for (const key of Object.keys(safeData)) {
+    if (jsonbCols.has(key) && safeData[key] !== null && safeData[key] !== undefined) {
+      // If already a string, check if it's valid JSON — if not, wrap it
+      if (typeof safeData[key] === 'string') {
+        try { JSON.parse(safeData[key]); } catch (_) {
+          safeData[key] = JSON.stringify(safeData[key]);
+        }
+      } else if (typeof safeData[key] === 'object') {
+        safeData[key] = JSON.stringify(safeData[key]);
+      }
+    }
+  }
+}
+
 async function create(table, data, orgId) {
   data.id = data.id || uuid();
   data.org_id = orgId;
@@ -1827,10 +1891,14 @@ async function create(table, data, orgId) {
   // Strip keys that fail column name validation to prevent SQL injection
   const safeData = {};
   for (const [k, v] of Object.entries(data)) {
-    if (SAFE_COL.test(k)) safeData[k] = v;
+    if (SAFE_COL.test(k)) {
+      // JSONB columns: stringify objects/arrays so pg driver inserts valid JSON
+      safeData[k] = (v !== null && typeof v === 'object') ? JSON.stringify(v) : v;
+    }
     else console.warn(`create(${table}): rejected unsafe column name: ${k}`);
   }
   const keys = Object.keys(safeData);
+  await prepareValues(table, safeData);
   const vals = Object.values(safeData);
   const ph = keys.map((_, i) => `$${i + 1}`).join(', ');
   const q = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${ph}) RETURNING *`;
@@ -1846,12 +1914,15 @@ async function update(table, id, data, orgId = null) {
   // Strip keys that fail column name validation
   const safeData = {};
   for (const [k, v] of Object.entries(data)) {
-    if (SAFE_COL.test(k)) safeData[k] = v;
+    if (SAFE_COL.test(k)) {
+      safeData[k] = (v !== null && typeof v === 'object') ? JSON.stringify(v) : v;
+    }
     else console.warn(`update(${table}): rejected unsafe column name: ${k}`);
   }
   const keys = Object.keys(safeData);
   // updated_at is always added, so if it's the only key there's nothing to update
   if (keys.length <= 1) return await getById(table, id, orgId);
+  await prepareValues(table, safeData);
   const vals = Object.values(safeData);
   const sets = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
   const q = `UPDATE ${table} SET ${sets} WHERE id = $${keys.length + 1} RETURNING *`;
@@ -6426,51 +6497,15 @@ async function getNotifications(orgId, userId, qs) {
 
 
 // ─── Contextual Messages ────────────────────────────────────────────────────
-async function getMessages(orgId, userId, qs) {
+async function getMessages(orgId, userId, clientId, qs) {
 
-  // Auto-seed sample messages if inbox is empty
-  const countCheck = await pool.query('SELECT COUNT(*)::int as n FROM messages WHERE org_id = $1', [orgId]);
-  if (Number(countCheck.rows[0]?.n) === 0) {
-    // Get a patient and claim to reference
-    const pt = await pool.query('SELECT id, first_name, last_name FROM patients WHERE org_id = $1 LIMIT 3', [orgId]);
-    const cl = await pool.query('SELECT id, claim_number FROM claims WHERE org_id = $1 LIMIT 2', [orgId]);
-    const clientR = await pool.query('SELECT id, name FROM clients WHERE org_id = $1 LIMIT 1', [orgId]);
-    const clientId = clientR.rows[0]?.id || null;
-    const seeds = [];
-    if (pt.rows[0]) seeds.push({
-      org_id: orgId, client_id: clientId, entity_type: 'patient', entity_id: pt.rows[0].id,
-      sender_id: userId, sender_role: 'staff', sender_name: 'Billing Team',
-      recipient_ids: null, subject: `Insurance verification needed — ${pt.rows[0].first_name} ${pt.rows[0].last_name}`,
-      body: "Please confirm the patient's insurance is active before the upcoming appointment. Eligibility check shows potential coverage gap.",
-      attachments: [], is_internal: false, is_system: false, read_by: [], priority: 'high',
-    });
-    if (cl.rows[0]) seeds.push({
-      org_id: orgId, client_id: clientId, entity_type: 'claim', entity_id: cl.rows[0].id,
-      sender_id: userId, sender_role: 'client', sender_name: 'Provider Office',
-      recipient_ids: null, subject: `Claim ${cl.rows[0].claim_number} — additional documentation`,
-      body: 'The payer is requesting additional clinical documentation to support medical necessity. Can you provide the progress note from the date of service?',
-      attachments: [], is_internal: false, is_system: false, read_by: [], priority: 'normal',
-    });
-    if (pt.rows[1]) seeds.push({
-      org_id: orgId, client_id: clientId, entity_type: 'general', entity_id: null,
-      sender_id: userId, sender_role: 'staff', sender_name: 'AR Team',
-      recipient_ids: null, subject: 'ERA file received — 27 payments posted',
-      body: '835 ERA file from UnitedHealthcare processed successfully. 27 payments auto-posted, 2 lines flagged for manual review due to contractual adjustment discrepancy.',
-      attachments: [], is_internal: true, is_system: false, read_by: [], priority: 'normal',
-    });
-    if (cl.rows[1]) seeds.push({
-      org_id: orgId, client_id: clientId, entity_type: 'claim', entity_id: cl.rows[1].id,
-      sender_id: userId, sender_role: 'client', sender_name: 'Provider Office',
-      recipient_ids: null, subject: `Appeal submitted — ${cl.rows[1].claim_number}`,
-      body: 'We have submitted a Level 1 appeal for this claim. The denial reason was CO-50 (medical necessity). Appeal letter and supporting documentation have been uploaded.',
-      attachments: [], is_internal: false, is_system: false, read_by: [], priority: 'normal',
-    });
-    for (const s of seeds) {
-      await create('messages', s, orgId).catch((err) => console.error('[seed-messages] Failed to seed message:', err));
-    }
-  }
+  // Auto-seed removed — new practices start with an empty inbox.
+  // Messages are created organically via sendMessage or system events.
+
   let q = 'SELECT m.*, u.email as sender_email FROM messages m LEFT JOIN users u ON m.sender_id = u.id WHERE m.org_id = $1';
   const p = [orgId];
+  // ── Client isolation: facility users only see their practice's messages ──
+  if (clientId) { p.push(clientId); q += ` AND m.client_id = $${p.length}`; }
   if (qs.entity_type && qs.entity_id) {
     q += ` AND m.entity_type = $${p.length + 1} AND m.entity_id = $${p.length + 2}`;
     p.push(qs.entity_type, qs.entity_id);
@@ -6490,6 +6525,7 @@ async function getMessages(orgId, userId, qs) {
     try {
       let unreadWhere = 'WHERE m.org_id = $1';
       const unreadP = [orgId];
+      if (clientId) { unreadP.push(clientId); unreadWhere += ` AND m.client_id = $${unreadP.length}`; }
       if (qs.entity_type && qs.entity_id) { unreadWhere += ` AND m.entity_type = $${unreadP.length + 1} AND m.entity_id = $${unreadP.length + 2}`; unreadP.push(qs.entity_type, qs.entity_id); }
       else if (qs.entity_type) { unreadWhere += ` AND m.entity_type = $${unreadP.length + 1}`; unreadP.push(qs.entity_type); }
       if (qs.parent_id && qs.parent_id !== 'null') { unreadWhere += ` AND m.parent_id = $${unreadP.length + 1}`; unreadP.push(qs.parent_id); }
@@ -6503,7 +6539,7 @@ async function getMessages(orgId, userId, qs) {
   return { data: r.rows, total: r.rows.length, unread_count: unread };
 }
 
-async function sendMessage(body, orgId, userId) {
+async function sendMessage(body, orgId, userId, clientId) {
   const { entity_type, entity_id, parent_id, subject, body: msgBody, recipient_ids, is_internal, priority, attachments } = body;
   if (!msgBody) throw new Error('Message body required');
   // Look up sender name from users table if not provided
@@ -6513,7 +6549,7 @@ async function sendMessage(body, orgId, userId) {
     senderName = userRow.rows[0]?.name || userRow.rows[0]?.email || body.sender_role || 'Staff';
   }
   const msg = await create('messages', {
-    org_id: orgId, client_id: body.client_id, entity_type: entity_type || 'general',
+    org_id: orgId, client_id: body.client_id || clientId, entity_type: entity_type || 'general',
     entity_id, parent_id, sender_id: userId, sender_role: body.sender_role,
     sender_name: senderName,
     recipient_ids: recipient_ids || null, subject, body: msgBody,
@@ -7348,6 +7384,11 @@ export const handler = async (event) => {
     }
   }
 
+  // ── Tenant schema connection state (declared here so finally block can access) ──
+  let _tenantConn = null;
+  const _origPoolQuery = pool.query.bind(pool);
+  const _origPoolConnect = pool.connect.bind(pool);
+
   try {
     const method = event.httpMethod || event.requestContext?.http?.method || 'GET';
     const path = event.path || event.rawPath || event.resource || '';
@@ -7433,6 +7474,45 @@ export const handler = async (event) => {
       }
     }
 
+    // ─── Tenant Schema Routing ──────────────────────────────────────────────────
+    // For facility users (provider/client with client_id), route ALL database
+    // queries to their tenant schema. Admin/staff users stay on public schema.
+    // This monkey-patches pool.query and pool.connect for the duration of this
+    // request. Lambda is single-concurrent per instance, so this is safe.
+    // The finally block ALWAYS restores the originals before audit logging.
+    if (clientId) {
+      const _tSchema = clientIdToSchema(clientId);
+      if (_tSchema) {
+        try {
+          const _schemaCheck = await _origPoolQuery(
+            "SELECT 1 FROM information_schema.schemata WHERE schema_name = $1", [_tSchema]
+          );
+          if (_schemaCheck.rows.length > 0) {
+            _tenantConn = await _origPoolConnect();
+            await _tenantConn.query(`SET search_path TO ${_tSchema}, public`);
+            // Redirect all pool.query calls to the tenant-scoped connection
+            pool.query = (...args) => _tenantConn.query(...args);
+            // pool.connect returns connections with search_path pre-set.
+            // CRITICAL: wrap release() to reset search_path before returning
+            // to the pool — prevents stale tenant routing on next admin request.
+            pool.connect = async () => {
+              const c = await _origPoolConnect();
+              await c.query(`SET search_path TO ${_tSchema}, public`);
+              const _origRelease = c.release.bind(c);
+              c.release = () => {
+                c.query('SET search_path TO public').catch(() => {});
+                return _origRelease();
+              };
+              return c;
+            };
+            safeLog('info', `[tenant] Routing to schema ${_tSchema} for client ${clientId}`);
+          }
+        } catch (e) {
+          safeLog('warn', '[tenant] Schema routing failed, using public:', e.message);
+        }
+      }
+    }
+
     // ════ Document Routes ════════════════════════════════════════════════════
     if (path.includes('/documents/upload-url') && method === 'POST') {
       const { folder, file_name, content_type } = body;
@@ -7455,7 +7535,7 @@ export const handler = async (event) => {
           LEFT JOIN patients p ON d.patient_id = p.id
           WHERE d.org_id = $1`;
         const params = [effectiveOrgId];
-        if (clientId) { params.push(clientId); q += ` AND (d.client_id = $${params.length} OR d.client_id IS NULL)`; }
+        if (clientId) { params.push(clientId); q += ` AND d.client_id = $${params.length}`; }
         if (qs.patient_id) { params.push(qs.patient_id); q += ` AND d.patient_id = $${params.length}`; }
         q += ' ORDER BY d.created_at DESC LIMIT 500';
         const rows = (await orgQuery(effectiveOrgId, q, params)).rows;
@@ -8755,7 +8835,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
                  LEFT JOIN patients p ON ec.patient_id = p.id
                  WHERE ec.org_id = $1`;
         const params = [effectiveOrgId];
-        if (clientId) { params.push(clientId); q += ` AND (ec.client_id = $${params.length} OR ec.client_id IS NULL)`; }
+        if (clientId) { params.push(clientId); q += ` AND ec.client_id = $${params.length}`; }
         q += ' ORDER BY ec.created_at DESC';
         const rows = (await pool.query(q, params)).rows;
         return respond(200, { data: rows, meta: { total: rows.length } });
@@ -8820,10 +8900,10 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       // Recent claims with patient names
       const recentClaims = await pool.query(`SELECT c.id, c.claim_number, c.status, c.total_charges, c.dos_from, c.created_at,
         p.first_name, p.last_name, py.name AS payer_name FROM claims c LEFT JOIN patients p ON p.id = c.patient_id LEFT JOIN payers py ON py.id = c.payer_id
-        WHERE c.org_id = $1 ORDER BY c.created_at DESC LIMIT 10`, [effectiveOrgId]);
+        WHERE c.org_id = $1${cfJoin.replace('c.client_id','c.client_id')} ORDER BY c.created_at DESC LIMIT 10`, pClient);
 
       // Patient count
-      const patientCount = await pool.query(`SELECT COUNT(*)::int as total FROM patients WHERE org_id = $1`, [effectiveOrgId]);
+      const patientCount = await pool.query(`SELECT COUNT(*)::int as total FROM patients WHERE org_id = $1${cf}`, pClient);
 
       // Coding queue count
       const codingCount = await pool.query(`SELECT COUNT(*)::int as total FROM coding_queue WHERE org_id = $1 AND status NOT IN ('approved','billed')`, [effectiveOrgId]);
@@ -8922,6 +9002,203 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     }
     if (path.includes('/rarc-codes')) {
       return respond(200, (await pool.query('SELECT * FROM rarc_codes ORDER BY code')).rows);
+    }
+
+    // ════ ONE-TIME DATA FIX: Align client_id on all records to patient's actual client ════
+    // Records were seeded with random client_ids that don't match the patient.
+    // This fix runs ONCE per cold start, then the flag prevents re-running.
+    if (!global._clientIdFixDone) {
+      try {
+        safeLog('info', '[data-fix] Running one-time client_id alignment...');
+        // Fix eligibility_checks: inherit client_id from the linked patient
+        const ecFix = await pool.query(`
+          UPDATE eligibility_checks ec
+          SET client_id = p.client_id
+          FROM patients p
+          WHERE ec.patient_id = p.id AND ec.org_id = p.org_id
+            AND (ec.client_id IS NULL OR ec.client_id != p.client_id)
+        `);
+        safeLog('info', `[data-fix] eligibility_checks: ${ecFix.rowCount} rows fixed`);
+
+        // Fix documents: inherit client_id from the linked patient
+        const docFix = await pool.query(`
+          UPDATE documents d
+          SET client_id = p.client_id
+          FROM patients p
+          WHERE d.patient_id = p.id AND d.org_id = p.org_id
+            AND (d.client_id IS NULL OR d.client_id != p.client_id)
+        `);
+        safeLog('info', `[data-fix] documents: ${docFix.rowCount} rows fixed`);
+
+        // Fix appointments: inherit client_id from the linked patient
+        const apptFix = await pool.query(`
+          UPDATE appointments a
+          SET client_id = p.client_id
+          FROM patients p
+          WHERE a.patient_id = p.id AND a.org_id = p.org_id
+            AND (a.client_id IS NULL OR a.client_id != p.client_id)
+        `);
+        safeLog('info', `[data-fix] appointments: ${apptFix.rowCount} rows fixed`);
+
+        // Fix messages: inherit client_id from entity_id when entity_type = 'patient'
+        const msgFix = await pool.query(`
+          UPDATE messages m
+          SET client_id = p.client_id
+          FROM patients p
+          WHERE m.entity_id = p.id AND m.entity_type = 'patient' AND m.org_id = p.org_id
+            AND (m.client_id IS NULL OR m.client_id != p.client_id)
+        `);
+        safeLog('info', `[data-fix] messages (patient-linked): ${msgFix.rowCount} rows fixed`);
+
+        // Fix messages linked to claims: inherit client_id from the claim
+        const msgClaimFix = await pool.query(`
+          UPDATE messages m
+          SET client_id = c.client_id
+          FROM claims c
+          WHERE m.entity_id = c.id AND m.entity_type = 'claim' AND m.org_id = c.org_id
+            AND (m.client_id IS NULL OR m.client_id != c.client_id)
+        `);
+        safeLog('info', `[data-fix] messages (claim-linked): ${msgClaimFix.rowCount} rows fixed`);
+
+        // Fix tasks: inherit client_id from linked patient or claim
+        const taskFix = await pool.query(`
+          UPDATE tasks t
+          SET client_id = p.client_id
+          FROM patients p
+          WHERE t.entity_type = 'patient' AND t.entity_id = p.id AND t.org_id = p.org_id
+            AND (t.client_id IS NULL OR t.client_id != p.client_id)
+        `);
+        safeLog('info', `[data-fix] tasks: ${taskFix.rowCount} rows fixed`);
+
+        // Fix encounters: inherit client_id from the linked patient
+        const encFix = await pool.query(`
+          UPDATE encounters e
+          SET client_id = p.client_id
+          FROM patients p
+          WHERE e.patient_id = p.id AND e.org_id = p.org_id
+            AND (e.client_id IS NULL OR e.client_id != p.client_id)
+        `);
+        safeLog('info', `[data-fix] encounters: ${encFix.rowCount} rows fixed`);
+
+        // Fix soap_notes: inherit client_id from the linked patient (via encounter)
+        const soapFix = await pool.query(`
+          UPDATE soap_notes sn
+          SET client_id = e.client_id
+          FROM encounters e
+          WHERE sn.encounter_id = e.id AND sn.org_id = e.org_id
+            AND (sn.client_id IS NULL OR sn.client_id != e.client_id)
+        `);
+        safeLog('info', `[data-fix] soap_notes: ${soapFix.rowCount} rows fixed`);
+
+        global._clientIdFixDone = true;
+        safeLog('info', '[data-fix] ✅ All client_id alignment complete');
+      } catch (err) {
+        safeLog('error', '[data-fix] Failed:', err.message);
+        global._clientIdFixDone = true; // Don't retry on error
+      }
+    }
+
+    // ════ ADMIN: Fix client_id alignment (callable endpoint) ════════════
+    if (resource === 'admin' && path.includes('/fix-client-ids') && method === 'POST') {
+      const fixes = {};
+      // Fix eligibility_checks: inherit client_id from the linked patient
+      const ecFix = await pool.query(`
+        UPDATE eligibility_checks ec SET client_id = p.client_id
+        FROM patients p WHERE ec.patient_id = p.id AND ec.org_id = p.org_id
+        AND (ec.client_id IS NULL OR ec.client_id != p.client_id)
+      `);
+      fixes.eligibility_checks = ecFix.rowCount;
+
+      // Fix documents
+      const docFix = await pool.query(`
+        UPDATE documents d SET client_id = p.client_id
+        FROM patients p WHERE d.patient_id = p.id AND d.org_id = p.org_id
+        AND (d.client_id IS NULL OR d.client_id != p.client_id)
+      `);
+      fixes.documents = docFix.rowCount;
+
+      // Fix appointments
+      const apptFix = await pool.query(`
+        UPDATE appointments a SET client_id = p.client_id
+        FROM patients p WHERE a.patient_id = p.id AND a.org_id = p.org_id
+        AND (a.client_id IS NULL OR a.client_id != p.client_id)
+      `);
+      fixes.appointments = apptFix.rowCount;
+
+      // Fix encounters
+      const encFix = await pool.query(`
+        UPDATE encounters e SET client_id = p.client_id
+        FROM patients p WHERE e.patient_id = p.id AND e.org_id = p.org_id
+        AND (e.client_id IS NULL OR e.client_id != p.client_id)
+      `);
+      fixes.encounters = encFix.rowCount;
+
+      // Fix claims
+      const claimFix = await pool.query(`
+        UPDATE claims c SET client_id = p.client_id
+        FROM patients p WHERE c.patient_id = p.id AND c.org_id = p.org_id
+        AND (c.client_id IS NULL OR c.client_id != p.client_id)
+      `);
+      fixes.claims = claimFix.rowCount;
+
+      // Fix messages linked to patients
+      const msgPatFix = await pool.query(`
+        UPDATE messages m SET client_id = p.client_id
+        FROM patients p WHERE m.entity_id = p.id AND m.entity_type = 'patient' AND m.org_id = p.org_id
+        AND (m.client_id IS NULL OR m.client_id != p.client_id)
+      `);
+      fixes.messages_patient = msgPatFix.rowCount;
+
+      // Fix messages linked to claims
+      const msgClmFix = await pool.query(`
+        UPDATE messages m SET client_id = c.client_id
+        FROM claims c WHERE m.entity_id = c.id AND m.entity_type = 'claim' AND m.org_id = c.org_id
+        AND (m.client_id IS NULL OR m.client_id != c.client_id)
+      `);
+      fixes.messages_claim = msgClmFix.rowCount;
+
+      // Fix tasks
+      const taskFix = await pool.query(`
+        UPDATE tasks t SET client_id = p.client_id
+        FROM patients p WHERE t.entity_id::text = p.id::text AND t.org_id = p.org_id
+        AND (t.client_id IS NULL OR t.client_id != p.client_id)
+      `).catch(() => ({ rowCount: 0 }));
+      fixes.tasks = taskFix.rowCount;
+
+      // Fix soap_notes via encounters
+      const soapFix = await pool.query(`
+        UPDATE soap_notes sn SET client_id = e.client_id
+        FROM encounters e WHERE sn.encounter_id = e.id AND sn.org_id = e.org_id
+        AND e.client_id IS NOT NULL AND (sn.client_id IS NULL OR sn.client_id != e.client_id)
+      `).catch(() => ({ rowCount: 0 }));
+      fixes.soap_notes = soapFix.rowCount;
+
+      // Fix coding_queue via patients
+      const cqFix = await pool.query(`
+        UPDATE coding_queue cq SET client_id = p.client_id
+        FROM patients p WHERE cq.patient_id = p.id AND cq.org_id = p.org_id
+        AND (cq.client_id IS NULL OR cq.client_id != p.client_id)
+      `).catch(() => ({ rowCount: 0 }));
+      fixes.coding_queue = cqFix.rowCount;
+
+      // Fix payments via claims
+      const payFix = await pool.query(`
+        UPDATE payments pm SET client_id = c.client_id
+        FROM claims c WHERE pm.claim_id = c.id AND pm.org_id = c.org_id
+        AND (pm.client_id IS NULL OR pm.client_id != c.client_id)
+      `).catch(() => ({ rowCount: 0 }));
+      fixes.payments = payFix.rowCount;
+
+      // Fix denials via claims
+      const denFix = await pool.query(`
+        UPDATE denials d SET client_id = c.client_id
+        FROM claims c WHERE d.claim_id = c.id AND d.org_id = c.org_id
+        AND (d.client_id IS NULL OR d.client_id != c.client_id)
+      `).catch(() => ({ rowCount: 0 }));
+      fixes.denials = denFix.rowCount;
+
+      const totalFixed = Object.values(fixes).reduce((a, b) => a + b, 0);
+      return respond(200, { message: `Fixed ${totalFixed} records`, fixes });
     }
 
     // ════ Generic Entity Routes ════════════════════════════════════════════
@@ -9531,10 +9808,10 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
         }
       }
       if (method === 'GET' && !pathParams.id) {
-        return respond(200, await getMessages(effectiveOrgId, userId, qs));
+        return respond(200, await getMessages(effectiveOrgId, userId, clientId, qs));
       }
       if (method === 'POST' && !pathParams.id) {
-        return respond(201, await sendMessage(body, effectiveOrgId, userId));
+        return respond(201, await sendMessage(body, effectiveOrgId, userId, clientId));
       }
       if (method === 'PUT' && pathParams.id && path.includes('/read')) {
         return respond(200, await markMessageRead(pathParams.id, effectiveOrgId, userId));
@@ -11060,6 +11337,76 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       }
     }
 
+    // ════ Admin: Provision Tenant Schemas ══════════════════════════════════════
+    // POST /admin/provision-schemas — creates per-client PostgreSQL schemas
+    // Each client gets tenant_NNN schema with cloned tables + migrated data.
+    // Admin/staff continue using public schema. Provider/client users get
+    // routed to their schema automatically via SET search_path (see above).
+    if (path.includes('/admin/provision-schemas') && method === 'POST') {
+      if (callerRole !== 'admin') return respond(403, { error: 'Admin only' });
+      const results = {};
+      try {
+        // Get all clients
+        const clientsR = await _origPoolQuery(
+          'SELECT id, name FROM clients WHERE org_id = $1 ORDER BY id', [effectiveOrgId]
+        );
+        for (const client of clientsR.rows) {
+          const schema = clientIdToSchema(client.id);
+          if (!schema) { results[client.name] = 'skipped — invalid id'; continue; }
+
+          // Create schema
+          await _origPoolQuery(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
+
+          // Clone each tenant table from public schema
+          let tablesCreated = 0, rowsMigrated = 0;
+          for (const tbl of TENANT_TABLES) {
+            // Check if table exists in public
+            const exists = await _origPoolQuery(
+              `SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name=$1`, [tbl]
+            );
+            if (exists.rows.length === 0) continue;
+
+            // Create table in tenant schema (clone structure)
+            await _origPoolQuery(
+              `CREATE TABLE IF NOT EXISTS ${schema}.${tbl} (LIKE public.${tbl} INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES)`
+            ).catch(e => {
+              // If LIKE fails (FK refs), create minimal clone
+              safeLog('warn', `[provision] LIKE failed for ${schema}.${tbl}: ${e.message}, trying SELECT INTO`);
+              return _origPoolQuery(`CREATE TABLE IF NOT EXISTS ${schema}.${tbl} AS SELECT * FROM public.${tbl} WHERE 1=0`);
+            });
+            tablesCreated++;
+
+            // Migrate data for this client
+            const countR = await _origPoolQuery(
+              `SELECT COUNT(*)::int as c FROM public.${tbl} WHERE client_id = $1`, [client.id]
+            ).catch(() => ({ rows: [{ c: 0 }] }));
+            const rowCount = countR.rows[0]?.c || 0;
+
+            if (rowCount > 0) {
+              // Insert rows that don't already exist in tenant schema
+              await _origPoolQuery(
+                `INSERT INTO ${schema}.${tbl} SELECT * FROM public.${tbl} WHERE client_id = $1
+                 ON CONFLICT DO NOTHING`, [client.id]
+              ).catch(async (e) => {
+                // If ON CONFLICT fails (no PK), try delete+insert
+                safeLog('warn', `[provision] ON CONFLICT failed for ${schema}.${tbl}: ${e.message}, trying truncate+insert`);
+                await _origPoolQuery(`DELETE FROM ${schema}.${tbl}`).catch(() => {});
+                return _origPoolQuery(
+                  `INSERT INTO ${schema}.${tbl} SELECT * FROM public.${tbl} WHERE client_id = $1`, [client.id]
+                );
+              });
+              rowsMigrated += rowCount;
+            }
+          }
+          results[client.name] = { schema, tables: tablesCreated, rows_migrated: rowsMigrated };
+        }
+        return respond(200, { ok: true, schemas_provisioned: results });
+      } catch (e) {
+        safeLog('error', 'provision-schemas failed:', e.message, e.stack);
+        return respond(500, { error: e.message, partial_results: results });
+      }
+    }
+
     // ════ BAA Tracking ═══════════════════════════════════════════════════
     if (path.includes('/baa-tracking')) {
       if (method === 'GET') {
@@ -11198,6 +11545,15 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     console.error('Handler error:', err);
     return respond(500, { error: err.message });
   } finally {
+    // ── Tenant cleanup: restore pool.query/pool.connect before audit logging ──
+    pool.query = _origPoolQuery;
+    pool.connect = _origPoolConnect;
+    if (_tenantConn) {
+      try { await _tenantConn.query('SET search_path TO public'); } catch (_) {}
+      try { _tenantConn.release(); } catch (_) {}
+      _tenantConn = null;
+    }
+
     // ── HIPAA Audit Middleware — log every request ─────────────────────────
     // This covers the missing read-event audit logging for PHI access
     try {
