@@ -9914,6 +9914,369 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       return respond(200, { ...updated, timeline });
     }
 
+    // ═══ AI Credentialing Features ══════════════════════════════════════════════
+    // 1. Document OCR + Auto-extraction (Textract + Bedrock)
+    // 2. NPI Verification (NPPES API)
+    // 3. OIG/SAM Exclusion Check
+    // 4. DEA Number Validation (checksum)
+    // 5. Predictive Re-credentialing Risk Scores
+
+    // ── 1. Document OCR: Extract credential data from uploaded document ────────
+    if (path.includes('/credentialing') && path.includes('/extract-document') && method === 'POST' && pathParams.id) {
+      const cred = await getById('credentialing', pathParams.id);
+      if (!cred || cred.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+      const { s3_key, document_type } = body;
+      if (!s3_key) return respond(400, { error: 's3_key required (path to uploaded document in S3)' });
+
+      try {
+        // Step 1: Run Textract on the document
+        if (!textractClient || !AnalyzeDocumentCommand) return respond(500, { error: 'Textract SDK not available' });
+        const textractResp = await textractClient.send(new AnalyzeDocumentCommand({
+          Document: { S3Object: { Bucket: process.env.S3_BUCKET || 'medcloud-documents-us-prod', Name: s3_key } },
+          FeatureTypes: ['FORMS', 'TABLES'],
+        }));
+        const extractedText = (textractResp.Blocks || [])
+          .filter(b => b.BlockType === 'LINE')
+          .map(b => b.Text).join('\n');
+        safeLog('info', `Textract extracted ${extractedText.length} chars from ${s3_key}`);
+
+        // Step 2: Use Bedrock to parse credential data from extracted text
+        if (!bedrockClient || !InvokeModelCommand) return respond(500, { error: 'Bedrock SDK not available' });
+        const prompt = `You are a healthcare credentialing data extraction specialist. Extract credential information from the following document text.
+
+Document type hint: ${document_type || 'unknown'}
+
+Document text:
+${extractedText.slice(0, 6000)}
+
+Extract and return ONLY a JSON object with these fields (use null for missing):
+{
+  "document_type": "medical_license|malpractice_certificate|dea_certificate|board_certification|caqh_attestation|other",
+  "provider_name": "full name",
+  "license_number": "license/certificate number",
+  "license_state": "2-letter state code",
+  "license_expiry": "YYYY-MM-DD",
+  "effective_date": "YYYY-MM-DD",
+  "malpractice_carrier": "insurance company name",
+  "malpractice_policy_number": "policy number",
+  "malpractice_expiry": "YYYY-MM-DD",
+  "coverage_amount": "per occurrence/aggregate",
+  "dea_number": "DEA registration number",
+  "dea_expiry": "YYYY-MM-DD",
+  "dea_schedules": "schedule types",
+  "board_name": "certifying board",
+  "board_certification_date": "YYYY-MM-DD",
+  "specialty": "medical specialty",
+  "npi": "10-digit NPI",
+  "confidence": 0.0-1.0
+}
+
+Return ONLY the JSON, no other text.`;
+
+        const bedrockResp = await bedrockClient.send(new InvokeModelCommand({
+          modelId: process.env.BEDROCK_MODEL || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
+          contentType: 'application/json', accept: 'application/json',
+          body: JSON.stringify({ anthropic_version: 'bedrock-2023-05-31', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] }),
+        }));
+        const aiResp = JSON.parse(new TextDecoder().decode(bedrockResp.body));
+        const aiText = aiResp.content?.[0]?.text || '';
+        let extracted = {};
+        try { extracted = JSON.parse(aiText.replace(/```json|```/g, '').trim()); } catch (_) { extracted = { raw_text: aiText, parse_error: true }; }
+
+        // Step 3: Auto-populate credentialing record with extracted data
+        const updateFields = {};
+        if (extracted.license_number) updateFields.license_number = extracted.license_number;
+        if (extracted.license_state) updateFields.license_state = extracted.license_state;
+        if (extracted.license_expiry) updateFields.license_expiry = extracted.license_expiry;
+        if (extracted.malpractice_carrier) updateFields.malpractice_carrier = extracted.malpractice_carrier;
+        if (extracted.malpractice_policy_number) updateFields.malpractice_policy_number = extracted.malpractice_policy_number;
+        if (extracted.malpractice_expiry) updateFields.malpractice_expiry = extracted.malpractice_expiry;
+        if (extracted.dea_number) updateFields.dea_number = extracted.dea_number;
+        if (extracted.dea_expiry) updateFields.dea_expiry = extracted.dea_expiry;
+        if (extracted.board_certification_date) { updateFields.board_certified = true; updateFields.board_certification_date = extracted.board_certification_date; }
+
+        let updatedCred = cred;
+        if (Object.keys(updateFields).length > 0) {
+          updatedCred = await update('credentialing', pathParams.id, updateFields, effectiveOrgId);
+          await auditLog(effectiveOrgId, userId, 'credential_document_extracted', 'credentialing', pathParams.id, { document_type: extracted.document_type, fields_updated: Object.keys(updateFields) });
+        }
+
+        return respond(200, {
+          extracted, fields_updated: Object.keys(updateFields),
+          credential: updatedCred, source_document: s3_key,
+          ai_confidence: extracted.confidence || null,
+        });
+      } catch (e) {
+        safeLog('error', 'Document extraction failed:', e.message);
+        return respond(500, { error: 'Document extraction failed', detail: e.message });
+      }
+    }
+
+    // ── 2. NPI Verification (NPPES public API) ───────────────────────────────
+    if (path.includes('/credentialing') && path.includes('/verify-npi') && method === 'POST' && pathParams.id) {
+      const cred = await getById('credentialing', pathParams.id);
+      if (!cred || cred.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+
+      // Get NPI from provider record
+      const provider = cred.provider_id ? await getById('providers', cred.provider_id) : null;
+      const npi = body.npi || provider?.npi || cred.npi;
+      if (!npi) return respond(400, { error: 'No NPI found for this provider' });
+
+      try {
+        const nppiResp = await fetch(`https://npiregistry.cms.hhs.gov/api/?version=2.1&number=${npi}&enumeration_type=NPI-1`, { signal: AbortSignal.timeout(10000) });
+        const nppiData = await nppiResp.json();
+
+        const result = nppiData.results?.[0];
+        if (!result) return respond(200, { verified: false, npi, error: 'NPI not found in NPPES registry', source: 'NPPES' });
+
+        const basic = result.basic || {};
+        const addr = result.addresses?.[0] || {};
+        const taxonomy = result.taxonomies?.[0] || {};
+        const verification = {
+          verified: true, npi, source: 'NPPES',
+          provider_name: `${basic.first_name || ''} ${basic.last_name || ''}`.trim(),
+          credential: basic.credential, status: basic.status,
+          enumeration_date: basic.enumeration_date, last_updated: basic.last_updated,
+          state: addr.state, city: addr.city,
+          specialty: taxonomy.desc, license: taxonomy.license, license_state: taxonomy.state,
+          primary_taxonomy: taxonomy.primary,
+          name_match: provider ? (basic.last_name?.toLowerCase() === provider.last_name?.toLowerCase()) : null,
+        };
+
+        // Auto-update provider specialty if missing
+        if (taxonomy.desc && provider && !provider.specialty) {
+          await pool.query('UPDATE providers SET specialty = $1 WHERE id = $2', [taxonomy.desc, provider.id]).catch(() => {});
+        }
+
+        let timeline = [];
+        try { timeline = typeof cred.timeline === 'string' ? JSON.parse(cred.timeline || '[]') : (cred.timeline || []); } catch (_) {}
+        timeline.push({ event: 'npi_verified', date: new Date().toISOString(), by: userId, notes: `NPPES: ${verification.provider_name}, ${verification.specialty}` });
+        await update('credentialing', pathParams.id, { timeline: JSON.stringify(timeline) }, effectiveOrgId).catch(() => {});
+        await auditLog(effectiveOrgId, userId, 'npi_verified', 'credentialing', pathParams.id, { npi, verified: verification.verified });
+
+        return respond(200, verification);
+      } catch (e) {
+        safeLog('warn', 'NPI verification failed (network):', e.message);
+        return respond(200, { verified: null, npi, error: `NPPES API unreachable: ${e.message}`, source: 'NPPES', requires_manual_check: true });
+      }
+    }
+
+    // ── 3. OIG/SAM Exclusion Check ────────────────────────────────────────────
+    if (path.includes('/credentialing') && path.includes('/verify-exclusions') && method === 'POST' && pathParams.id) {
+      const cred = await getById('credentialing', pathParams.id);
+      if (!cred || cred.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+
+      const provider = cred.provider_id ? await getById('providers', cred.provider_id) : null;
+      const firstName = provider?.first_name || body.first_name;
+      const lastName = provider?.last_name || body.last_name;
+      const npi = body.npi || provider?.npi;
+      if (!lastName) return respond(400, { error: 'Provider last name required for exclusion check' });
+
+      const results = { oig_leie: null, sam_gov: null, checked_at: new Date().toISOString() };
+
+      // SAM.gov Exclusions API (free, public)
+      try {
+        const samResp = await fetch(`https://api.sam.gov/entity-information/v3/exclusions?api_key=DEMO_KEY&lastName=${encodeURIComponent(lastName)}&firstName=${encodeURIComponent(firstName || '')}`, { signal: AbortSignal.timeout(15000) });
+        const samData = await samResp.json();
+        results.sam_gov = {
+          searched: true, total_records: samData.totalRecords || 0,
+          excluded: (samData.totalRecords || 0) > 0,
+          records: (samData.results || []).slice(0, 5).map(r => ({ name: r.name, type: r.exclusionType, agency: r.excludingAgency, date: r.exclusionDate })),
+        };
+      } catch (e) {
+        results.sam_gov = { searched: false, error: e.message, requires_manual_check: true };
+      }
+
+      // OIG LEIE - no REST API, flag for manual check with direct link
+      results.oig_leie = {
+        searched: false, manual_check_url: 'https://exclusions.oig.hhs.gov/',
+        instructions: `Search for: ${firstName || ''} ${lastName}`,
+        requires_manual_check: true,
+      };
+
+      const excluded = results.sam_gov?.excluded === true;
+      let timeline = [];
+      try { timeline = typeof cred.timeline === 'string' ? JSON.parse(cred.timeline || '[]') : (cred.timeline || []); } catch (_) {}
+      timeline.push({ event: 'exclusion_check', date: new Date().toISOString(), by: userId, notes: excluded ? 'ALERT: SAM.gov exclusion found' : 'No SAM.gov exclusions found' });
+      await update('credentialing', pathParams.id, { timeline: JSON.stringify(timeline) }, effectiveOrgId).catch(() => {});
+      await auditLog(effectiveOrgId, userId, 'exclusion_check', 'credentialing', pathParams.id, { excluded, sam_records: results.sam_gov?.total_records || 0 });
+
+      return respond(200, { provider_name: `${firstName || ''} ${lastName}`, npi, ...results, alert: excluded });
+    }
+
+    // ── 4. DEA Number Validation (checksum algorithm) ─────────────────────────
+    if (path.includes('/credentialing') && path.includes('/verify-dea') && method === 'POST' && pathParams.id) {
+      const cred = await getById('credentialing', pathParams.id);
+      if (!cred || cred.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+      const deaNumber = body.dea_number || cred.dea_number;
+      if (!deaNumber) return respond(400, { error: 'No DEA number found' });
+
+      // DEA number validation: format = 2 letters + 7 digits
+      // First letter: A/B/F/G (practitioner), M (mid-level), P/R (manufacturer/distributor)
+      // Second letter: first letter of registrant's last name
+      // Checksum: sum of digits 1,3,5 + 2*(sum of digits 2,4,6) → last digit = check digit
+      const deaRegex = /^[ABFGMPRabfgmpr][A-Za-z]\d{7}$/;
+      let valid = false; let reason = '';
+      if (!deaRegex.test(deaNumber)) {
+        reason = 'Invalid format: must be 2 letters followed by 7 digits';
+      } else {
+        const digits = deaNumber.slice(2).split('').map(Number);
+        const oddSum = digits[0] + digits[2] + digits[4];
+        const evenSum = digits[1] + digits[3] + digits[5];
+        const checkDigit = (oddSum + 2 * evenSum) % 10;
+        valid = checkDigit === digits[6];
+        reason = valid ? 'DEA number checksum verified' : `Checksum mismatch: expected ${checkDigit}, got ${digits[6]}`;
+      }
+
+      // Check registrant type
+      const typeMap = { A: 'Deprecated (old practitioner)', B: 'Practitioner', F: 'Practitioner (teaching)', G: 'DOD contractor', M: 'Mid-level practitioner', P: 'Manufacturer', R: 'Distributor/Researcher' };
+      const registrantType = typeMap[deaNumber[0].toUpperCase()] || 'Unknown';
+
+      // Check name match
+      const provider = cred.provider_id ? await getById('providers', cred.provider_id) : null;
+      const nameMatch = provider ? deaNumber[1].toUpperCase() === (provider.last_name || '')[0]?.toUpperCase() : null;
+
+      await auditLog(effectiveOrgId, userId, 'dea_verified', 'credentialing', pathParams.id, { dea_number: deaNumber, valid, registrant_type: registrantType });
+
+      return respond(200, {
+        dea_number: deaNumber, valid, reason, registrant_type: registrantType,
+        name_match: nameMatch, expiry: cred.dea_expiry,
+        days_until_expiry: cred.dea_expiry ? Math.ceil((new Date(cred.dea_expiry).getTime() - Date.now()) / 86400000) : null,
+      });
+    }
+
+    // ── 5. Predictive Re-credentialing Risk Scores ────────────────────────────
+    if (path.includes('/credentialing/risk-scores') && method === 'GET') {
+      let riskQ = `SELECT c.*, p.first_name || ' ' || p.last_name AS provider_full_name, p.npi, p.specialty, cl.name AS client_name
+        FROM credentialing c
+        LEFT JOIN providers p ON c.provider_id = p.id
+        LEFT JOIN clients cl ON c.client_id = cl.id
+        WHERE c.org_id = $1`;
+      const riskParams = [effectiveOrgId];
+      if (clientId) { riskParams.push(clientId); riskQ += ` AND c.client_id = $${riskParams.length}`; }
+      riskQ += ' ORDER BY c.created_at DESC';
+      const creds = await pool.query(riskQ, riskParams);
+
+      const now = Date.now();
+      const scored = creds.rows.map(c => {
+        let risk = 0; const flags = [];
+        // Check each credential expiry
+        const checkExpiry = (date, label, weight) => {
+          if (!date) { risk += weight * 0.3; flags.push(`${label}: no date on file`); return; }
+          const days = Math.ceil((new Date(date).getTime() - now) / 86400000);
+          if (days < 0) { risk += weight; flags.push(`${label}: EXPIRED ${Math.abs(days)}d ago`); }
+          else if (days <= 30) { risk += weight * 0.8; flags.push(`${label}: expires in ${days}d`); }
+          else if (days <= 60) { risk += weight * 0.5; flags.push(`${label}: expires in ${days}d`); }
+          else if (days <= 90) { risk += weight * 0.2; flags.push(`${label}: expires in ${days}d`); }
+        };
+        checkExpiry(c.license_expiry, 'Medical License', 30);
+        checkExpiry(c.malpractice_expiry, 'Malpractice', 25);
+        checkExpiry(c.dea_expiry, 'DEA', 15);
+        checkExpiry(c.caqh_next_attestation, 'CAQH Attestation', 20);
+
+        // Board certification
+        if (!c.board_certified) { risk += 5; flags.push('Not board certified'); }
+        // CAQH status
+        if (c.caqh_status === 'attestation_due') { risk += 10; flags.push('CAQH attestation overdue'); }
+        if (c.caqh_status === 'not_started') { risk += 15; flags.push('CAQH not started'); }
+        // Payer enrollments
+        if ((c.payer_enrollment_count || 0) < 3) { risk += 5; flags.push(`Only ${c.payer_enrollment_count || 0} payer enrollments`); }
+
+        const riskScore = Math.min(100, Math.round(risk));
+        const riskLevel = riskScore >= 70 ? 'critical' : riskScore >= 40 ? 'high' : riskScore >= 20 ? 'medium' : 'low';
+
+        return {
+          id: c.id, provider_name: c.provider_name || c.provider_full_name,
+          npi: c.npi || null, client_name: c.client_name || null, status: c.status,
+          risk_score: riskScore, risk_level: riskLevel, flags,
+          license_expiry: c.license_expiry, malpractice_expiry: c.malpractice_expiry,
+          dea_expiry: c.dea_expiry, caqh_status: c.caqh_status,
+          recommended_actions: flags.length > 0 ? flags.map(f => f.includes('EXPIRED') ? `URGENT: Renew ${f.split(':')[0]}` : f.includes('expires in') ? `Schedule renewal for ${f.split(':')[0]}` : f.includes('not started') ? 'Initiate CAQH enrollment' : `Review: ${f}`) : ['All credentials current'],
+        };
+      });
+
+      // Auto-create tasks for critical providers
+      for (const p of scored.filter(s => s.risk_level === 'critical')) {
+        const existingTask = await pool.query(
+          `SELECT id FROM tasks WHERE org_id = $1 AND task_type = 'credentialing' AND title LIKE $2 AND status NOT IN ('completed','cancelled') LIMIT 1`,
+          [effectiveOrgId, `%${p.provider_name}%`]
+        ).catch(() => ({ rows: [] }));
+        if (existingTask.rows.length === 0) {
+          await pool.query(
+            `INSERT INTO tasks (id, org_id, client_id, title, description, status, priority, task_type, due_date, created_at)
+             VALUES ($1, $2, $3, $4, $5, 'pending', 'urgent', 'credentialing', $6, NOW())`,
+            [uuid(), effectiveOrgId, clientId, `CRITICAL: ${p.provider_name} credential risk score ${p.risk_score}/100`,
+             `Flags: ${p.flags.join('; ')}. Recommended: ${p.recommended_actions.join('; ')}`,
+             new Date(Date.now() + 7 * 86400000).toISOString()]
+          ).catch(e => safeLog('warn', 'Auto-task creation failed:', e.message));
+        }
+      }
+
+      scored.sort((a, b) => b.risk_score - a.risk_score);
+      return respond(200, {
+        data: scored,
+        summary: {
+          total: scored.length,
+          critical: scored.filter(s => s.risk_level === 'critical').length,
+          high: scored.filter(s => s.risk_level === 'high').length,
+          medium: scored.filter(s => s.risk_level === 'medium').length,
+          low: scored.filter(s => s.risk_level === 'low').length,
+          avg_score: scored.length ? Math.round(scored.reduce((s, p) => s + p.risk_score, 0) / scored.length) : 0,
+        },
+      });
+    }
+
+    // ── Verify All: Run NPI + DEA + Exclusions in one call ────────────────────
+    if (path.includes('/credentialing') && path.includes('/verify-all') && method === 'POST' && pathParams.id) {
+      const cred = await getById('credentialing', pathParams.id);
+      if (!cred || cred.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+
+      const provider = cred.provider_id ? await getById('providers', cred.provider_id) : null;
+      const npi = provider?.npi || cred.npi || body.npi;
+      const deaNumber = cred.dea_number || body.dea_number;
+      const results = { npi: null, dea: null, exclusions: null, timestamp: new Date().toISOString() };
+
+      // DEA validation (always works, local)
+      if (deaNumber) {
+        const deaRegex = /^[ABFGMPRabfgmpr][A-Za-z]\d{7}$/;
+        if (deaRegex.test(deaNumber)) {
+          const digits = deaNumber.slice(2).split('').map(Number);
+          const checkDigit = (digits[0] + digits[2] + digits[4] + 2 * (digits[1] + digits[3] + digits[5])) % 10;
+          results.dea = { valid: checkDigit === digits[6], dea_number: deaNumber };
+        } else {
+          results.dea = { valid: false, dea_number: deaNumber, error: 'Invalid format' };
+        }
+      }
+
+      // NPI verification (external)
+      if (npi) {
+        try {
+          const npiResp2 = await fetch(`https://npiregistry.cms.hhs.gov/api/?version=2.1&number=${npi}`, { signal: AbortSignal.timeout(10000) });
+          const nppiData = await npiResp2.json();
+          const r = nppiData.results?.[0];
+          results.npi = r ? { verified: true, name: `${r.basic?.first_name} ${r.basic?.last_name}`, status: r.basic?.status, specialty: r.taxonomies?.[0]?.desc } : { verified: false };
+        } catch (e) { results.npi = { verified: null, error: e.message }; }
+      }
+
+      // SAM exclusion check (external)
+      if (provider?.last_name) {
+        try {
+          const samResp2 = await fetch(`https://api.sam.gov/entity-information/v3/exclusions?api_key=DEMO_KEY&lastName=${encodeURIComponent(provider.last_name)}`, { signal: AbortSignal.timeout(15000) });
+          const samData = await samResp2.json();
+          results.exclusions = { excluded: (samData.totalRecords || 0) > 0, total_records: samData.totalRecords || 0 };
+        } catch (e) { results.exclusions = { excluded: null, error: e.message }; }
+      }
+
+      // Update timeline
+      let timeline = [];
+      try { timeline = typeof cred.timeline === 'string' ? JSON.parse(cred.timeline || '[]') : (cred.timeline || []); } catch (_) {}
+      timeline.push({ event: 'full_verification', date: new Date().toISOString(), by: userId, notes: `NPI:${results.npi?.verified ?? '?'} DEA:${results.dea?.valid ?? '?'} Excl:${results.exclusions?.excluded === false ? 'clear' : '?'}` });
+      await update('credentialing', pathParams.id, { timeline: JSON.stringify(timeline) }, effectiveOrgId).catch(() => {});
+      await auditLog(effectiveOrgId, userId, 'full_verification', 'credentialing', pathParams.id, results);
+
+      return respond(200, results);
+    }
+
     // ═══ Workflow Templates Engine ═══════════════════════════════════════════
     // Trigger-based automation: define triggers + actions, evaluate on events
     if (path.includes('/workflow-templates') && !path.includes('/evaluate')) {
