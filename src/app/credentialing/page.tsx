@@ -46,9 +46,9 @@ export default function CredentialingPage() {
   const { mutate: createCred } = useCreateCredentialing()
   const { mutate: verifyAll, loading: verifyingAll } = useVerifyAll(selected?.id || '')
   const { mutate: verifyDEA, loading: verifyingDEA } = useVerifyDEA(selected?.id || '')
-  const [verifyResult, setVerifyResult] = useState(null as Record<string, any> | null)
+  const [verifyResult, setVerifyResult] = useState(null as any)
 
-  const apiRows: CredRow[] = (apiCredResult?.data || []).map((p: ApiCredentialing) => ({
+  const apiRows: CredRow[] = (apiCredResult?.data || []).map((p) => ({
     id: p.id,
     name: p.provider_name || '',
     npi: p.npi || '',
@@ -96,7 +96,7 @@ export default function CredentialingPage() {
     recredentialing: filteredProviders.filter(p => ['expiring', 'renewal_pending', 'recredentialing'].includes(p.status)).length,
   }
 
-  const expiringItems = (expiringResult?.data || []).map((c: ApiCredentialing) => {
+  const expiringItems = (expiringResult?.data || []).map((c) => {
     const malpDays = daysUntil(c.malpractice_expiry)
     const licDays = daysUntil(c.license_expiry)
     const caqhDays = daysUntil(c.caqh_next_attestation)
@@ -105,8 +105,8 @@ export default function CredentialingPage() {
     if (malpDays !== null && malpDays <= 90) itemName = 'Malpractice Insurance'
     else if (licDays !== null && licDays <= 90) itemName = 'Medical License'
     else if (caqhDays !== null && caqhDays <= 90) itemName = 'CAQH Attestation'
-    return { name: c.provider_name || (c as any).provider_full_name || 'Unknown', item: itemName, date: formatDate(c.expiry_date || c.license_expiry), days: expDays ?? 999 }
-  }).sort((a: { days: number }, b: { days: number }) => a.days - b.days).slice(0, 5)
+    return { name: c.provider_name || (c['provider_full_name'] || '') || 'Unknown', item: itemName, date: formatDate(c.expiry_date || c.license_expiry), days: expDays ?? 999 }
+  }).sort((a, b) => a.days - b.days).slice(0, 5)
 
   return (
     <ModuleShell title={t("credentialing","title")} subtitle={t("credentialing","subtitle")}>
@@ -253,7 +253,7 @@ export default function CredentialingPage() {
         <div className="space-y-2">
           <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider">Upcoming Expirations</h4>
           {expiringItems.length === 0 && <div className="text-[13px] text-content-tertiary py-2">No credentials expiring in the next 90 days</div>}
-          {expiringItems.map((e: { name: string; item: string; date: string; days: number }, idx: number)=>(
+          {expiringItems.map((e, idx)=>(
             <div key={`${e.name}-${idx}`} className={`flex items-center justify-between bg-surface-elevated rounded-lg px-3 py-2 ${e.days<=30?'border border-brand-light/30':''}`}>
               <div className="flex items-center gap-3">
                 <span className="text-[13px] font-medium">{e.name}</span>
