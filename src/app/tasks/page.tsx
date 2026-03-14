@@ -6,7 +6,7 @@ import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
 import { ListChecks, X, Plus } from 'lucide-react'
-import { useTasks, useUpdateTask, useCreateTask, useWorkflowTemplates, useCreateWorkflowTemplate, useEvaluateWorkflow } from '@/lib/hooks'
+import { useTasks, useUpdateTask, useCreateTask, useWorkflowTemplates, useCreateWorkflowTemplate, useEvaluateWorkflow, useUsers, useGlobalSearch } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { useApp } from '@/lib/context'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -28,30 +28,63 @@ const initialTasks: Task[] = []  // Tasks come from API — no hardcoded fallbac
 
 function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t: Task) => void }) {
   const { toast } = useToast()
-  const { clients } = useApp()
+  const { clients, selectedClient } = useApp()
+  const { data: usersResult } = useUsers({ limit: 50 })
   const ic = 'w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm outline-none focus:border-brand/40 transition-colors'
+
+  // Task types matching actual DB values
+  const TASK_TYPES = [
+    { value: 'billing', label: 'Billing' },
+    { value: 'coding', label: 'Coding' },
+    { value: 'posting', label: 'Payment Posting' },
+    { value: 'denial_appeal', label: 'Denial Appeal' },
+    { value: 'ar_followup', label: 'A/R Follow-up' },
+    { value: 'eligibility', label: 'Eligibility' },
+    { value: 'credentialing', label: 'Credentialing' },
+    { value: 'prior_auth', label: 'Prior Auth' },
+    { value: 'quality_audit', label: 'Quality Audit' },
+    { value: 'missing_docs', label: 'Missing Docs' },
+    { value: 'other', label: 'Other' },
+  ]
+
+  // Real staff from users API
+  const staffUsers = (usersResult?.data || []).filter(u =>
+    ['admin','director','supervisor','manager','coder','biller','ar_team','posting_team'].includes(u.role || '')
+  )
+
   const [form, setForm] = useState({
     type: '',
     entity: '',
-    client: clients[0]?.name ?? '',
-    assigned: '',
+    description: '',
+    clientId: selectedClient?.id ?? '',
+    clientName: selectedClient?.name ?? (clients[0]?.name ?? ''),
+    assignedId: '',
+    assignedName: '',
     due: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
     priority: 'medium' as Task['priority'],
   })
 
+  // Entity search
+  const [searchQ, setSearchQ] = useState('')
+  const { data: searchResult } = useGlobalSearch(searchQ)
+  const searchResults = searchResult?.results || []
+  const [showSearch, setShowSearch] = useState(false)
+
   function handleSave() {
-    if (!form.type || !form.entity) { toast.warning('Type and entity are required'); return }
+    if (!form.type || !form.entity) { toast.warning('Task type and title are required'); return }
     const newTask: Task = {
       id: `TSK-${String(Date.now()).slice(-5)}`,
       type: form.type,
       entity: form.entity,
-      client: form.client,
+      client: form.clientName,
       priority: form.priority,
       status: 'open',
-      assigned: form.assigned || 'Unassigned',
+      assigned: form.assignedName || 'Unassigned',
       due: form.due,
       sla: 'green',
     }
+    // Attach extra fields for API call (not part of Task type but needed by handleCreateTask)
+    Object.assign(newTask, { _clientId: form.clientId || undefined, _assignedId: form.assignedId || undefined, _description: form.description || undefined })
     onSave(newTask)
     toast.success(`Task created — ${newTask.id}`)
     onClose()
@@ -59,10 +92,10 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
-      <div className="card w-[520px]" onClick={e => e.stopPropagation()}>
+      <div className="card w-[560px]" onClick={e => e.stopPropagation()}>
         <div className="flex gap-2 items-center justify-between p-4 border-b border-separator pb-1">
           <h3 className="font-semibold text-content-primary">Create Task</h3>
-          <button onClick={onClose} className="p-1 hover:bg-surface-elevated rounded-btn"><X size={16} className="text-content-secondary"/></button>
+          <button type="button" onClick={onClose} className="p-1 hover:bg-surface-elevated rounded-btn"><X size={16} className="text-content-secondary"/></button>
         </div>
         <div className="p-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
@@ -70,7 +103,7 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
               <label className="text-xs text-content-secondary block mb-1">Task Type *</label>
               <select value={form.type} onChange={e => setForm(p=>({...p,type:e.target.value}))} className={ic}>
                 <option value="">Select type</option>
-                {['Missing Docs','Denial Review','ERA Exception','Coding Query','Credentialing','A/R Follow-up','Appeal Deadline','Patient Contact','Prior Auth','Claim Resubmission','Other'].map(t=><option key={t}>{t}</option>)}
+                {TASK_TYPES.map(t=><option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div>
@@ -80,16 +113,53 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
               </select>
             </div>
           </div>
-          <div>
-            <label className="text-xs text-content-secondary block mb-1">Entity (patient, claim, description) *</label>
-            <input value={form.entity} onChange={e=>setForm(p=>({...p,entity:e.target.value}))} placeholder="John Smith — CLM-4501" className={ic}/>
+          <div className="relative">
+            <label className="text-xs text-content-secondary block mb-1">Title / Entity *</label>
+            <input value={form.entity}
+              onChange={e => { setForm(p=>({...p,entity:e.target.value})); setSearchQ(e.target.value); setShowSearch(true) }}
+              onFocus={() => { if (form.entity.length >= 2) setShowSearch(true) }}
+              onBlur={() => setTimeout(() => setShowSearch(false), 200)}
+              placeholder="Search patient, claim, or type description..."
+              className={ic}/>
+            {showSearch && searchResults.length > 0 && (
+              <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-surface-secondary border border-separator rounded-lg shadow-xl max-h-[180px] overflow-y-auto">
+                {searchResults.slice(0, 6).map(r => (
+                  <button type="button" key={r.id}
+                    onMouseDown={() => { setForm(p => ({...p, entity: `${r.label} (${r.sub})`})); setShowSearch(false) }}
+                    className="w-full text-left px-3 py-2 hover:bg-surface-elevated text-[12px] border-b border-separator last:border-0">
+                    <span className="font-medium text-content-primary">{r.label}</span>
+                    <span className="text-content-tertiary ml-2">{r.sub}</span>
+                    <span className="text-[10px] text-brand ml-1">{r.type}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-content-secondary block mb-1">Description</label>
+            <textarea value={form.description} onChange={e => setForm(p=>({...p,description:e.target.value}))}
+              rows={2} placeholder="Additional details..."
+              className={ic + ' resize-none'}/>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs text-content-secondary block mb-1">Client</label>
+              <select value={form.clientId} onChange={e => {
+                const cl = clients.find(c => c.id === e.target.value)
+                setForm(p=>({...p, clientId: e.target.value, clientName: cl?.name || ''}))
+              }} className={ic}>
+                <option value="">All Clients</option>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
             <div>
               <label className="text-xs text-content-secondary block mb-1">Assign To</label>
-              <select value={form.assigned} onChange={e=>setForm(p=>({...p,assigned:e.target.value}))} className={ic}>
+              <select value={form.assignedId} onChange={e => {
+                const u = staffUsers.find(u => u.id === e.target.value)
+                setForm(p=>({...p, assignedId: e.target.value, assignedName: u ? `${u.first_name} ${u.last_name}` : ''}))
+              }} className={ic}>
                 <option value="">Unassigned</option>
-                {['Sarah K.','Mike R.','Lisa T.','Amy C.','Tom B.','Voice Ai'].map(s=><option key={s}>{s}</option>)}
+                {staffUsers.map(u => <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({u.role})</option>)}
               </select>
             </div>
             <div>
@@ -98,8 +168,8 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
             </div>
           </div>
           <div className="flex gap-2 pt-1">
-            <button onClick={handleSave} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep">Create Task</button>
-            <button onClick={onClose} className="px-4 py-2.5 border border-separator rounded-lg text-sm text-content-secondary">Cancel</button>
+            <button type="button" onClick={handleSave} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep">Create Task</button>
+            <button type="button" onClick={onClose} className="px-4 py-2.5 border border-separator rounded-lg text-sm text-content-secondary">Cancel</button>
           </div>
         </div>
       </div>
@@ -143,9 +213,11 @@ export default function TasksPage() {
       await createTaskAPI({
         task_type: newTask.type,
         title: newTask.entity,
+        description: (newTask as any)._description || undefined,
         priority: newTask.priority,
         status: 'open',
-        assigned_to: newTask.assigned !== 'Unassigned' ? newTask.assigned : undefined,
+        assigned_to: (newTask as any)._assignedId || undefined,
+        client_id: (newTask as any)._clientId || undefined,
         due_date: newTask.due,
       })
       await refetchTasks()
