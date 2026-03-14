@@ -37,7 +37,7 @@ export default function CredentialingPage() {
   const { t } = useT()
   const { selectedClient } = useApp()
   const router = useRouter()
-  const [selected, setSelected] = useState<CredRow | null>(null)
+  const [selected, setSelected] = useState(null as CredRow | null)
   const { data: apiCredResult } = useCredentialing({ limit: 100 })
   const { data: expiringResult } = useCredentialingExpiring(90)
   const { data: riskData } = useCredentialingRiskScores()
@@ -76,7 +76,7 @@ export default function CredentialingPage() {
 
   const searchParams = useSearchParams()
   const openId = searchParams.get('openId')
-  const consumedOpenId = useRef<string | null>(null)
+  const consumedOpenId = useRef(null as string | null)
   useEffect(() => {
     if (!openId || openId === consumedOpenId.current) return
     const match = filteredProviders.find(p => p.id === openId) || apiRows.find(p => p.id === openId)
@@ -236,6 +236,7 @@ export default function CredentialingPage() {
                   </div>
                 )}
             </div>
+          </div>
           </div>
         </>
       )}
