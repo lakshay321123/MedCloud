@@ -2098,3 +2098,128 @@ export function useGlobalSearch(query: string) {
 export function useMarkAllNotificationsRead() {
   return useMutation<{ message: string }, Record<string, never>>('put', '/notifications/mark-all-read')
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// SPRINT 4 FRONTEND WIRING — Workflows, Integrations, Analytics Depth
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── Workflow Templates ─────────────────────────────────────────────────────
+export interface ApiWorkflowTemplate {
+  id: string
+  org_id: string
+  name: string
+  description?: string
+  trigger_event: string
+  trigger_conditions?: Record<string, unknown>
+  actions?: Array<{ type: string; title?: string; description?: string; priority?: string; due_days?: number; target_user?: string; message?: string; notification_type?: string }>
+  is_active: boolean
+  created_by?: string
+  created_at?: string
+  updated_at?: string
+}
+
+export function useWorkflowTemplates() {
+  const params = useClientParams({})
+  return useApi<ApiListResponse<ApiWorkflowTemplate>>('/workflow-templates', params)
+}
+
+export function useCreateWorkflowTemplate() {
+  return useMutation<ApiWorkflowTemplate, Partial<ApiWorkflowTemplate>>('post', '/workflow-templates')
+}
+
+export function useUpdateWorkflowTemplate(id: string) {
+  return useMutation<ApiWorkflowTemplate, Partial<ApiWorkflowTemplate>>('put', `/workflow-templates/${id}`)
+}
+
+export function useDeleteWorkflowTemplate(id: string) {
+  return useMutation<{ message: string }, Record<string, never>>('delete', `/workflow-templates/${id}`)
+}
+
+export function useEvaluateWorkflow() {
+  return useMutation<{ results: Array<{ workflow: string; action: string; status: string }> }, { trigger_event: string; context?: Record<string, unknown> }>('post', '/workflows/evaluate')
+}
+
+// ── Integrations Hub ───────────────────────────────────────────────────────
+export interface ApiIntegrationStatus {
+  id?: string
+  name: string
+  status: string
+  type?: string
+  last_check?: string
+  last_tested?: string
+  details?: string
+  config_status?: string
+}
+
+export function useIntegrationsStatus() {
+  const params = useClientParams({})
+  return useApi<{ data: ApiIntegrationStatus[] }>('/integrations/status', params)
+}
+
+export function useTestIntegration() {
+  return useMutation<{ integration: string; status: string; tested_at: string; latency_ms?: number; error?: string }, { integration_id: string }>('post', '/integrations/test')
+}
+
+// ── Analytics Depth ────────────────────────────────────────────────────────
+export interface ApiRevenueTrend {
+  month: string
+  claims: number
+  billed: string
+  collected: string
+  denied: number
+}
+
+export interface ApiDenialTrend {
+  month: string
+  total: number
+  top_category?: string
+  top_category_count?: number
+}
+
+export function useAnalyticsTrends(months = 6) {
+  const params = useClientParams({ months: String(months) })
+  return useApi<{ revenue_trend: ApiRevenueTrend[]; denial_trend: ApiDenialTrend[] }>('/analytics/trends', params)
+}
+
+export interface ApiPayerPerformance {
+  payer_name: string
+  payer_id: string
+  total_claims: number
+  paid: number
+  denied: number
+  total_billed: string
+  total_paid: string
+  avg_days_to_pay: number | null
+}
+
+export function useAnalyticsPayerPerformance() {
+  const params = useClientParams({})
+  return useApi<ApiListResponse<ApiPayerPerformance>>('/analytics/payer-performance', params)
+}
+
+export interface ApiProviderProductivity {
+  provider_id: string
+  provider_name: string
+  npi: string
+  specialty: string
+  total_claims: number
+  total_billed: string
+  total_encounters: number
+  coding_items: number
+}
+
+export function useAnalyticsProviderProductivity() {
+  const params = useClientParams({})
+  return useApi<ApiListResponse<ApiProviderProductivity>>('/analytics/provider-productivity', params)
+}
+
+export interface ApiForecast {
+  month: string
+  projected_billed: number
+  projected_claims: number
+}
+
+export function useAnalyticsForecasting() {
+  const params = useClientParams({})
+  return useApi<{ recent_months: Array<{ month: string; billed: string; claims: number }>; forecast: ApiForecast[]; method: string }>('/analytics/forecasting', params)
+}

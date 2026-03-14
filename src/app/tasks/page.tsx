@@ -6,7 +6,7 @@ import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
 import { ListChecks, X, Plus } from 'lucide-react'
-import { useTasks, useUpdateTask, useCreateTask } from '@/lib/hooks'
+import { useTasks, useUpdateTask, useCreateTask, useWorkflowTemplates, useCreateWorkflowTemplate, useEvaluateWorkflow, useUsers, useGlobalSearch } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { useApp } from '@/lib/context'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -28,30 +28,65 @@ const initialTasks: Task[] = []  // Tasks come from API — no hardcoded fallbac
 
 function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t: Task) => void }) {
   const { toast } = useToast()
-  const { clients } = useApp()
+  const { clients, selectedClient } = useApp()
+  const { data: usersResult } = useUsers({ limit: 50 })
   const ic = 'w-full bg-surface-elevated border border-separator rounded-lg px-3 py-2 text-sm outline-none focus:border-brand/40 transition-colors'
+
+  // Task types matching actual DB values
+  const TASK_TYPES = [
+    { value: 'billing', label: 'Billing' },
+    { value: 'coding', label: 'Coding' },
+    { value: 'posting', label: 'Payment Posting' },
+    { value: 'denial_appeal', label: 'Denial Appeal' },
+    { value: 'ar_followup', label: 'A/R Follow-up' },
+    { value: 'eligibility', label: 'Eligibility' },
+    { value: 'credentialing', label: 'Credentialing' },
+    { value: 'prior_auth', label: 'Prior Auth' },
+    { value: 'quality_audit', label: 'Quality Audit' },
+    { value: 'missing_docs', label: 'Missing Docs' },
+    { value: 'other', label: 'Other' },
+  ]
+
+  // Real staff from users API
+  const staffUsers = (usersResult?.data || []).filter(u =>
+    ['admin','director','supervisor','manager','coder','biller','ar_team','posting_team'].includes(u.role || '')
+  )
+
   const [form, setForm] = useState({
     type: '',
     entity: '',
-    client: clients[0]?.name ?? '',
-    assigned: '',
+    description: '',
+    clientId: selectedClient?.id ?? '',
+    clientName: selectedClient?.name ?? (clients[0]?.name ?? ''),
+    assignedId: '',
+    assignedName: '',
     due: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
     priority: 'medium' as Task['priority'],
   })
 
+  // Entity search
+  const [searchQ, setSearchQ] = useState('')
+  const { data: searchResult } = useGlobalSearch(searchQ)
+  const searchResults = searchResult?.results || []
+  const [showSearch, setShowSearch] = useState(false)
+
   function handleSave() {
-    if (!form.type || !form.entity) { toast.warning('Type and entity are required'); return }
+    if (!form.type || !form.entity) { toast.warning('Task type and title are required'); return }
     const newTask: Task = {
       id: `TSK-${String(Date.now()).slice(-5)}`,
       type: form.type,
       entity: form.entity,
-      client: form.client,
+      client: form.clientName,
       priority: form.priority,
       status: 'open',
-      assigned: form.assigned || 'Unassigned',
+      assigned: form.assignedName || 'Unassigned',
       due: form.due,
       sla: 'green',
     }
+    // Pass extra API fields via expando properties
+    ;(newTask as any)._clientId = form.clientId || undefined
+    ;(newTask as any)._assignedId = form.assignedId || undefined
+    ;(newTask as any)._description = form.description || undefined
     onSave(newTask)
     toast.success(`Task created — ${newTask.id}`)
     onClose()
@@ -59,10 +94,10 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
-      <div className="card w-[520px]" onClick={e => e.stopPropagation()}>
+      <div className="card w-[560px]" onClick={e => e.stopPropagation()}>
         <div className="flex gap-2 items-center justify-between p-4 border-b border-separator pb-1">
           <h3 className="font-semibold text-content-primary">Create Task</h3>
-          <button onClick={onClose} className="p-1 hover:bg-surface-elevated rounded-btn"><X size={16} className="text-content-secondary"/></button>
+          <button type="button" onClick={onClose} className="p-1 hover:bg-surface-elevated rounded-btn"><X size={16} className="text-content-secondary"/></button>
         </div>
         <div className="p-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
@@ -70,7 +105,7 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
               <label className="text-xs text-content-secondary block mb-1">Task Type *</label>
               <select value={form.type} onChange={e => setForm(p=>({...p,type:e.target.value}))} className={ic}>
                 <option value="">Select type</option>
-                {['Missing Docs','Denial Review','ERA Exception','Coding Query','Credentialing','A/R Follow-up','Appeal Deadline','Patient Contact','Prior Auth','Claim Resubmission','Other'].map(t=><option key={t}>{t}</option>)}
+                {TASK_TYPES.map(t=><option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div>
@@ -80,16 +115,53 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
               </select>
             </div>
           </div>
-          <div>
-            <label className="text-xs text-content-secondary block mb-1">Entity (patient, claim, description) *</label>
-            <input value={form.entity} onChange={e=>setForm(p=>({...p,entity:e.target.value}))} placeholder="John Smith — CLM-4501" className={ic}/>
+          <div className="relative">
+            <label htmlFor="task-entity" className="text-xs text-content-secondary block mb-1">Title / Entity *</label>
+            <input id="task-entity" value={form.entity}
+              onChange={e => { setForm(p=>({...p,entity:e.target.value})); setSearchQ(e.target.value); setShowSearch(true) }}
+              onFocus={() => { if (form.entity.length >= 2) setShowSearch(true) }}
+              onBlur={() => setTimeout(() => setShowSearch(false), 200)}
+              placeholder="Search patient, claim, or type description..."
+              className={ic}/>
+            {showSearch && searchResults.length > 0 && (
+              <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-surface-secondary border border-separator rounded-lg shadow-xl max-h-[180px] overflow-y-auto">
+                {searchResults.slice(0, 6).map(r => (
+                  <button type="button" key={r.id}
+                    onMouseDown={() => { setForm(p => ({...p, entity: `${r.label} (${r.sub})`})); setShowSearch(false) }}
+                    className="w-full text-left px-3 py-2 hover:bg-surface-elevated text-[12px] border-b border-separator last:border-0">
+                    <span className="font-medium text-content-primary">{r.label}</span>
+                    <span className="text-content-tertiary ml-2">{r.sub}</span>
+                    <span className="text-[10px] text-brand ml-1">{r.type}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-content-secondary block mb-1">Description</label>
+            <textarea value={form.description} onChange={e => setForm(p=>({...p,description:e.target.value}))}
+              rows={2} placeholder="Additional details..."
+              className={ic + ' resize-none'}/>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs text-content-secondary block mb-1">Client</label>
+              <select value={form.clientId} onChange={e => {
+                const cl = clients.find(c => c.id === e.target.value)
+                setForm(p=>({...p, clientId: e.target.value, clientName: cl?.name || ''}))
+              }} className={ic}>
+                <option value="">All Clients</option>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
             <div>
               <label className="text-xs text-content-secondary block mb-1">Assign To</label>
-              <select value={form.assigned} onChange={e=>setForm(p=>({...p,assigned:e.target.value}))} className={ic}>
+              <select value={form.assignedId} onChange={e => {
+                const u = staffUsers.find(u => u.id === e.target.value)
+                setForm(p=>({...p, assignedId: e.target.value, assignedName: u ? `${u.first_name} ${u.last_name}` : ''}))
+              }} className={ic}>
                 <option value="">Unassigned</option>
-                {['Sarah K.','Mike R.','Lisa T.','Amy C.','Tom B.','Voice Ai'].map(s=><option key={s}>{s}</option>)}
+                {staffUsers.map(u => <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({u.role})</option>)}
               </select>
             </div>
             <div>
@@ -98,8 +170,8 @@ function CreateTaskModal({ onClose, onSave }: { onClose: () => void; onSave: (t:
             </div>
           </div>
           <div className="flex gap-2 pt-1">
-            <button onClick={handleSave} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep">Create Task</button>
-            <button onClick={onClose} className="px-4 py-2.5 border border-separator rounded-lg text-sm text-content-secondary">Cancel</button>
+            <button type="button" onClick={handleSave} className="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-deep">Create Task</button>
+            <button type="button" onClick={onClose} className="px-4 py-2.5 border border-separator rounded-lg text-sm text-content-secondary">Cancel</button>
           </div>
         </div>
       </div>
@@ -143,9 +215,11 @@ export default function TasksPage() {
       await createTaskAPI({
         task_type: newTask.type,
         title: newTask.entity,
+        description: (newTask as any)._description || undefined,
         priority: newTask.priority,
         status: 'open',
-        assigned_to: newTask.assigned !== 'Unassigned' ? newTask.assigned : undefined,
+        assigned_to: (newTask as any)._assignedId || undefined,
+        client_id: (newTask as any)._clientId || undefined,
         due_date: newTask.due,
       })
       await refetchTasks()
@@ -188,7 +262,7 @@ export default function TasksPage() {
       }
     >
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard label={t('tasks','openTasks')} value={displayTasks.filter(t=>t.status!=='completed').length} icon={<ListChecks size={20}/>}/>
+        <KPICard label={t('tasks','openTasks')} value={displayTasks.filter(t=>t.status==='open').length} icon={<ListChecks size={20}/>}/>
         <KPICard label={t('tasks','inProgress')} value={displayTasks.filter(t=>t.status==='in_progress').length}/>
         <KPICard label={t('tasks','blocked')} value={displayTasks.filter(t=>t.status==='blocked').length} trend="down"/>
         <KPICard label={t('tasks','slaBreached')} value={displayTasks.filter(t=>t.sla==='red').length} trend="down"/>
@@ -293,6 +367,70 @@ export default function TasksPage() {
         </>
       )}
       {showCreate && <CreateTaskModal onClose={() => setShowCreate(false)} onSave={handleCreateTask}/>}
+
+      {/* ── Workflow Templates ─────────────────────────────────────────────── */}
+      <WorkflowTemplatesSection />
     </ModuleShell>
+  )
+}
+
+function WorkflowTemplatesSection() {
+  const { toast } = useToast()
+  const { data: templatesResult, loading: templatesLoading, refetch } = useWorkflowTemplates()
+  const { mutate: createTemplate, loading: creating } = useCreateWorkflowTemplate()
+  const { mutate: evaluate } = useEvaluateWorkflow()
+  const [expanded, setExpanded] = useState(false)
+  const templates = templatesResult?.data || []
+
+  return (
+    <div className="card mt-4 overflow-hidden">
+      <button type="button" onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-surface-elevated transition-colors">
+        <h3 className="text-sm font-semibold text-content-primary">Workflow Automation Templates</h3>
+        <span className="text-[11px] text-content-tertiary">{templates.length} template{templates.length !== 1 ? 's' : ''} {expanded ? '▲' : '▼'}</span>
+      </button>
+      {expanded && (
+        <div className="border-t border-separator px-4 py-3 space-y-3">
+          {templatesLoading && templates.length === 0 && (
+            <div className="text-[13px] text-content-tertiary py-2">Loading workflow templates...</div>
+          )}
+          {!templatesLoading && templates.length === 0 && (
+            <div className="text-[13px] text-content-tertiary py-2">No workflow templates configured. Create one to automate task assignment.</div>
+          )}
+          {templates.map(tpl => (
+            <div key={tpl.id} className="flex items-center gap-3 bg-surface-elevated rounded-lg px-3 py-2">
+              <div className={`w-2 h-2 rounded-full ${tpl.is_active ? 'bg-brand' : 'bg-gray-400'}`} />
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-medium truncate">{tpl.name}</div>
+                <div className="text-[11px] text-content-tertiary">Trigger: {tpl.trigger_event} · {(tpl.actions || []).length} action{(tpl.actions || []).length !== 1 ? 's' : ''}</div>
+              </div>
+              <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${tpl.is_active ? 'bg-brand/10 text-brand' : 'bg-gray-100 text-gray-500'}`}>
+                {tpl.is_active ? 'Active' : 'Inactive'}
+              </span>
+              <button type="button" onClick={async () => {
+                try {
+                  const result = await evaluate({ trigger_event: tpl.trigger_event, context: { test: true } })
+                  toast.success(`Workflow evaluated: ${(result?.results || []).map(r => `${r.action}=${r.status}`).join(', ') || 'no actions'}`)
+                } catch { toast.error('Evaluation failed') }
+              }} className="text-[11px] text-brand hover:underline">Test</button>
+            </div>
+          ))}
+          <button type="button" disabled={creating} onClick={async () => {
+            try {
+              await createTemplate({
+                name: 'New Workflow',
+                trigger_event: 'claim_denied',
+                actions: [{ type: 'create_task', title: 'Follow up on denial', priority: 'high', due_days: 3 }],
+                is_active: false,
+              })
+              toast.success('Template created (inactive). Edit to configure.')
+              refetch()
+            } catch { toast.error('Failed to create template') }
+          }} className="w-full border-2 border-dashed border-separator rounded-lg py-2 text-[12px] text-content-tertiary hover:border-brand/40 hover:text-brand transition-colors disabled:opacity-50">
+            {creating ? 'Creating...' : '+ Add Workflow Template'}
+          </button>
+        </div>
+      )}
+    </div>
   )
 }

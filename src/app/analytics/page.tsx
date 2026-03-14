@@ -7,7 +7,7 @@ import KPICard from '@/components/shared/KPICard'
 import { useApp } from '@/lib/context'
 import { useClaims, useDenials, useReport, useClientHealthScores, useProviders, useClients } from '@/lib/hooks'
 // Region filtering handled by backend
-import { useAnalyticsKPIs } from '@/lib/hooks'
+import { useAnalyticsKPIs, useAnalyticsTrends, useAnalyticsPayerPerformance, useAnalyticsForecasting } from '@/lib/hooks'
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine
@@ -138,6 +138,9 @@ export default function AnalyticsPage() {
   const { data: liveKPIs } = useAnalyticsKPIs()
   const { data: claimsApiResult } = useClaims({ limit: 500 })
   const { data: denialsApiResult } = useDenials({ limit: 500 })
+  const { data: trendsData } = useAnalyticsTrends(6)
+  const { data: payerPerfApi } = useAnalyticsPayerPerformance()
+  const { data: forecastApi } = useAnalyticsForecasting()
 
   const claims = useMemo(() => {
     const apiClaims = (claimsApiResult?.data || []).map(c => ({
@@ -222,8 +225,22 @@ export default function AnalyticsPage() {
     return result
   }, [claims])
 
-  // ─── Payer performance table ──────────────────────────────────────────────
+  // ─── Payer performance table — prefer API, fallback to client-side ──────
   const payerPerf = useMemo(() => {
+    // Use API payer performance if available
+    if (payerPerfApi?.data && payerPerfApi.data.length > 0) {
+      return payerPerfApi.data.map(p => ({
+        payer: p.payer_name || 'Unknown',
+        count: p.total_claims,
+        billed: Number(p.total_billed),
+        paid: Number(p.total_paid),
+        denialRate: p.total_claims > 0 ? ((p.denied / p.total_claims) * 100).toFixed(0) : '0',
+        avgDays: p.avg_days_to_pay ?? '—' as string | number,
+        phi: payerHassle[p.payer_name]?.score || 40,
+        phiColor: payerHassle[p.payer_name]?.color || 'text-brand-deep',
+      }))
+    }
+    // Fallback: compute from claims
     const payers: Record<string, { billed: number; paid: number; denied: number; days: number[]; count: number }> = {}
     claims.forEach(c => {
       if (!payers[c.payer]) payers[c.payer] = { billed: 0, paid: 0, denied: 0, days: [], count: 0 }
@@ -246,7 +263,7 @@ export default function AnalyticsPage() {
       phi: payerHassle[payer]?.score || 40,
       phiColor: payerHassle[payer]?.color || 'text-brand-deep',
     }))
-  }, [claims])
+  }, [claims, payerPerfApi])
 
   // ─── Denial heatmap data — computed from real denials ───────────────────
   const heatData = useMemo(() => {
@@ -272,8 +289,15 @@ export default function AnalyticsPage() {
     }))
   }, [claims, denialsApiResult])
 
-  // ─── Computed monthly revenue + denial trends from real claims ──────────
+  // ─── Computed monthly revenue + denial trends — prefer API, fallback to client-side ──
   const monthlyRevenue = useMemo(() => {
+    // Use API trends endpoint if available
+    if (trendsData?.revenue_trend && trendsData.revenue_trend.length >= 2) {
+      return trendsData.revenue_trend.map(r => ({
+        month: new Date(r.month).toLocaleString('en-US', { month: 'short' }),
+        revenue: Number(r.collected || r.billed || 0),
+      }))
+    }
     if (claims.length < 3) return FALLBACK_REVENUE
     const byMonth: Record<string, number> = {}
     claims.forEach(c => {
@@ -283,9 +307,24 @@ export default function AnalyticsPage() {
     })
     const result = Object.entries(byMonth).map(([month, revenue]) => ({ month, revenue }))
     return result.length >= 2 ? result : FALLBACK_REVENUE
-  }, [claims])
+  }, [claims, trendsData])
 
   const denialTrend = useMemo(() => {
+    // Use API trends endpoint if available
+    if (trendsData?.denial_trend && trendsData.denial_trend.length >= 2 && trendsData.revenue_trend) {
+      return trendsData.revenue_trend.map((r, i) => {
+        const total = r.claims || 1
+        const denied = r.denied || 0
+        const denialInfo = trendsData.denial_trend?.[i]
+        // Use denial_trend total if available, otherwise derive from revenue_trend
+        const actualDenied = denialInfo?.total ?? denied
+        return {
+          month: new Date(r.month).toLocaleString('en-US', { month: 'short' }),
+          initial: parseFloat(((actualDenied / total) * 100).toFixed(1)),
+          net: parseFloat(((Math.max(0, actualDenied * 0.7) / total) * 100).toFixed(1)),
+        }
+      })
+    }
     if (claims.length < 3) return FALLBACK_DENIAL
     const byMonth: Record<string, { total: number; denied: number; appealed: number }> = {}
     claims.forEach(c => {
@@ -302,7 +341,7 @@ export default function AnalyticsPage() {
       net: d.total > 0 ? parseFloat((((d.denied - d.appealed) / d.total) * 100).toFixed(1)) : 0,
     }))
     return result.length >= 2 ? result : FALLBACK_DENIAL
-  }, [claims])
+  }, [claims, trendsData])
 
   const TABS = [
     { id: 'financial', label: 'Financial' },
@@ -480,8 +519,9 @@ export default function AnalyticsPage() {
 
           {/* Staff Productivity */}
           <div className="card overflow-hidden">
-            <div className="px-5 py-4 border-b border-separator">
+            <div className="px-5 py-4 border-b border-separator flex items-center justify-between">
               <h3 className="text-[14px] font-semibold text-content-primary">Staff Productivity</h3>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20">Sample Data</span>
             </div>
             <table className="w-full text-[12px]">
               <thead><tr className="border-b border-separator text-[11px] text-content-tertiary tracking-wider">
@@ -531,6 +571,9 @@ export default function AnalyticsPage() {
       {/* ─── Ai PERFORMANCE TAB ──────────────────────────────────────────── */}
       {tab === 'ai' && (
         <div className="space-y-6">
+          <div className="bg-brand/5 border border-brand/20 rounded-lg px-3 py-2 text-[11px] text-brand flex items-center gap-2">
+            <Info size={12} /> AI performance metrics shown below are sample data. Live tracking will be available when AI usage logging is enabled.
+          </div>
           <div className="grid grid-cols-5 gap-4">
             <KPICard label={t('analytics','autoCodingAcc')} value="—" icon={<BrainCircuit size={20}/>} />
             <KPICard label={t('analytics','aiAcceptRate')} value="—" icon={<CheckCircle2 size={20}/>} />
@@ -633,8 +676,8 @@ export default function AnalyticsPage() {
       {tab === 'provider' && (
         <div className="space-y-6">
           <div className="grid grid-cols-4 gap-4">
-            <KPICard label="Encounters This Month" value={claims.length || 37} icon={<Activity size={20}/>} sub="Total patient visits" />
-            <KPICard label="Avg Charges / Visit" value={claims.length > 0 ? `$${Math.round(claims.reduce((s,c)=>s+c.billed,0)/claims.length)}` : '$312'} icon={<DollarSign size={20}/>} sub="Billed per encounter" />
+            <KPICard label="Claims This Month" value={claims.length || 0} icon={<Activity size={20}/>} sub="Total claims in current view" />
+            <KPICard label="Avg Charges / Claim" value={claims.length > 0 ? `$${Math.round(claims.reduce((s,c)=>s+c.billed,0)/claims.length)}` : '$0'} icon={<DollarSign size={20}/>} sub="Billed per claim" />
             <KPICard label="Coding Accuracy" value="—" icon={<CheckCircle2 size={20}/>} sub="Ai-coded visits reviewed" />
             <KPICard label="Documentation Score" value="8.4/10" icon={<ShieldAlert size={20}/>} sub="SOAP completeness avg" />
           </div>
@@ -643,7 +686,14 @@ export default function AnalyticsPage() {
             <div className="card p-5">
               <h3 className="text-[14px] font-semibold text-content-primary mb-4">Charges vs Collections by Month</h3>
               <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={[
+                <LineChart data={
+                  (trendsData?.revenue_trend && trendsData.revenue_trend.length >= 2)
+                    ? trendsData.revenue_trend.map(r => ({
+                        month: new Date(r.month).toLocaleString('en-US', { month: 'short' }),
+                        charges: Number(r.billed),
+                        collections: Number(r.collected),
+                      }))
+                    : [
                   { month: 'Oct', charges: 38200, collections: 32100 },
                   { month: 'Nov', charges: 41500, collections: 35800 },
                   { month: 'Dec', charges: 39800, collections: 34200 },

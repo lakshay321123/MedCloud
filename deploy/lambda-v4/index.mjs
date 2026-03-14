@@ -231,6 +231,11 @@ async function runSchemaMigration() {
       ALTER TABLE eligibility_checks ADD COLUMN IF NOT EXISTS benefits_json     JSONB;
       ALTER TABLE scrub_rules ADD COLUMN IF NOT EXISTS rule_order INTEGER DEFAULT 0;
 
+      -- ── tasks: add created_by and completed_by columns ──────────────────────
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS created_by UUID;
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS completed_by UUID;
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+
       -- ── notifications: create if not exists ─────────────────────────────────
       CREATE TABLE IF NOT EXISTS notifications (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -4755,11 +4760,30 @@ async function approveCoding(codingQueueId, body, orgId, userId) {
 
   // Create claim from approved codes
   const claimNumber = await nextClaimNumber(orgId);
+
+  // Look up patient's payer from their insurance or from their most recent claim
+  let payerId = null;
+  try {
+    // Single query: JOIN patients → payers on exact name match (case-insensitive, no wildcards)
+    const payerJoin = await pool.query(
+      `SELECT py.id FROM patients p JOIN payers py ON LOWER(py.name) = LOWER(p.insurance_payer) AND py.org_id = $2
+       WHERE p.id = $1 AND p.org_id = $2 AND p.insurance_payer IS NOT NULL LIMIT 1`,
+      [item.patient_id, orgId]
+    );
+    payerId = payerJoin.rows[0]?.id || null;
+    // Fallback: check most recent claim for this patient that has a payer
+    if (!payerId) {
+      const prevClaim = await pool.query('SELECT payer_id FROM claims WHERE patient_id = $1 AND org_id = $2 AND payer_id IS NOT NULL ORDER BY created_at DESC LIMIT 1', [item.patient_id, orgId]);
+      payerId = prevClaim.rows[0]?.payer_id || null;
+    }
+  } catch (e) { safeLog('warn', 'Payer lookup for coding approval failed:', e.message); }
+
   const claimData = {
     org_id: orgId,
     client_id: item.client_id,
     patient_id: item.patient_id,
     provider_id: providerId,
+    payer_id: payerId,
     claim_number: claimNumber,
     status: 'draft',
     claim_type: '837P',
@@ -5516,12 +5540,24 @@ async function createEnrollment(body, orgId, userId) {
      enrollment_type || 'initial', effective_date || null, notes || null]
   );
 
-  // Create follow-up task
+  // Create follow-up task — look up provider/payer names (parallel, org-scoped)
+  let providerLabel = provider_id;
+  let payerLabel = payer_id;
+  const [provResult, payResult] = await Promise.allSettled([
+    pool.query('SELECT first_name, last_name FROM providers WHERE id = $1 AND org_id = $2', [provider_id, orgId]),
+    pool.query('SELECT name FROM payers WHERE id = $1 AND org_id = $2', [payer_id, orgId]),
+  ]);
+  if (provResult.status === 'fulfilled' && provResult.value.rows[0]) {
+    providerLabel = `Dr. ${provResult.value.rows[0].first_name} ${provResult.value.rows[0].last_name}`;
+  } else if (provResult.status === 'rejected') { safeLog('warn', 'createEnrollment provider lookup failed:', provResult.reason?.message); }
+  if (payResult.status === 'fulfilled' && payResult.value.rows[0]) {
+    payerLabel = payResult.value.rows[0].name;
+  } else if (payResult.status === 'rejected') { safeLog('warn', 'createEnrollment payer lookup failed:', payResult.reason?.message); }
   await pool.query(
     `INSERT INTO tasks (id, org_id, title, description, status, priority, due_date, created_at)
      VALUES ($1, $2, $3, $4, 'open', 'medium', $5, NOW())`,
-    [uuid(), orgId, `Credentialing Follow-up: Provider ${provider_id}`,
-     `Track enrollment status with payer ${payer_id}`,
+    [uuid(), orgId, `Credentialing Follow-up: ${providerLabel}`,
+     `Track enrollment status with ${payerLabel}`,
      new Date(Date.now() + 14 * MS_IN_DAY).toISOString().slice(0, 10)]
   );
 
