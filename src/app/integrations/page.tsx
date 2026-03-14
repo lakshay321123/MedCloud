@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
-import { useEDITransactions } from '@/lib/hooks'
+import { useEDITransactions, useIntegrationsStatus, useTestIntegration } from '@/lib/hooks'
 import { CheckCircle2, AlertTriangle, XCircle, Clock, Plug, X, RotateCcw, FileText } from 'lucide-react'
 
 interface Integration {
@@ -144,6 +144,36 @@ export default function IntegrationsPage() {
   const { t } = useT()
   const [configFor, setConfigFor] = useState<Integration | null>(null)
   const [logsFor, setLogsFor] = useState<Integration | null>(null)
+  const [testing, setTesting] = useState<string | null>(null)
+
+  // Live integration status from backend
+  const { data: liveStatus } = useIntegrationsStatus()
+  const { mutate: testIntegration } = useTestIntegration()
+
+  // Merge live AWS status into static integrations list
+  const mergedIntegrations = useMemo(() => {
+    const liveMap = new Map((liveStatus?.data || []).map(i => [i.name, i]))
+    return integrations.map(ig => {
+      // Map static IDs to API names
+      const apiName = ig.id === 's3' ? 'aws_s3' : ig.id === 'retell' ? 'retell_ai' : null
+      if (apiName && liveMap.has(apiName)) {
+        const live = liveMap.get(apiName)!
+        return { ...ig, status: (live.status === 'connected' ? 'connected' : live.status === 'failed' ? 'error' : ig.status) as Integration['status'], lastSync: live.last_check ? 'Live' : ig.lastSync }
+      }
+      return ig
+    })
+  }, [liveStatus])
+
+  async function handleTestConnection(integrationId: string) {
+    setTesting(integrationId)
+    try {
+      const apiName = integrationId === 's3' ? 'aws_s3' : integrationId === 'retell' ? 'retell_ai' : integrationId === 'availity' ? 'clearinghouse' : 'aws_bedrock'
+      const result = await testIntegration({ integration: apiName })
+      if (result?.status === 'connected') toast.success(`${integrationId} connection verified`)
+      else toast.warning(`${integrationId}: ${result?.status || 'unknown'} — ${result?.error || 'manual check needed'}`)
+    } catch { toast.error('Connection test failed') }
+    finally { setTesting(null) }
+  }
 
   // Real EDI transaction data
   const { data: ediResult } = useEDITransactions({ limit: 500 })
@@ -168,13 +198,13 @@ export default function IntegrationsPage() {
   }, [ediTxs])
 
   const stats = {
-    connected: integrations.filter(i=>i.status==='connected').length,
-    errors: integrations.filter(i=>i.status==='error').length,
-    pending: integrations.filter(i=>i.status==='pending').length,
-    total: integrations.length,
+    connected: mergedIntegrations.filter(i=>i.status==='connected').length,
+    errors: mergedIntegrations.filter(i=>i.status==='error').length,
+    pending: mergedIntegrations.filter(i=>i.status==='pending').length,
+    total: mergedIntegrations.length,
   }
 
-  const categories = integrations.map(i=>i.category).filter((c,idx,arr)=>arr.indexOf(c)===idx)
+  const categories = mergedIntegrations.map(i=>i.category).filter((c,idx,arr)=>arr.indexOf(c)===idx)
 
   return (
     <ModuleShell title="Integration Hub" subtitle="External system connections and data pipes">
@@ -189,7 +219,7 @@ export default function IntegrationsPage() {
         <div key={cat} className="mb-6">
           <h3 className="text-xs font-semibold text-content-secondary tracking-wider mb-3">{cat}</h3>
           <div className="grid grid-cols-3 gap-4">
-            {integrations.filter(i=>i.category===cat).map(intg=>(
+            {mergedIntegrations.filter(i=>i.category===cat).map(intg=>(
               <div key={intg.id} className="card p-4 hover:border-brand/30 transition-all">
                 <div className="flex items-start gap-3 mb-3">
                   <div className={`w-10 h-10 ${intg.color} rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0`}>{intg.initials}</div>
@@ -208,15 +238,7 @@ export default function IntegrationsPage() {
                 </div>
                 <div className="flex gap-1.5">
                   <button onClick={()=>setConfigFor(intg)} className="flex-1 text-[11px] font-medium border border-brand/30 text-brand py-1.5 rounded hover:bg-brand/10 transition-colors">Configure</button>
-                  {intg.status==='connected'&&<button onClick={async ()=>{
-                    toast.info(`Testing ${intg.name}...`)
-                    try {
-                      const { api } = await import('@/lib/api-client')
-                      const r = await api.get<{ status: string; database: string }>('/health', {})
-                      if (r?.status === 'healthy') toast.success(`${intg.name} — connection healthy (DB: ${r.database})`)
-                      else toast.success(`${intg.name} — responded`)
-                    } catch (err) { toast.error(`${intg.name} — connection test failed`); console.error(err) }
-                  }} className="flex-1 text-[11px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-secondary transition-colors">Test</button>}
+                  {intg.status==='connected'&&<button onClick={()=>handleTestConnection(intg.id)} disabled={testing===intg.id} className="flex-1 text-[11px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-secondary transition-colors disabled:opacity-50">{testing===intg.id?'Testing...':'Test'}</button>}
                   <button onClick={()=>setLogsFor(intg)} className="flex-1 text-[11px] font-medium border border-separator text-content-secondary py-1.5 rounded hover:text-content-secondary transition-colors">Logs</button>
                 </div>
               </div>

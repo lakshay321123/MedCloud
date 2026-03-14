@@ -6,7 +6,7 @@ import KPICard from '@/components/shared/KPICard'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useToast } from '@/components/shared/Toast'
 import { ListChecks, X, Plus } from 'lucide-react'
-import { useTasks, useUpdateTask, useCreateTask } from '@/lib/hooks'
+import { useTasks, useUpdateTask, useCreateTask, useWorkflowTemplates, useCreateWorkflowTemplate, useEvaluateWorkflow } from '@/lib/hooks'
 import { api } from '@/lib/api-client'
 import { useApp } from '@/lib/context'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -293,6 +293,67 @@ export default function TasksPage() {
         </>
       )}
       {showCreate && <CreateTaskModal onClose={() => setShowCreate(false)} onSave={handleCreateTask}/>}
+
+      {/* ── Workflow Templates ─────────────────────────────────────────────── */}
+      <WorkflowTemplatesSection />
     </ModuleShell>
+  )
+}
+
+function WorkflowTemplatesSection() {
+  const { toast } = useToast()
+  const { data: templatesResult, refetch } = useWorkflowTemplates()
+  const { mutate: createTemplate } = useCreateWorkflowTemplate()
+  const { mutate: evaluate } = useEvaluateWorkflow()
+  const [expanded, setExpanded] = useState(false)
+  const templates = templatesResult?.data || []
+
+  return (
+    <div className="card mt-4 overflow-hidden">
+      <button type="button" onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-surface-elevated transition-colors">
+        <h3 className="text-sm font-semibold text-content-primary">Workflow Automation Templates</h3>
+        <span className="text-[11px] text-content-tertiary">{templates.length} template{templates.length !== 1 ? 's' : ''} {expanded ? '▲' : '▼'}</span>
+      </button>
+      {expanded && (
+        <div className="border-t border-separator px-4 py-3 space-y-3">
+          {templates.length === 0 && (
+            <div className="text-[13px] text-content-tertiary py-2">No workflow templates configured. Create one to automate task assignment.</div>
+          )}
+          {templates.map(tpl => (
+            <div key={tpl.id} className="flex items-center gap-3 bg-surface-elevated rounded-lg px-3 py-2">
+              <div className={`w-2 h-2 rounded-full ${tpl.is_active ? 'bg-brand' : 'bg-gray-400'}`} />
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-medium truncate">{tpl.name}</div>
+                <div className="text-[11px] text-content-tertiary">Trigger: {tpl.trigger_event} · {(tpl.actions || []).length} action{(tpl.actions || []).length !== 1 ? 's' : ''}</div>
+              </div>
+              <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${tpl.is_active ? 'bg-brand/10 text-brand' : 'bg-gray-100 text-gray-500'}`}>
+                {tpl.is_active ? 'Active' : 'Inactive'}
+              </span>
+              <button type="button" onClick={async () => {
+                try {
+                  const result = await evaluate({ trigger_event: tpl.trigger_event, context: { test: true } })
+                  toast.success(`Workflow evaluated: ${(result?.results || []).map(r => `${r.action}=${r.status}`).join(', ') || 'no actions'}`)
+                } catch { toast.error('Evaluation failed') }
+              }} className="text-[11px] text-brand hover:underline">Test</button>
+            </div>
+          ))}
+          <button type="button" onClick={async () => {
+            try {
+              await createTemplate({
+                name: 'New Workflow',
+                trigger_event: 'claim_denied',
+                actions: [{ type: 'create_task', title: 'Follow up on denial', priority: 'high', due_days: 3 }],
+                is_active: false,
+              })
+              toast.success('Template created (inactive). Edit to configure.')
+              refetch()
+            } catch { toast.error('Failed to create template') }
+          }} className="w-full border-2 border-dashed border-separator rounded-lg py-2 text-[12px] text-content-tertiary hover:border-brand/40 hover:text-brand transition-colors">
+            + Add Workflow Template
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
