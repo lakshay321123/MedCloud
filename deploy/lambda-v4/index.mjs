@@ -1067,51 +1067,6 @@ async function seedDemoData(orgId) {
         }
         safeLog('info', `Seeded ${bulkIdx} additional monthly US claims for analytics charts`);
 
-        // ── Credentialing records for US providers ─────────────────────────────
-        // First: delete old thin records to avoid duplicates on re-seed
-        await pool.query(`DELETE FROM credentialing WHERE org_id = $1`, [_org]).catch(()=>{});
-        const credData = [
-          { licNum: 'MD-2019-44821', licState: 'CA', licExp: 120, malpCarrier: 'The Doctors Company', malpPol: 'TDC-2024-991002', malpExp: 210, dea: 'FA1234567', deaExp: 730, boardCert: true, boardDate: '2019-06-15', caqhId: '14923847', caqhStatus: 'attested', caqhAttested: 30, caqhNext: 150, payerEnroll: 5, status: 'active', type: 'initial_credentialing' },
-          { licNum: 'MD-2020-55103', licState: 'CA', licExp: 25, malpCarrier: 'NORCAL Mutual', malpPol: 'NM-2025-330441', malpExp: 22, dea: 'BO9876543', deaExp: 45, boardCert: true, boardDate: '2020-03-20', caqhId: '15839201', caqhStatus: 'attestation_due', caqhAttested: 180, caqhNext: 15, payerEnroll: 4, status: 'expiring', type: 'recredentialing' },
-          { licNum: 'MD-2021-67290', licState: 'TX', licExp: 400, malpCarrier: 'Medical Protective', malpPol: 'MP-2025-771234', malpExp: 365, dea: 'CS2345678', deaExp: 600, boardCert: true, boardDate: '2021-09-01', caqhId: '16720394', caqhStatus: 'attested', caqhAttested: 60, caqhNext: 120, payerEnroll: 6, status: 'active', type: 'initial_credentialing' },
-          { licNum: 'MD-2018-33107', licState: 'NY', licExp: 180, malpCarrier: 'ProAssurance', malpPol: 'PA-2024-882100', malpExp: 90, dea: 'DP3456789', deaExp: 300, boardCert: false, boardDate: null, caqhId: '13847261', caqhStatus: 'attested', caqhAttested: 45, caqhNext: 135, payerEnroll: 3, status: 'active', type: 'initial_credentialing' },
-          { licNum: 'MD-2022-78455', licState: 'FL', licExp: 550, malpCarrier: 'Coverys', malpPol: 'CV-2025-443210', malpExp: 500, dea: 'EP4567890', deaExp: 800, boardCert: true, boardDate: '2022-11-10', caqhId: '17934058', caqhStatus: 'not_started', caqhAttested: null, caqhNext: null, payerEnroll: 2, status: 'pending', type: 'initial_credentialing' },
-        ];
-        const now = Date.now();
-        for (let pi = 0; pi < Math.min(usProviders.length, credData.length); pi++) {
-          const prov = usProviders[pi];
-          const cd = credData[pi];
-          const clientForProv = pi % 3 === 0 ? uc1 : pi % 3 === 1 ? uc2 : (usClients[2]?.id || uc1);
-          await pool.query(`INSERT INTO credentialing (id, org_id, client_id, provider_id, provider_name, status, credential_type,
-              expiry_date, payer_enrollment_count, license_number, license_state, license_expiry,
-              malpractice_carrier, malpractice_policy_number, malpractice_expiry,
-              dea_number, dea_expiry, board_certified, board_certification_date,
-              caqh_provider_id, caqh_status, caqh_last_attested, caqh_next_attestation,
-              payer_enrollment_status, timeline, created_at)
-            VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,NOW()) ON CONFLICT DO NOTHING`,
-            [_org, clientForProv, prov.id, `${prov.first_name} ${prov.last_name}`,
-             cd.status, cd.type,
-             new Date(now + cd.licExp * 86400000).toISOString().split('T')[0],
-             cd.payerEnroll,
-             cd.licNum, cd.licState,
-             new Date(now + cd.licExp * 86400000).toISOString().split('T')[0],
-             cd.malpCarrier, cd.malpPol,
-             new Date(now + cd.malpExp * 86400000).toISOString().split('T')[0],
-             cd.dea,
-             new Date(now + cd.deaExp * 86400000).toISOString().split('T')[0],
-             cd.boardCert, cd.boardDate,
-             cd.caqhId, cd.caqhStatus,
-             cd.caqhAttested ? new Date(now - cd.caqhAttested * 86400000).toISOString().split('T')[0] : null,
-             cd.caqhNext ? new Date(now + cd.caqhNext * 86400000).toISOString().split('T')[0] : null,
-             JSON.stringify({ aetna: 'enrolled', bcbs: 'enrolled', united: pi < 3 ? 'enrolled' : 'pending', cigna: pi < 2 ? 'enrolled' : 'not_started', medicare: 'enrolled' }),
-             JSON.stringify([
-               { event: 'application_submitted', date: new Date(now - 300 * 86400000).toISOString(), by: 'system' },
-               { event: 'primary_source_verified', date: new Date(now - 280 * 86400000).toISOString(), by: 'system' },
-               { event: cd.status === 'active' ? 'approved' : 'renewal_due', date: new Date(now - 260 * 86400000).toISOString(), by: 'system' },
-             ]),
-            ]).catch(e => safeLog('warn', `Cred seed ${pi}:`, e.message));
-        }
-
         // ── Tasks for various workflow items ──────────────────────────────────
         const taskItems = [
           { title: 'Follow up on underpayment — Sarah Johnson claim', desc: 'Payer promised additional payment. Verify received within 30 days.', type: 'ar_follow_up', priority: 'high', status: 'pending' },
@@ -1136,7 +1091,7 @@ async function seedDemoData(orgId) {
     const credDepthCheck = await pool.query(`SELECT COUNT(*) FROM credentialing WHERE org_id=$1 AND license_number IS NOT NULL`, [_org]);
     if (parseInt(credDepthCheck.rows[0].count) === 0) {
       safeLog('info', 'Credentialing depth seed: populating rich credential data...');
-      await pool.query(`DELETE FROM credentialing WHERE org_id = $1`, [_org]).catch(()=>{});
+      await pool.query(`DELETE FROM credentialing WHERE org_id = $1`, [_org]).catch(e => safeLog('warn', 'Cred cleanup:', e.message));
       const allProvs = await pool.query(`SELECT id, first_name, last_name, specialty, npi, client_id FROM providers WHERE org_id=$1 ORDER BY created_at LIMIT 5`, [_org]);
       const usClsForCred = await pool.query(`SELECT id, name, region FROM clients WHERE org_id=$1 AND region='us' ORDER BY created_at`, [_org]);
       const ucIds = usClsForCred.rows.map(r => r.id);
@@ -1801,9 +1756,15 @@ const ROLE_PERMISSIONS = {
 // Clinical roles (provider, admin) see everything. Billing roles see partial.
 // Coding/posting see minimized PHI. Applied to all patient-containing responses.
 const PHI_MASK_RULES = {
-  // Roles with FULL access (no masking)
+  // Roles with FULL access (no masking) — clinical/admin only
   admin: null, director: null, supervisor: null, manager: null,
-  provider: null, client: null,
+  provider: null,
+  // Client/facility users: see names but not SSN, limited contact
+  client: {
+    ssn_encrypted: 'full', address: 'hide', emirates_id: 'full',
+    insurance_member_id: 'partial', insurance_policy_number: 'partial',
+    emergency_contact: 'hide'
+  },
   // Coder: needs DOB for age-based coding, no SSN, limited insurance
   coder: {
     ssn_encrypted: 'full', phone: 'partial', email: 'partial',
@@ -1829,6 +1790,14 @@ const PHI_MASK_RULES = {
   },
 };
 
+// Default deny: unknown roles get maximum masking
+const PHI_DEFAULT_MASK = {
+  ssn_encrypted: 'full', phone: 'partial', email: 'partial',
+  address: 'hide', dob: 'year_only', insurance_member_id: 'full',
+  insurance_policy_number: 'full', emirates_id: 'full',
+  emergency_contact: 'hide'
+};
+
 function maskValue(val, mode) {
   if (!val || typeof val !== 'string') return val;
   if (mode === 'hide') return null;
@@ -1839,8 +1808,9 @@ function maskValue(val, mode) {
   }
   if (mode === 'partial') {
     if (val.includes('@')) return val[0] + '***@' + val.split('@')[1]; // email
-    const clean = val.replace(/[^0-9]/g, '');
-    return clean.length > 4 ? '***-***-' + clean.slice(-4) : '***';
+    const digits = val.replace(/[^0-9]/g, '');
+    if (digits.length >= 4) return '***-***-' + digits.slice(-4); // phone-like
+    return val.length > 3 ? val.slice(0, 2) + '***' : '***'; // generic
   }
   if (mode === 'year_only' && val.length >= 4) {
     try { return new Date(val).getFullYear().toString(); } catch (_) { return '***'; }
@@ -1850,11 +1820,12 @@ function maskValue(val, mode) {
 
 function maskPHIFields(data, role) {
   const rules = PHI_MASK_RULES[role];
-  if (!rules) return data; // null = full access
+  if (rules === null) return data; // explicitly null = full access (admin/director/provider)
+  const effectiveRules = rules || PHI_DEFAULT_MASK; // unknown roles get default deny
   if (Array.isArray(data)) return data.map(item => maskPHIFields(item, role));
   if (data && typeof data === 'object') {
     const masked = { ...data };
-    for (const [field, mode] of Object.entries(rules)) {
+    for (const [field, mode] of Object.entries(effectiveRules)) {
       if (field in masked) masked[field] = maskValue(masked[field], mode);
     }
     return masked;
@@ -9880,38 +9851,48 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     // ═══ Credentialing Depth ══════════════════════════════════════════════════
     // CAQH status tracking, expiring credentials, re-credentialing, timeline
     if (path.includes('/credentialing/caqh-status') && method === 'GET') {
-      const r = await pool.query(
-        `SELECT c.id, COALESCE(c.provider_name, p.first_name || ' ' || p.last_name) AS provider_name,
+      let caqhQ = `SELECT c.id, COALESCE(c.provider_name, p.first_name || ' ' || p.last_name) AS provider_name,
                 c.caqh_provider_id, c.caqh_status, c.caqh_last_attested,
                 c.caqh_next_attestation, c.status, c.license_number, c.license_expiry,
                 c.malpractice_expiry, c.dea_number, c.dea_expiry, c.board_certified,
                 c.payer_enrollment_count, p.npi, p.specialty
          FROM credentialing c LEFT JOIN providers p ON c.provider_id = p.id
-         WHERE c.org_id = $1 ORDER BY c.caqh_next_attestation ASC NULLS LAST`, [effectiveOrgId]
-      );
+         WHERE c.org_id = $1`;
+      const caqhParams = [effectiveOrgId];
+      if (clientId) { caqhParams.push(clientId); caqhQ += ` AND c.client_id = $${caqhParams.length}`; }
+      caqhQ += ' ORDER BY c.caqh_next_attestation ASC NULLS LAST';
+      const r = await pool.query(caqhQ, caqhParams);
       return respond(200, { data: r.rows, meta: { total: r.rows.length } });
     }
     if (path.includes('/credentialing/expiring') && method === 'GET') {
       const days = parseInt(qs.days) || 90;
-      const r = await pool.query(
-        `SELECT c.*, p.npi, p.specialty, p.first_name || ' ' || p.last_name AS provider_full_name
+      let expQ = `SELECT c.*, p.npi, p.specialty, p.first_name || ' ' || p.last_name AS provider_full_name
          FROM credentialing c LEFT JOIN providers p ON c.provider_id = p.id
-         WHERE c.org_id = $1 AND c.expiry_date IS NOT NULL
-         AND c.expiry_date <= NOW() + ($2 || ' days')::INTERVAL
-         ORDER BY c.expiry_date ASC`, [effectiveOrgId, days.toString()]
-      );
+         WHERE c.org_id = $1 AND (
+           (c.expiry_date IS NOT NULL AND c.expiry_date <= NOW() + ($2 || ' days')::INTERVAL)
+           OR (c.license_expiry IS NOT NULL AND c.license_expiry <= NOW() + ($2 || ' days')::INTERVAL)
+           OR (c.malpractice_expiry IS NOT NULL AND c.malpractice_expiry <= NOW() + ($2 || ' days')::INTERVAL)
+           OR (c.dea_expiry IS NOT NULL AND c.dea_expiry <= NOW() + ($2 || ' days')::INTERVAL)
+           OR (c.caqh_next_attestation IS NOT NULL AND c.caqh_next_attestation <= NOW() + ($2 || ' days')::INTERVAL)
+         )`;
+      const expParams = [effectiveOrgId, days.toString()];
+      if (clientId) { expParams.push(clientId); expQ += ` AND c.client_id = $${expParams.length}`; }
+      expQ += ' ORDER BY LEAST(COALESCE(c.expiry_date, \'9999-12-31\'), COALESCE(c.license_expiry, \'9999-12-31\'), COALESCE(c.malpractice_expiry, \'9999-12-31\')) ASC';
+      const r = await pool.query(expQ, expParams);
       return respond(200, { data: r.rows, meta: { total: r.rows.length, days_window: days } });
     }
     if (path.includes('/credentialing') && path.includes('/timeline') && method === 'GET' && pathParams.id) {
       const cred = await getById('credentialing', pathParams.id);
       if (!cred || cred.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
-      const timeline = typeof cred.timeline === 'string' ? JSON.parse(cred.timeline || '[]') : (cred.timeline || []);
+      let timeline = [];
+      try { timeline = typeof cred.timeline === 'string' ? JSON.parse(cred.timeline || '[]') : (cred.timeline || []); } catch (_) { timeline = []; }
       return respond(200, { credential: cred, timeline });
     }
     if (path.includes('/credentialing') && path.includes('/recredential') && method === 'POST' && pathParams.id) {
       const cred = await getById('credentialing', pathParams.id);
       if (!cred || cred.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
-      const timeline = typeof cred.timeline === 'string' ? JSON.parse(cred.timeline || '[]') : (cred.timeline || []);
+      let timeline = [];
+      try { timeline = typeof cred.timeline === 'string' ? JSON.parse(cred.timeline || '[]') : (cred.timeline || []); } catch (_) { timeline = []; }
       timeline.push({ event: 're-credentialing_initiated', date: new Date().toISOString(), by: userId, notes: body.notes || '' });
       const updated = await update('credentialing', pathParams.id, {
         status: 'renewal_pending', timeline: JSON.stringify(timeline),
@@ -9972,10 +9953,25 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
         'SELECT * FROM workflow_templates WHERE org_id = $1 AND trigger_event = $2 AND is_active = true',
         [effectiveOrgId, trigger_event]
       );
+      const VALID_ACTION_TYPES = new Set(['create_task', 'create_notification', 'escalate']);
       const results = [];
       for (const tpl of templates.rows) {
+        // Check trigger_conditions if defined
+        const conditions = typeof tpl.trigger_conditions === 'string' ? JSON.parse(tpl.trigger_conditions || '{}') : (tpl.trigger_conditions || {});
+        let conditionsMet = true;
+        if (context && Object.keys(conditions).length > 0) {
+          for (const [key, expected] of Object.entries(conditions)) {
+            if (context[key] !== undefined && context[key] !== expected) { conditionsMet = false; break; }
+          }
+        }
+        if (!conditionsMet) { results.push({ workflow: tpl.name, action: 'skipped', status: 'conditions_not_met' }); continue; }
+
         const actions = typeof tpl.actions === 'string' ? JSON.parse(tpl.actions) : (tpl.actions || []);
         for (const action of actions) {
+          if (!action.type || !VALID_ACTION_TYPES.has(action.type)) {
+            results.push({ workflow: tpl.name, action: action.type || 'unknown', status: 'invalid_action_type' });
+            continue;
+          }
           if (action.type === 'create_task') {
             await pool.query(
               `INSERT INTO tasks (id, org_id, client_id, title, description, status, priority, task_type, due_date, created_at)
@@ -10055,6 +10051,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       if (method === 'GET' && !pathParams.id) {
         let q = 'SELECT cr.*, p.first_name || \' \' || p.last_name AS patient_name FROM consent_records cr LEFT JOIN patients p ON cr.patient_id = p.id WHERE cr.org_id = $1';
         const params = [effectiveOrgId];
+        if (clientId) { params.push(clientId); q += ` AND cr.client_id = $${params.length}`; }
         if (qs.patient_id) { params.push(qs.patient_id); q += ` AND cr.patient_id = $${params.length}`; }
         if (qs.consent_type) { params.push(qs.consent_type); q += ` AND cr.consent_type = $${params.length}`; }
         q += ' ORDER BY cr.created_at DESC LIMIT 500';
@@ -10064,6 +10061,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       if (method === 'GET' && pathParams.id) {
         const cr = await getById('consent_records', pathParams.id);
         if (!cr || cr.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        if (clientId && cr.client_id && cr.client_id !== clientId) return respond(404, { error: 'Not found' });
         return respond(200, cr);
       }
       if (method === 'POST') {
@@ -10082,7 +10080,9 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       if (method === 'PATCH' && pathParams.id) {
         const existing = await getById('consent_records', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
+        if (clientId && existing.client_id && existing.client_id !== clientId) return respond(404, { error: 'Not found' });
         if (body.granted === false && existing.granted) body.revoked_date = new Date().toISOString();
+        if (body.granted === true && !existing.granted) { body.granted_date = new Date().toISOString(); body.revoked_date = null; }
         const updated = await update('consent_records', pathParams.id, body, effectiveOrgId);
         await auditLog(effectiveOrgId, userId, body.granted === false ? 'consent_revoked' : 'consent_updated', 'consent_records', pathParams.id, body);
         return respond(200, updated);

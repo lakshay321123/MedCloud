@@ -320,7 +320,6 @@ export interface ApiCredentialing {
   provider_name?: string
   credential_type?: string
   status?: string
-  expiration_date?: string
   expiry_date?: string
   payer_enrollment_count?: number
   license_number?: string

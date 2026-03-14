@@ -23,7 +23,7 @@ function daysUntil(d?: string | null) {
 }
 
 type CredRow = {
-  id: string; name: string; npi: string; client: string
+  id: string; name: string; npi: string; client: string; clientId: string
   license: string; licenseExpiry: string | null
   malpractice: string; malpracticeExpiry: string | null
   dea: string; deaExpiry: string | null
@@ -49,7 +49,8 @@ export default function CredentialingPage() {
     npi: p.npi || '',
     status: p.status || '',
     payers: p.payer_enrollment_count || 0,
-    client: (p as Record<string, any>).client_name || '',
+    client: p.client_name || '',
+    clientId: p.client_id || '',
     license: p.license_number ? `${p.license_state || ''} ${p.license_number}` : '—',
     licenseExpiry: p.license_expiry || null,
     malpractice: p.malpractice_carrier || '—',
@@ -64,7 +65,7 @@ export default function CredentialingPage() {
   }))
 
   const filteredProviders = apiRows.filter(p => {
-    if (selectedClient) return p.client === selectedClient.name
+    if (selectedClient) return p.clientId === selectedClient.id
     return true
   })
 
@@ -184,7 +185,7 @@ export default function CredentialingPage() {
                 <button onClick={() => { window.open('https://proview.caqh.org/PR', '_blank'); toast.success('CAQH ProView opened') }}
                   className="bg-surface-elevated border border-separator rounded-lg py-2 text-[13px] font-medium">Update CAQH</button>
                 <button onClick={async () => {
-                  try { await createCred({ provider_id: selected?.id, status: 'pending', credential_type: 'payer_enrollment' }); toast.success('Enrollment started') }
+                  try { await createCred({ provider_id: selected?.raw?.provider_id || selected?.id, status: 'pending', credential_type: 'payer_enrollment' }); toast.success('Enrollment started') }
                   catch { toast.error('Failed to start enrollment') }
                 }} className="bg-surface-elevated border border-separator rounded-lg py-2 text-[13px] font-medium col-span-2">Add Payer Enrollment</button>
               </div>
