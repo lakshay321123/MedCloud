@@ -46,7 +46,7 @@ export default function CredentialingPage() {
   const { mutate: createCred } = useCreateCredentialing()
   const { mutate: verifyAll, loading: verifyingAll } = useVerifyAll(selected?.id || '')
   const { mutate: verifyDEA, loading: verifyingDEA } = useVerifyDEA(selected?.id || '')
-  const [verifyResult, setVerifyResult] = useState<any>(null)
+  const [verifyResult, setVerifyResult] = useState(null as Record<string, any> | null)
 
   const apiRows: CredRow[] = (apiCredResult?.data || []).map((p: ApiCredentialing) => ({
     id: p.id,
