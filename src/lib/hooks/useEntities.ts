@@ -1493,6 +1493,31 @@ export function useCredentialingExpiring(days = 90) {
   return useApi<ApiListResponse<ApiCredentialing>>('/credentialing/expiring', params)
 }
 
+export function useCredentialingRiskScores() {
+  const params = useClientParams()
+  return useApi<{ data: Array<{ id: string; provider_name: string; risk_score: number; risk_level: string; flags: string[]; recommended_actions: string[] }>; summary: { total: number; critical: number; high: number; medium: number; low: number; avg_score: number } }>('/credentialing/risk-scores', params)
+}
+
+export function useVerifyDEA(id: string) {
+  return useMutation<{ dea_number: string; valid: boolean; reason: string; registrant_type: string; name_match: boolean | null; days_until_expiry: number | null }, { dea_number?: string }>('post', `/credentialing/${id}/verify-dea`)
+}
+
+export function useVerifyNPI(id: string) {
+  return useMutation<{ verified: boolean | null; npi: string; provider_name?: string; specialty?: string; error?: string }, { npi?: string }>('post', `/credentialing/${id}/verify-npi`)
+}
+
+export function useVerifyExclusions(id: string) {
+  return useMutation<{ provider_name: string; alert: boolean; sam_gov: { searched: boolean; excluded?: boolean; total_records?: number }; oig_leie: { manual_check_url: string } }, { first_name?: string; last_name?: string }>('post', `/credentialing/${id}/verify-exclusions`)
+}
+
+export function useVerifyAll(id: string) {
+  return useMutation<{ npi: any; dea: any; exclusions: any; timestamp: string }, Record<string, never>>('post', `/credentialing/${id}/verify-all`)
+}
+
+export function useExtractDocument(id: string) {
+  return useMutation<{ extracted: Record<string, any>; fields_updated: string[]; ai_confidence: number | null }, { s3_key: string; document_type?: string }>('post', `/credentialing/${id}/extract-document`)
+}
+
 export function useCreateEnrollment() {
   return useMutation<{ id: string; status: string }, {
     provider_id: string

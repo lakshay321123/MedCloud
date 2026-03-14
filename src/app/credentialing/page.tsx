@@ -5,7 +5,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import { BadgeCheck, AlertTriangle, X } from 'lucide-react'
-import { useCredentialing, useUpdateCredentialing, useCreateCredentialing, useCredentialingExpiring, useRecredential, ApiCredentialing } from '@/lib/hooks'
+import { useCredentialing, useUpdateCredentialing, useCreateCredentialing, useCredentialingExpiring, useRecredential, useCredentialingRiskScores, useVerifyAll, useVerifyDEA, ApiCredentialing } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
 import { useSearchParams, useRouter } from 'next/navigation'
 
@@ -40,9 +40,13 @@ export default function CredentialingPage() {
   const [selected, setSelected] = useState<CredRow | null>(null)
   const { data: apiCredResult } = useCredentialing({ limit: 100 })
   const { data: expiringResult } = useCredentialingExpiring(90)
+  const { data: riskData } = useCredentialingRiskScores()
   const { mutate: updateCred } = useUpdateCredentialing(selected?.id || '')
   const { mutate: recredential } = useRecredential(selected?.id || '')
   const { mutate: createCred } = useCreateCredentialing()
+  const { mutate: verifyAll, loading: verifyingAll } = useVerifyAll(selected?.id || '')
+  const { mutate: verifyDEA, loading: verifyingDEA } = useVerifyDEA(selected?.id || '')
+  const [verifyResult, setVerifyResult] = useState<any>(null)
 
   const apiRows: CredRow[] = (apiCredResult?.data || []).map((p: ApiCredentialing) => ({
     id: p.id,
@@ -190,6 +194,47 @@ export default function CredentialingPage() {
                   catch { toast.error('Failed to start enrollment') }
                 }} className="bg-surface-elevated border border-separator rounded-lg py-2 text-[13px] font-medium col-span-2">Add Payer Enrollment</button>
               </div>
+
+              {/* AI Verification Section */}
+              <div className="border-t border-separator pt-3 mt-2">
+                <h4 className="text-[11px] font-semibold text-content-secondary tracking-wider mb-2">AI Verification</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={async () => {
+                    try {
+                      const result = await verifyAll({});
+                      setVerifyResult(result);
+                      toast.success('Verification complete');
+                    } catch { toast.error('Verification failed'); }
+                  }} disabled={verifyingAll} className="bg-brand/10 text-brand rounded-lg py-2 text-[13px] font-medium hover:bg-brand/20 transition-colors col-span-2 disabled:opacity-50">
+                    {verifyingAll ? 'Verifying...' : 'Run Full Verification'}
+                  </button>
+                  <button onClick={async () => {
+                    try {
+                      const result = await verifyDEA({});
+                      setVerifyResult({ dea: result });
+                      toast.success(result.valid ? 'DEA checksum valid' : 'DEA checksum failed');
+                    } catch { toast.error('DEA check failed'); }
+                  }} disabled={verifyingDEA} className="bg-surface-elevated border border-separator rounded-lg py-2 text-[11px] font-medium disabled:opacity-50">
+                    {verifyingDEA ? '...' : 'Verify DEA'}
+                  </button>
+                  <button onClick={() => { window.open('https://exclusions.oig.hhs.gov/', '_blank'); toast.success('OIG LEIE opened'); }}
+                    className="bg-surface-elevated border border-separator rounded-lg py-2 text-[11px] font-medium">
+                    Check OIG LEIE
+                  </button>
+                </div>
+                {verifyResult && (
+                  <div className="mt-2 bg-surface-elevated rounded-lg p-3 text-[11px] space-y-1">
+                    {verifyResult.dea && (
+                      <div className="flex justify-between"><span>DEA:</span><span className={verifyResult.dea.valid ? 'text-brand' : 'text-brand-deep font-medium'}>{verifyResult.dea.valid ? '✓ Valid' : '✗ Invalid'} {verifyResult.dea.reason?.slice(0, 30)}</span></div>
+                    )}
+                    {verifyResult.npi && (
+                      <div className="flex justify-between"><span>NPI:</span><span className={verifyResult.npi.verified ? 'text-brand' : 'text-content-tertiary'}>{verifyResult.npi.verified ? `✓ ${verifyResult.npi.name}` : verifyResult.npi.error ? 'Manual check needed' : '✗ Not found'}</span></div>
+                    )}
+                    {verifyResult.exclusions && (
+                      <div className="flex justify-between"><span>Exclusions:</span><span className={verifyResult.exclusions.excluded ? 'text-brand-deep font-bold' : 'text-brand'}>{verifyResult.exclusions.excluded === false ? '✓ Clear' : verifyResult.exclusions.excluded ? '⚠ EXCLUDED' : 'Manual check needed'}</span></div>
+                    )}
+                  </div>
+                )}
             </div>
           </div>
         </>
@@ -222,6 +267,36 @@ export default function CredentialingPage() {
           ))}
         </div>
       </div>
+
+      {/* ── AI Credential Risk Scores ── */}
+      {riskData?.data && riskData.data.length > 0 && (
+        <div className="card p-4 mt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold">Ai Credential Risk Scores</h3>
+            <div className="flex gap-2 text-[11px]">
+              {riskData.summary?.critical > 0 && <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">{riskData.summary.critical} Critical</span>}
+              {riskData.summary?.high > 0 && <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">{riskData.summary.high} High</span>}
+              <span className="px-2 py-0.5 rounded-full bg-brand/10 text-brand font-medium">Avg: {riskData.summary?.avg_score}/100</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {riskData.data.slice(0, 8).map((p, idx) => (
+              <div key={`risk-${idx}`} className="flex items-center gap-3 bg-surface-elevated rounded-lg px-3 py-2">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-[13px] ${p.risk_level === 'critical' ? 'bg-red-500' : p.risk_level === 'high' ? 'bg-orange-500' : p.risk_level === 'medium' ? 'bg-yellow-500' : 'bg-brand'}`}>
+                  {p.risk_score}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-medium truncate">{p.provider_name}</div>
+                  <div className="text-[11px] text-content-tertiary truncate">{p.flags.slice(0, 2).join(' · ')}</div>
+                </div>
+                <span className={`text-[11px] px-1.5 py-0.5 rounded-full border font-medium ${p.risk_level === 'critical' ? 'bg-red-50 text-red-700 border-red-200' : p.risk_level === 'high' ? 'bg-orange-50 text-orange-700 border-orange-200' : p.risk_level === 'medium' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-brand/10 text-brand border-brand/20'}`}>
+                  {p.risk_level}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </ModuleShell>
   )
 }
