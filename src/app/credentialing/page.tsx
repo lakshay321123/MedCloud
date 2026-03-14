@@ -212,7 +212,7 @@ export default function CredentialingPage() {
                     try {
                       const result = await verifyDEA({});
                       setVerifyResult({ dea: result });
-                      toast.success(result.valid ? 'DEA checksum valid' : 'DEA checksum failed');
+                      toast.success(result?.valid ? 'DEA checksum valid' : 'DEA checksum failed');
                     } catch { toast.error('DEA check failed'); }
                   }} disabled={verifyingDEA} className="bg-surface-elevated border border-separator rounded-lg py-2 text-[11px] font-medium disabled:opacity-50">
                     {verifyingDEA ? '...' : 'Verify DEA'}
