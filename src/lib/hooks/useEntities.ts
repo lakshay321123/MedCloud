@@ -2223,3 +2223,70 @@ export function useAnalyticsForecasting() {
   const params = useClientParams({})
   return useApi<{ recent_months: Array<{ month: string; billed: string; claims: number }>; forecast: ApiForecast[]; method: string }>('/analytics/forecasting', params)
 }
+
+// ── Data Import / Onboarding ────────────────────────────────────────────────
+export interface ApiImportJob {
+  id: string
+  org_id: string
+  client_id: string
+  file_name: string
+  file_type: string
+  entity_type: string
+  total_rows: number
+  imported_count: number
+  skipped_count: number
+  updated_count: number
+  error_count: number
+  errors: Array<{ row: number; field?: string; reason: string }>
+  column_mapping: Record<string, string>
+  duplicate_strategy: string
+  status: string
+  imported_by: string
+  created_at: string
+  completed_at: string
+}
+
+export interface ImportPreviewResult {
+  valid: boolean
+  errors: Array<{ row: number; field: string; reason: string }>
+  preview_count: number
+}
+
+export interface ImportExecuteResult {
+  job_id: string
+  entity_type: string
+  total_rows: number
+  imported_count: number
+  skipped_count: number
+  updated_count: number
+  error_count: number
+  errors: Array<{ row: number; reason: string }>
+  status: string
+}
+
+export function useImportJobs(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiImportJob>>('/import/jobs', params)
+}
+
+export function useImportJob(id: string | null) {
+  return useApi<ApiImportJob>(id ? `/import/jobs/${id}` : null, {})
+}
+
+export function useImportPreview() {
+  return useMutation<ImportPreviewResult, {
+    entity_type: string
+    rows: Record<string, unknown>[]
+  }>('post', '/import/preview')
+}
+
+export function useImportExecute() {
+  return useMutation<ImportExecuteResult, {
+    entity_type: string
+    rows: Record<string, unknown>[]
+    column_mapping?: Record<string, string>
+    duplicate_strategy?: string
+    file_name?: string
+    file_type?: string
+  }>('post', '/import/execute')
+}
