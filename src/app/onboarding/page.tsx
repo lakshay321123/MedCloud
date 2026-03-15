@@ -4,7 +4,7 @@ import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
 import { Upload, FileSpreadsheet, Users, Building2, DollarSign, Stethoscope, CalendarDays, CheckCircle2, AlertCircle, X, ChevronRight, Loader2, RotateCcw, ArrowLeft, Info, Plug, Globe, Wifi, WifiOff, RefreshCw, Trash2, Server } from 'lucide-react'
-import { useImportJobs, useImportPreview, useImportExecute, useClients, ApiImportJob, useEhrConnections, useCreateEhrConnection, useTestEhrConnection, usePullEhrData, ApiEhrConnection } from '@/lib/hooks'
+import { useImportJobs, useImportPreview, useImportExecute, useClients, ApiImportJob, useEhrConnections, useCreateEhrConnection, ApiEhrConnection } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
 import * as XLSX from 'xlsx'
 
@@ -732,7 +732,7 @@ export default function OnboardingPage() {
 
               {/* Vendor selector */}
               <div className="mb-4">
-                <label className="text-[12px] font-semibold text-content-secondary mb-1.5 block">EHR Vendor</label>
+                <label htmlFor="ehr-vendor" className="text-[12px] font-semibold text-content-secondary mb-1.5 block">EHR Vendor</label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {EHR_VENDORS.map(v => (
                     <button key={v.id} type="button" onClick={() => setEhrForm((prev: typeof ehrForm) => ({ ...prev, vendor: v.id, display_name: v.label }))}
@@ -746,7 +746,7 @@ export default function OnboardingPage() {
 
               {/* FHIR URL */}
               <div className="mb-4">
-                <label className="text-[12px] font-semibold text-content-secondary mb-1.5 block">FHIR Base URL *</label>
+                <label htmlFor="ehr-fhir-url" className="text-[12px] font-semibold text-content-secondary mb-1.5 block">FHIR Base URL *</label>
                 <input type="url" value={ehrForm.fhir_base_url} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEhrForm((prev: typeof ehrForm) => ({ ...prev, fhir_base_url: e.target.value }))}
                   placeholder="https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4"
                   className="w-full px-3 py-2 rounded-lg border border-separator bg-surface-primary text-[13px] focus:outline-none focus:border-brand placeholder:text-content-tertiary" />
@@ -755,13 +755,13 @@ export default function OnboardingPage() {
               {/* OAuth credentials */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="text-[12px] font-semibold text-content-secondary mb-1.5 block">OAuth Client ID</label>
+                  <label htmlFor="ehr-client-id" className="text-[12px] font-semibold text-content-secondary mb-1.5 block">OAuth Client ID</label>
                   <input type="text" value={ehrForm.oauth_client_id} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEhrForm((prev: typeof ehrForm) => ({ ...prev, oauth_client_id: e.target.value }))}
                     placeholder="your-client-id"
                     className="w-full px-3 py-2 rounded-lg border border-separator bg-surface-primary text-[13px] focus:outline-none focus:border-brand placeholder:text-content-tertiary" />
                 </div>
                 <div>
-                  <label className="text-[12px] font-semibold text-content-secondary mb-1.5 block">OAuth Client Secret</label>
+                  <label htmlFor="ehr-client-secret" className="text-[12px] font-semibold text-content-secondary mb-1.5 block">OAuth Client Secret</label>
                   <input type="password" value={ehrForm.oauth_client_secret} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEhrForm((prev: typeof ehrForm) => ({ ...prev, oauth_client_secret: e.target.value }))}
                     placeholder="your-client-secret"
                     className="w-full px-3 py-2 rounded-lg border border-separator bg-surface-primary text-[13px] focus:outline-none focus:border-brand placeholder:text-content-tertiary" />
@@ -770,13 +770,13 @@ export default function OnboardingPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <label className="text-[12px] font-semibold text-content-secondary mb-1.5 block">Token Endpoint</label>
+                  <label htmlFor="ehr-token-endpoint" className="text-[12px] font-semibold text-content-secondary mb-1.5 block">Token Endpoint</label>
                   <input type="url" value={ehrForm.token_endpoint} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEhrForm((prev: typeof ehrForm) => ({ ...prev, token_endpoint: e.target.value }))}
                     placeholder="https://fhir.epic.com/interconnect-fhir-oauth/oauth2/token"
                     className="w-full px-3 py-2 rounded-lg border border-separator bg-surface-primary text-[13px] focus:outline-none focus:border-brand placeholder:text-content-tertiary" />
                 </div>
                 <div>
-                  <label className="text-[12px] font-semibold text-content-secondary mb-1.5 block">Scope</label>
+                  <label htmlFor="ehr-scope" className="text-[12px] font-semibold text-content-secondary mb-1.5 block">Scope</label>
                   <input type="text" value={ehrForm.scope} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEhrForm((prev: typeof ehrForm) => ({ ...prev, scope: e.target.value }))}
                     className="w-full px-3 py-2 rounded-lg border border-separator bg-surface-primary text-[13px] focus:outline-none focus:border-brand" />
                 </div>

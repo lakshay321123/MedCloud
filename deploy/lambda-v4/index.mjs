@@ -11522,30 +11522,56 @@ Return ONLY the JSON, no other text.`;
         }
 
         // TODO: Full OAuth2 token acquisition + Bulk Data export
-        // For now, attempt basic FHIR search for each resource type
+        // Paginated FHIR search for each resource type (follows Bundle.link next)
         const results = { resources_pulled: {}, errors: [], total_records: 0 };
+        const MAX_PAGES = 10; // Safety cap: 10 pages x 100 = max 1000 records per resource
 
         for (const resType of resource_types) {
           try {
-            const searchUrl = `${conn.fhir_base_url}/${resType}?_count=100`;
-            const resp = await fetch(searchUrl, {
-              headers: { 'Accept': 'application/fhir+json' },
-              signal: AbortSignal.timeout(30000),
-            });
+            let pageUrl = `${conn.fhir_base_url}/${resType}?_count=100`;
+            const allEntries = [];
+            let pageCount = 0;
 
-            if (!resp.ok) {
-              results.errors.push({ resource: resType, reason: `${resp.status}: ${resp.statusText}` });
-              continue;
+            // Paginate through all pages
+            while (pageUrl && pageCount < MAX_PAGES) {
+              // Validate each page URL for SSRF (next links could be different domains)
+              if (pageCount > 0) {
+                try {
+                  const parsed = new URL(pageUrl);
+                  if (parsed.protocol !== 'https:') break;
+                } catch { break; }
+              }
+
+              const resp = await fetch(pageUrl, {
+                headers: { 'Accept': 'application/fhir+json' },
+                signal: AbortSignal.timeout(30000),
+              });
+
+              if (!resp.ok) {
+                if (pageCount === 0) results.errors.push({ resource: resType, reason: `${resp.status}: ${resp.statusText}` });
+                break;
+              }
+
+              const bundle = await resp.json();
+              const entries = bundle.entry || [];
+              allEntries.push(...entries);
+              pageCount++;
+
+              // Find next page URL from Bundle.link
+              const nextLink = (bundle.link || []).find(l => l.relation === 'next');
+              pageUrl = nextLink?.url || null;
+
+              safeLog('info', `[fhir-pull] ${resType} page ${pageCount}: ${entries.length} entries${nextLink ? ', has next' : ', last page'}`);
             }
 
-            const bundle = await resp.json();
-            const entries = bundle.entry || [];
-            results.resources_pulled[resType] = entries.length;
-            results.total_records += entries.length;
+            if (allEntries.length === 0 && pageCount === 0) continue;
+
+            results.resources_pulled[resType] = allEntries.length;
+            results.total_records += allEntries.length;
 
             // Transform FHIR resources to MedCloud rows and import
             const mappedRows = [];
-            for (const entry of entries) {
+            for (const entry of allEntries) {
               const r = entry.resource;
               if (!r) continue;
 
