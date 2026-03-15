@@ -7834,7 +7834,8 @@ export const handler = async (event) => {
       body.doc_type = body.document_type;
     }
 
-    if (path.includes('/documents') && !path.includes('/upload-url') && !path.includes('/textract') && !path.includes('/classify') && !path.includes('/extract-rates') && !path.includes('/extract-codes') && !path.includes('/match-entity') && !path.includes('/link-entity')) {
+    const DOC_SUB_ROUTES = ['/upload-url', '/textract', '/classify', '/extract-rates', '/extract-codes', '/match-entity', '/link-entity'];
+    if (path.includes('/documents') && !DOC_SUB_ROUTES.some(r => path.includes(r))) {
       if (method === 'GET' && !pathParams.id) {
         // Enriched document list — JOIN patients for name, filter by patient_id if requested
         let q = `SELECT d.*, 
@@ -7939,11 +7940,13 @@ export const handler = async (event) => {
       const docText = doc.textract_result?.text || doc.file_name || '';
       const extractedFields = doc.textract_result?.extracted_fields || {};
 
-      // Get all providers and payers for this org/client
-      const cf = clientId ? ` AND client_id = '${clientId}'` : '';
+      // Get all providers and payers for this org/client (parameterized to prevent SQL injection)
+      const provParams = [effectiveOrgId];
+      let provFilter = '';
+      if (clientId) { provParams.push(clientId); provFilter = ` AND client_id = $${provParams.length}`; }
       const provRows = await orgQuery(effectiveOrgId,
-        `SELECT id, first_name, last_name, npi, specialty FROM providers WHERE org_id = $1${cf} ORDER BY last_name`,
-        [effectiveOrgId]);
+        `SELECT id, first_name, last_name, npi, specialty FROM providers WHERE org_id = $1${provFilter} ORDER BY last_name`,
+        provParams);
       const payerRows = await orgQuery(effectiveOrgId,
         `SELECT id, name FROM payers WHERE org_id = $1 ORDER BY name`,
         [effectiveOrgId]);

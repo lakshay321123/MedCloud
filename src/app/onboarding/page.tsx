@@ -592,8 +592,10 @@ export default function OnboardingPage() {
     const pending = docFiles.filter((f: DocFile) => f.status === 'pending')
     if (pending.length === 0) return
     setDocUploading(true)
+    try {
     const { api } = await import('@/lib/api-client')
-    const S3_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET || 'medcloud-documents-us-prod'
+    const S3_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET
+    if (!S3_BUCKET) console.warn('NEXT_PUBLIC_S3_BUCKET not set, using server-provided bucket')
 
     for (const df of pending) {
       const fileId = df.id
@@ -608,8 +610,11 @@ export default function OnboardingPage() {
           folder: `onboarding/${fileCategory}`,
         }) as unknown as { upload_url: string; s3_key: string }
 
-        // Step 2: Upload to S3 + check response (#12)
-        if (uploadRes.upload_url) {
+        // Step 2: Upload to S3 — require presigned URL from server
+        if (!uploadRes.upload_url || !uploadRes.s3_key) {
+          throw new Error('Server did not return upload URL or S3 key')
+        }
+        {
           const s3Resp = await fetch(uploadRes.upload_url, {
             method: 'PUT',
             body: df.file,
@@ -622,8 +627,8 @@ export default function OnboardingPage() {
         const docRes = await api.post('/documents', {
           document_type: fileCategory.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
           file_name: df.name,
-          s3_key: uploadRes.s3_key || `onboarding/${fileCategory}/${df.name}`,
-          s3_bucket: S3_BUCKET,
+          s3_key: uploadRes.s3_key,
+          s3_bucket: S3_BUCKET || 'medcloud-documents-us-prod',
           content_type: df.file.type,
           file_size: df.file.size,
           source: 'Onboarding Upload',
@@ -684,7 +689,9 @@ export default function OnboardingPage() {
         toast.error(`Failed: ${df.name}`)
       }
     }
-    setDocUploading(false)
+    } finally {
+      setDocUploading(false)
+    }
   }, [docFiles, toast])
 
   const removeDocFile = useCallback((fileId: string) => {
@@ -706,7 +713,7 @@ export default function OnboardingPage() {
   // ── Compute progress from import jobs ───────────────────────────────────────
   const completedEntities = new Set(
     (jobs || [])
-      .filter((j: ApiImportJob) => j.status === 'completed' && (j.imported_count || 0) > 0)
+      .filter((j: ApiImportJob) => j.status === 'completed' && ((j.imported_count || 0) > 0 || (j.updated_count || 0) > 0))
       .map((j: ApiImportJob) => j.entity_type)
   )
 
@@ -1317,9 +1324,12 @@ export default function OnboardingPage() {
 
           {/* Drop zone */}
           <div
+            role="button"
+            tabIndex={0}
             onDrop={handleDocDrop}
             onDragOver={(e: React.DragEvent) => e.preventDefault()}
-            className="border-2 border-dashed border-separator rounded-[12px] p-8 text-center hover:border-brand/40 transition-colors cursor-pointer mb-4"
+            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('doc-file-input')?.click() } }}
+            className="border-2 border-dashed border-separator rounded-[12px] p-8 text-center hover:border-brand/40 focus:border-brand/60 focus:outline-none focus:ring-2 focus:ring-brand/20 transition-colors cursor-pointer mb-4"
             onClick={() => document.getElementById('doc-file-input')?.click()}
           >
             <Upload className="w-8 h-8 text-content-tertiary mx-auto mb-2" />
