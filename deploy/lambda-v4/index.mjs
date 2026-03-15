@@ -9612,7 +9612,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       for (const table of TABLES) {
         try {
           const countQ = await orgQuery(effectiveOrgId,
-            `SELECT COUNT(*) as total FROM ${table} WHERE org_id = $1 AND (client_id IS NULL OR client_id = '')`,
+            `SELECT COUNT(*) as total FROM ${table} WHERE org_id = $1 AND client_id IS NULL`,
             [effectiveOrgId]);
           const orphanCount = parseInt(countQ.rows[0]?.total || 0);
 
@@ -9624,13 +9624,14 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
               table === 'claims' ? 'claim_number' :
               table === 'appointments' ? 'appointment_date' :
               'first_name';
-            const secondCol = ['patients', 'providers'].includes(table) ? ", last_name, npi" :
+            const secondCol = table === 'providers' ? ", last_name, npi" :
+              table === 'patients' ? ", last_name" :
               table === 'documents' ? ", doc_type, category" :
               table === 'fee_schedules' ? ", contracted_rate, payer_id" :
               '';
 
             const sampleQ = await orgQuery(effectiveOrgId,
-              `SELECT id, ${nameCol}${secondCol} FROM ${table} WHERE org_id = $1 AND (client_id IS NULL OR client_id = '') ORDER BY created_at DESC LIMIT 20`,
+              `SELECT id, ${nameCol}${secondCol} FROM ${table} WHERE org_id = $1 AND client_id IS NULL ORDER BY created_at DESC LIMIT 20`,
               [effectiveOrgId]);
 
             result[table] = {
@@ -9674,7 +9675,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       for (const table of targetTables) {
         try {
           const r = await orgQuery(effectiveOrgId,
-            `UPDATE ${table} SET client_id = $1, updated_at = NOW() WHERE org_id = $2 AND (client_id IS NULL OR client_id = '')`,
+            `UPDATE ${table} SET client_id = $1, updated_at = NOW() WHERE org_id = $2 AND client_id IS NULL`,
             [client_id, effectiveOrgId]);
           results[table] = r.rowCount;
         } catch (e) {

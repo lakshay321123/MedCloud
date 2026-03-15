@@ -284,8 +284,11 @@ export default function OnboardingPage() {
       try {
         const { api } = await import('@/lib/api-client')
         const res = await api.get('/admin/orphaned-records', { org_id: currentUser.organization_id, role: 'admin' }) as unknown as { orphaned: Record<string, { count: number; samples: Array<{ id: string; label: string }> }>; total: number }
-        if (res.total > 0) setOrphanData(res)
-      } catch { /* ignore */ }
+        setOrphanData(res)
+      } catch (e) {
+        console.error('Failed to fetch orphaned records:', e)
+        setOrphanData({ orphaned: {}, total: 0 })
+      }
     }
     fetchOrphans()
   }, [currentUser])
