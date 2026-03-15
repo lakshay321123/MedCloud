@@ -776,6 +776,31 @@ async function runSchemaMigration() {
     )`);
   } catch (e) { if (e.code !== '42P07') safeLog('warn', 'import_jobs:', e.message); }
 
+  // ── ehr_connections table for FHIR/HL7 API integrations ───────────────────
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS ehr_connections (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      org_id UUID NOT NULL,
+      client_id UUID,
+      vendor VARCHAR(50) NOT NULL,
+      display_name VARCHAR(200),
+      fhir_base_url TEXT,
+      auth_type VARCHAR(30) DEFAULT 'oauth2',
+      oauth_client_id TEXT,
+      oauth_client_secret_encrypted TEXT,
+      token_endpoint TEXT,
+      scope TEXT DEFAULT 'system/*.read',
+      status VARCHAR(30) DEFAULT 'configured',
+      last_sync_at TIMESTAMPTZ,
+      last_error TEXT,
+      resources_available JSONB DEFAULT '[]',
+      metadata JSONB DEFAULT '{}',
+      created_by UUID,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
+  } catch (e) { if (e.code !== '42P07') safeLog('warn', 'ehr_connections:', e.message); }
+
   safeLog('info', `Column fixes applied (${colFixes.length} statements)`);
 }
 
@@ -11275,6 +11300,301 @@ Return ONLY the JSON, no other text.`;
         if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Import job not found' });
         await auditLog(effectiveOrgId, userId, 'read', 'import_jobs', pathParams.id, { entity_type: r.entity_type });
         return respond(200, r);
+      }
+    }
+
+    // ════ EHR CONNECTIONS (FHIR API) ══════════════════════════════════════════
+    if (resource === 'ehr-connections') {
+      // Security: Only admin/director
+      if (!['admin', 'director'].includes(filterRole)) {
+        return respond(403, { error: 'EHR connections require admin or director role' });
+      }
+
+      // GET /ehr-connections — list connections
+      if (method === 'GET' && !pathParams.id) {
+        try {
+          let q = `SELECT id, org_id, client_id, vendor, display_name, fhir_base_url, auth_type, status, last_sync_at, last_error, resources_available, created_at, updated_at FROM ehr_connections WHERE org_id = $1`;
+          const params = [effectiveOrgId];
+          if (clientId) { params.push(clientId); q += ` AND client_id = $${params.length}`; }
+          q += ' ORDER BY created_at DESC';
+          const r = await orgQuery(effectiveOrgId, q, params);
+          return respond(200, { data: r.rows, total: r.rows.length });
+        } catch (e) {
+          if (e.code === '42P01' || e.message?.includes('does not exist')) return respond(200, { data: [], total: 0 });
+          throw e;
+        }
+      }
+
+      // GET /ehr-connections/:id — single connection (never expose secret)
+      if (method === 'GET' && pathParams.id) {
+        const r = await getById('ehr_connections', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Connection not found' });
+        delete r.oauth_client_secret_encrypted;
+        return respond(200, r);
+      }
+
+      // POST /ehr-connections — create connection
+      if (method === 'POST' && !pathParams.id && !path.includes('/test') && !path.includes('/pull')) {
+        const { vendor, display_name, fhir_base_url, auth_type, oauth_client_id, oauth_client_secret, token_endpoint, scope } = body;
+        if (!vendor || !fhir_base_url) return respond(400, { error: 'vendor and fhir_base_url required' });
+        const conn = await create('ehr_connections', {
+          vendor,
+          display_name: display_name || `${vendor} connection`,
+          fhir_base_url: fhir_base_url.replace(/\/+$/, ''), // strip trailing slash
+          auth_type: auth_type || 'oauth2',
+          oauth_client_id: oauth_client_id || null,
+          oauth_client_secret_encrypted: oauth_client_secret || null, // TODO: encrypt with KMS
+          token_endpoint: token_endpoint || null,
+          scope: scope || 'system/*.read',
+          status: 'configured',
+          client_id: clientId || null,
+          created_by: userId,
+        }, effectiveOrgId);
+        await auditLog(effectiveOrgId, userId, 'create', 'ehr_connections', conn.id, { vendor, fhir_base_url });
+        delete conn.oauth_client_secret_encrypted;
+        return respond(201, conn);
+      }
+
+      // PUT /ehr-connections/:id — update connection
+      if (method === 'PUT' && pathParams.id && !path.includes('/test') && !path.includes('/pull')) {
+        const existing = await getById('ehr_connections', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Connection not found' });
+        const updates = { ...body, updated_at: new Date().toISOString() };
+        // Rename secret field
+        if (updates.oauth_client_secret) {
+          updates.oauth_client_secret_encrypted = updates.oauth_client_secret;
+          delete updates.oauth_client_secret;
+        }
+        if (updates.fhir_base_url) updates.fhir_base_url = updates.fhir_base_url.replace(/\/+$/, '');
+        const updated = await update('ehr_connections', pathParams.id, updates);
+        delete updated.oauth_client_secret_encrypted;
+        return respond(200, updated);
+      }
+
+      // POST /ehr-connections/:id/test — test FHIR connection
+      if (path.includes('/test') && method === 'POST' && pathParams.id) {
+        const conn = await getById('ehr_connections', pathParams.id);
+        if (!conn || conn.org_id !== effectiveOrgId) return respond(404, { error: 'Connection not found' });
+
+        const testResult = { success: false, message: '', capabilities: [], vendor_info: {} };
+
+        try {
+          // Fetch FHIR Capability Statement (metadata endpoint)
+          // This is a public unauthenticated endpoint on all FHIR R4 servers
+          const metadataUrl = `${conn.fhir_base_url}/metadata`;
+          safeLog('info', `[ehr-test] Fetching ${metadataUrl}`);
+
+          // Use dynamic import for fetch (Node 18+ has global fetch)
+          const resp = await fetch(metadataUrl, {
+            headers: { 'Accept': 'application/fhir+json' },
+            signal: AbortSignal.timeout(15000),
+          });
+
+          if (!resp.ok) {
+            testResult.message = `FHIR server returned ${resp.status}: ${resp.statusText}`;
+            await update('ehr_connections', pathParams.id, { status: 'error', last_error: testResult.message, updated_at: new Date().toISOString() });
+            return respond(200, testResult);
+          }
+
+          const cap = await resp.json();
+
+          // Extract supported resources from CapabilityStatement
+          const resources = [];
+          if (cap.rest && cap.rest[0] && cap.rest[0].resource) {
+            for (const r of cap.rest[0].resource) {
+              resources.push({
+                type: r.type,
+                interactions: (r.interaction || []).map(i => i.code),
+                searchParams: (r.searchParam || []).map(s => s.name),
+              });
+            }
+          }
+
+          // Map FHIR resources to MedCloud entities
+          const FHIR_TO_MEDCLOUD = {
+            'Patient': 'patients',
+            'Practitioner': 'providers',
+            'Coverage': 'insurance',
+            'Claim': 'claims',
+            'ExplanationOfBenefit': 'payments',
+            'Appointment': 'appointments',
+            'Condition': 'diagnoses',
+            'MedicationRequest': 'medications',
+            'Organization': 'payers',
+          };
+
+          const availableResources = resources
+            .filter(r => FHIR_TO_MEDCLOUD[r.type])
+            .map(r => ({
+              fhir_resource: r.type,
+              medcloud_entity: FHIR_TO_MEDCLOUD[r.type],
+              can_read: r.interactions.includes('read') || r.interactions.includes('search-type'),
+              can_search: r.interactions.includes('search-type'),
+            }));
+
+          testResult.success = true;
+          testResult.message = `Connected successfully. FHIR ${cap.fhirVersion || 'R4'} server with ${resources.length} resources. ${availableResources.length} mappable to MedCloud.`;
+          testResult.capabilities = availableResources;
+          testResult.vendor_info = {
+            fhir_version: cap.fhirVersion,
+            software: cap.software?.name,
+            software_version: cap.software?.version,
+            publisher: cap.publisher,
+            total_resources: resources.length,
+          };
+
+          // Update connection status
+          await update('ehr_connections', pathParams.id, {
+            status: 'connected',
+            last_error: null,
+            resources_available: JSON.stringify(availableResources),
+            updated_at: new Date().toISOString(),
+          });
+
+          await auditLog(effectiveOrgId, userId, 'test_connection', 'ehr_connections', pathParams.id, { success: true, resources: availableResources.length });
+
+          return respond(200, testResult);
+        } catch (e) {
+          testResult.message = `Connection failed: ${e.message?.substring(0, 200)}`;
+          await update('ehr_connections', pathParams.id, { status: 'error', last_error: testResult.message, updated_at: new Date().toISOString() });
+          return respond(200, testResult);
+        }
+      }
+
+      // POST /ehr-connections/:id/pull — pull data from FHIR API
+      if (path.includes('/pull') && method === 'POST' && pathParams.id) {
+        const conn = await getById('ehr_connections', pathParams.id);
+        if (!conn || conn.org_id !== effectiveOrgId) return respond(404, { error: 'Connection not found' });
+
+        const { resource_types } = body; // e.g. ['Patient', 'Practitioner', 'Coverage']
+        if (!Array.isArray(resource_types) || resource_types.length === 0) {
+          return respond(400, { error: 'resource_types[] required (e.g. ["Patient", "Practitioner"])' });
+        }
+
+        // TODO: Full OAuth2 token acquisition + Bulk Data export
+        // For now, attempt basic FHIR search for each resource type
+        const results = { resources_pulled: {}, errors: [], total_records: 0 };
+
+        for (const resType of resource_types) {
+          try {
+            const searchUrl = `${conn.fhir_base_url}/${resType}?_count=100`;
+            const resp = await fetch(searchUrl, {
+              headers: { 'Accept': 'application/fhir+json' },
+              signal: AbortSignal.timeout(30000),
+            });
+
+            if (!resp.ok) {
+              results.errors.push({ resource: resType, reason: `${resp.status}: ${resp.statusText}` });
+              continue;
+            }
+
+            const bundle = await resp.json();
+            const entries = bundle.entry || [];
+            results.resources_pulled[resType] = entries.length;
+            results.total_records += entries.length;
+
+            // Transform FHIR resources to MedCloud rows and import
+            const mappedRows = [];
+            for (const entry of entries) {
+              const r = entry.resource;
+              if (!r) continue;
+
+              if (resType === 'Patient') {
+                mappedRows.push({
+                  first_name: r.name?.[0]?.given?.[0] || '',
+                  last_name: r.name?.[0]?.family || '',
+                  dob: r.birthDate || null,
+                  gender: r.gender || null,
+                  phone: r.telecom?.find(t => t.system === 'phone')?.value || null,
+                  email: r.telecom?.find(t => t.system === 'email')?.value || null,
+                  address: r.address?.[0]?.line?.[0] || null,
+                  city: r.address?.[0]?.city || null,
+                  state: r.address?.[0]?.state || null,
+                  zip: r.address?.[0]?.postalCode || null,
+                  mrn: r.identifier?.find(i => i.type?.coding?.[0]?.code === 'MR')?.value || null,
+                });
+              } else if (resType === 'Practitioner') {
+                mappedRows.push({
+                  first_name: r.name?.[0]?.given?.[0] || '',
+                  last_name: r.name?.[0]?.family || '',
+                  npi: r.identifier?.find(i => i.system === 'http://hl7.org/fhir/sid/us-npi')?.value || null,
+                  specialty: r.qualification?.[0]?.code?.text || null,
+                });
+              } else if (resType === 'Organization') {
+                mappedRows.push({
+                  payer_name: r.name || '',
+                  payer_id_code: r.identifier?.[0]?.value || null,
+                  phone: r.telecom?.find(t => t.system === 'phone')?.value || null,
+                });
+              } else if (resType === 'Appointment') {
+                mappedRows.push({
+                  appointment_date: r.start?.split('T')[0] || null,
+                  appointment_time: r.start?.split('T')[1]?.substring(0, 5) || null,
+                  status: r.status || null,
+                  appointment_type: r.appointmentType?.text || r.serviceType?.[0]?.text || null,
+                });
+              }
+            }
+
+            // Use the import execute logic if we have mapped rows
+            if (mappedRows.length > 0) {
+              const TABLE_MAP = { 'Patient': 'patients', 'Practitioner': 'providers', 'Organization': 'payers', 'Appointment': 'appointments' };
+              const table = TABLE_MAP[resType];
+              if (table) {
+                let importedCount = 0;
+                for (const row of mappedRows) {
+                  try {
+                    if (clientId) row.client_id = clientId;
+                    await create(table, row, effectiveOrgId);
+                    importedCount++;
+                  } catch (e) {
+                    // Skip dupes silently
+                    if (!e.message?.includes('duplicate')) {
+                      results.errors.push({ resource: resType, reason: e.message?.substring(0, 100) });
+                    }
+                  }
+                }
+                results.resources_pulled[resType] = importedCount;
+              }
+            }
+          } catch (e) {
+            results.errors.push({ resource: resType, reason: e.message?.substring(0, 200) });
+          }
+        }
+
+        // Create import job for audit trail
+        await create('import_jobs', {
+          file_name: `fhir-pull-${conn.vendor}`,
+          file_type: 'fhir',
+          entity_type: resource_types.join(','),
+          total_rows: results.total_records,
+          imported_count: Object.values(results.resources_pulled).reduce((a, b) => a + b, 0),
+          error_count: results.errors.length,
+          errors: JSON.stringify(results.errors),
+          status: 'completed',
+          imported_by: userId,
+          client_id: clientId || null,
+          completed_at: new Date().toISOString(),
+        }, effectiveOrgId);
+
+        // Update connection last_sync
+        await update('ehr_connections', pathParams.id, {
+          last_sync_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+        await auditLog(effectiveOrgId, userId, 'fhir_pull', 'ehr_connections', pathParams.id, results);
+
+        return respond(200, results);
+      }
+
+      // DELETE /ehr-connections/:id
+      if (method === 'DELETE' && pathParams.id) {
+        const existing = await getById('ehr_connections', pathParams.id);
+        if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Connection not found' });
+        await pool.query('DELETE FROM ehr_connections WHERE id = $1 AND org_id = $2', [pathParams.id, effectiveOrgId]);
+        await auditLog(effectiveOrgId, userId, 'delete', 'ehr_connections', pathParams.id, { vendor: existing.vendor });
+        return respond(200, { deleted: true });
       }
     }
 

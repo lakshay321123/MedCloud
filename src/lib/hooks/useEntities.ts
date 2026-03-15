@@ -2290,3 +2290,72 @@ export function useImportExecute() {
     file_type?: string
   }>('post', '/import/execute')
 }
+
+// ── EHR Connections (FHIR API) ──────────────────────────────────────────────
+export interface ApiEhrConnection {
+  id: string
+  org_id: string
+  client_id: string
+  vendor: string
+  display_name: string
+  fhir_base_url: string
+  auth_type: string
+  oauth_client_id: string
+  status: string
+  last_sync_at: string | null
+  last_error: string | null
+  resources_available: Array<{ fhir_resource: string; medcloud_entity: string; can_read: boolean; can_search: boolean }>
+  created_at: string
+  updated_at: string
+}
+
+export interface EhrTestResult {
+  success: boolean
+  message: string
+  capabilities: Array<{ fhir_resource: string; medcloud_entity: string; can_read: boolean; can_search: boolean }>
+  vendor_info: { fhir_version: string; software: string; software_version: string; publisher: string; total_resources: number }
+}
+
+export interface EhrPullResult {
+  resources_pulled: Record<string, number>
+  errors: Array<{ resource: string; reason: string }>
+  total_records: number
+}
+
+export function useEhrConnections(extra?: ApiListParams) {
+  const params = useClientParams(extra)
+  return useApi<ApiListResponse<ApiEhrConnection>>('/ehr-connections', params)
+}
+
+export function useEhrConnection(id: string | null) {
+  return useApi<ApiEhrConnection>(id ? `/ehr-connections/${id}` : '/ehr-connections', {}, { skip: !id })
+}
+
+export function useCreateEhrConnection() {
+  return useMutation<ApiEhrConnection, {
+    vendor: string
+    display_name?: string
+    fhir_base_url: string
+    auth_type?: string
+    oauth_client_id?: string
+    oauth_client_secret?: string
+    token_endpoint?: string
+    scope?: string
+  }>('post', '/ehr-connections')
+}
+
+export function useUpdateEhrConnection(id: string) {
+  return useMutation<ApiEhrConnection, Record<string, unknown>>('put', `/ehr-connections/${id}`)
+}
+
+export function useTestEhrConnection(id: string) {
+  return useMutation<EhrTestResult, Record<string, never>>('post', `/ehr-connections/${id}/test`)
+}
+
+export function usePullEhrData(id: string) {
+  return useMutation<EhrPullResult, { resource_types: string[] }>('post', `/ehr-connections/${id}/pull`)
+}
+
+export function useDeleteEhrConnection(id: string) {
+  return useMutation<{ deleted: boolean }, Record<string, never>>('delete', `/ehr-connections/${id}`)
+}
