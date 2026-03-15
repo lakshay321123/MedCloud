@@ -276,11 +276,13 @@ export default function OnboardingPage() {
 
   // ── Orphaned Records State ──────────────────────────────────────────────────
   const [orphanData, setOrphanData] = useState(null as null | { orphaned: Record<string, { count: number; samples: Array<{ id: string; label: string }> }>; total: number })
+  const [orphanLoading, setOrphanLoading] = useState(true)
   const [assigningClient, setAssigningClient] = useState(false)
 
   useEffect(() => {
-    if (!currentUser || currentUser.role !== 'admin') return
+    if (!currentUser || currentUser.role !== 'admin') { setOrphanLoading(false); return }
     const fetchOrphans = async () => {
+      setOrphanLoading(true)
       try {
         const { api } = await import('@/lib/api-client')
         const res = await api.get('/admin/orphaned-records', { org_id: currentUser.organization_id, role: 'admin' }) as unknown as { orphaned: Record<string, { count: number; samples: Array<{ id: string; label: string }> }>; total: number }
@@ -288,6 +290,8 @@ export default function OnboardingPage() {
       } catch (e) {
         console.error('Failed to fetch orphaned records:', e)
         setOrphanData({ orphaned: {}, total: 0 })
+      } finally {
+        setOrphanLoading(false)
       }
     }
     fetchOrphans()
@@ -302,7 +306,13 @@ export default function OnboardingPage() {
         client_id: selectedClient.id,
       }, { org_id: currentUser.organization_id, role: 'admin' }) as unknown as { assigned_to: { name: string }; total_assigned: number }
       toast.success(`Assigned ${res.total_assigned} records to ${res.assigned_to.name}`)
-      setOrphanData(null)
+      // Re-fetch orphaned records to get updated counts
+      setOrphanLoading(true)
+      try {
+        const updated = await api.get('/admin/orphaned-records', { org_id: currentUser.organization_id, role: 'admin' }) as unknown as { orphaned: Record<string, { count: number; samples: Array<{ id: string; label: string }> }>; total: number }
+        setOrphanData(updated)
+      } catch { setOrphanData({ orphaned: {}, total: 0 }) }
+      setOrphanLoading(false)
     } catch (e) {
       toast.error(`Assignment failed: ${(e as Error).message}`)
     }
@@ -1394,7 +1404,12 @@ export default function OnboardingPage() {
           ════════════════════════════════════════════════════════════════ */}
       {step === 'select' && mode === 'unmapped' && (
         <div>
-          {!orphanData || orphanData.total === 0 ? (
+          {orphanLoading ? (
+            <div className="card p-8 text-center">
+              <Loader2 className="w-8 h-8 text-brand mx-auto mb-3 animate-spin" />
+              <p className="text-sm text-content-secondary">Checking for unlinked records...</p>
+            </div>
+          ) : !orphanData || orphanData.total === 0 ? (
             <div className="card p-8 text-center">
               <CheckCircle2 className="w-10 h-10 text-brand mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-content-primary mb-2">All Data is Linked</h3>
