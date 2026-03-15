@@ -534,6 +534,20 @@ async function runSchemaMigration() {
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS textract_doc_type VARCHAR(50)",
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS page_count INT",
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS s3_bucket VARCHAR(200)",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS license_number VARCHAR(50)",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS license_state VARCHAR(10)",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS dea_number VARCHAR(20)",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS license_expiry DATE",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS dea_expiry DATE",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS board_certified BOOLEAN DEFAULT false",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS phone VARCHAR(20)",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS email VARCHAR(200)",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS credential VARCHAR(20)",
+    "ALTER TABLE patients ADD COLUMN IF NOT EXISTS city VARCHAR(100)",
+    "ALTER TABLE patients ADD COLUMN IF NOT EXISTS state VARCHAR(10)",
+    "ALTER TABLE patients ADD COLUMN IF NOT EXISTS zip VARCHAR(20)",
+    "ALTER TABLE payers ADD COLUMN IF NOT EXISTS type VARCHAR(50)",
+    "ALTER TABLE fee_schedules ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS provider_id UUID REFERENCES providers(id)",
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS payer_id UUID REFERENCES payers(id)",
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS category VARCHAR(100)",
@@ -11363,12 +11377,12 @@ Return ONLY the JSON, no other text.`;
         const resolvePayerByName = async (payerName) => {
           if (!payerName) return null;
           // Try payer_name column first, then name column as fallback
-          let q = `SELECT id FROM payers WHERE org_id = $1 AND (LOWER(payer_name) = LOWER($2) OR LOWER(name) = LOWER($2)) LIMIT 1`;
+          let q = `SELECT id FROM payers WHERE org_id = $1 AND LOWER(name) = LOWER($2) LIMIT 1`;
           let r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, payerName]);
           if (r.rows[0]) return r.rows[0].id;
           // Contains fallback — only if name is 4+ chars to avoid false positives
           if (payerName.length >= 4) {
-            q = `SELECT id FROM payers WHERE org_id = $1 AND (LOWER(payer_name) ILIKE $2 OR LOWER(name) ILIKE $2) LIMIT 1`;
+            q = `SELECT id FROM payers WHERE org_id = $1 AND LOWER(name) ILIKE $2 LIMIT 1`;
             r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, `%${payerName}%`]);
           }
           return r.rows[0]?.id || null;
@@ -11398,6 +11412,11 @@ Return ONLY the JSON, no other text.`;
                 row.status = 'submitted';
               }
 
+              // Normalize gender (constraint expects lowercase)
+              if (row.gender) {
+                row.gender = row.gender.toLowerCase();
+              }
+
               // Map payer_name to name for payers table
               if (entity_type === 'payers' && row.payer_name && !row.name) {
                 row.name = row.payer_name;
@@ -11407,12 +11426,28 @@ Return ONLY the JSON, no other text.`;
                 row.region = 'us';
               }
               // Remove non-DB fields (mapping helpers, internal markers)
+              // Keep payer_name for fee_schedules to resolve to payer_id
+              if (entity_type === 'fee_schedules' && row.payer_name && !row.payer_id) {
+                row.payer_id = await resolvePayerByName(row.payer_name);
+              }
               delete row.payer_name;
               delete row._rowIndex;
               delete row._original;
               delete row.patient_first_name;
               delete row.patient_last_name;
               delete row.provider_name;
+              // Strip fields that don't exist on target tables
+              if (entity_type === 'fee_schedules') {
+                // Allowlist: only keep columns that exist on fee_schedules table
+                const FEE_ALLOWED = ['payer_id', 'cpt_code', 'contracted_rate', 'effective_date', 'termination_date', 'client_id'];
+                const cleanRow = {};
+                for (const k of FEE_ALLOWED) {
+                  if (row[k] !== undefined) cleanRow[k] = row[k];
+                }
+                // Replace row contents
+                for (const k of Object.keys(row)) delete row[k];
+                Object.assign(row, cleanRow);
+              }
 
               // Source tracking is via audit_log and import_jobs table
               // Don't set row.source as not all entity tables have this column
@@ -11434,7 +11469,17 @@ Return ONLY the JSON, no other text.`;
               } else {
                 // Insert new
                 if (clientId) row.client_id = clientId;
-                await create(table, row, effectiveOrgId);
+                // For fee_schedules: build a clean object with only valid columns
+                if (entity_type === 'fee_schedules') {
+                  const cleanFee = { payer_id: row.payer_id, cpt_code: row.cpt_code, contracted_rate: row.contracted_rate, client_id: row.client_id };
+                  if (row.effective_date) cleanFee.effective_date = row.effective_date;
+                  if (row.termination_date) cleanFee.termination_date = row.termination_date;
+                  safeLog('info', `[import] fee_schedules cleanFee keys: ${Object.keys(cleanFee).join(',')}`);
+                  await create(table, cleanFee, effectiveOrgId);
+                } else {
+                  safeLog('info', `[import] ${entity_type} row keys: ${Object.keys(row).join(',')}`);
+                  await create(table, row, effectiveOrgId);
+                }
                 imported++;
               }
             } catch (e) {
