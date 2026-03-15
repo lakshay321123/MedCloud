@@ -11181,13 +11181,16 @@ Return ONLY the JSON, no other text.`;
                 row.status = 'submitted';
               }
 
-              // Remove non-DB fields
+              // Remove non-DB fields (mapping helpers, internal markers)
               delete row.payer_name;
               delete row._rowIndex;
               delete row._original;
+              delete row.patient_first_name;
+              delete row.patient_last_name;
+              delete row.provider_name;
 
-              // Add source tracking
-              row.source = 'ehr_import';
+              // Source tracking is via audit_log and import_jobs table
+              // Don't set row.source as not all entity tables have this column
 
               // Check for duplicate
               const dupeCheck = DUPE_CHECK[entity_type];
@@ -11199,7 +11202,7 @@ Return ONLY the JSON, no other text.`;
                   continue;
                 } else {
                   // Update existing
-                  delete row.source; // Don't overwrite source on update
+                  // Update existing record
                   await update(table, existingId, row);
                   updated++;
                   imported++;
