@@ -3,8 +3,8 @@ import React, { useState, useCallback, useRef, useMemo } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
-import { Upload, FileSpreadsheet, Users, Building2, DollarSign, Stethoscope, CalendarDays, CheckCircle2, AlertCircle, X, ChevronRight, Loader2, RotateCcw, ArrowLeft, Info } from 'lucide-react'
-import { useImportJobs, useImportPreview, useImportExecute, useClients, ApiImportJob } from '@/lib/hooks'
+import { Upload, FileSpreadsheet, Users, Building2, DollarSign, Stethoscope, CalendarDays, CheckCircle2, AlertCircle, X, ChevronRight, Loader2, RotateCcw, ArrowLeft, Info, Plug, Globe, Wifi, WifiOff, RefreshCw, Trash2, Server } from 'lucide-react'
+import { useImportJobs, useImportPreview, useImportExecute, useClients, ApiImportJob, useEhrConnections, useCreateEhrConnection, ApiEhrConnection } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
 import * as XLSX from 'xlsx'
 
@@ -232,10 +232,27 @@ export default function OnboardingPage() {
   const [dragOver, setDragOver] = useState(false)
   const fileRef = useRef(null as HTMLInputElement | null)
 
+  // ── Mode (tab) ─────────────────────────────────────────────────────────────
+  const [mode, setMode] = useState('upload' as 'upload' | 'connect')
+
+  // ── EHR Connection State ───────────────────────────────────────────────────
+  const [showAddConnection, setShowAddConnection] = useState(false)
+  const [ehrForm, setEhrForm] = useState({ vendor: 'epic', display_name: '', fhir_base_url: '', auth_type: 'oauth2', oauth_client_id: '', oauth_client_secret: '', token_endpoint: '', scope: 'system/*.read' })
+  const [testingId, setTestingId] = useState(null as string | null)
+  const [testResultMap, setTestResultMap] = useState({} as Record<string, { success: boolean; message: string; capabilities: Array<{ fhir_resource: string; medcloud_entity: string }> }>)
+  const [pullingId, setPullingId] = useState(null as string | null)
+  const [selectedResources, setSelectedResources] = useState([] as string[])
+  const [pullResultMap, setPullResultMap] = useState({} as Record<string, { resources_pulled: Record<string, number>; errors: Array<{ resource: string; reason: string }>; total_records: number }>)
+
   // ── API hooks ──────────────────────────────────────────────────────────────
   const { data: jobsData, refetch: refreshJobs } = useImportJobs({})
   const importPreview = useImportPreview()
   const importExecute = useImportExecute()
+
+  // ── EHR Connection hooks ───────────────────────────────────────────────────
+  const { data: ehrData, refetch: refreshEhr } = useEhrConnections({})
+  const createEhr = useCreateEhrConnection()
+  const ehrConnections = ehrData?.data || []
 
   const jobs = jobsData?.data || []
   const entityConfig = ENTITIES.find(e => e.id === entityType)
@@ -437,6 +454,73 @@ export default function OnboardingPage() {
   const mappedRequired = requiredFields.filter(f => Object.values(columnMap).includes(f.key))
   const allRequiredMapped = mappedRequired.length === requiredFields.length
 
+  // ── EHR Connection Handlers ────────────────────────────────────────────────
+  const EHR_VENDORS = [
+    { id: 'epic', label: 'Epic', desc: 'MyChart, App Orchard, SMART on FHIR' },
+    { id: 'cerner', label: 'Cerner (Oracle Health)', desc: 'Ignite APIs, Millennium, FHIR R4' },
+    { id: 'athena', label: 'Athenahealth', desc: 'Cloud-based, FHIR R4 + proprietary REST' },
+    { id: 'eclinicalworks', label: 'eClinicalWorks', desc: 'FHIR R4, V11+' },
+    { id: 'nextgen', label: 'NextGen', desc: 'FHIR R3/R4' },
+    { id: 'allscripts', label: 'Allscripts', desc: 'FHIR R4, Open API' },
+    { id: 'other', label: 'Other FHIR R4', desc: 'Any FHIR R4 compliant EHR' },
+  ]
+
+  const handleCreateConnection = useCallback(async () => {
+    if (!ehrForm.fhir_base_url || !ehrForm.vendor) {
+      toast.error('FHIR base URL and vendor are required')
+      return
+    }
+    try {
+      const res = await createEhr.mutate(ehrForm)
+      if (res) {
+        toast.success('Connection saved')
+        setShowAddConnection(false)
+        setEhrForm({ vendor: 'epic', display_name: '', fhir_base_url: '', auth_type: 'oauth2', oauth_client_id: '', oauth_client_secret: '', token_endpoint: '', scope: 'system/*.read' })
+        refreshEhr()
+      }
+    } catch (e) {
+      toast.error(`Failed to create connection: ${(e as Error).message}`)
+    }
+  }, [ehrForm, createEhr, toast, refreshEhr])
+
+  const handleTestConnection = useCallback(async (connId: string) => {
+    setTestingId(connId)
+    setTestResultMap((prev: Record<string, { success: boolean; message: string; capabilities: Array<{ fhir_resource: string; medcloud_entity: string }> }>) => { const n = { ...prev }; delete n[connId]; return n })
+    try {
+      const { api } = await import('@/lib/api-client')
+      const res = await api.post(`/ehr-connections/${connId}/test`, {}) as unknown as { success: boolean; message: string; capabilities: Array<{ fhir_resource: string; medcloud_entity: string }> }
+      setTestResultMap((prev: Record<string, { success: boolean; message: string; capabilities: Array<{ fhir_resource: string; medcloud_entity: string }> }>) => ({ ...prev, [connId]: res }))
+      refreshEhr()
+      res.success ? toast.success('Connection successful') : toast.error('Connection failed')
+    } catch (e) {
+      setTestResultMap((prev: Record<string, { success: boolean; message: string; capabilities: Array<{ fhir_resource: string; medcloud_entity: string }> }>) => ({ ...prev, [connId]: { success: false, message: (e as Error).message, capabilities: [] } }))
+      toast.error('Connection test failed')
+    }
+    setTestingId(null)
+  }, [refreshEhr, toast])
+
+  const handlePullData = useCallback(async (connId: string) => {
+    if (selectedResources.length === 0) {
+      toast.error('Select at least one resource type to pull')
+      return
+    }
+    setPullingId(connId)
+    setPullResultMap((prev: Record<string, { resources_pulled: Record<string, number>; errors: Array<{ resource: string; reason: string }>; total_records: number }>) => { const n = { ...prev }; delete n[connId]; return n })
+    try {
+      const { api } = await import('@/lib/api-client')
+      const res = await api.post(`/ehr-connections/${connId}/pull`, { resource_types: selectedResources }) as unknown as { resources_pulled: Record<string, number>; errors: Array<{ resource: string; reason: string }>; total_records: number }
+      setPullResultMap((prev: Record<string, { resources_pulled: Record<string, number>; errors: Array<{ resource: string; reason: string }>; total_records: number }>) => ({ ...prev, [connId]: res }))
+      refreshEhr()
+      refreshJobs()
+      const total = Object.values(res.resources_pulled).reduce((a: number, b: number) => a + b, 0)
+      toast.success(`Pulled ${total} records from ${selectedResources.length} resource types`)
+    } catch (e) {
+      setPullResultMap((prev: Record<string, { resources_pulled: Record<string, number>; errors: Array<{ resource: string; reason: string }>; total_records: number }>) => ({ ...prev, [connId]: { resources_pulled: {}, errors: [{ resource: 'all', reason: (e as Error).message }], total_records: 0 } }))
+      toast.error('Pull failed')
+    }
+    setPullingId(null)
+  }, [selectedResources, refreshEhr, refreshJobs, toast])
+
   // ═════════════════════════════════════════════════════════════════════════════
   // RENDER
   // ═════════════════════════════════════════════════════════════════════════════
@@ -449,10 +533,23 @@ export default function OnboardingPage() {
         {step !== 'select' && step !== 'upload' && <><ChevronRight className="w-4 h-4" /><span className="capitalize">{step}</span></>}
       </div>
 
-      {/* ════════════════════════════════════════════════════════════════════
-          STEP 1: SELECT ENTITY TYPE
-          ════════════════════════════════════════════════════════════════ */}
+      {/* ── Mode Tabs (Manual Upload | Connect EHR) ─────────────────────── */}
       {step === 'select' && (
+        <div className="flex gap-2 mb-6">
+          {[{ id: 'upload' as const, label: 'Manual Upload', icon: <Upload className="w-4 h-4" /> },
+            { id: 'connect' as const, label: 'Connect EHR', icon: <Plug className="w-4 h-4" /> }].map(t => (
+            <button key={t.id} type="button" onClick={() => setMode(t.id)}
+              className={`flex items-center gap-2 px-4 py-2 text-[13px] font-medium rounded-[10px] transition-all ${mode === t.id ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'}`}>
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════
+          STEP 1: SELECT ENTITY TYPE (Manual Upload mode)
+          ════════════════════════════════════════════════════════════════ */}
+      {step === 'select' && mode === 'upload' && (
         <div>
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-content-primary">What data are you importing?</h2>
@@ -507,6 +604,223 @@ export default function OnboardingPage() {
                             {j.status}
                           </span>
                         </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════
+          CONNECT EHR TAB
+          ════════════════════════════════════════════════════════════════ */}
+      {step === 'select' && mode === 'connect' && (
+        <div>
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-content-primary">Connect to EHR System</h2>
+            <p className="text-sm text-content-secondary mt-1">Pull patient demographics, provider data, and clinical records directly from your EHR via FHIR R4 API.</p>
+          </div>
+
+          {/* Existing connections */}
+          {ehrConnections.length > 0 && (
+            <div className="space-y-4 mb-6">
+              {ehrConnections.map((conn: ApiEhrConnection) => (
+                <div key={conn.id} className="card p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${conn.status === 'connected' ? 'bg-brand/10 text-brand' : conn.status === 'error' ? 'bg-brand-deep/10 text-brand-deep' : 'bg-surface-elevated text-content-secondary'}`}>
+                        {conn.status === 'connected' ? <Wifi className="w-5 h-5" /> : conn.status === 'error' ? <WifiOff className="w-5 h-5" /> : <Server className="w-5 h-5" />}
+                      </div>
+                      <div>
+                        <div className="font-semibold text-content-primary">{conn.display_name || conn.vendor}</div>
+                        <div className="text-[12px] text-content-tertiary">{conn.fhir_base_url}</div>
+                      </div>
+                    </div>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full border ${conn.status === 'connected' ? 'bg-brand/10 text-brand-dark border-brand/20' : conn.status === 'error' ? 'bg-brand-deep/10 text-brand-deep border-brand-deep/20' : 'bg-brand/5 text-brand border-brand/15'}`}>
+                      {conn.status}
+                    </span>
+                  </div>
+
+                  {conn.last_error && (
+                    <div className="text-[12px] text-brand-deep mb-3 p-2 rounded bg-brand-deep/5">{conn.last_error}</div>
+                  )}
+
+                  {conn.last_sync_at && (
+                    <div className="text-[12px] text-content-tertiary mb-3">Last sync: {new Date(conn.last_sync_at).toISOString().replace('T', ' ').substring(0, 19) + ' UTC'}</div>
+                  )}
+
+                  {/* Available resources */}
+                  {conn.status === 'connected' && Array.isArray(conn.resources_available) && conn.resources_available.length > 0 && (
+                    <div className="mb-4">
+                      <div className="text-[12px] font-semibold text-content-secondary mb-2">Available Resources (select to pull)</div>
+                      <div className="flex flex-wrap gap-2">
+                        {conn.resources_available.map((res: { fhir_resource: string; medcloud_entity: string }) => (
+                          <button key={res.fhir_resource} type="button"
+                            onClick={() => setSelectedResources((prev: string[]) => prev.includes(res.fhir_resource) ? prev.filter((r: string) => r !== res.fhir_resource) : [...prev, res.fhir_resource])}
+                            className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all ${selectedResources.includes(res.fhir_resource) ? 'bg-brand text-white' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30'}`}>
+                            {res.fhir_resource} &rarr; {res.medcloud_entity}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pull result */}
+                  {pullResultMap[conn.id] && pullingId === null && (
+                    <div className="card p-4 mb-4">
+                      <div className="text-[13px] font-semibold text-content-primary mb-2">Pull Results</div>
+                      {Object.entries(pullResultMap[conn.id].resources_pulled).map(([k, v]) => (
+                        <div key={k} className="text-[12px] text-content-secondary">{k}: {v as number} records imported</div>
+                      ))}
+                      {pullResultMap[conn.id].errors.length > 0 && pullResultMap[conn.id].errors.map((e: { resource: string; reason: string }, i: number) => (
+                        <div key={i} className="text-[12px] text-brand-deep">{e.resource}: {e.reason}</div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Test result */}
+                  {testResultMap[conn.id] && testingId === null && (
+                    <div className="card p-4 mb-4">
+                      <div className={`text-[13px] font-semibold ${testResultMap[conn.id].success ? 'text-brand-dark' : 'text-brand-deep'} mb-1`}>
+                        {testResultMap[conn.id].success ? 'Connection Successful' : 'Connection Failed'}
+                      </div>
+                      <div className="text-[12px] text-content-secondary">{testResultMap[conn.id].message}</div>
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="flex gap-2 mt-3">
+                    <button type="button" onClick={() => handleTestConnection(conn.id)} disabled={testingId === conn.id}
+                      className="bg-surface-elevated border border-separator rounded-lg px-3 py-1.5 text-[12px] font-medium text-content-secondary hover:border-brand/30 hover:text-brand-dark disabled:opacity-50 flex items-center gap-1.5">
+                      {testingId === conn.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                      Test Connection
+                    </button>
+                    {conn.status === 'connected' && selectedResources.length > 0 && (
+                      <button type="button" onClick={() => handlePullData(conn.id)} disabled={pullingId === conn.id}
+                        className="bg-brand text-white rounded-lg px-3 py-1.5 text-[12px] font-medium hover:bg-brand/90 disabled:opacity-50 flex items-center gap-1.5">
+                        {pullingId === conn.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
+                        Pull {selectedResources.length} Resource{selectedResources.length > 1 ? 's' : ''}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add new connection form */}
+          {!showAddConnection ? (
+            <button type="button" onClick={() => setShowAddConnection(true)}
+              className="card w-full p-5 text-left hover:border-brand/30 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-brand/10 text-brand">
+                <Plug className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="font-semibold text-content-primary">Add EHR Connection</div>
+                <div className="text-[12px] text-content-secondary">Connect to Epic, Cerner, Athena, or any FHIR R4 compliant EHR</div>
+              </div>
+            </button>
+          ) : (
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[15px] font-semibold text-content-primary">New EHR Connection</h3>
+                <button type="button" onClick={() => setShowAddConnection(false)} className="text-content-tertiary hover:text-content-primary"><X className="w-4 h-4" /></button>
+              </div>
+
+              {/* Vendor selector */}
+              <div className="mb-4">
+                <label htmlFor="ehr-vendor" className="text-[12px] font-semibold text-content-secondary mb-1.5 block">EHR Vendor</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {EHR_VENDORS.map(v => (
+                    <button key={v.id} type="button" onClick={() => setEhrForm((prev: typeof ehrForm) => ({ ...prev, vendor: v.id, display_name: v.label }))}
+                      className={`p-3 rounded-lg text-left text-[12px] transition-all ${ehrForm.vendor === v.id ? 'bg-brand text-white' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30'}`}>
+                      <div className="font-semibold">{v.label}</div>
+                      <div className={`mt-0.5 ${ehrForm.vendor === v.id ? 'text-white/70' : 'text-content-tertiary'}`}>{v.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* FHIR URL */}
+              <div className="mb-4">
+                <label htmlFor="ehr-fhir-url" className="text-[12px] font-semibold text-content-secondary mb-1.5 block">FHIR Base URL *</label>
+                <input type="url" value={ehrForm.fhir_base_url} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEhrForm((prev: typeof ehrForm) => ({ ...prev, fhir_base_url: e.target.value }))}
+                  placeholder="https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4"
+                  className="w-full px-3 py-2 rounded-lg border border-separator bg-surface-primary text-[13px] focus:outline-none focus:border-brand placeholder:text-content-tertiary" />
+              </div>
+
+              {/* OAuth credentials */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label htmlFor="ehr-client-id" className="text-[12px] font-semibold text-content-secondary mb-1.5 block">OAuth Client ID</label>
+                  <input type="text" value={ehrForm.oauth_client_id} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEhrForm((prev: typeof ehrForm) => ({ ...prev, oauth_client_id: e.target.value }))}
+                    placeholder="your-client-id"
+                    className="w-full px-3 py-2 rounded-lg border border-separator bg-surface-primary text-[13px] focus:outline-none focus:border-brand placeholder:text-content-tertiary" />
+                </div>
+                <div>
+                  <label htmlFor="ehr-client-secret" className="text-[12px] font-semibold text-content-secondary mb-1.5 block">OAuth Client Secret</label>
+                  <input type="password" value={ehrForm.oauth_client_secret} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEhrForm((prev: typeof ehrForm) => ({ ...prev, oauth_client_secret: e.target.value }))}
+                    placeholder="your-client-secret"
+                    className="w-full px-3 py-2 rounded-lg border border-separator bg-surface-primary text-[13px] focus:outline-none focus:border-brand placeholder:text-content-tertiary" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label htmlFor="ehr-token-endpoint" className="text-[12px] font-semibold text-content-secondary mb-1.5 block">Token Endpoint</label>
+                  <input type="url" value={ehrForm.token_endpoint} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEhrForm((prev: typeof ehrForm) => ({ ...prev, token_endpoint: e.target.value }))}
+                    placeholder="https://fhir.epic.com/interconnect-fhir-oauth/oauth2/token"
+                    className="w-full px-3 py-2 rounded-lg border border-separator bg-surface-primary text-[13px] focus:outline-none focus:border-brand placeholder:text-content-tertiary" />
+                </div>
+                <div>
+                  <label htmlFor="ehr-scope" className="text-[12px] font-semibold text-content-secondary mb-1.5 block">Scope</label>
+                  <input type="text" value={ehrForm.scope} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEhrForm((prev: typeof ehrForm) => ({ ...prev, scope: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg border border-separator bg-surface-primary text-[13px] focus:outline-none focus:border-brand" />
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button type="button" onClick={handleCreateConnection} disabled={!ehrForm.fhir_base_url || createEhr.loading}
+                  className="bg-brand text-white rounded-lg px-5 py-2 text-[13px] font-medium hover:bg-brand/90 disabled:opacity-50 flex items-center gap-2">
+                  {createEhr.loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Save Connection
+                </button>
+                <button type="button" onClick={() => setShowAddConnection(false)}
+                  className="bg-surface-elevated border border-separator rounded-lg px-4 py-2 text-[13px] text-content-secondary hover:border-brand/30">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Import History (shared between both tabs) */}
+          {jobs.length > 0 && (
+            <div className="mt-10">
+              <h3 className="text-sm font-semibold text-content-primary mb-3">Import History</h3>
+              <div className="card overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-separator">
+                      <th className="px-4 py-3 text-left text-[11px] font-semibold text-content-tertiary tracking-wider">Date</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-semibold text-content-tertiary tracking-wider">Source</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-semibold text-content-tertiary tracking-wider">Type</th>
+                      <th className="px-4 py-3 text-right text-[11px] font-semibold text-content-tertiary tracking-wider">Imported</th>
+                      <th className="px-4 py-3 text-right text-[11px] font-semibold text-content-tertiary tracking-wider">Errors</th>
+                      <th className="px-4 py-3 text-center text-[11px] font-semibold text-content-tertiary tracking-wider">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {jobs.slice(0, 20).map((j: ApiImportJob) => (
+                      <tr key={j.id} className="border-b border-separator last:border-0 hover:bg-surface-elevated">
+                        <td className="px-4 py-3 text-[13px] text-content-secondary">{new Date(j.created_at).toLocaleDateString()}</td>
+                        <td className="px-4 py-3 text-[13px]">{j.file_type === 'fhir' ? 'FHIR API' : j.file_name}</td>
+                        <td className="px-4 py-3 text-[13px] capitalize">{j.entity_type?.replace(/_/g, ' ')}</td>
+                        <td className="px-4 py-3 text-right text-[13px] text-brand font-medium tabular-nums">{j.imported_count}</td>
+                        <td className="px-4 py-3 text-right text-[13px] text-brand-deep tabular-nums">{j.error_count}</td>
+                        <td className="px-4 py-3 text-center"><span className={`text-[11px] px-2 py-0.5 rounded-full border ${j.status === 'completed' ? 'bg-brand/10 text-brand-dark border-brand/20' : 'bg-brand-deep/10 text-brand-deep border-brand-deep/20'}`}>{j.status}</span></td>
                       </tr>
                     ))}
                   </tbody>
