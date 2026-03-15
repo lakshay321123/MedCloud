@@ -88,7 +88,7 @@ const ENTITIES: { id: EntityType; label: string; icon: React.ReactNode; desc: st
       { key: 'total_charges', label: 'Billed Amount ($)', required: true },
       { key: 'allowed_amount', label: 'Allowed Amount ($)', required: false },
       { key: 'date_of_service', label: 'Date of Service', required: false },
-      { key: 'diagnosis_codes', label: 'Diagnosis Codes (ICD-10)', required: false },
+      { key: 'diagnosis_codes', label: 'Diagnosis Codes (ICD-10-CM)', required: false },
       { key: 'status', label: 'Current Status', required: false },
       { key: 'days_in_ar', label: 'Days in A/R', required: false },
     ] },
@@ -160,10 +160,6 @@ function fuzzyMatch(header: string): string | null {
   const h = header.toLowerCase().replace(/[_\-\.\/\\]/g, ' ').replace(/\s+/g, ' ').trim()
   for (const [field, aliases] of Object.entries(FUZZY_MAP)) {
     if (aliases.includes(h)) return field
-    // Check if header contains any alias
-    for (const alias of aliases) {
-      if (h === alias) return field
-    }
   }
   // Fallback: check if header matches a field key directly
   if (FUZZY_MAP[h]) return h
@@ -171,7 +167,7 @@ function fuzzyMatch(header: string): string | null {
 }
 
 // ── CSV Parser ───────────────────────────────────────────────────────────────
-function parseCSV(text: string): { headers: string[]; rows: Record<string, string>[] } {
+function parseCSV(text: string, delimiter: string = ','): { headers: string[]; rows: Record<string, string>[] } {
   const lines = text.split(/\r?\n/).filter(l => l.trim())
   if (lines.length === 0) return { headers: [], rows: [] }
   // Simple CSV parse (handles quoted fields)
@@ -182,7 +178,7 @@ function parseCSV(text: string): { headers: string[]; rows: Record<string, strin
     for (let i = 0; i < line.length; i++) {
       const ch = line[i]
       if (ch === '"') { inQuotes = !inQuotes; continue }
-      if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; continue }
+      if (ch === delimiter && !inQuotes) { result.push(current.trim()); current = ''; continue }
       current += ch
     }
     result.push(current.trim())
@@ -203,9 +199,13 @@ function normalizeDate(val: string): string {
   if (!val) return ''
   // Already ISO
   if (/^\d{4}-\d{2}-\d{2}/.test(val)) return val.split('T')[0]
-  // US format: MM/DD/YYYY or M/D/YYYY
-  const us = val.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
-  if (us) return `${us[3]}-${us[1].padStart(2,'0')}-${us[2].padStart(2,'0')}`
+  // MM/DD/YYYY or DD/MM/YYYY — if first number > 12, it must be DD/MM
+  const parts = val.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  if (parts) {
+    const a = parseInt(parts[1]), b = parseInt(parts[2])
+    if (a > 12) return `${parts[3]}-${String(b).padStart(2,'0')}-${String(a).padStart(2,'0')}` // EU: DD/MM
+    return `${parts[3]}-${String(a).padStart(2,'0')}-${String(b).padStart(2,'0')}` // US: MM/DD (default)
+  }
   // Written: March 14, 2026 or 14-Mar-2026
   const d = new Date(val)
   if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
@@ -249,7 +249,8 @@ export default function OnboardingPage() {
     try {
       if (ext === 'csv' || ext === 'tsv') {
         const text = await file.text()
-        const parsed = parseCSV(text)
+        const delimiter = ext === 'tsv' ? '\t' : ','
+        const parsed = parseCSV(text, delimiter)
         headers = parsed.headers
         rows = parsed.rows
       } else if (ext === 'xlsx' || ext === 'xls') {
@@ -268,7 +269,7 @@ export default function OnboardingPage() {
       } else if (ext === 'hl7') {
         // Basic HL7v2 parser for PID segments
         const text = await file.text()
-        const segments = text.split(/\r?\n/).filter(l => l.startsWith('PID'))
+        const segments = text.split(/\r\n|\r|\n/).filter(l => l.startsWith('PID'))
         if (segments.length > 0) {
           headers = ['last_name', 'first_name', 'dob', 'gender', 'address', 'phone', 'mrn']
           rows = segments.map(seg => {
@@ -443,7 +444,7 @@ export default function OnboardingPage() {
     <ModuleShell title="Onboarding">
       {/* ── Breadcrumb / Step indicator ─────────────────────────────────── */}
       <div className="flex items-center gap-2 mb-4 text-sm text-content-tertiary">
-        <button onClick={reset} className="hover:text-brand font-medium">Onboarding</button>
+        <button type="button" onClick={reset} className="hover:text-brand font-medium">Onboarding</button>
         {entityType && <><ChevronRight className="w-4 h-4" /><span className="text-content-primary font-medium">{entityConfig?.label}</span></>}
         {step !== 'select' && step !== 'upload' && <><ChevronRight className="w-4 h-4" /><span className="capitalize">{step}</span></>}
       </div>
@@ -528,6 +529,9 @@ export default function OnboardingPage() {
           <p className="text-sm text-content-secondary mb-6">Accepts CSV, Excel (.xlsx/.xls), or HL7 files</p>
 
           <div
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileRef.current?.click() }}}
             onDragOver={(e: React.DragEvent) => { e.preventDefault(); setDragOver(true) }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}

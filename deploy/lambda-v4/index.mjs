@@ -11031,6 +11031,11 @@ Return ONLY the JSON, no other text.`;
 
     // ════ DATA IMPORT (Onboarding) ════════════════════════════════════════════
     if (resource === 'import') {
+      // Security: Only admin/director can import data
+      // Uses filterRole (authCtx.role || qs.role) — same pattern as other restricted routes pre-Cognito
+      if (!['admin', 'director'].includes(filterRole)) {
+        return respond(403, { error: 'Import requires admin or director role' });
+      }
 
       // POST /import/preview — validate first N mapped rows before committing
       if (path.includes('/import/preview') && method === 'POST') {
@@ -11054,7 +11059,7 @@ Return ONLY the JSON, no other text.`;
               errors.push({ row: idx, field, reason: `${field} is required` });
             }
           });
-          // NPI Luhn check for providers
+          // NPI length check for providers (10 digits required)
           if (entity_type === 'providers' && row.npi) {
             const npi = String(row.npi).replace(/\D/g, '');
             if (npi.length !== 10) errors.push({ row: idx, field: 'npi', reason: 'NPI must be 10 digits' });
@@ -11079,7 +11084,6 @@ Return ONLY the JSON, no other text.`;
           return respond(400, { error: 'entity_type and rows[] required' });
         }
         const strategy = duplicate_strategy || 'skip';
-        const jobId = `import-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         let imported = 0, skipped = 0, updated = 0, errorCount = 0;
         const importErrors = [];
 
@@ -11150,15 +11154,17 @@ Return ONLY the JSON, no other text.`;
         };
 
         // Payer name resolution for fee_schedules and patients
-        const resolvePayerByName = async (name) => {
-          if (!name) return null;
-          // Exact
-          let q = `SELECT id FROM payers WHERE org_id = $1 AND LOWER(payer_name) = LOWER($2) LIMIT 1`;
-          let r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, name]);
+        const resolvePayerByName = async (payerName) => {
+          if (!payerName) return null;
+          // Try payer_name column first, then name column as fallback
+          let q = `SELECT id FROM payers WHERE org_id = $1 AND (LOWER(payer_name) = LOWER($2) OR LOWER(name) = LOWER($2)) LIMIT 1`;
+          let r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, payerName]);
           if (r.rows[0]) return r.rows[0].id;
-          // Contains
-          q = `SELECT id FROM payers WHERE org_id = $1 AND LOWER(payer_name) ILIKE $2 LIMIT 1`;
-          r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, `%${name}%`]);
+          // Contains fallback — only if name is 4+ chars to avoid false positives
+          if (payerName.length >= 4) {
+            q = `SELECT id FROM payers WHERE org_id = $1 AND (LOWER(payer_name) ILIKE $2 OR LOWER(name) ILIKE $2) LIMIT 1`;
+            r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, `%${payerName}%`]);
+          }
           return r.rows[0]?.id || null;
         };
 
@@ -11194,7 +11200,7 @@ Return ONLY the JSON, no other text.`;
 
               // Check for duplicate
               const dupeCheck = DUPE_CHECK[entity_type];
-              const existingId = dupeCheck ? await dupeCheck(chunk[j]) : null;
+              const existingId = dupeCheck ? await dupeCheck(row) : null;
 
               if (existingId) {
                 if (strategy === 'skip') {
@@ -11205,7 +11211,6 @@ Return ONLY the JSON, no other text.`;
                   // Update existing record
                   await update(table, existingId, row);
                   updated++;
-                  imported++;
                 }
               } else {
                 // Insert new
@@ -11259,7 +11264,7 @@ Return ONLY the JSON, no other text.`;
           const r = await orgQuery(effectiveOrgId, q, params);
           return respond(200, { data: r.rows, total: r.rows.length });
         } catch (e) {
-          if (e.message?.includes('does not exist')) return respond(200, { data: [], total: 0 });
+          if (e.code === '42P01' || e.message?.includes('does not exist')) return respond(200, { data: [], total: 0 });
           throw e;
         }
       }
@@ -11268,6 +11273,7 @@ Return ONLY the JSON, no other text.`;
       if (path.includes('/import/jobs/') && method === 'GET' && pathParams.id) {
         const r = await getById('import_jobs', pathParams.id);
         if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Import job not found' });
+        await auditLog(effectiveOrgId, userId, 'read', 'import_jobs', pathParams.id, { entity_type: r.entity_type });
         return respond(200, r);
       }
     }
