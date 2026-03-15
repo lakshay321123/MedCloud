@@ -460,7 +460,7 @@ export default function OnboardingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {ENTITIES.map((e, idx) => (
               <button key={e.id} onClick={() => { setEntityType(e.id); setStep('upload') }}
-                className="flex items-start gap-3 p-4 rounded-lg border border-separator hover:border-brand hover:bg-surface-secondary transition-all text-left">
+                className="card flex items-start gap-3 p-5 text-left hover:border-brand/30">
                 <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-brand/10 text-brand shrink-0">
                   {e.icon}
                 </div>
@@ -479,29 +479,29 @@ export default function OnboardingPage() {
           {jobs.length > 0 && (
             <div className="mt-10">
               <h3 className="text-sm font-semibold text-content-primary mb-3">Import History</h3>
-              <div className="border border-separator rounded-lg overflow-hidden">
+              <div className="card overflow-hidden">
                 <table className="w-full text-sm">
-                  <thead className="bg-surface-elevated">
+                  <thead>
                     <tr>
-                      <th className="px-3 py-2 text-left font-medium text-content-secondary">Date</th>
-                      <th className="px-3 py-2 text-left font-medium text-content-secondary">Type</th>
-                      <th className="px-3 py-2 text-left font-medium text-content-secondary">File</th>
-                      <th className="px-3 py-2 text-right font-medium text-content-secondary">Imported</th>
-                      <th className="px-3 py-2 text-right font-medium text-content-secondary">Skipped</th>
-                      <th className="px-3 py-2 text-right font-medium text-content-secondary">Errors</th>
-                      <th className="px-3 py-2 text-center font-medium text-content-secondary">Status</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-semibold text-content-tertiary tracking-wider">Date</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-semibold text-content-tertiary tracking-wider">Type</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-semibold text-content-tertiary tracking-wider">File</th>
+                      <th className="px-4 py-3 text-right text-[11px] font-semibold text-content-tertiary tracking-wider">Imported</th>
+                      <th className="px-4 py-3 text-right text-[11px] font-semibold text-content-tertiary tracking-wider">Skipped</th>
+                      <th className="px-4 py-3 text-right text-[11px] font-semibold text-content-tertiary tracking-wider">Errors</th>
+                      <th className="px-4 py-3 text-center text-[11px] font-semibold text-content-tertiary tracking-wider">Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {jobs.slice(0, 20).map((j: any) => (
-                      <tr key={j.id} className="border-t border-separator hover:bg-surface-elevated/60">
-                        <td className="px-3 py-2 text-content-secondary">{new Date(j.created_at).toLocaleDateString()}</td>
-                        <td className="px-3 py-2 capitalize">{j.entity_type?.replace(/_/g, ' ')}</td>
-                        <td className="px-3 py-2 text-content-secondary truncate max-w-[200px]">{j.file_name}</td>
-                        <td className="px-3 py-2 text-right text-brand font-medium">{j.imported_count}</td>
-                        <td className="px-3 py-2 text-right text-brand-mid">{j.skipped_count}</td>
-                        <td className="px-3 py-2 text-right text-brand-deep">{j.error_count}</td>
-                        <td className="px-3 py-2 text-center">
+                      <tr key={j.id} className="border-b border-separator last:border-0 hover:bg-surface-elevated">
+                        <td className="px-4 py-3 text-[13px] text-content-secondary">{new Date(j.created_at).toLocaleDateString()}</td>
+                        <td className="px-4 py-3 text-[13px] capitalize">{j.entity_type?.replace(/_/g, ' ')}</td>
+                        <td className="px-4 py-3 text-[13px] text-content-secondary truncate max-w-[200px]">{j.file_name}</td>
+                        <td className="px-4 py-3 text-right text-[13px] text-brand font-medium tabular-nums">{j.imported_count}</td>
+                        <td className="px-4 py-3 text-right text-[13px] text-brand-mid tabular-nums">{j.skipped_count}</td>
+                        <td className="px-4 py-3 text-right text-[13px] text-brand-deep tabular-nums">{j.error_count}</td>
+                        <td className="px-4 py-3 text-center">
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${j.status === 'completed' ? 'bg-brand/10 text-brand-dark border border-brand/20' : j.status === 'failed' ? 'bg-brand-deep/10 text-brand-deep border border-brand-deep/20' : 'bg-brand/5 text-brand border border-brand/15'}`}>
                             {j.status}
                           </span>
@@ -532,7 +532,7 @@ export default function OnboardingPage() {
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
             onClick={() => fileRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${dragOver ? 'border-brand bg-brand/5' : 'border-separator hover:border-brand/50'}`}
+            className={`card border-2 border-dashed p-12 text-center cursor-pointer transition-all ${dragOver ? 'border-brand bg-brand/5' : 'border-separator hover:border-brand/40'}`}
           >
             <Upload className="w-12 h-12 mx-auto mb-4 text-content-secondary" />
             <p className="text-content-primary font-medium">Drop your file here or click to browse</p>
@@ -541,7 +541,7 @@ export default function OnboardingPage() {
           <input ref={fileRef} type="file" className="hidden" accept=".csv,.xlsx,.xls,.hl7,.tsv" onChange={handleFileInput} />
 
           {/* Required fields info */}
-          <div className="mt-6 p-4 rounded-lg bg-surface-secondary border border-separator">
+          <div className="card mt-6 p-5">
             <div className="flex items-center gap-2 text-sm font-medium text-content-primary mb-2">
               <Info className="w-4 h-4 text-brand" /> Expected Fields for {entityConfig.label}
             </div>
@@ -575,22 +575,22 @@ export default function OnboardingPage() {
             </div>
           </div>
 
-          <div className="border border-separator rounded-lg overflow-hidden">
+          <div className="card overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-surface-elevated">
+              <thead>
                 <tr>
                   <th className="px-3 py-2 text-left font-medium text-content-secondary w-1/3">Your File Column</th>
-                  <th className="px-3 py-2 text-center font-medium text-content-secondary w-12">&rarr;</th>
-                  <th className="px-3 py-2 text-left font-medium text-content-secondary w-1/3">MedCloud Field</th>
-                  <th className="px-3 py-2 text-left font-medium text-content-secondary">Sample Value</th>
+                  <th className="px-4 py-3 text-center text-[11px] font-semibold text-content-tertiary w-12">&rarr;</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-content-tertiary tracking-wider w-1/3">MedCloud Field</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-content-tertiary tracking-wider">Sample Value</th>
                 </tr>
               </thead>
               <tbody>
                 {parsedFile.headers.map((h: string) => (
-                  <tr key={h} className="border-t border-separator">
-                    <td className="px-3 py-2 font-medium text-content-primary">{h}</td>
-                    <td className="px-3 py-2 text-center text-content-secondary">&rarr;</td>
-                    <td className="px-3 py-2">
+                  <tr key={h} className="border-b border-separator last:border-0">
+                    <td className="px-4 py-3 text-[13px] font-medium text-content-primary">{h}</td>
+                    <td className="px-4 py-3 text-center text-content-tertiary">&rarr;</td>
+                    <td className="px-4 py-3">
                       <select
                         value={columnMap[h] || ''}
                         onChange={(e: any) => setColumnMap((prev: any) => ({ ...prev, [h]: e.target.value }))}
@@ -602,7 +602,7 @@ export default function OnboardingPage() {
                         ))}
                       </select>
                     </td>
-                    <td className="px-3 py-2 text-content-secondary text-xs truncate max-w-[200px]">
+                    <td className="px-4 py-3 text-content-tertiary text-[12px] truncate max-w-[200px]">
                       {parsedFile.rows[0]?.[h] || '—'}
                     </td>
                   </tr>
@@ -619,7 +619,7 @@ export default function OnboardingPage() {
           )}
 
           {/* Duplicate strategy */}
-          <div className="mt-6 p-4 rounded-lg bg-surface-secondary border border-separator">
+          <div className="card mt-6 p-5">
             <div className="text-sm font-medium text-content-primary mb-2">Duplicate Handling</div>
             <div className="flex gap-4">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -666,9 +666,9 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          <div className="border border-separator rounded-lg overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-surface-elevated">
+          <div className="card overflow-x-auto">
+            <table className="w-full text-[13px]">
+              <thead>
                 <tr>
                   <th className="px-2 py-1.5 text-left font-medium text-content-secondary">#</th>
                   {entityConfig.fields.filter(f => Object.values(columnMap).includes(f.key)).map(f => (
@@ -725,19 +725,19 @@ export default function OnboardingPage() {
         <div>
           <h2 className="text-lg font-semibold text-content-primary mb-4">Import Complete</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-            <div className="p-4 rounded-lg bg-brand/10 border border-brand/20 text-center">
+            <div className="card p-5 text-center">
               <div className="text-2xl font-bold text-brand-dark">{results.imported_count}</div>
               <div className="text-xs text-brand mt-1">Imported</div>
             </div>
-            <div className="p-4 rounded-lg bg-brand-ghost border border-brand-pale/30 text-center">
+            <div className="card p-5 text-center">
               <div className="text-2xl font-bold text-brand-deep">{results.skipped_count}</div>
               <div className="text-xs text-brand-mid mt-1">Skipped (Duplicates)</div>
             </div>
-            <div className="p-4 rounded-lg bg-brand-light/10 border border-brand-light/20 text-center">
+            <div className="card p-5 text-center">
               <div className="text-2xl font-bold text-brand-dark">{results.updated_count}</div>
               <div className="text-xs text-brand-mid mt-1">Updated</div>
             </div>
-            <div className="p-4 rounded-lg bg-brand-deep/10 border border-brand-deep/20 text-center">
+            <div className="card p-5 text-center">
               <div className="text-2xl font-bold text-brand-deep">{results.error_count}</div>
               <div className="text-xs text-brand-deep mt-1">Errors</div>
             </div>
