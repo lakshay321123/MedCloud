@@ -534,6 +534,11 @@ async function runSchemaMigration() {
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS textract_doc_type VARCHAR(50)",
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS page_count INT",
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS s3_bucket VARCHAR(200)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS provider_id UUID REFERENCES providers(id)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS payer_id UUID REFERENCES payers(id)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS category VARCHAR(100)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS linked_entity_type VARCHAR(50)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS linked_entity_id UUID",
     "ALTER TABLE coding_queue ALTER COLUMN patient_id DROP NOT NULL",
     "ALTER TABLE coding_queue ALTER COLUMN provider_id DROP NOT NULL",
     "ALTER TABLE coding_queue ALTER COLUMN encounter_id DROP NOT NULL",
@@ -7829,7 +7834,7 @@ export const handler = async (event) => {
       body.doc_type = body.document_type;
     }
 
-    if (path.includes('/documents') && !path.includes('/upload-url') && !path.includes('/textract') && !path.includes('/classify') && !path.includes('/extract-rates') && !path.includes('/extract-codes')) {
+    if (path.includes('/documents') && !path.includes('/upload-url') && !path.includes('/textract') && !path.includes('/classify') && !path.includes('/extract-rates') && !path.includes('/extract-codes') && !path.includes('/match-entity') && !path.includes('/link-entity')) {
       if (method === 'GET' && !pathParams.id) {
         // Enriched document list — JOIN patients for name, filter by patient_id if requested
         let q = `SELECT d.*, 
@@ -7921,6 +7926,176 @@ export const handler = async (event) => {
     // ════ Bedrock Document Extraction (All-in-AWS OCR + AI) ═══════════════
     // Reads PDF/image from S3 → sends to Bedrock Claude → extracts ICD/CPT
     // PHI NEVER leaves AWS account — replaces Vercel /api/extract-text route
+    // ════ Document Entity Matching ═════════════════════════════════════════
+    // POST /documents/:id/match-entity — AI suggests which provider/payer this doc belongs to
+    if (path.includes('/documents') && path.includes('/match-entity') && method === 'POST' && pathParams.id) {
+      const doc = await getById('documents', pathParams.id);
+      if (!doc || doc.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
+
+      const category = doc.category || body.category || '';
+      const suggestions = { providers: [], payers: [], best_match: null, match_type: null, confidence: 0 };
+
+      // Extract text from textract result or filename
+      const docText = doc.textract_result?.text || doc.file_name || '';
+      const extractedFields = doc.textract_result?.extracted_fields || {};
+
+      // Get all providers and payers for this org/client
+      const cf = clientId ? ` AND client_id = '${clientId}'` : '';
+      const provRows = await orgQuery(effectiveOrgId,
+        `SELECT id, first_name, last_name, npi, specialty FROM providers WHERE org_id = $1${cf} ORDER BY last_name`,
+        [effectiveOrgId]);
+      const payerRows = await orgQuery(effectiveOrgId,
+        `SELECT id, name FROM payers WHERE org_id = $1 ORDER BY name`,
+        [effectiveOrgId]);
+
+      suggestions.providers = provRows.rows.map(p => ({
+        id: p.id,
+        name: `${p.first_name} ${p.last_name}`,
+        npi: p.npi,
+        specialty: p.specialty,
+      }));
+      suggestions.payers = payerRows.rows.map(p => ({ id: p.id, name: p.name }));
+
+      // Try to auto-match based on document text
+      const textLower = docText.toLowerCase();
+
+      if (category.includes('provider') || category.includes('credential')) {
+        // Try NPI match first (most reliable)
+        const npiMatch = docText.match(/\b(\d{10})\b/);
+        if (npiMatch) {
+          const matchedProv = provRows.rows.find(p => p.npi === npiMatch[1]);
+          if (matchedProv) {
+            suggestions.best_match = { type: 'provider', id: matchedProv.id, name: `${matchedProv.first_name} ${matchedProv.last_name}`, npi: matchedProv.npi };
+            suggestions.match_type = 'npi';
+            suggestions.confidence = 95;
+          }
+        }
+
+        // Try name match if no NPI match
+        if (!suggestions.best_match) {
+          for (const p of provRows.rows) {
+            const fullName = `${p.first_name} ${p.last_name}`.toLowerCase();
+            const lastFirst = `${p.last_name}, ${p.first_name}`.toLowerCase();
+            const lastOnly = p.last_name.toLowerCase();
+            if (textLower.includes(fullName) || textLower.includes(lastFirst)) {
+              suggestions.best_match = { type: 'provider', id: p.id, name: `${p.first_name} ${p.last_name}`, npi: p.npi };
+              suggestions.match_type = 'full_name';
+              suggestions.confidence = 85;
+              break;
+            } else if (lastOnly.length >= 4 && textLower.includes(lastOnly)) {
+              suggestions.best_match = { type: 'provider', id: p.id, name: `${p.first_name} ${p.last_name}`, npi: p.npi };
+              suggestions.match_type = 'last_name';
+              suggestions.confidence = 60;
+              // Don't break — keep looking for a better match
+            }
+          }
+        }
+
+        // Try extracted fields (from Bedrock classify)
+        if (!suggestions.best_match && extractedFields) {
+          const extractedName = extractedFields.provider_name || extractedFields.physician_name || extractedFields.name || '';
+          const extractedNpi = extractedFields.npi || '';
+          if (extractedNpi) {
+            const matchedProv = provRows.rows.find(p => p.npi === extractedNpi);
+            if (matchedProv) {
+              suggestions.best_match = { type: 'provider', id: matchedProv.id, name: `${matchedProv.first_name} ${matchedProv.last_name}`, npi: matchedProv.npi };
+              suggestions.match_type = 'extracted_npi';
+              suggestions.confidence = 92;
+            }
+          } else if (extractedName) {
+            const nameLower = extractedName.toLowerCase();
+            for (const p of provRows.rows) {
+              if (nameLower.includes(p.last_name.toLowerCase()) && nameLower.includes(p.first_name.toLowerCase())) {
+                suggestions.best_match = { type: 'provider', id: p.id, name: `${p.first_name} ${p.last_name}`, npi: p.npi };
+                suggestions.match_type = 'extracted_name';
+                suggestions.confidence = 80;
+                break;
+              }
+            }
+          }
+        }
+      } else if (category.includes('payer') || category.includes('contract')) {
+        // Match against payer names
+        for (const p of payerRows.rows) {
+          const payerLower = p.name.toLowerCase();
+          if (textLower.includes(payerLower)) {
+            suggestions.best_match = { type: 'payer', id: p.id, name: p.name };
+            suggestions.match_type = 'payer_name';
+            suggestions.confidence = 85;
+            break;
+          }
+          // Partial match (e.g. "United" in "UnitedHealthcare")
+          const words = payerLower.split(/\s+/);
+          if (words.some(w => w.length >= 5 && textLower.includes(w))) {
+            suggestions.best_match = { type: 'payer', id: p.id, name: p.name };
+            suggestions.match_type = 'payer_partial';
+            suggestions.confidence = 60;
+          }
+        }
+      }
+
+      await auditLog(effectiveOrgId, userId, 'match_entity', 'documents', pathParams.id, {
+        category, match_type: suggestions.match_type, confidence: suggestions.confidence,
+        best_match_id: suggestions.best_match?.id,
+      });
+
+      return respond(200, suggestions);
+    }
+
+    // POST /documents/:id/link-entity — link document to a provider or payer
+    if (path.includes('/documents') && path.includes('/link-entity') && method === 'POST' && pathParams.id) {
+      const doc = await getById('documents', pathParams.id);
+      if (!doc || doc.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
+
+      const { provider_id, payer_id, entity_type, entity_id } = body;
+      const updates = { updated_at: new Date().toISOString() };
+
+      if (provider_id) {
+        // Verify provider exists and belongs to this org
+        const prov = await getById('providers', provider_id);
+        if (!prov || prov.org_id !== effectiveOrgId) return respond(400, { error: 'Provider not found in this organization' });
+        updates.provider_id = provider_id;
+        updates.linked_entity_type = 'provider';
+        updates.linked_entity_id = provider_id;
+      } else if (payer_id) {
+        const payer = await getById('payers', payer_id);
+        if (!payer || payer.org_id !== effectiveOrgId) return respond(400, { error: 'Payer not found in this organization' });
+        updates.payer_id = payer_id;
+        updates.linked_entity_type = 'payer';
+        updates.linked_entity_id = payer_id;
+      } else if (entity_type && entity_id) {
+        updates.linked_entity_type = entity_type;
+        updates.linked_entity_id = entity_id;
+      } else {
+        return respond(400, { error: 'provider_id, payer_id, or entity_type+entity_id required' });
+      }
+
+      const updated = await update('documents', pathParams.id, updates);
+
+      // If provider credential doc, also try to update credentialing record
+      if (provider_id && (doc.category === 'provider_credentials' || doc.doc_type?.includes('credential'))) {
+        try {
+          // Find or create credentialing record for this provider
+          const credQ = `SELECT id FROM credentialing WHERE org_id = $1 AND provider_id = $2 LIMIT 1`;
+          const credR = await orgQuery(effectiveOrgId, credQ, [effectiveOrgId, provider_id]);
+          if (credR.rows[0]) {
+            // Trigger credential extraction if textract result exists
+            if (doc.textract_result?.text) {
+              safeLog('info', `[link-entity] Document ${pathParams.id} linked to provider ${provider_id}, credentialing record ${credR.rows[0].id}`);
+            }
+          }
+        } catch (credErr) {
+          safeLog('warn', `[link-entity] Failed to update credentialing: ${credErr.message}`);
+        }
+      }
+
+      await auditLog(effectiveOrgId, userId, 'link_entity', 'documents', pathParams.id, {
+        provider_id, payer_id, entity_type, entity_id,
+      });
+
+      return respond(200, { ...updated, linked: true });
+    }
+
     if (path.includes('/documents') && path.includes('/extract-codes') && method === 'POST') {
       const doc = await getById('documents', pathParams.id);
       if (!doc || doc.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });

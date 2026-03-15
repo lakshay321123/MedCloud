@@ -187,6 +187,11 @@ type DocFile = {
   classification?: string
   extractedData?: Record<string, string>
   error?: string
+  entitySuggestion?: { type: string; id: string; name: string; npi?: string; confidence: number; match_type?: string }
+  linkedEntityId?: string
+  linkedEntityType?: string
+  providers?: Array<{ id: string; name: string; npi: string; specialty: string }>
+  payers?: Array<{ id: string; name: string }>
 }
 
 // ── CSV Parser ───────────────────────────────────────────────────────────────
@@ -639,7 +644,40 @@ export default function OnboardingPage() {
           console.warn(`Textract/classify failed for ${df.name}:`, (classErr as Error).message)
         }
 
-        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile) => f.id === fileId ? { ...f, status: 'done' as const, classification, extractedData } : f))
+        // Step 5: Match entity (suggest which provider/payer this belongs to)
+        let entitySuggestion: DocFile['entitySuggestion'] = undefined
+        let matchProviders: DocFile['providers'] = []
+        let matchPayers: DocFile['payers'] = []
+        try {
+          const matchRes = await api.post(`/documents/${docRes.id}/match-entity`, { category: fileCategory }) as unknown as {
+            best_match?: { type: string; id: string; name: string; npi?: string }
+            match_type?: string; confidence?: number
+            providers?: Array<{ id: string; name: string; npi: string; specialty: string }>
+            payers?: Array<{ id: string; name: string }>
+          }
+          if (matchRes.best_match) {
+            entitySuggestion = { ...matchRes.best_match, confidence: matchRes.confidence || 0, match_type: matchRes.match_type }
+          }
+          matchProviders = matchRes.providers || []
+          matchPayers = matchRes.payers || []
+
+          // Auto-link if confidence is very high (NPI match)
+          if (entitySuggestion && (matchRes.confidence || 0) >= 90) {
+            const linkBody = entitySuggestion.type === 'provider'
+              ? { provider_id: entitySuggestion.id }
+              : { payer_id: entitySuggestion.id }
+            await api.post(`/documents/${docRes.id}/link-entity`, linkBody)
+          }
+        } catch (matchErr) {
+          console.warn(`Entity match failed for ${df.name}:`, (matchErr as Error).message)
+        }
+
+        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile) => f.id === fileId ? {
+          ...f, status: 'done' as const, classification, extractedData,
+          entitySuggestion, providers: matchProviders, payers: matchPayers,
+          linkedEntityId: entitySuggestion && (entitySuggestion.confidence >= 90) ? entitySuggestion.id : undefined,
+          linkedEntityType: entitySuggestion && (entitySuggestion.confidence >= 90) ? entitySuggestion.type : undefined,
+        } : f))
         toast.success(`Uploaded ${df.name}`)
       } catch (e) {
         setDocFiles((prev: DocFile[]) => prev.map((f: DocFile) => f.id === fileId ? { ...f, status: 'error' as const, error: (e as Error).message } : f))
@@ -652,6 +690,18 @@ export default function OnboardingPage() {
   const removeDocFile = useCallback((fileId: string) => {
     setDocFiles((prev: DocFile[]) => prev.filter((f: DocFile) => f.id !== fileId))
   }, [])
+
+  const handleLinkEntity = useCallback(async (fileId: string, docId: string, entityType: string, entityId: string) => {
+    try {
+      const { api } = await import('@/lib/api-client')
+      const linkBody = entityType === 'provider' ? { provider_id: entityId } : { payer_id: entityId }
+      await api.post(`/documents/${docId}/link-entity`, linkBody)
+      setDocFiles((prev: DocFile[]) => prev.map((f: DocFile) => f.id === fileId ? { ...f, linkedEntityId: entityId, linkedEntityType: entityType } : f))
+      toast.success('Document linked successfully')
+    } catch (e) {
+      toast.error(`Link failed: ${(e as Error).message}`)
+    }
+  }, [toast])
 
   // ── Compute progress from import jobs ───────────────────────────────────────
   const completedEntities = new Set(
@@ -1323,6 +1373,68 @@ export default function OnboardingPage() {
               className="w-full py-2.5 rounded-[10px] bg-brand text-white text-[13px] font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50">
               {docUploading ? <><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Uploading...</> : `Upload ${docFiles.filter((f: DocFile) => f.status === 'pending').length} file(s) to S3`}
             </button>
+          )}
+
+          {/* Entity Linking — for uploaded docs that need a provider/payer link */}
+          {docFiles.some((f: DocFile) => f.status === 'done' && !f.linkedEntityId && (f.providers?.length || f.payers?.length)) && (
+            <div className="mt-4 p-4 rounded-[10px] bg-surface-elevated border border-separator">
+              <h4 className="text-[13px] font-semibold text-content-primary mb-3 flex items-center gap-2">
+                <Link2 className="w-4 h-4 text-brand" />
+                Link Documents to Providers / Payers
+              </h4>
+              <div className="space-y-3">
+                {docFiles.filter((f: DocFile) => f.status === 'done' && !f.linkedEntityId).map((df: DocFile) => {
+                  const isProviderDoc = df.category === 'provider_credentials' || df.category === 'appeals' || df.category === 'prior_authorizations'
+                  const isPayer = df.category === 'payer_contracts'
+                  const entities = isProviderDoc ? (df.providers || []) : isPayer ? (df.payers || []) : []
+                  if (entities.length === 0) return null
+
+                  return (
+                    <div key={df.id} className="flex items-center gap-3 flex-wrap">
+                      <div className="min-w-0 flex-shrink-0">
+                        <span className="text-[12px] font-medium text-content-primary">{df.name}</span>
+                        {df.entitySuggestion && (
+                          <span className="ml-2 text-[11px] text-brand">
+                            AI suggests: {df.entitySuggestion.name} ({df.entitySuggestion.confidence}%)
+                          </span>
+                        )}
+                      </div>
+                      <select
+                        defaultValue={df.entitySuggestion?.id || ''}
+                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                          if (e.target.value && df.docId) {
+                            handleLinkEntity(df.id, df.docId, isProviderDoc ? 'provider' : 'payer', e.target.value)
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-[8px] bg-surface-primary border border-separator text-[12px] text-content-primary min-w-[200px]"
+                      >
+                        <option value="">Select {isProviderDoc ? 'provider' : 'payer'}...</option>
+                        {isProviderDoc && (df.providers || []).map((p: { id: string; name: string; npi: string; specialty: string }) => (
+                          <option key={p.id} value={p.id}>{p.name} (NPI: {p.npi}){p.specialty ? ` — ${p.specialty}` : ''}</option>
+                        ))}
+                        {isPayer && (df.payers || []).map((p: { id: string; name: string }) => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Show linked status on completed files */}
+          {docFiles.some((f: DocFile) => f.linkedEntityId) && (
+            <div className="mt-3 space-y-1">
+              {docFiles.filter((f: DocFile) => f.linkedEntityId).map((df: DocFile) => (
+                <div key={df.id} className="flex items-center gap-2 text-[12px] text-brand-dark">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span className="font-medium">{df.name}</span>
+                  <span className="text-content-tertiary">linked to</span>
+                  <span className="font-medium">{df.entitySuggestion?.name || df.linkedEntityType}</span>
+                </div>
+              ))}
+            </div>
           )}
 
           {/* Extracted data summary for completed files */}
