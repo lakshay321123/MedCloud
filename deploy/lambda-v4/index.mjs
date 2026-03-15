@@ -534,6 +534,25 @@ async function runSchemaMigration() {
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS textract_doc_type VARCHAR(50)",
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS page_count INT",
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS s3_bucket VARCHAR(200)",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS license_number VARCHAR(50)",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS license_state VARCHAR(10)",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS dea_number VARCHAR(20)",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS license_expiry DATE",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS dea_expiry DATE",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS board_certified BOOLEAN DEFAULT false",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS phone VARCHAR(20)",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS email VARCHAR(200)",
+    "ALTER TABLE providers ADD COLUMN IF NOT EXISTS credential VARCHAR(20)",
+    "ALTER TABLE patients ADD COLUMN IF NOT EXISTS city VARCHAR(100)",
+    "ALTER TABLE patients ADD COLUMN IF NOT EXISTS state VARCHAR(10)",
+    "ALTER TABLE patients ADD COLUMN IF NOT EXISTS zip VARCHAR(20)",
+    "ALTER TABLE payers ADD COLUMN IF NOT EXISTS type VARCHAR(50)",
+    "ALTER TABLE fee_schedules ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS provider_id UUID REFERENCES providers(id)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS payer_id UUID REFERENCES payers(id)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS category VARCHAR(100)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS linked_entity_type VARCHAR(50)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS linked_entity_id UUID",
     "ALTER TABLE coding_queue ALTER COLUMN patient_id DROP NOT NULL",
     "ALTER TABLE coding_queue ALTER COLUMN provider_id DROP NOT NULL",
     "ALTER TABLE coding_queue ALTER COLUMN encounter_id DROP NOT NULL",
@@ -802,6 +821,68 @@ async function runSchemaMigration() {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )`);
   } catch (e) { if (e.code !== '42P07') safeLog('warn', 'ehr_connections:', e.message); }
+
+  // ── Sync missing columns to ALL tenant schemas ────────────────────────────
+  // Tenant schemas were cloned from public at creation time. If columns were
+  // added to public AFTER the clone, tenant schemas are missing them. This
+  // runs ALTER TABLE IF NOT EXISTS on every tenant schema to keep them in sync.
+  // SAFE: IF NOT EXISTS prevents duplicates, all columns are nullable.
+  try {
+    const tenantSchemas = await pool.query(
+      `SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'tenant_%'`
+    );
+    if (tenantSchemas.rows.length > 0) {
+      const TENANT_COL_SYNC = [
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS category VARCHAR(100)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS provider_id UUID",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS payer_id UUID",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS linked_entity_type VARCHAR(50)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS linked_entity_id UUID",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS content_type VARCHAR(100)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS document_type VARCHAR(100)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS textract_status VARCHAR(30) DEFAULT 'pending'",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS textract_result JSONB",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS textract_confidence INT",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS textract_job_id VARCHAR(200)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS textract_doc_type VARCHAR(50)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS page_count INT",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS s3_bucket VARCHAR(200)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'uploaded'",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS classification VARCHAR(100)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS ai_confidence NUMERIC(5,2)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS patient_name VARCHAR(200)",
+        "ALTER TABLE {schema}.patients ADD COLUMN IF NOT EXISTS city VARCHAR(100)",
+        "ALTER TABLE {schema}.patients ADD COLUMN IF NOT EXISTS state VARCHAR(50)",
+        "ALTER TABLE {schema}.patients ADD COLUMN IF NOT EXISTS zip VARCHAR(20)",
+        "ALTER TABLE {schema}.providers ADD COLUMN IF NOT EXISTS phone VARCHAR(30)",
+        "ALTER TABLE {schema}.providers ADD COLUMN IF NOT EXISTS email VARCHAR(200)",
+        "ALTER TABLE {schema}.providers ADD COLUMN IF NOT EXISTS credential VARCHAR(20)",
+        "ALTER TABLE {schema}.providers ADD COLUMN IF NOT EXISTS license_number VARCHAR(50)",
+        "ALTER TABLE {schema}.providers ADD COLUMN IF NOT EXISTS license_state VARCHAR(10)",
+        "ALTER TABLE {schema}.providers ADD COLUMN IF NOT EXISTS license_expiry DATE",
+        "ALTER TABLE {schema}.providers ADD COLUMN IF NOT EXISTS dea_number VARCHAR(30)",
+        "ALTER TABLE {schema}.providers ADD COLUMN IF NOT EXISTS dea_expiry DATE",
+        "ALTER TABLE {schema}.payers ADD COLUMN IF NOT EXISTS type VARCHAR(50)",
+        "ALTER TABLE {schema}.fee_schedules ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
+      ];
+      let syncCount = 0;
+      for (const schemaRow of tenantSchemas.rows) {
+        const schema = schemaRow.schema_name;
+        for (const stmt of TENANT_COL_SYNC) {
+          try {
+            await pool.query(stmt.replace(/{schema}/g, schema));
+            syncCount++;
+          } catch (e) {
+            // Table might not exist in this tenant schema — that's fine
+            if (!e.message?.includes('does not exist') && e.code !== '42701') {
+              safeLog('warn', `[tenant-sync] ${schema}: ${e.message?.substring(0, 80)}`);
+            }
+          }
+        }
+      }
+      safeLog('info', `[tenant-sync] Synced columns across ${tenantSchemas.rows.length} tenant schemas (${syncCount} ALTER TABLE statements)`);
+    }
+  } catch (e) { safeLog('warn', '[tenant-sync] Failed:', e.message); }
 
   safeLog('info', `Column fixes applied (${colFixes.length} statements)`);
 }
@@ -7829,7 +7910,8 @@ export const handler = async (event) => {
       body.doc_type = body.document_type;
     }
 
-    if (path.includes('/documents') && !path.includes('/upload-url') && !path.includes('/textract') && !path.includes('/classify') && !path.includes('/extract-rates') && !path.includes('/extract-codes')) {
+    const DOC_SUB_ROUTES = ['/upload-url', '/textract', '/classify', '/extract-rates', '/extract-codes', '/match-entity', '/link-entity'];
+    if (path.includes('/documents') && !DOC_SUB_ROUTES.some(r => path.includes(r))) {
       if (method === 'GET' && !pathParams.id) {
         // Enriched document list — JOIN patients for name, filter by patient_id if requested
         let q = `SELECT d.*, 
@@ -7921,6 +8003,178 @@ export const handler = async (event) => {
     // ════ Bedrock Document Extraction (All-in-AWS OCR + AI) ═══════════════
     // Reads PDF/image from S3 → sends to Bedrock Claude → extracts ICD/CPT
     // PHI NEVER leaves AWS account — replaces Vercel /api/extract-text route
+    // ════ Document Entity Matching ═════════════════════════════════════════
+    // POST /documents/:id/match-entity — AI suggests which provider/payer this doc belongs to
+    if (path.includes('/documents') && path.includes('/match-entity') && method === 'POST' && pathParams.id) {
+      const doc = await getById('documents', pathParams.id);
+      if (!doc || doc.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
+
+      const category = doc.category || body.category || '';
+      const suggestions = { providers: [], payers: [], best_match: null, match_type: null, confidence: 0 };
+
+      // Extract text from textract result or filename
+      const docText = doc.textract_result?.text || doc.file_name || '';
+      const extractedFields = doc.textract_result?.extracted_fields || {};
+
+      // Get all providers and payers for this org/client (parameterized to prevent SQL injection)
+      const provParams = [effectiveOrgId];
+      let provFilter = '';
+      if (clientId) { provParams.push(clientId); provFilter = ` AND client_id = $${provParams.length}`; }
+      const provRows = await orgQuery(effectiveOrgId,
+        `SELECT id, first_name, last_name, npi, specialty FROM providers WHERE org_id = $1${provFilter} ORDER BY last_name`,
+        provParams);
+      const payerRows = await orgQuery(effectiveOrgId,
+        `SELECT id, name FROM payers WHERE org_id = $1 ORDER BY name`,
+        [effectiveOrgId]);
+
+      suggestions.providers = provRows.rows.map(p => ({
+        id: p.id,
+        name: `${p.first_name} ${p.last_name}`,
+        npi: p.npi,
+        specialty: p.specialty,
+      }));
+      suggestions.payers = payerRows.rows.map(p => ({ id: p.id, name: p.name }));
+
+      // Try to auto-match based on document text
+      const textLower = docText.toLowerCase();
+
+      if (category.includes('provider') || category.includes('credential')) {
+        // Try NPI match first (most reliable)
+        const npiMatch = docText.match(/\b(\d{10})\b/);
+        if (npiMatch) {
+          const matchedProv = provRows.rows.find(p => p.npi === npiMatch[1]);
+          if (matchedProv) {
+            suggestions.best_match = { type: 'provider', id: matchedProv.id, name: `${matchedProv.first_name} ${matchedProv.last_name}`, npi: matchedProv.npi };
+            suggestions.match_type = 'npi';
+            suggestions.confidence = 95;
+          }
+        }
+
+        // Try name match if no NPI match
+        if (!suggestions.best_match) {
+          for (const p of provRows.rows) {
+            const fullName = `${p.first_name} ${p.last_name}`.toLowerCase();
+            const lastFirst = `${p.last_name}, ${p.first_name}`.toLowerCase();
+            const lastOnly = p.last_name.toLowerCase();
+            if (textLower.includes(fullName) || textLower.includes(lastFirst)) {
+              suggestions.best_match = { type: 'provider', id: p.id, name: `${p.first_name} ${p.last_name}`, npi: p.npi };
+              suggestions.match_type = 'full_name';
+              suggestions.confidence = 85;
+              break;
+            } else if (lastOnly.length >= 4 && textLower.includes(lastOnly)) {
+              suggestions.best_match = { type: 'provider', id: p.id, name: `${p.first_name} ${p.last_name}`, npi: p.npi };
+              suggestions.match_type = 'last_name';
+              suggestions.confidence = 60;
+              // Don't break — keep looking for a better match
+            }
+          }
+        }
+
+        // Try extracted fields (from Bedrock classify)
+        if (!suggestions.best_match && extractedFields) {
+          const extractedName = extractedFields.provider_name || extractedFields.physician_name || extractedFields.name || '';
+          const extractedNpi = extractedFields.npi || '';
+          if (extractedNpi) {
+            const matchedProv = provRows.rows.find(p => p.npi === extractedNpi);
+            if (matchedProv) {
+              suggestions.best_match = { type: 'provider', id: matchedProv.id, name: `${matchedProv.first_name} ${matchedProv.last_name}`, npi: matchedProv.npi };
+              suggestions.match_type = 'extracted_npi';
+              suggestions.confidence = 92;
+            }
+          } else if (extractedName) {
+            const nameLower = extractedName.toLowerCase();
+            for (const p of provRows.rows) {
+              if (nameLower.includes(p.last_name.toLowerCase()) && nameLower.includes(p.first_name.toLowerCase())) {
+                suggestions.best_match = { type: 'provider', id: p.id, name: `${p.first_name} ${p.last_name}`, npi: p.npi };
+                suggestions.match_type = 'extracted_name';
+                suggestions.confidence = 80;
+                break;
+              }
+            }
+          }
+        }
+      } else if (category.includes('payer') || category.includes('contract')) {
+        // Match against payer names
+        for (const p of payerRows.rows) {
+          const payerLower = p.name.toLowerCase();
+          if (textLower.includes(payerLower)) {
+            suggestions.best_match = { type: 'payer', id: p.id, name: p.name };
+            suggestions.match_type = 'payer_name';
+            suggestions.confidence = 85;
+            break;
+          }
+          // Partial match (e.g. "United" in "UnitedHealthcare")
+          const words = payerLower.split(/\s+/);
+          if (words.some(w => w.length >= 5 && textLower.includes(w))) {
+            suggestions.best_match = { type: 'payer', id: p.id, name: p.name };
+            suggestions.match_type = 'payer_partial';
+            suggestions.confidence = 60;
+          }
+        }
+      }
+
+      await auditLog(effectiveOrgId, userId, 'match_entity', 'documents', pathParams.id, {
+        category, match_type: suggestions.match_type, confidence: suggestions.confidence,
+        best_match_id: suggestions.best_match?.id,
+      });
+
+      return respond(200, suggestions);
+    }
+
+    // POST /documents/:id/link-entity — link document to a provider or payer
+    if (path.includes('/documents') && path.includes('/link-entity') && method === 'POST' && pathParams.id) {
+      const doc = await getById('documents', pathParams.id);
+      if (!doc || doc.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
+
+      const { provider_id, payer_id, entity_type, entity_id } = body;
+      const updates = { updated_at: new Date().toISOString() };
+
+      if (provider_id) {
+        // Verify provider exists and belongs to this org
+        const prov = await getById('providers', provider_id);
+        if (!prov || prov.org_id !== effectiveOrgId) return respond(400, { error: 'Provider not found in this organization' });
+        updates.provider_id = provider_id;
+        updates.linked_entity_type = 'provider';
+        updates.linked_entity_id = provider_id;
+      } else if (payer_id) {
+        const payer = await getById('payers', payer_id);
+        if (!payer || payer.org_id !== effectiveOrgId) return respond(400, { error: 'Payer not found in this organization' });
+        updates.payer_id = payer_id;
+        updates.linked_entity_type = 'payer';
+        updates.linked_entity_id = payer_id;
+      } else if (entity_type && entity_id) {
+        updates.linked_entity_type = entity_type;
+        updates.linked_entity_id = entity_id;
+      } else {
+        return respond(400, { error: 'provider_id, payer_id, or entity_type+entity_id required' });
+      }
+
+      const updated = await update('documents', pathParams.id, updates);
+
+      // If provider credential doc, also try to update credentialing record
+      if (provider_id && (doc.category === 'provider_credentials' || doc.doc_type?.includes('credential'))) {
+        try {
+          // Find or create credentialing record for this provider
+          const credQ = `SELECT id FROM credentialing WHERE org_id = $1 AND provider_id = $2 LIMIT 1`;
+          const credR = await orgQuery(effectiveOrgId, credQ, [effectiveOrgId, provider_id]);
+          if (credR.rows[0]) {
+            // Trigger credential extraction if textract result exists
+            if (doc.textract_result?.text) {
+              safeLog('info', `[link-entity] Document ${pathParams.id} linked to provider ${provider_id}, credentialing record ${credR.rows[0].id}`);
+            }
+          }
+        } catch (credErr) {
+          safeLog('warn', `[link-entity] Failed to update credentialing: ${credErr.message}`);
+        }
+      }
+
+      await auditLog(effectiveOrgId, userId, 'link_entity', 'documents', pathParams.id, {
+        provider_id, payer_id, entity_type, entity_id,
+      });
+
+      return respond(200, { ...updated, linked: true });
+    }
+
     if (path.includes('/documents') && path.includes('/extract-codes') && method === 'POST') {
       const doc = await getById('documents', pathParams.id);
       if (!doc || doc.org_id !== effectiveOrgId) return respond(404, { error: 'Document not found' });
@@ -9410,6 +9664,126 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     }
 
     // ════ ADMIN: Fix client_id alignment (callable endpoint) ════════════
+    // GET /admin/orphaned-records — find all records without client_id
+    if (resource === 'admin' && path.includes('/orphaned-records') && method === 'GET') {
+      if (!['admin', 'director'].includes(filterRole)) return respond(403, { error: 'Admin only' });
+
+      const TABLES = ['patients', 'providers', 'documents', 'fee_schedules', 'payers', 'claims', 'appointments'];
+      const result = {};
+
+      for (const table of TABLES) {
+        try {
+          // IMPORTANT: use public.${table} because tenant schema routing may be active
+          // when a client is selected. Orphaned records always live in public schema.
+          const countQ = await orgQuery(effectiveOrgId,
+            `SELECT COUNT(*) as total FROM public.${table} WHERE org_id = $1 AND client_id IS NULL`,
+            [effectiveOrgId]);
+          const orphanCount = parseInt(countQ.rows[0]?.total || 0);
+
+          if (orphanCount > 0) {
+            // Get sample records
+            const nameCol = table === 'payers' ? 'name' :
+              table === 'documents' ? 'file_name' :
+              table === 'fee_schedules' ? 'cpt_code' :
+              table === 'claims' ? 'claim_number' :
+              table === 'appointments' ? 'appointment_date' :
+              'first_name';
+            const secondCol = table === 'providers' ? ", last_name, npi" :
+              table === 'patients' ? ", last_name" :
+              table === 'documents' ? ", doc_type, category" :
+              table === 'fee_schedules' ? ", contracted_rate, payer_id" :
+              '';
+
+            const sampleQ = await orgQuery(effectiveOrgId,
+              `SELECT id, ${nameCol}${secondCol} FROM public.${table} WHERE org_id = $1 AND client_id IS NULL ORDER BY created_at DESC LIMIT 20`,
+              [effectiveOrgId]);
+
+            result[table] = {
+              count: orphanCount,
+              samples: sampleQ.rows.map(r => {
+                const label = table === 'payers' ? r.name :
+                  table === 'documents' ? r.file_name :
+                  table === 'fee_schedules' ? `CPT ${r.cpt_code}` :
+                  table === 'claims' ? r.claim_number :
+                  table === 'appointments' ? r.appointment_date :
+                  `${r.first_name} ${r.last_name || ''}`;
+                return { id: r.id, label: label?.trim() };
+              }),
+            };
+          }
+        } catch (e) {
+          // Table might not have client_id column, skip
+          if (!e.message?.includes('does not exist')) throw e;
+        }
+      }
+
+      return respond(200, { orphaned: result, total: Object.values(result).reduce((a, b) => a + b.count, 0) });
+    }
+
+    // POST /admin/assign-client — bulk assign client_id to orphaned records
+    if (resource === 'admin' && path.includes('/assign-client') && method === 'POST') {
+      if (!['admin', 'director'].includes(filterRole)) return respond(403, { error: 'Admin only' });
+
+      const { client_id, tables } = body;
+      if (!client_id) return respond(400, { error: 'client_id required' });
+
+      // Verify client exists (always in public schema)
+      const clientCheck = await orgQuery(effectiveOrgId,
+        `SELECT id, name FROM public.clients WHERE id = $1 AND org_id = $2`, [client_id, effectiveOrgId]);
+      if (!clientCheck.rows[0]) return respond(400, { error: 'Client not found' });
+
+      const ALLOWED_TABLES = ['patients', 'providers', 'documents', 'fee_schedules', 'payers', 'claims', 'appointments'];
+      const targetTables = tables && Array.isArray(tables) ? tables.filter(t => ALLOWED_TABLES.includes(t)) : ALLOWED_TABLES;
+
+      const results = {};
+      for (const table of targetTables) {
+        try {
+          const r = await orgQuery(effectiveOrgId,
+            `UPDATE public.${table} SET client_id = $1, updated_at = NOW() WHERE org_id = $2 AND client_id IS NULL`,
+            [client_id, effectiveOrgId]);
+          results[table] = r.rowCount;
+        } catch (e) {
+          if (!e.message?.includes('does not exist')) results[table] = `error: ${e.message?.substring(0, 80)}`;
+        }
+      }
+
+      // ── Copy assigned records into the target tenant schema ──────────────
+      // Records are now in public.{table} with client_id set. But practice
+      // pages query tenant_{N} schema. We need to copy them there too.
+      // Uses ON CONFLICT DO NOTHING so existing records aren't duplicated.
+      const tSchema = clientIdToSchema(client_id);
+      if (tSchema) {
+        const schemaExists = await pool.query(
+          `SELECT 1 FROM information_schema.schemata WHERE schema_name = $1`, [tSchema]
+        ).catch(() => ({ rows: [] }));
+        if (schemaExists.rows.length > 0) {
+          for (const table of targetTables) {
+            if (typeof results[table] === 'number' && results[table] > 0) {
+              try {
+                await pool.query(
+                  `INSERT INTO ${tSchema}.${table} SELECT * FROM public.${table} WHERE client_id = $1 AND org_id = $2 ON CONFLICT DO NOTHING`,
+                  [client_id, effectiveOrgId]
+                );
+              } catch (e) {
+                safeLog('warn', `[assign-client] Copy to ${tSchema}.${table} failed: ${e.message?.substring(0, 80)}`);
+              }
+            }
+          }
+          safeLog('info', `[assign-client] Copied records to ${tSchema}`);
+        }
+      }
+
+      await auditLog(effectiveOrgId, userId, 'assign_client', 'admin', client_id, {
+        client_name: clientCheck.rows[0].name, tables: targetTables, results
+      });
+
+      return respond(200, {
+        assigned_to: { id: client_id, name: clientCheck.rows[0].name },
+        results,
+        total_assigned: Object.values(results).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0),
+      });
+    }
+
     if (resource === 'admin' && path.includes('/fix-client-ids') && method === 'POST') {
       const fixes = {};
       // Fix eligibility_checks: inherit client_id from the linked patient
@@ -11185,12 +11559,12 @@ Return ONLY the JSON, no other text.`;
         const resolvePayerByName = async (payerName) => {
           if (!payerName) return null;
           // Try payer_name column first, then name column as fallback
-          let q = `SELECT id FROM payers WHERE org_id = $1 AND (LOWER(payer_name) = LOWER($2) OR LOWER(name) = LOWER($2)) LIMIT 1`;
+          let q = `SELECT id FROM payers WHERE org_id = $1 AND LOWER(name) = LOWER($2) LIMIT 1`;
           let r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, payerName]);
           if (r.rows[0]) return r.rows[0].id;
           // Contains fallback — only if name is 4+ chars to avoid false positives
           if (payerName.length >= 4) {
-            q = `SELECT id FROM payers WHERE org_id = $1 AND (LOWER(payer_name) ILIKE $2 OR LOWER(name) ILIKE $2) LIMIT 1`;
+            q = `SELECT id FROM payers WHERE org_id = $1 AND LOWER(name) ILIKE $2 LIMIT 1`;
             r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, `%${payerName}%`]);
           }
           return r.rows[0]?.id || null;
@@ -11220,6 +11594,11 @@ Return ONLY the JSON, no other text.`;
                 row.status = 'submitted';
               }
 
+              // Normalize gender (constraint expects lowercase)
+              if (row.gender) {
+                row.gender = row.gender.toLowerCase();
+              }
+
               // Map payer_name to name for payers table
               if (entity_type === 'payers' && row.payer_name && !row.name) {
                 row.name = row.payer_name;
@@ -11229,12 +11608,28 @@ Return ONLY the JSON, no other text.`;
                 row.region = 'us';
               }
               // Remove non-DB fields (mapping helpers, internal markers)
+              // Keep payer_name for fee_schedules to resolve to payer_id
+              if (entity_type === 'fee_schedules' && row.payer_name && !row.payer_id) {
+                row.payer_id = await resolvePayerByName(row.payer_name);
+              }
               delete row.payer_name;
               delete row._rowIndex;
               delete row._original;
               delete row.patient_first_name;
               delete row.patient_last_name;
               delete row.provider_name;
+              // Strip fields that don't exist on target tables
+              if (entity_type === 'fee_schedules') {
+                // Allowlist: only keep columns that exist on fee_schedules table
+                const FEE_ALLOWED = ['payer_id', 'cpt_code', 'contracted_rate', 'effective_date', 'termination_date', 'client_id'];
+                const cleanRow = {};
+                for (const k of FEE_ALLOWED) {
+                  if (row[k] !== undefined) cleanRow[k] = row[k];
+                }
+                // Replace row contents
+                for (const k of Object.keys(row)) delete row[k];
+                Object.assign(row, cleanRow);
+              }
 
               // Source tracking is via audit_log and import_jobs table
               // Don't set row.source as not all entity tables have this column
@@ -11256,7 +11651,17 @@ Return ONLY the JSON, no other text.`;
               } else {
                 // Insert new
                 if (clientId) row.client_id = clientId;
-                await create(table, row, effectiveOrgId);
+                // For fee_schedules: build a clean object with only valid columns
+                if (entity_type === 'fee_schedules') {
+                  const cleanFee = { payer_id: row.payer_id, cpt_code: row.cpt_code, contracted_rate: row.contracted_rate, client_id: row.client_id };
+                  if (row.effective_date) cleanFee.effective_date = row.effective_date;
+                  if (row.termination_date) cleanFee.termination_date = row.termination_date;
+                  safeLog('info', `[import] fee_schedules cleanFee keys: ${Object.keys(cleanFee).join(',')}`);
+                  await create(table, cleanFee, effectiveOrgId);
+                } else {
+                  safeLog('info', `[import] ${entity_type} row keys: ${Object.keys(row).join(',')}`);
+                  await create(table, row, effectiveOrgId);
+                }
                 imported++;
               }
             } catch (e) {

@@ -1,9 +1,9 @@
 'use client'
-import React, { useState, useCallback, useRef, useMemo } from 'react'
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
-import { Upload, FileSpreadsheet, Users, Building2, DollarSign, Stethoscope, CalendarDays, CheckCircle2, AlertCircle, X, ChevronRight, Loader2, RotateCcw, ArrowLeft, Info, Plug, Globe, Wifi, WifiOff, RefreshCw, Trash2, Server } from 'lucide-react'
+import { Upload, FileSpreadsheet, Users, Building2, DollarSign, Stethoscope, CalendarDays, CheckCircle2, AlertCircle, X, ChevronRight, Loader2, RotateCcw, ArrowLeft, Info, Plug, Globe, Wifi, WifiOff, RefreshCw, Trash2, Server, FileText, FolderUp, Eye, Link2, Circle } from 'lucide-react'
 import { useImportJobs, useImportPreview, useImportExecute, useClients, ApiImportJob, useEhrConnections, useCreateEhrConnection, ApiEhrConnection } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
 import * as XLSX from 'xlsx'
@@ -166,6 +166,34 @@ function fuzzyMatch(header: string): string | null {
   return null
 }
 
+
+// ── Document categories for bulk upload ──────────────────────────────────────
+const DOC_CATEGORIES = [
+  { id: 'provider_credentials', label: 'Provider Credentials', desc: 'Licenses, DEA certs, malpractice insurance, board certs, CAQH', icon: 'Stethoscope' },
+  { id: 'payer_contracts', label: 'Payer Contracts', desc: 'Signed contract PDFs with fee schedule exhibits', icon: 'DollarSign' },
+  { id: 'prior_authorizations', label: 'Prior Authorizations', desc: 'Active/pending prior auth letters', icon: 'FileText' },
+  { id: 'appeals', label: 'Appeal Documents', desc: 'Supporting docs for claims currently in appeals', icon: 'AlertCircle' },
+  { id: 'other', label: 'Other Documents', desc: 'EOBs, W-9s, CVs, other operational documents', icon: 'FileSpreadsheet' },
+] as const
+
+type DocFile = {
+  id: string
+  file: File
+  name: string
+  size: string
+  category: string
+  status: 'pending' | 'uploading' | 'processing' | 'done' | 'error'
+  docId?: string
+  classification?: string
+  extractedData?: Record<string, string>
+  error?: string
+  entitySuggestion?: { type: string; id: string; name: string; npi?: string; confidence: number; match_type?: string }
+  linkedEntityId?: string
+  linkedEntityType?: string
+  providers?: Array<{ id: string; name: string; npi: string; specialty: string }>
+  payers?: Array<{ id: string; name: string }>
+}
+
 // ── CSV Parser ───────────────────────────────────────────────────────────────
 function parseCSV(text: string, delimiter: string = ','): { headers: string[]; rows: Record<string, string>[] } {
   const lines = text.split(/\r?\n/).filter(l => l.trim())
@@ -217,7 +245,7 @@ function normalizeDate(val: string): string {
 // ══════════════════════════════════════════════════════════════════════════════
 export default function OnboardingPage() {
   const { toast } = useToast()
-  const { currentUser } = useApp()
+  const { currentUser, selectedClient, clients } = useApp()
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [step, setStep] = useState('select' as Step)
@@ -233,7 +261,7 @@ export default function OnboardingPage() {
   const fileRef = useRef(null as HTMLInputElement | null)
 
   // ── Mode (tab) ─────────────────────────────────────────────────────────────
-  const [mode, setMode] = useState('upload' as 'upload' | 'connect')
+  const [mode, setMode] = useState('upload' as 'upload' | 'connect' | 'unmapped')
 
   // ── EHR Connection State ───────────────────────────────────────────────────
   const [showAddConnection, setShowAddConnection] = useState(false)
@@ -243,6 +271,58 @@ export default function OnboardingPage() {
   const [pullingId, setPullingId] = useState(null as string | null)
   const [selectedResources, setSelectedResources] = useState([] as string[])
   const [pullResultMap, setPullResultMap] = useState({} as Record<string, { resources_pulled: Record<string, number>; errors: Array<{ resource: string; reason: string }>; total_records: number }>)
+
+
+
+  // ── Orphaned Records State ──────────────────────────────────────────────────
+  const [orphanData, setOrphanData] = useState(null as null | { orphaned: Record<string, { count: number; samples: Array<{ id: string; label: string }> }>; total: number })
+  const [orphanLoading, setOrphanLoading] = useState(true)
+  const [assigningClient, setAssigningClient] = useState(false)
+
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'admin') { setOrphanLoading(false); return }
+    const fetchOrphans = async () => {
+      setOrphanLoading(true)
+      try {
+        const { api } = await import('@/lib/api-client')
+        const res = await api.get('/admin/orphaned-records', { org_id: currentUser.organization_id, role: 'admin' }) as unknown as { orphaned: Record<string, { count: number; samples: Array<{ id: string; label: string }> }>; total: number }
+        setOrphanData(res)
+      } catch (e) {
+        console.error('Failed to fetch orphaned records:', e)
+        setOrphanData({ orphaned: {}, total: 0 })
+      } finally {
+        setOrphanLoading(false)
+      }
+    }
+    fetchOrphans()
+  }, [currentUser])
+
+  const handleAssignOrphans = useCallback(async () => {
+    if (!selectedClient) { toast.error('Select a practice first'); return }
+    setAssigningClient(true)
+    try {
+      const { api } = await import('@/lib/api-client')
+      const res = await api.post('/admin/assign-client', {
+        client_id: selectedClient.id,
+      }, { org_id: currentUser.organization_id, role: 'admin' }) as unknown as { assigned_to: { name: string }; total_assigned: number }
+      toast.success(`Assigned ${res.total_assigned} records to ${res.assigned_to.name}`)
+      // Re-fetch orphaned records to get updated counts
+      setOrphanLoading(true)
+      try {
+        const updated = await api.get('/admin/orphaned-records', { org_id: currentUser.organization_id, role: 'admin' }) as unknown as { orphaned: Record<string, { count: number; samples: Array<{ id: string; label: string }> }>; total: number }
+        setOrphanData(updated)
+      } catch { setOrphanData({ orphaned: {}, total: 0 }) }
+      setOrphanLoading(false)
+    } catch (e) {
+      toast.error(`Assignment failed: ${(e as Error).message}`)
+    }
+    setAssigningClient(false)
+  }, [selectedClient, currentUser, toast])
+
+  // ── Document Upload State ───────────────────────────────────────────────────
+  const [docCategory, setDocCategory] = useState('provider_credentials')
+  const [docFiles, setDocFiles] = useState([] as DocFile[])
+  const [docUploading, setDocUploading] = useState(false)
 
   // ── API hooks ──────────────────────────────────────────────────────────────
   const { data: jobsData, refetch: refreshJobs } = useImportJobs({})
@@ -362,7 +442,7 @@ export default function OnboardingPage() {
     })
     try {
       const res = await importPreview.mutate({ entity_type: entityType, rows: mappedRows })
-      if (!res) { toast.error('Preview failed'); return }
+      if (!res) { toast.error(`Preview failed: ${importPreview.error?.message || 'server returned empty response'}`); return }
       setPreviewErrors(res.errors || [])
       setStep('preview')
     } catch {
@@ -521,6 +601,168 @@ export default function OnboardingPage() {
     setPullingId(null)
   }, [selectedResources, refreshEhr, refreshJobs, toast])
 
+
+  // ── Document Upload Handlers ────────────────────────────────────────────────
+  const handleDocDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    const files = Array.from(e.dataTransfer.files as unknown as File[]).filter((f) =>
+      f.type === 'application/pdf' || f.type.startsWith('image/')
+    )
+    const newFiles: DocFile[] = files.map((f: File) => ({
+      id: crypto.randomUUID(),
+      file: f,
+      name: f.name,
+      size: (f.size / 1024 / 1024).toFixed(1) + ' MB',
+      category: docCategory,
+      status: 'pending' as const,
+    }))
+    setDocFiles((prev: DocFile[]) => [...prev, ...newFiles])
+  }, [docCategory])
+
+  const handleDocBrowse = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from((e.target.files || []) as unknown as File[]).filter((f) =>
+      f.type === 'application/pdf' || f.type.startsWith('image/')
+    )
+    const newFiles: DocFile[] = files.map((f: File) => ({
+      id: crypto.randomUUID(),
+      file: f,
+      name: f.name,
+      size: (f.size / 1024 / 1024).toFixed(1) + ' MB',
+      category: docCategory,
+      status: 'pending' as const,
+    }))
+    setDocFiles((prev: DocFile[]) => [...prev, ...newFiles])
+  }, [docCategory])
+
+  const handleDocUploadAll = useCallback(async () => {
+    const pending = docFiles.filter((f: DocFile) => f.status === 'pending')
+    if (pending.length === 0) return
+    setDocUploading(true)
+    try {
+    const { api } = await import('@/lib/api-client')
+    const S3_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET
+    if (!S3_BUCKET) console.warn('NEXT_PUBLIC_S3_BUCKET not set, using server-provided bucket')
+
+    for (const df of pending) {
+      const fileId = df.id
+      const fileCategory = df.category // Use category captured at drop time (#11)
+
+      try {
+        // Step 1: Get presigned URL
+        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile) => f.id === fileId ? { ...f, status: 'uploading' as const } : f))
+        const uploadRes = await api.post('/documents/upload-url', {
+          file_name: df.name,
+          content_type: df.file.type,
+          folder: `onboarding/${fileCategory}`,
+        }) as unknown as { upload_url: string; s3_key: string }
+
+        // Step 2: Upload to S3 — require presigned URL from server
+        if (!uploadRes.upload_url || !uploadRes.s3_key) {
+          throw new Error('Server did not return upload URL or S3 key')
+        }
+        {
+          const s3Resp = await fetch(uploadRes.upload_url, {
+            method: 'PUT',
+            body: df.file,
+            headers: { 'Content-Type': df.file.type },
+          })
+          if (!s3Resp.ok) throw new Error(`S3 upload failed: ${s3Resp.status} ${s3Resp.statusText}`)
+        }
+
+        // Step 3: Create document record
+        const docRes = await api.post('/documents', {
+          document_type: fileCategory.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+          file_name: df.name,
+          s3_key: uploadRes.s3_key,
+          s3_bucket: S3_BUCKET || 'medcloud-documents-us-prod',
+          content_type: df.file.type,
+          file_size: df.file.size,
+          source: 'Onboarding Upload',
+          category: fileCategory,
+        }) as unknown as { id: string }
+
+        // Step 4: Trigger Textract + Classify
+        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile) => f.id === fileId ? { ...f, status: 'processing' as const, docId: docRes.id } : f))
+
+        let classification = fileCategory
+        let extractedData = {} as Record<string, string>
+        try {
+          await api.post(`/documents/${docRes.id}/textract`, {})
+          const classRes = await api.post(`/documents/${docRes.id}/classify`, {}) as unknown as { classified_type?: string; document_type?: string; confidence?: number; extracted_fields?: Record<string, string> }
+          classification = classRes.classified_type || classRes.document_type || fileCategory
+          extractedData = classRes.extracted_fields || {}
+        } catch (classErr) {
+          console.warn(`Textract/classify failed for ${df.name}:`, (classErr as Error).message)
+        }
+
+        // Step 5: Match entity (suggest which provider/payer this belongs to)
+        let entitySuggestion: DocFile['entitySuggestion'] = undefined
+        let matchProviders: DocFile['providers'] = []
+        let matchPayers: DocFile['payers'] = []
+        try {
+          const matchRes = await api.post(`/documents/${docRes.id}/match-entity`, { category: fileCategory }) as unknown as {
+            best_match?: { type: string; id: string; name: string; npi?: string }
+            match_type?: string; confidence?: number
+            providers?: Array<{ id: string; name: string; npi: string; specialty: string }>
+            payers?: Array<{ id: string; name: string }>
+          }
+          if (matchRes.best_match) {
+            entitySuggestion = { ...matchRes.best_match, confidence: matchRes.confidence || 0, match_type: matchRes.match_type }
+          }
+          matchProviders = matchRes.providers || []
+          matchPayers = matchRes.payers || []
+
+          // Auto-link if confidence is very high (NPI match)
+          if (entitySuggestion && (matchRes.confidence || 0) >= 90) {
+            const linkBody = entitySuggestion.type === 'provider'
+              ? { provider_id: entitySuggestion.id }
+              : { payer_id: entitySuggestion.id }
+            await api.post(`/documents/${docRes.id}/link-entity`, linkBody)
+          }
+        } catch (matchErr) {
+          console.warn(`Entity match failed for ${df.name}:`, (matchErr as Error).message)
+        }
+
+        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile) => f.id === fileId ? {
+          ...f, status: 'done' as const, classification, extractedData,
+          entitySuggestion, providers: matchProviders, payers: matchPayers,
+          linkedEntityId: entitySuggestion && (entitySuggestion.confidence >= 90) ? entitySuggestion.id : undefined,
+          linkedEntityType: entitySuggestion && (entitySuggestion.confidence >= 90) ? entitySuggestion.type : undefined,
+        } : f))
+        toast.success(`Uploaded ${df.name}`)
+      } catch (e) {
+        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile) => f.id === fileId ? { ...f, status: 'error' as const, error: (e as Error).message } : f))
+        toast.error(`Failed: ${df.name}`)
+      }
+    }
+    } finally {
+      setDocUploading(false)
+    }
+  }, [docFiles, toast])
+
+  const removeDocFile = useCallback((fileId: string) => {
+    setDocFiles((prev: DocFile[]) => prev.filter((f: DocFile) => f.id !== fileId))
+  }, [])
+
+  const handleLinkEntity = useCallback(async (fileId: string, docId: string, entityType: string, entityId: string) => {
+    try {
+      const { api } = await import('@/lib/api-client')
+      const linkBody = entityType === 'provider' ? { provider_id: entityId } : { payer_id: entityId }
+      await api.post(`/documents/${docId}/link-entity`, linkBody)
+      setDocFiles((prev: DocFile[]) => prev.map((f: DocFile) => f.id === fileId ? { ...f, linkedEntityId: entityId, linkedEntityType: entityType } : f))
+      toast.success('Document linked successfully')
+    } catch (e) {
+      toast.error(`Link failed: ${(e as Error).message}`)
+    }
+  }, [toast])
+
+  // ── Compute progress from import jobs ───────────────────────────────────────
+  const completedEntities = new Set(
+    (jobs || [])
+      .filter((j: ApiImportJob) => j.status === 'completed' && ((j.imported_count || 0) > 0 || (j.updated_count || 0) > 0))
+      .map((j: ApiImportJob) => j.entity_type)
+  )
+
   // ═════════════════════════════════════════════════════════════════════════════
   // RENDER
   // ═════════════════════════════════════════════════════════════════════════════
@@ -529,15 +771,90 @@ export default function OnboardingPage() {
       {/* ── Breadcrumb / Step indicator ─────────────────────────────────── */}
       <div className="flex items-center gap-2 mb-4 text-sm text-content-tertiary">
         <button type="button" onClick={reset} className="hover:text-brand font-medium">Onboarding</button>
+        {selectedClient && <><ChevronRight className="w-4 h-4" /><span className="text-brand font-medium">{selectedClient.name}</span></>}
         {entityType && <><ChevronRight className="w-4 h-4" /><span className="text-content-primary font-medium">{entityConfig?.label}</span></>}
         {step !== 'select' && step !== 'upload' && <><ChevronRight className="w-4 h-4" /><span className="capitalize">{step}</span></>}
       </div>
+
+
+
+
+      {/* ── Orphaned Data Alert ────────────────────────────────────────── */}
+      {orphanData && orphanData.total > 0 && (
+        <div className="card p-4 mb-4 border-l-4 border-l-brand-deep">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-[13px] font-semibold text-brand-deep flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                {orphanData.total} Unlinked Records Found
+              </h3>
+              <p className="text-[12px] text-content-secondary mt-1">
+                These records were imported without a practice selected. They exist in the database but won't show on practice pages until linked.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {(Object.entries(orphanData.orphaned) as [string, { count: number; samples: Array<{ id: string; label: string }> }][]).map(([table, info]) => (
+                  <span key={table} className="px-2 py-0.5 rounded-[6px] bg-brand-deep/10 text-brand-deep text-[11px] font-medium">
+                    {table.replace(/_/g, ' ')}: {info.count}
+                  </span>
+                ))}
+              </div>
+            </div>
+            {selectedClient ? (
+              <button type="button" onClick={handleAssignOrphans} disabled={assigningClient}
+                className="shrink-0 px-4 py-2 rounded-[8px] bg-brand text-white text-[12px] font-semibold hover:bg-brand-dark disabled:opacity-50">
+                {assigningClient ? 'Assigning...' : `Assign all to ${selectedClient.name}`}
+              </button>
+            ) : (
+              <span className="text-[11px] text-content-tertiary shrink-0">Select a practice first to assign</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Client Selection Gate ──────────────────────────────────────── */}
+      {!selectedClient && (
+        <div className="card p-8 text-center mb-6">
+          <Building2 className="w-10 h-10 text-content-tertiary mx-auto mb-3" />
+          <h2 className="text-lg font-semibold text-content-primary mb-2">Select a Practice First</h2>
+          <p className="text-sm text-content-secondary mb-4 max-w-md mx-auto">
+            You need to select a specific practice from the "All Clients" dropdown at the top before importing data. 
+            Each import must be tied to a practice so the data appears in the right place.
+          </p>
+          {clients && clients.length > 0 ? (
+            <p className="text-[12px] text-content-tertiary">Use the dropdown at the top left to select a practice like "{clients[0]?.name}" or "{clients[1]?.name || clients[0]?.name}".</p>
+          ) : (
+            <div className="text-[12px] text-content-tertiary">
+              <p className="mb-2">No practices found. Create one first:</p>
+              <p>Go to <strong>Admin & Settings</strong> → <strong>Organizations</strong> → <strong>Add Client</strong></p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Onboarding Progress Tracker ────────────────────────────────── */}
+      {step === 'select' && selectedClient && (
+        <div className="card p-4 mb-6">
+          <h3 className="text-[13px] font-semibold text-content-primary mb-3">Data Import Progress</h3>
+          <div className="flex flex-wrap gap-3">
+            {ENTITIES.map(e => {
+              const done = completedEntities.has(e.id)
+              return (
+                <div key={e.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-[8px] text-[12px] font-medium ${done ? 'bg-brand/10 text-brand-dark' : 'bg-surface-elevated text-content-tertiary'}`}>
+                  {done ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
+                  {e.label}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Mode Tabs (Manual Upload | Connect EHR) ─────────────────────── */}
       {step === 'select' && (
         <div className="flex gap-2 mb-6">
           {[{ id: 'upload' as const, label: 'Manual Upload', icon: <Upload className="w-4 h-4" /> },
-            { id: 'connect' as const, label: 'Connect EHR', icon: <Plug className="w-4 h-4" /> }].map(t => (
+            { id: 'connect' as const, label: 'Connect EHR', icon: <Plug className="w-4 h-4" /> },
+            { id: 'unmapped' as const, label: orphanData && orphanData.total > 0 ? `Unmapped (${orphanData.total})` : 'Unmapped', icon: <AlertCircle className="w-4 h-4" /> }].map(t => (
             <button key={t.id} type="button" onClick={() => setMode(t.id)}
               className={`flex items-center gap-2 px-4 py-2 text-[13px] font-medium rounded-[10px] transition-all ${mode === t.id ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'}`}>
               {t.icon} {t.label}
@@ -549,7 +866,7 @@ export default function OnboardingPage() {
       {/* ════════════════════════════════════════════════════════════════════
           STEP 1: SELECT ENTITY TYPE (Manual Upload mode)
           ════════════════════════════════════════════════════════════════ */}
-      {step === 'select' && mode === 'upload' && (
+      {step === 'select' && selectedClient && mode === 'upload' && (
         <div>
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-content-primary">What data are you importing?</h2>
@@ -617,7 +934,7 @@ export default function OnboardingPage() {
       {/* ════════════════════════════════════════════════════════════════════
           CONNECT EHR TAB
           ════════════════════════════════════════════════════════════════ */}
-      {step === 'select' && mode === 'connect' && (
+      {step === 'select' && selectedClient && mode === 'connect' && (
         <div>
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-content-primary">Connect to EHR System</h2>
@@ -1080,6 +1397,242 @@ export default function OnboardingPage() {
           </div>
         </div>
       )}
+
+
+      {/* ════════════════════════════════════════════════════════════════════
+          UNMAPPED DATA TAB
+          ════════════════════════════════════════════════════════════════ */}
+      {step === 'select' && mode === 'unmapped' && (
+        <div>
+          {orphanLoading ? (
+            <div className="card p-8 text-center">
+              <Loader2 className="w-8 h-8 text-brand mx-auto mb-3 animate-spin" />
+              <p className="text-sm text-content-secondary">Checking for unlinked records...</p>
+            </div>
+          ) : !orphanData || orphanData.total === 0 ? (
+            <div className="card p-8 text-center">
+              <CheckCircle2 className="w-10 h-10 text-brand mx-auto mb-3" />
+              <h3 className="text-lg font-semibold text-content-primary mb-2">All Data is Linked</h3>
+              <p className="text-sm text-content-secondary">Every record in the system is assigned to a practice. Nothing to fix.</p>
+            </div>
+          ) : (
+            <div>
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-content-primary">{orphanData.total} Records Without a Practice</h2>
+                <p className="text-sm text-content-secondary mt-1">These records were imported without selecting a practice. Select a practice below and assign them.</p>
+              </div>
+
+              {/* Per-table breakdown */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+                {(Object.entries(orphanData.orphaned) as [string, { count: number; samples: Array<{ id: string; label: string }> }][]).map(([table, info]) => (
+                  <div key={table} className="card p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[13px] font-semibold text-content-primary capitalize">{table.replace(/_/g, ' ')}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-brand-deep/10 text-brand-deep text-[12px] font-bold">{info.count}</span>
+                    </div>
+                    <div className="space-y-1">
+                      {info.samples.slice(0, 5).map((s: { id: string; label: string }) => (
+                        <div key={s.id} className="text-[11px] text-content-tertiary truncate">{s.label}</div>
+                      ))}
+                      {info.count > 5 && <div className="text-[11px] text-content-tertiary">+{info.count - 5} more</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Assign action */}
+              {selectedClient ? (
+                <button type="button" onClick={handleAssignOrphans} disabled={assigningClient}
+                  className="w-full py-3 rounded-[10px] bg-brand text-white text-[14px] font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50">
+                  {assigningClient ? <><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Assigning...</> : `Assign all ${orphanData.total} records to ${selectedClient.name}`}
+                </button>
+              ) : (
+                <div className="card p-6 text-center">
+                  <Building2 className="w-8 h-8 text-content-tertiary mx-auto mb-2" />
+                  <p className="text-sm text-content-secondary">Select a practice from the "All Clients" dropdown at the top, then come back here to assign these records.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════
+          DOCUMENT UPLOAD SECTION (always visible on select step)
+          ════════════════════════════════════════════════════════════════ */}
+      {step === 'select' && selectedClient && (
+        <div className="card p-5 mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-content-primary flex items-center gap-2">
+                <FolderUp className="w-5 h-5 text-brand" />
+                Document Upload
+              </h2>
+              <p className="text-sm text-content-secondary mt-1">Upload provider credentials, payer contracts, prior auth letters, and other operational documents.</p>
+            </div>
+          </div>
+
+          {/* Category selector */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {DOC_CATEGORIES.map(cat => (
+              <button key={cat.id} type="button" onClick={() => setDocCategory(cat.id)}
+                className={`px-3 py-1.5 rounded-[8px] text-[12px] font-medium transition-all ${docCategory === cat.id ? 'bg-brand text-white' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30'}`}>
+                {cat.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[12px] text-content-tertiary mb-4">{DOC_CATEGORIES.find(c => c.id === docCategory)?.desc}</p>
+
+          {/* Drop zone */}
+          <div
+            role="button"
+            tabIndex={0}
+            onDrop={handleDocDrop}
+            onDragOver={(e: React.DragEvent) => e.preventDefault()}
+            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('doc-file-input')?.click() } }}
+            className="border-2 border-dashed border-separator rounded-[12px] p-8 text-center hover:border-brand/40 focus:border-brand/60 focus:outline-none focus:ring-2 focus:ring-brand/20 transition-colors cursor-pointer mb-4"
+            onClick={() => document.getElementById('doc-file-input')?.click()}
+          >
+            <Upload className="w-8 h-8 text-content-tertiary mx-auto mb-2" />
+            <p className="text-sm text-content-secondary">Drag and drop PDF, JPG, or PNG files here</p>
+            <p className="text-[12px] text-content-tertiary mt-1">or click to browse</p>
+            <input id="doc-file-input" type="file" multiple accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={handleDocBrowse} />
+          </div>
+
+          {/* File list */}
+          {docFiles.length > 0 && (
+            <div className="space-y-2 mb-4">
+              {docFiles.map((df: DocFile) => (
+                <div key={df.id} className="flex items-center justify-between p-3 rounded-[8px] bg-surface-elevated">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <FileText className="w-4 h-4 text-brand shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-[13px] font-medium text-content-primary truncate">{df.name}</div>
+                      <div className="text-[11px] text-content-tertiary">{df.size} &middot; {df.category.replace(/_/g, ' ')}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {df.status === 'pending' && <span className="text-[11px] text-content-tertiary">Ready</span>}
+                    {df.status === 'uploading' && <Loader2 className="w-4 h-4 text-brand animate-spin" />}
+                    {df.status === 'processing' && <span className="text-[11px] text-brand">Processing...</span>}
+                    {df.status === 'done' && (
+                      <span className="flex items-center gap-1 text-[11px] text-brand-dark">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        {df.classification || 'Uploaded'}
+                      </span>
+                    )}
+                    {df.status === 'error' && (
+                      <span className="flex items-center gap-1 text-[11px] text-brand-deep">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        Failed
+                      </span>
+                    )}
+                    {df.status === 'pending' && (
+                      <button type="button" onClick={() => removeDocFile(df.id)} className="text-content-tertiary hover:text-brand-deep">
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload button */}
+          {docFiles.some((f: DocFile) => f.status === 'pending') && (
+            <button type="button" onClick={handleDocUploadAll} disabled={docUploading}
+              className="w-full py-2.5 rounded-[10px] bg-brand text-white text-[13px] font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50">
+              {docUploading ? <><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Uploading...</> : `Upload ${docFiles.filter((f: DocFile) => f.status === 'pending').length} file(s) to S3`}
+            </button>
+          )}
+
+          {/* Entity Linking — for uploaded docs that need a provider/payer link */}
+          {docFiles.some((f: DocFile) => f.status === 'done' && !f.linkedEntityId && (f.providers?.length || f.payers?.length)) && (
+            <div className="mt-4 p-4 rounded-[10px] bg-surface-elevated border border-separator">
+              <h4 className="text-[13px] font-semibold text-content-primary mb-3 flex items-center gap-2">
+                <Link2 className="w-4 h-4 text-brand" />
+                Link Documents to Providers / Payers
+              </h4>
+              <div className="space-y-3">
+                {docFiles.filter((f: DocFile) => f.status === 'done' && !f.linkedEntityId).map((df: DocFile) => {
+                  const isProviderDoc = df.category === 'provider_credentials' || df.category === 'appeals' || df.category === 'prior_authorizations'
+                  const isPayer = df.category === 'payer_contracts'
+                  const entities = isProviderDoc ? (df.providers || []) : isPayer ? (df.payers || []) : []
+                  if (entities.length === 0) return null
+
+                  return (
+                    <div key={df.id} className="flex items-center gap-3 flex-wrap">
+                      <div className="min-w-0 flex-shrink-0">
+                        <span className="text-[12px] font-medium text-content-primary">{df.name}</span>
+                        {df.entitySuggestion && (
+                          <span className="ml-2 text-[11px] text-brand">
+                            AI suggests: {df.entitySuggestion.name} ({df.entitySuggestion.confidence}%)
+                          </span>
+                        )}
+                      </div>
+                      <select
+                        defaultValue={df.entitySuggestion?.id || ''}
+                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                          if (e.target.value && df.docId) {
+                            handleLinkEntity(df.id, df.docId, isProviderDoc ? 'provider' : 'payer', e.target.value)
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-[8px] bg-surface-primary border border-separator text-[12px] text-content-primary min-w-[200px]"
+                      >
+                        <option value="">Select {isProviderDoc ? 'provider' : 'payer'}...</option>
+                        {isProviderDoc && (df.providers || []).map((p: { id: string; name: string; npi: string; specialty: string }) => (
+                          <option key={p.id} value={p.id}>{p.name} (NPI: {p.npi}){p.specialty ? ` — ${p.specialty}` : ''}</option>
+                        ))}
+                        {isPayer && (df.payers || []).map((p: { id: string; name: string }) => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Show linked status on completed files */}
+          {docFiles.some((f: DocFile) => f.linkedEntityId) && (
+            <div className="mt-3 space-y-1">
+              {docFiles.filter((f: DocFile) => f.linkedEntityId).map((df: DocFile) => (
+                <div key={df.id} className="flex items-center gap-2 text-[12px] text-brand-dark">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span className="font-medium">{df.name}</span>
+                  <span className="text-content-tertiary">linked to</span>
+                  <span className="font-medium">{df.entitySuggestion?.name || df.linkedEntityType}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Extracted data summary for completed files */}
+          {docFiles.some((f: DocFile) => f.status === 'done' && f.extractedData && Object.keys(f.extractedData).length > 0) && (
+            <div className="mt-4 p-3 rounded-[8px] bg-surface-elevated">
+              <h4 className="text-[12px] font-semibold text-content-primary mb-2 flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-brand" />
+                AI Extracted Data
+              </h4>
+              {docFiles.filter((f: DocFile) => f.status === 'done' && f.extractedData && Object.keys(f.extractedData).length > 0).map((df: DocFile) => (
+                <div key={df.id} className="mb-2 last:mb-0">
+                  <div className="text-[11px] font-medium text-brand-dark mb-1">{df.name}</div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    {Object.entries(df.extractedData || {}).map(([k, v]) => (
+                      <div key={k} className="text-[11px]">
+                        <span className="text-content-tertiary">{k.replace(/_/g, ' ')}:</span>{' '}
+                        <span className="text-content-primary">{String(v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
     </ModuleShell>
   )
 }

@@ -80,7 +80,7 @@ async function request<T>(
 
   let res: Response
   try {
-    const url = buildUrl(path, method === 'GET' ? params : undefined)
+    const url = buildUrl(path, params)
     const options: RequestInit = {
       method,
       headers,
