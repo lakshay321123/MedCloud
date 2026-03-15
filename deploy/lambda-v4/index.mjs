@@ -9602,6 +9602,97 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
     }
 
     // ════ ADMIN: Fix client_id alignment (callable endpoint) ════════════
+    // GET /admin/orphaned-records — find all records without client_id
+    if (resource === 'admin' && path.includes('/orphaned-records') && method === 'GET') {
+      if (!['admin', 'director'].includes(filterRole)) return respond(403, { error: 'Admin only' });
+
+      const TABLES = ['patients', 'providers', 'documents', 'fee_schedules', 'payers', 'claims', 'appointments'];
+      const result = {};
+
+      for (const table of TABLES) {
+        try {
+          const countQ = await orgQuery(effectiveOrgId,
+            `SELECT COUNT(*) as total FROM ${table} WHERE org_id = $1 AND (client_id IS NULL OR client_id = '')`,
+            [effectiveOrgId]);
+          const orphanCount = parseInt(countQ.rows[0]?.total || 0);
+
+          if (orphanCount > 0) {
+            // Get sample records
+            const nameCol = table === 'payers' ? 'name' :
+              table === 'documents' ? 'file_name' :
+              table === 'fee_schedules' ? 'cpt_code' :
+              table === 'claims' ? 'claim_number' :
+              table === 'appointments' ? 'appointment_date' :
+              'first_name';
+            const secondCol = ['patients', 'providers'].includes(table) ? ", last_name, npi" :
+              table === 'documents' ? ", doc_type, category" :
+              table === 'fee_schedules' ? ", contracted_rate, payer_id" :
+              '';
+
+            const sampleQ = await orgQuery(effectiveOrgId,
+              `SELECT id, ${nameCol}${secondCol} FROM ${table} WHERE org_id = $1 AND (client_id IS NULL OR client_id = '') ORDER BY created_at DESC LIMIT 20`,
+              [effectiveOrgId]);
+
+            result[table] = {
+              count: orphanCount,
+              samples: sampleQ.rows.map(r => {
+                const label = table === 'payers' ? r.name :
+                  table === 'documents' ? r.file_name :
+                  table === 'fee_schedules' ? `CPT ${r.cpt_code}` :
+                  table === 'claims' ? r.claim_number :
+                  table === 'appointments' ? r.appointment_date :
+                  `${r.first_name} ${r.last_name || ''}`;
+                return { id: r.id, label: label?.trim() };
+              }),
+            };
+          }
+        } catch (e) {
+          // Table might not have client_id column, skip
+          if (!e.message?.includes('does not exist')) throw e;
+        }
+      }
+
+      return respond(200, { orphaned: result, total: Object.values(result).reduce((a, b) => a + b.count, 0) });
+    }
+
+    // POST /admin/assign-client — bulk assign client_id to orphaned records
+    if (resource === 'admin' && path.includes('/assign-client') && method === 'POST') {
+      if (!['admin', 'director'].includes(filterRole)) return respond(403, { error: 'Admin only' });
+
+      const { client_id, tables } = body;
+      if (!client_id) return respond(400, { error: 'client_id required' });
+
+      // Verify client exists
+      const clientCheck = await orgQuery(effectiveOrgId,
+        `SELECT id, name FROM clients WHERE id = $1 AND org_id = $2`, [client_id, effectiveOrgId]);
+      if (!clientCheck.rows[0]) return respond(400, { error: 'Client not found' });
+
+      const ALLOWED_TABLES = ['patients', 'providers', 'documents', 'fee_schedules', 'payers', 'claims', 'appointments'];
+      const targetTables = tables && Array.isArray(tables) ? tables.filter(t => ALLOWED_TABLES.includes(t)) : ALLOWED_TABLES;
+
+      const results = {};
+      for (const table of targetTables) {
+        try {
+          const r = await orgQuery(effectiveOrgId,
+            `UPDATE ${table} SET client_id = $1, updated_at = NOW() WHERE org_id = $2 AND (client_id IS NULL OR client_id = '')`,
+            [client_id, effectiveOrgId]);
+          results[table] = r.rowCount;
+        } catch (e) {
+          if (!e.message?.includes('does not exist')) results[table] = `error: ${e.message?.substring(0, 80)}`;
+        }
+      }
+
+      await auditLog(effectiveOrgId, userId, 'assign_client', 'admin', client_id, {
+        client_name: clientCheck.rows[0].name, tables: targetTables, results
+      });
+
+      return respond(200, {
+        assigned_to: { id: client_id, name: clientCheck.rows[0].name },
+        results,
+        total_assigned: Object.values(results).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0),
+      });
+    }
+
     if (resource === 'admin' && path.includes('/fix-client-ids') && method === 'POST') {
       const fixes = {};
       // Fix eligibility_checks: inherit client_id from the linked patient

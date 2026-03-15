@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useCallback, useRef, useMemo } from 'react'
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
@@ -272,6 +272,39 @@ export default function OnboardingPage() {
   const [selectedResources, setSelectedResources] = useState([] as string[])
   const [pullResultMap, setPullResultMap] = useState({} as Record<string, { resources_pulled: Record<string, number>; errors: Array<{ resource: string; reason: string }>; total_records: number }>)
 
+
+
+  // ── Orphaned Records State ──────────────────────────────────────────────────
+  const [orphanData, setOrphanData] = useState(null as null | { orphaned: Record<string, { count: number; samples: Array<{ id: string; label: string }> }>; total: number })
+  const [assigningClient, setAssigningClient] = useState(false)
+
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'admin') return
+    const fetchOrphans = async () => {
+      try {
+        const { api } = await import('@/lib/api-client')
+        const res = await api.get('/admin/orphaned-records', { org_id: currentUser.organization_id, role: 'admin' }) as unknown as { orphaned: Record<string, { count: number; samples: Array<{ id: string; label: string }> }>; total: number }
+        if (res.total > 0) setOrphanData(res)
+      } catch { /* ignore */ }
+    }
+    fetchOrphans()
+  }, [currentUser])
+
+  const handleAssignOrphans = useCallback(async () => {
+    if (!selectedClient) { toast.error('Select a practice first'); return }
+    setAssigningClient(true)
+    try {
+      const { api } = await import('@/lib/api-client')
+      const res = await api.post('/admin/assign-client', {
+        client_id: selectedClient.id,
+      }, { org_id: currentUser.organization_id, role: 'admin' }) as unknown as { assigned_to: { name: string }; total_assigned: number }
+      toast.success(`Assigned ${res.total_assigned} records to ${res.assigned_to.name}`)
+      setOrphanData(null)
+    } catch (e) {
+      toast.error(`Assignment failed: ${(e as Error).message}`)
+    }
+    setAssigningClient(false)
+  }, [selectedClient, currentUser, toast])
 
   // ── Document Upload State ───────────────────────────────────────────────────
   const [docCategory, setDocCategory] = useState('provider_credentials')
@@ -731,6 +764,39 @@ export default function OnboardingPage() {
       </div>
 
 
+
+
+      {/* ── Orphaned Data Alert ────────────────────────────────────────── */}
+      {orphanData && orphanData.total > 0 && (
+        <div className="card p-4 mb-4 border-l-4 border-l-brand-deep">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-[13px] font-semibold text-brand-deep flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                {orphanData.total} Unlinked Records Found
+              </h3>
+              <p className="text-[12px] text-content-secondary mt-1">
+                These records were imported without a practice selected. They exist in the database but won't show on practice pages until linked.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {(Object.entries(orphanData.orphaned) as [string, { count: number; samples: Array<{ id: string; label: string }> }][]).map(([table, info]) => (
+                  <span key={table} className="px-2 py-0.5 rounded-[6px] bg-brand-deep/10 text-brand-deep text-[11px] font-medium">
+                    {table.replace(/_/g, ' ')}: {info.count}
+                  </span>
+                ))}
+              </div>
+            </div>
+            {selectedClient ? (
+              <button type="button" onClick={handleAssignOrphans} disabled={assigningClient}
+                className="shrink-0 px-4 py-2 rounded-[8px] bg-brand text-white text-[12px] font-semibold hover:bg-brand-dark disabled:opacity-50">
+                {assigningClient ? 'Assigning...' : `Assign all to ${selectedClient.name}`}
+              </button>
+            ) : (
+              <span className="text-[11px] text-content-tertiary shrink-0">Select a practice first to assign</span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Client Selection Gate ──────────────────────────────────────── */}
       {!selectedClient && (
