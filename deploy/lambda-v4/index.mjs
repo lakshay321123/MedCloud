@@ -751,6 +751,31 @@ async function runSchemaMigration() {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )`);
   } catch (e) { if (e.code !== '42P07') safeLog('warn', 'patient_access_requests:', e.message); }
+  // ── import_jobs table for data onboarding ──────────────────────────────────
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS import_jobs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      org_id UUID NOT NULL,
+      client_id UUID,
+      file_name TEXT,
+      file_type VARCHAR(20),
+      entity_type VARCHAR(50) NOT NULL,
+      total_rows INT DEFAULT 0,
+      imported_count INT DEFAULT 0,
+      skipped_count INT DEFAULT 0,
+      error_count INT DEFAULT 0,
+      updated_count INT DEFAULT 0,
+      errors JSONB DEFAULT '[]',
+      column_mapping JSONB DEFAULT '{}',
+      duplicate_strategy VARCHAR(20) DEFAULT 'skip',
+      status VARCHAR(30) DEFAULT 'pending',
+      imported_by UUID,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      completed_at TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
+  } catch (e) { if (e.code !== '42P07') safeLog('warn', 'import_jobs:', e.message); }
+
   safeLog('info', `Column fixes applied (${colFixes.length} statements)`);
 }
 
@@ -11001,6 +11026,255 @@ Return ONLY the JSON, no other text.`;
         const existing = await getById('client_onboarding', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Not found' });
         return respond(200, await update('client_onboarding', pathParams.id, { ...body, updated_at: new Date().toISOString() }), effectiveOrgId);
+      }
+    }
+
+    // ════ DATA IMPORT (Onboarding) ════════════════════════════════════════════
+    if (resource === 'import') {
+      // Security: Only admin/director can import data
+      // Uses filterRole (authCtx.role || qs.role) — same pattern as other restricted routes pre-Cognito
+      if (!['admin', 'director'].includes(filterRole)) {
+        return respond(403, { error: 'Import requires admin or director role' });
+      }
+
+      // POST /import/preview — validate first N mapped rows before committing
+      if (path.includes('/import/preview') && method === 'POST') {
+        const { entity_type, rows } = body;
+        if (!entity_type || !Array.isArray(rows) || rows.length === 0) {
+          return respond(400, { error: 'entity_type and rows[] required' });
+        }
+        const errors = [];
+        const REQUIRED = {
+          patients: ['first_name', 'last_name'],
+          providers: ['first_name', 'last_name', 'npi'],
+          payers: ['payer_name'],
+          fee_schedules: ['cpt_code', 'contracted_rate'],
+          claims: ['total_charges'],
+          appointments: ['appointment_date'],
+        };
+        const req = REQUIRED[entity_type] || [];
+        rows.forEach((row, idx) => {
+          req.forEach(field => {
+            if (!row[field] || String(row[field]).trim() === '') {
+              errors.push({ row: idx, field, reason: `${field} is required` });
+            }
+          });
+          // NPI length check for providers (10 digits required)
+          if (entity_type === 'providers' && row.npi) {
+            const npi = String(row.npi).replace(/\D/g, '');
+            if (npi.length !== 10) errors.push({ row: idx, field: 'npi', reason: 'NPI must be 10 digits' });
+          }
+          // Date validation
+          if (row.dob && isNaN(Date.parse(row.dob))) errors.push({ row: idx, field: 'dob', reason: 'Invalid date' });
+          if (row.appointment_date && isNaN(Date.parse(row.appointment_date))) errors.push({ row: idx, field: 'appointment_date', reason: 'Invalid date' });
+          // Email validation
+          if (row.email && !row.email.includes('@')) errors.push({ row: idx, field: 'email', reason: 'Invalid email' });
+          // Contracted rate
+          if (entity_type === 'fee_schedules' && row.contracted_rate && parseFloat(row.contracted_rate) <= 0) {
+            errors.push({ row: idx, field: 'contracted_rate', reason: 'Must be > 0' });
+          }
+        });
+        return respond(200, { valid: errors.length === 0, errors, preview_count: rows.length });
+      }
+
+      // POST /import/execute — batch import mapped rows
+      if (path.includes('/import/execute') && method === 'POST') {
+        const { entity_type, rows, column_mapping, duplicate_strategy, file_name, file_type } = body;
+        if (!entity_type || !Array.isArray(rows) || rows.length === 0) {
+          return respond(400, { error: 'entity_type and rows[] required' });
+        }
+        const strategy = duplicate_strategy || 'skip';
+        let imported = 0, skipped = 0, updated = 0, errorCount = 0;
+        const importErrors = [];
+
+        // Create import job record
+        const job = await create('import_jobs', {
+          file_name: file_name || 'unknown',
+          file_type: file_type || 'csv',
+          entity_type,
+          total_rows: rows.length,
+          column_mapping: JSON.stringify(column_mapping || {}),
+          duplicate_strategy: strategy,
+          status: 'processing',
+          imported_by: userId,
+          client_id: clientId || null,
+        }, effectiveOrgId);
+
+        // Table mapping
+        const TABLE_MAP = {
+          patients: 'patients',
+          providers: 'providers',
+          payers: 'payers',
+          fee_schedules: 'fee_schedules',
+          claims: 'claims',
+          appointments: 'appointments',
+        };
+        const table = TABLE_MAP[entity_type];
+        if (!table) {
+          await update('import_jobs', job.id, { status: 'failed', errors: JSON.stringify([{ reason: `Unknown entity_type: ${entity_type}` }]) });
+          return respond(400, { error: `Unknown entity_type: ${entity_type}` });
+        }
+
+        // Duplicate detection queries
+        const DUPE_CHECK = {
+          patients: async (row) => {
+            const q = `SELECT id FROM patients WHERE org_id = $1 AND LOWER(first_name) = LOWER($2) AND LOWER(last_name) = LOWER($3) AND dob = $4 LIMIT 1`;
+            const r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, row.first_name, row.last_name, row.dob]);
+            return r.rows[0]?.id || null;
+          },
+          providers: async (row) => {
+            const q = `SELECT id FROM providers WHERE org_id = $1 AND npi = $2 LIMIT 1`;
+            const r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, String(row.npi).replace(/\D/g, '')]);
+            return r.rows[0]?.id || null;
+          },
+          payers: async (row) => {
+            const q = `SELECT id FROM payers WHERE org_id = $1 AND LOWER(payer_name) = LOWER($2) LIMIT 1`;
+            const r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, row.payer_name]);
+            return r.rows[0]?.id || null;
+          },
+          fee_schedules: async (row) => {
+            // Match on payer_id + cpt_code
+            if (!row.payer_id) return null;
+            const q = `SELECT id FROM fee_schedules WHERE org_id = $1 AND payer_id = $2 AND cpt_code = $3 LIMIT 1`;
+            const r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, row.payer_id, row.cpt_code]);
+            return r.rows[0]?.id || null;
+          },
+          claims: async (row) => {
+            if (!row.claim_number) return null;
+            const q = `SELECT id FROM claims WHERE org_id = $1 AND claim_number = $2 LIMIT 1`;
+            const r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, row.claim_number]);
+            return r.rows[0]?.id || null;
+          },
+          appointments: async (row) => {
+            if (!row.patient_id || !row.appointment_date) return null;
+            const q = `SELECT id FROM appointments WHERE org_id = $1 AND patient_id = $2 AND appointment_date = $3 LIMIT 1`;
+            const r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, row.patient_id, row.appointment_date]);
+            return r.rows[0]?.id || null;
+          },
+        };
+
+        // Payer name resolution for fee_schedules and patients
+        const resolvePayerByName = async (payerName) => {
+          if (!payerName) return null;
+          // Try payer_name column first, then name column as fallback
+          let q = `SELECT id FROM payers WHERE org_id = $1 AND (LOWER(payer_name) = LOWER($2) OR LOWER(name) = LOWER($2)) LIMIT 1`;
+          let r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, payerName]);
+          if (r.rows[0]) return r.rows[0].id;
+          // Contains fallback — only if name is 4+ chars to avoid false positives
+          if (payerName.length >= 4) {
+            q = `SELECT id FROM payers WHERE org_id = $1 AND (LOWER(payer_name) ILIKE $2 OR LOWER(name) ILIKE $2) LIMIT 1`;
+            r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, `%${payerName}%`]);
+          }
+          return r.rows[0]?.id || null;
+        };
+
+        // Process in chunks of 100
+        const CHUNK = 100;
+        for (let i = 0; i < rows.length; i += CHUNK) {
+          const chunk = rows.slice(i, i + CHUNK);
+          for (let j = 0; j < chunk.length; j++) {
+            const row = { ...chunk[j] };
+            const rowNum = i + j;
+            try {
+              // Resolve payer_name to payer_id for fee_schedules and patients
+              if ((entity_type === 'fee_schedules' || entity_type === 'patients' || entity_type === 'claims') && row.payer_name && !row.payer_id) {
+                row.payer_id = await resolvePayerByName(row.payer_name);
+                if (entity_type === 'patients') row.insurance_payer = row.payer_name;
+              }
+
+              // For claims with open AR, set correct status
+              if (entity_type === 'claims' && !row.status) {
+                row.status = 'submitted';
+              }
+
+              // Remove non-DB fields (mapping helpers, internal markers)
+              delete row.payer_name;
+              delete row._rowIndex;
+              delete row._original;
+              delete row.patient_first_name;
+              delete row.patient_last_name;
+              delete row.provider_name;
+
+              // Source tracking is via audit_log and import_jobs table
+              // Don't set row.source as not all entity tables have this column
+
+              // Check for duplicate
+              const dupeCheck = DUPE_CHECK[entity_type];
+              const existingId = dupeCheck ? await dupeCheck(row) : null;
+
+              if (existingId) {
+                if (strategy === 'skip') {
+                  skipped++;
+                  continue;
+                } else {
+                  // Update existing
+                  // Update existing record
+                  await update(table, existingId, row);
+                  updated++;
+                }
+              } else {
+                // Insert new
+                if (clientId) row.client_id = clientId;
+                await create(table, row, effectiveOrgId);
+                imported++;
+              }
+            } catch (e) {
+              errorCount++;
+              importErrors.push({ row: rowNum, reason: e.message?.substring(0, 200) });
+            }
+          }
+        }
+
+        // Update job record
+        await update('import_jobs', job.id, {
+          status: 'completed',
+          imported_count: imported,
+          skipped_count: skipped,
+          updated_count: updated,
+          error_count: errorCount,
+          errors: JSON.stringify(importErrors),
+          completed_at: new Date().toISOString(),
+        });
+
+        await auditLog(effectiveOrgId, userId, 'data_import', entity_type, job.id, {
+          file_name, entity_type, total: rows.length, imported, skipped, updated, errors: errorCount
+        });
+
+        return respond(200, {
+          job_id: job.id,
+          entity_type,
+          total_rows: rows.length,
+          imported_count: imported,
+          skipped_count: skipped,
+          updated_count: updated,
+          error_count: errorCount,
+          errors: importErrors.slice(0, 50), // Cap at 50 for response size
+          status: 'completed',
+        });
+      }
+
+      // GET /import/jobs — list import history
+      if (path.includes('/import/jobs') && method === 'GET' && !pathParams.id) {
+        try {
+          let q = `SELECT * FROM import_jobs WHERE org_id = $1`;
+          const params = [effectiveOrgId];
+          if (clientId) { params.push(clientId); q += ` AND client_id = $${params.length}`; }
+          if (qs.entity_type) { params.push(qs.entity_type); q += ` AND entity_type = $${params.length}`; }
+          q += ' ORDER BY created_at DESC LIMIT 100';
+          const r = await orgQuery(effectiveOrgId, q, params);
+          return respond(200, { data: r.rows, total: r.rows.length });
+        } catch (e) {
+          if (e.code === '42P01' || e.message?.includes('does not exist')) return respond(200, { data: [], total: 0 });
+          throw e;
+        }
+      }
+
+      // GET /import/jobs/:id — single job details
+      if (path.includes('/import/jobs/') && method === 'GET' && pathParams.id) {
+        const r = await getById('import_jobs', pathParams.id);
+        if (!r || r.org_id !== effectiveOrgId) return respond(404, { error: 'Import job not found' });
+        await auditLog(effectiveOrgId, userId, 'read', 'import_jobs', pathParams.id, { entity_type: r.entity_type });
+        return respond(200, r);
       }
     }
 

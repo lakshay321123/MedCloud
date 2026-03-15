@@ -25,6 +25,7 @@ export const modules: ModuleConfig[] = [
   // MANAGEMENT — 'client' added so front-office (facility) can see Documents
   { id: 'documents', label: 'Documents', icon: 'FolderOpen', path: '/documents', section: 'management', roles: [...staffRoles, 'provider', 'client'] },
   { id: 'credentialing', label: 'Credentialing', icon: 'BadgeCheck', path: '/credentialing', section: 'management', roles: leaderRoles },
+  { id: 'onboarding', label: 'Onboarding', icon: 'Upload', path: '/onboarding', section: 'management', roles: ['admin', 'director'] },
   { id: 'analytics', label: 'Analytics', icon: 'BarChart3', path: '/analytics', section: 'management', roles: [...leaderRoles, 'provider'] },
   { id: 'admin', label: 'Admin & Settings', icon: 'Settings', path: '/admin', section: 'system', roles: ['admin', 'director'] },
   { id: 'integrations', label: 'Integration Hub', icon: 'Plug', path: '/integrations', section: 'system', roles: ['admin', 'director'] },
