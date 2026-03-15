@@ -2328,7 +2328,8 @@ export function useEhrConnections(extra?: ApiListParams) {
 }
 
 export function useEhrConnection(id: string | null) {
-  return useApi<ApiEhrConnection>(id ? `/ehr-connections/${id}` : '/ehr-connections', {}, { skip: !id })
+  const params = useClientParams()
+  return useApi<ApiEhrConnection>(id ? `/ehr-connections/${id}` : '/ehr-connections', params, { skip: !id })
 }
 
 export function useCreateEhrConnection() {
@@ -2345,7 +2346,17 @@ export function useCreateEhrConnection() {
 }
 
 export function useUpdateEhrConnection(id: string) {
-  return useMutation<ApiEhrConnection, Record<string, unknown>>('put', `/ehr-connections/${id}`)
+  return useMutation<ApiEhrConnection, Partial<{
+    vendor: string
+    display_name: string
+    fhir_base_url: string
+    auth_type: string
+    oauth_client_id: string
+    oauth_client_secret: string
+    token_endpoint: string
+    scope: string
+    status: string
+  }>>('put', `/ehr-connections/${id}`)
 }
 
 export function useTestEhrConnection(id: string) {

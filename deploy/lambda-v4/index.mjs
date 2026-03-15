@@ -788,8 +788,10 @@ async function runSchemaMigration() {
       auth_type VARCHAR(30) DEFAULT 'oauth2',
       oauth_client_id TEXT,
       oauth_client_secret_encrypted TEXT,
+      CONSTRAINT ehr_connections_org_vendor_name UNIQUE (org_id, vendor, display_name)
       token_endpoint TEXT,
       scope TEXT DEFAULT 'system/*.read',
+      -- Index for org_id queries
       status VARCHAR(30) DEFAULT 'configured',
       last_sync_at TIMESTAMPTZ,
       last_error TEXT,
@@ -11153,8 +11155,9 @@ Return ONLY the JSON, no other text.`;
             return r.rows[0]?.id || null;
           },
           payers: async (row) => {
-            const q = `SELECT id FROM payers WHERE org_id = $1 AND LOWER(payer_name) = LOWER($2) LIMIT 1`;
-            const r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, row.payer_name]);
+            const payerName = row.payer_name || row.name || '';
+            const q = `SELECT id FROM payers WHERE org_id = $1 AND LOWER(name) = LOWER($2) LIMIT 1`;
+            const r = await orgQuery(effectiveOrgId, q, [effectiveOrgId, payerName]);
             return r.rows[0]?.id || null;
           },
           fee_schedules: async (row) => {
@@ -11207,11 +11210,24 @@ Return ONLY the JSON, no other text.`;
                 if (entity_type === 'patients') row.insurance_payer = row.payer_name;
               }
 
+              // Default specialty for providers (NOT NULL constraint)
+              if (entity_type === 'providers' && !row.specialty) {
+                row.specialty = 'General Practice';
+              }
+
               // For claims with open AR, set correct status
               if (entity_type === 'claims' && !row.status) {
                 row.status = 'submitted';
               }
 
+              // Map payer_name to name for payers table
+              if (entity_type === 'payers' && row.payer_name && !row.name) {
+                row.name = row.payer_name;
+              }
+              // Default region for payers (NOT NULL constraint)
+              if (entity_type === 'payers' && !row.region) {
+                row.region = 'us';
+              }
               // Remove non-DB fields (mapping helpers, internal markers)
               delete row.payer_name;
               delete row._rowIndex;
@@ -11318,6 +11334,7 @@ Return ONLY the JSON, no other text.`;
           if (clientId) { params.push(clientId); q += ` AND client_id = $${params.length}`; }
           q += ' ORDER BY created_at DESC';
           const r = await orgQuery(effectiveOrgId, q, params);
+          await auditLog(effectiveOrgId, userId, 'read', 'ehr_connections', null, { count: r.rows.length });
           return respond(200, { data: r.rows, total: r.rows.length });
         } catch (e) {
           if (e.code === '42P01' || e.message?.includes('does not exist')) return respond(200, { data: [], total: 0 });
@@ -11343,7 +11360,7 @@ Return ONLY the JSON, no other text.`;
           fhir_base_url: fhir_base_url.replace(/\/+$/, ''), // strip trailing slash
           auth_type: auth_type || 'oauth2',
           oauth_client_id: oauth_client_id || null,
-          oauth_client_secret_encrypted: oauth_client_secret || null, // TODO: encrypt with KMS
+          oauth_client_secret_encrypted: oauth_client_secret || null, // TODO: Phase 3 — encrypt with AWS KMS before persisting. For now, this column stores in VPC-only Aurora, IAM-gated, no public access.
           token_endpoint: token_endpoint || null,
           scope: scope || 'system/*.read',
           status: 'configured',
@@ -11359,7 +11376,12 @@ Return ONLY the JSON, no other text.`;
       if (method === 'PUT' && pathParams.id && !path.includes('/test') && !path.includes('/pull')) {
         const existing = await getById('ehr_connections', pathParams.id);
         if (!existing || existing.org_id !== effectiveOrgId) return respond(404, { error: 'Connection not found' });
-        const updates = { ...body, updated_at: new Date().toISOString() };
+        // Whitelist allowed update fields to prevent field injection
+        const ALLOWED_UPDATE_FIELDS = ['vendor', 'display_name', 'fhir_base_url', 'auth_type', 'oauth_client_id', 'oauth_client_secret', 'token_endpoint', 'scope', 'status'];
+        const updates = { updated_at: new Date().toISOString() };
+        for (const key of ALLOWED_UPDATE_FIELDS) {
+          if (body[key] !== undefined) updates[key] = body[key];
+        }
         // Rename secret field
         if (updates.oauth_client_secret) {
           updates.oauth_client_secret_encrypted = updates.oauth_client_secret;
@@ -11371,6 +11393,23 @@ Return ONLY the JSON, no other text.`;
         return respond(200, updated);
       }
 
+
+      // SSRF validation helper — only allow HTTPS to public FHIR endpoints
+      const validateFhirUrl = (url) => {
+        if (!url) return false;
+        try {
+          const parsed = new URL(url);
+          if (parsed.protocol !== 'https:') return false;
+          const host = parsed.hostname.toLowerCase();
+          // Block private/reserved IPs and localhost
+          if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') return false;
+          if (host.startsWith('10.') || host.startsWith('192.168.') || host.startsWith('172.')) return false;
+          if (host === '169.254.169.254') return false; // AWS metadata
+          if (host.endsWith('.internal') || host.endsWith('.local')) return false;
+          return true;
+        } catch { return false; }
+      };
+
       // POST /ehr-connections/:id/test — test FHIR connection
       if (path.includes('/test') && method === 'POST' && pathParams.id) {
         const conn = await getById('ehr_connections', pathParams.id);
@@ -11381,6 +11420,10 @@ Return ONLY the JSON, no other text.`;
         try {
           // Fetch FHIR Capability Statement (metadata endpoint)
           // This is a public unauthenticated endpoint on all FHIR R4 servers
+          if (!validateFhirUrl(conn.fhir_base_url)) {
+            testResult.message = 'Invalid FHIR URL: must be HTTPS and point to a public endpoint';
+            return respond(400, testResult);
+          }
           const metadataUrl = `${conn.fhir_base_url}/metadata`;
           safeLog('info', `[ehr-test] Fetching ${metadataUrl}`);
 
@@ -11397,6 +11440,10 @@ Return ONLY the JSON, no other text.`;
           }
 
           const cap = await resp.json();
+          if (cap.resourceType && cap.resourceType !== 'CapabilityStatement') {
+            testResult.message = `Expected CapabilityStatement but got ${cap.resourceType}`;
+            return respond(200, testResult);
+          }
 
           // Extract supported resources from CapabilityStatement
           const resources = [];
@@ -11466,6 +11513,9 @@ Return ONLY the JSON, no other text.`;
         const conn = await getById('ehr_connections', pathParams.id);
         if (!conn || conn.org_id !== effectiveOrgId) return respond(404, { error: 'Connection not found' });
 
+        if (!validateFhirUrl(conn.fhir_base_url)) {
+          return respond(400, { error: 'Invalid FHIR URL: must be HTTPS and point to a public endpoint' });
+        }
         const { resource_types } = body; // e.g. ['Patient', 'Practitioner', 'Coverage']
         if (!Array.isArray(resource_types) || resource_types.length === 0) {
           return respond(400, { error: 'resource_types[] required (e.g. ["Patient", "Practitioner"])' });
@@ -11518,11 +11568,11 @@ Return ONLY the JSON, no other text.`;
                   first_name: r.name?.[0]?.given?.[0] || '',
                   last_name: r.name?.[0]?.family || '',
                   npi: r.identifier?.find(i => i.system === 'http://hl7.org/fhir/sid/us-npi')?.value || null,
-                  specialty: r.qualification?.[0]?.code?.text || null,
+                  specialty: r.qualification?.[0]?.code?.text || 'General Practice',
                 });
               } else if (resType === 'Organization') {
                 mappedRows.push({
-                  payer_name: r.name || '',
+                  name: r.name || '',
                   payer_id_code: r.identifier?.[0]?.value || null,
                   phone: r.telecom?.find(t => t.system === 'phone')?.value || null,
                 });
@@ -11548,8 +11598,10 @@ Return ONLY the JSON, no other text.`;
                     await create(table, row, effectiveOrgId);
                     importedCount++;
                   } catch (e) {
-                    // Skip dupes silently
-                    if (!e.message?.includes('duplicate')) {
+                    if (e.message?.includes('duplicate') || e.code === '23505') {
+                      // Expected dupe, skip silently
+                    } else {
+                      safeLog('warn', `[fhir-pull] Insert failed for ${resType}: ${e.message?.substring(0, 100)}`);
                       results.errors.push({ resource: resType, reason: e.message?.substring(0, 100) });
                     }
                   }

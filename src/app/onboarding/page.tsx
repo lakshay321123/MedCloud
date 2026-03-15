@@ -239,10 +239,10 @@ export default function OnboardingPage() {
   const [showAddConnection, setShowAddConnection] = useState(false)
   const [ehrForm, setEhrForm] = useState({ vendor: 'epic', display_name: '', fhir_base_url: '', auth_type: 'oauth2', oauth_client_id: '', oauth_client_secret: '', token_endpoint: '', scope: 'system/*.read' })
   const [testingId, setTestingId] = useState(null as string | null)
-  const [testResult, setTestResult] = useState(null as null | { success: boolean; message: string; capabilities: Array<{ fhir_resource: string; medcloud_entity: string }> })
+  const [testResultMap, setTestResultMap] = useState({} as Record<string, { success: boolean; message: string; capabilities: Array<{ fhir_resource: string; medcloud_entity: string }> }>)
   const [pullingId, setPullingId] = useState(null as string | null)
   const [selectedResources, setSelectedResources] = useState([] as string[])
-  const [pullResult, setPullResult] = useState(null as null | { resources_pulled: Record<string, number>; errors: Array<{ resource: string; reason: string }>; total_records: number })
+  const [pullResultMap, setPullResultMap] = useState({} as Record<string, { resources_pulled: Record<string, number>; errors: Array<{ resource: string; reason: string }>; total_records: number }>)
 
   // ── API hooks ──────────────────────────────────────────────────────────────
   const { data: jobsData, refetch: refreshJobs } = useImportJobs({})
@@ -470,26 +470,30 @@ export default function OnboardingPage() {
       toast.error('FHIR base URL and vendor are required')
       return
     }
-    const res = await createEhr.mutate(ehrForm)
-    if (res) {
-      toast.success('Connection saved')
-      setShowAddConnection(false)
-      setEhrForm({ vendor: 'epic', display_name: '', fhir_base_url: '', auth_type: 'oauth2', oauth_client_id: '', oauth_client_secret: '', token_endpoint: '', scope: 'system/*.read' })
-      refreshEhr()
+    try {
+      const res = await createEhr.mutate(ehrForm)
+      if (res) {
+        toast.success('Connection saved')
+        setShowAddConnection(false)
+        setEhrForm({ vendor: 'epic', display_name: '', fhir_base_url: '', auth_type: 'oauth2', oauth_client_id: '', oauth_client_secret: '', token_endpoint: '', scope: 'system/*.read' })
+        refreshEhr()
+      }
+    } catch (e) {
+      toast.error(`Failed to create connection: ${(e as Error).message}`)
     }
   }, [ehrForm, createEhr, toast, refreshEhr])
 
   const handleTestConnection = useCallback(async (connId: string) => {
     setTestingId(connId)
-    setTestResult(null)
+    setTestResultMap((prev: Record<string, { success: boolean; message: string; capabilities: Array<{ fhir_resource: string; medcloud_entity: string }> }>) => { const n = { ...prev }; delete n[connId]; return n })
     try {
       const { api } = await import('@/lib/api-client')
       const res = await api.post(`/ehr-connections/${connId}/test`, {}) as unknown as { success: boolean; message: string; capabilities: Array<{ fhir_resource: string; medcloud_entity: string }> }
-      setTestResult(res)
+      setTestResultMap((prev: Record<string, { success: boolean; message: string; capabilities: Array<{ fhir_resource: string; medcloud_entity: string }> }>) => ({ ...prev, [connId]: res }))
       refreshEhr()
       res.success ? toast.success('Connection successful') : toast.error('Connection failed')
     } catch (e) {
-      setTestResult({ success: false, message: (e as Error).message, capabilities: [] })
+      setTestResultMap((prev: Record<string, { success: boolean; message: string; capabilities: Array<{ fhir_resource: string; medcloud_entity: string }> }>) => ({ ...prev, [connId]: { success: false, message: (e as Error).message, capabilities: [] } }))
       toast.error('Connection test failed')
     }
     setTestingId(null)
@@ -501,17 +505,17 @@ export default function OnboardingPage() {
       return
     }
     setPullingId(connId)
-    setPullResult(null)
+    setPullResultMap((prev: Record<string, { resources_pulled: Record<string, number>; errors: Array<{ resource: string; reason: string }>; total_records: number }>) => { const n = { ...prev }; delete n[connId]; return n })
     try {
       const { api } = await import('@/lib/api-client')
       const res = await api.post(`/ehr-connections/${connId}/pull`, { resource_types: selectedResources }) as unknown as { resources_pulled: Record<string, number>; errors: Array<{ resource: string; reason: string }>; total_records: number }
-      setPullResult(res)
+      setPullResultMap((prev: Record<string, { resources_pulled: Record<string, number>; errors: Array<{ resource: string; reason: string }>; total_records: number }>) => ({ ...prev, [connId]: res }))
       refreshEhr()
       refreshJobs()
       const total = Object.values(res.resources_pulled).reduce((a: number, b: number) => a + b, 0)
       toast.success(`Pulled ${total} records from ${selectedResources.length} resource types`)
     } catch (e) {
-      setPullResult({ resources_pulled: {}, errors: [{ resource: 'all', reason: (e as Error).message }], total_records: 0 })
+      setPullResultMap((prev: Record<string, { resources_pulled: Record<string, number>; errors: Array<{ resource: string; reason: string }>; total_records: number }>) => ({ ...prev, [connId]: { resources_pulled: {}, errors: [{ resource: 'all', reason: (e as Error).message }], total_records: 0 } }))
       toast.error('Pull failed')
     }
     setPullingId(null)
@@ -645,7 +649,7 @@ export default function OnboardingPage() {
                   )}
 
                   {conn.last_sync_at && (
-                    <div className="text-[12px] text-content-tertiary mb-3">Last sync: {new Date(conn.last_sync_at).toLocaleString()}</div>
+                    <div className="text-[12px] text-content-tertiary mb-3">Last sync: {new Date(conn.last_sync_at).toISOString().replace('T', ' ').substring(0, 19) + ' UTC'}</div>
                   )}
 
                   {/* Available resources */}
@@ -665,25 +669,25 @@ export default function OnboardingPage() {
                   )}
 
                   {/* Pull result */}
-                  {pullResult && pullingId === null && (
+                  {pullResultMap[conn.id] && pullingId === null && (
                     <div className="card p-4 mb-4">
                       <div className="text-[13px] font-semibold text-content-primary mb-2">Pull Results</div>
-                      {Object.entries(pullResult.resources_pulled).map(([k, v]) => (
+                      {Object.entries(pullResultMap[conn.id].resources_pulled).map(([k, v]) => (
                         <div key={k} className="text-[12px] text-content-secondary">{k}: {v as number} records imported</div>
                       ))}
-                      {pullResult.errors.length > 0 && pullResult.errors.map((e: { resource: string; reason: string }, i: number) => (
+                      {pullResultMap[conn.id].errors.length > 0 && pullResultMap[conn.id].errors.map((e: { resource: string; reason: string }, i: number) => (
                         <div key={i} className="text-[12px] text-brand-deep">{e.resource}: {e.reason}</div>
                       ))}
                     </div>
                   )}
 
                   {/* Test result */}
-                  {testResult && testingId === null && (
+                  {testResultMap[conn.id] && testingId === null && (
                     <div className="card p-4 mb-4">
-                      <div className={`text-[13px] font-semibold ${testResult.success ? 'text-brand-dark' : 'text-brand-deep'} mb-1`}>
-                        {testResult.success ? 'Connection Successful' : 'Connection Failed'}
+                      <div className={`text-[13px] font-semibold ${testResultMap[conn.id].success ? 'text-brand-dark' : 'text-brand-deep'} mb-1`}>
+                        {testResultMap[conn.id].success ? 'Connection Successful' : 'Connection Failed'}
                       </div>
-                      <div className="text-[12px] text-content-secondary">{testResult.message}</div>
+                      <div className="text-[12px] text-content-secondary">{testResultMap[conn.id].message}</div>
                     </div>
                   )}
 
