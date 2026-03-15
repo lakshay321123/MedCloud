@@ -396,7 +396,7 @@ export default function OnboardingPage() {
     })
     try {
       const res = await importPreview.mutate({ entity_type: entityType, rows: mappedRows })
-      if (!res) { toast.error('Preview failed'); return }
+      if (!res) { toast.error(`Preview failed: ${importPreview.error?.message || 'server returned empty response'}`); return }
       setPreviewErrors(res.errors || [])
       setStep('preview')
     } catch {

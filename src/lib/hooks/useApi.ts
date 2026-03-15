@@ -90,7 +90,8 @@ export interface UseMutationResult<TData, TInput> {
 
 export function useMutation<TData, TInput>(
   method: 'post' | 'put' | 'patch' | 'delete',
-  path: string
+  path: string,
+  params?: ApiListParams
 ): UseMutationResult<TData, TInput> {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<MedCloudApiError | null>(null)
@@ -109,13 +110,13 @@ export function useMutation<TData, TInput>(
       let result: TData
       switch (method) {
         case 'post':
-          result = await api.post<TData>(path, input)
+          result = await api.post<TData>(path, input, params)
           break
         case 'put':
-          result = await api.put<TData>(path, input)
+          result = await api.put<TData>(path, input, params)
           break
         case 'patch':
-          result = await api.patch<TData>(path, input)
+          result = await api.patch<TData>(path, input, params)
           break
         case 'delete':
           result = await api.delete<TData>(path)
@@ -135,7 +136,7 @@ export function useMutation<TData, TInput>(
       }
       return null
     }
-  }, [method, path])
+  }, [method, path, params])
 
   return { mutate, loading, error, data }
 }

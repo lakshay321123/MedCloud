@@ -2274,13 +2274,15 @@ export function useImportJob(id: string | null) {
 }
 
 export function useImportPreview() {
+  const params = useClientParams()
   return useMutation<ImportPreviewResult, {
     entity_type: string
     rows: Record<string, unknown>[]
-  }>('post', '/import/preview')
+  }>('post', '/import/preview', params)
 }
 
 export function useImportExecute() {
+  const params = useClientParams()
   return useMutation<ImportExecuteResult, {
     entity_type: string
     rows: Record<string, unknown>[]
@@ -2288,7 +2290,7 @@ export function useImportExecute() {
     duplicate_strategy?: string
     file_name?: string
     file_type?: string
-  }>('post', '/import/execute')
+  }>('post', '/import/execute', params)
 }
 
 // ── EHR Connections (FHIR API) ──────────────────────────────────────────────
@@ -2333,6 +2335,7 @@ export function useEhrConnection(id: string | null) {
 }
 
 export function useCreateEhrConnection() {
+  const params = useClientParams()
   return useMutation<ApiEhrConnection, {
     vendor: string
     display_name?: string
@@ -2342,7 +2345,7 @@ export function useCreateEhrConnection() {
     oauth_client_secret?: string
     token_endpoint?: string
     scope?: string
-  }>('post', '/ehr-connections')
+  }>('post', '/ehr-connections', params)
 }
 
 export function useUpdateEhrConnection(id: string) {
