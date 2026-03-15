@@ -442,8 +442,8 @@ export default function OnboardingPage() {
   return (
     <ModuleShell title="Onboarding">
       {/* ── Breadcrumb / Step indicator ─────────────────────────────────── */}
-      <div className="flex items-center gap-2 mb-6 text-sm text-content-secondary">
-        <button onClick={reset} className="hover:text-brand">Onboarding</button>
+      <div className="flex items-center gap-2 mb-4 text-sm text-content-tertiary">
+        <button onClick={reset} className="hover:text-brand font-medium">Onboarding</button>
         {entityType && <><ChevronRight className="w-4 h-4" /><span className="text-content-primary font-medium">{entityConfig?.label}</span></>}
         {step !== 'select' && step !== 'upload' && <><ChevronRight className="w-4 h-4" /><span className="capitalize">{step}</span></>}
       </div>
@@ -481,7 +481,7 @@ export default function OnboardingPage() {
               <h3 className="text-sm font-semibold text-content-primary mb-3">Import History</h3>
               <div className="border border-separator rounded-lg overflow-hidden">
                 <table className="w-full text-sm">
-                  <thead className="bg-surface-secondary">
+                  <thead className="bg-surface-elevated">
                     <tr>
                       <th className="px-3 py-2 text-left font-medium text-content-secondary">Date</th>
                       <th className="px-3 py-2 text-left font-medium text-content-secondary">Type</th>
@@ -494,15 +494,15 @@ export default function OnboardingPage() {
                   </thead>
                   <tbody>
                     {jobs.slice(0, 20).map((j: any) => (
-                      <tr key={j.id} className="border-t border-separator hover:bg-surface-secondary/50">
+                      <tr key={j.id} className="border-t border-separator hover:bg-surface-elevated/60">
                         <td className="px-3 py-2 text-content-secondary">{new Date(j.created_at).toLocaleDateString()}</td>
                         <td className="px-3 py-2 capitalize">{j.entity_type?.replace(/_/g, ' ')}</td>
                         <td className="px-3 py-2 text-content-secondary truncate max-w-[200px]">{j.file_name}</td>
-                        <td className="px-3 py-2 text-right text-green-600 font-medium">{j.imported_count}</td>
-                        <td className="px-3 py-2 text-right text-yellow-600">{j.skipped_count}</td>
-                        <td className="px-3 py-2 text-right text-red-600">{j.error_count}</td>
+                        <td className="px-3 py-2 text-right text-brand font-medium">{j.imported_count}</td>
+                        <td className="px-3 py-2 text-right text-brand-mid">{j.skipped_count}</td>
+                        <td className="px-3 py-2 text-right text-brand-deep">{j.error_count}</td>
                         <td className="px-3 py-2 text-center">
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${j.status === 'completed' ? 'bg-green-100 text-green-700' : j.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${j.status === 'completed' ? 'bg-brand/10 text-brand-dark border border-brand/20' : j.status === 'failed' ? 'bg-brand-deep/10 text-brand-deep border border-brand-deep/20' : 'bg-brand/5 text-brand border border-brand/15'}`}>
                             {j.status}
                           </span>
                         </td>
@@ -570,14 +570,14 @@ export default function OnboardingPage() {
               <p className="text-sm text-content-secondary">{parsedFile.totalRows} rows from {parsedFile.fileName}. Match your file columns to MedCloud fields.</p>
             </div>
             <div className="text-sm">
-              <span className={`font-medium ${allRequiredMapped ? 'text-green-600' : 'text-amber-600'}`}>{mappedCount} mapped</span>
+              <span className={`font-medium ${allRequiredMapped ? 'text-brand' : 'text-brand-mid'}`}>{mappedCount} mapped</span>
               <span className="text-content-secondary"> / {parsedFile.headers.length} columns</span>
             </div>
           </div>
 
           <div className="border border-separator rounded-lg overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-surface-secondary">
+              <thead className="bg-surface-elevated">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium text-content-secondary w-1/3">Your File Column</th>
                   <th className="px-3 py-2 text-center font-medium text-content-secondary w-12">&rarr;</th>
@@ -612,7 +612,7 @@ export default function OnboardingPage() {
           </div>
 
           {!allRequiredMapped && (
-            <div className="mt-3 flex items-center gap-2 text-amber-600 text-sm">
+            <div className="mt-3 flex items-center gap-2 text-brand-mid text-sm">
               <AlertCircle className="w-4 h-4" />
               Required fields not mapped: {requiredFields.filter(f => !Object.values(columnMap).includes(f.key)).map(f => f.label).join(', ')}
             </div>
@@ -654,21 +654,21 @@ export default function OnboardingPage() {
           <h2 className="text-lg font-semibold text-content-primary mb-1">Preview (First 10 Rows)</h2>
           <p className="text-sm text-content-secondary mb-4">
             {previewErrors.length === 0
-              ? <span className="text-green-600 font-medium">All rows valid. Ready to import {parsedFile.totalRows} rows.</span>
-              : <span className="text-red-600 font-medium">{previewErrors.length} validation errors found. Fix mapping or data before importing.</span>}
+              ? <span className="text-brand font-medium">All rows valid. Ready to import {parsedFile.totalRows} rows.</span>
+              : <span className="text-brand-deep font-medium">{previewErrors.length} validation errors found. Fix mapping or data before importing.</span>}
           </p>
 
           {previewErrors.length > 0 && (
-            <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm">
+            <div className="mb-4 p-3 rounded-lg bg-brand-deep/10 border border-brand-deep/20 text-sm">
               {previewErrors.map((e: any, i: number) => (
-                <div key={i} className="text-red-700">Row {e.row + 1}: {e.field} &mdash; {e.reason}</div>
+                <div key={i} className="text-brand-deep">Row {e.row + 1}: {e.field} &mdash; {e.reason}</div>
               ))}
             </div>
           )}
 
           <div className="border border-separator rounded-lg overflow-x-auto">
             <table className="w-full text-xs">
-              <thead className="bg-surface-secondary">
+              <thead className="bg-surface-elevated">
                 <tr>
                   <th className="px-2 py-1.5 text-left font-medium text-content-secondary">#</th>
                   {entityConfig.fields.filter(f => Object.values(columnMap).includes(f.key)).map(f => (
@@ -684,7 +684,7 @@ export default function OnboardingPage() {
                       const fileH = Object.entries(columnMap).find(([, v]) => v === f.key)?.[0]
                       const val = fileH ? row[fileH] : ''
                       const hasError = previewErrors.some((pe: {row: number; field: string; reason: string}) => pe.row === idx && pe.field === f.key)
-                      return <td key={f.key} className={`px-2 py-1.5 ${hasError ? 'text-red-600 bg-red-50' : 'text-content-primary'}`}>{val || '—'}</td>
+                      return <td key={f.key} className={`px-2 py-1.5 ${hasError ? 'text-brand-deep bg-brand-deep/5' : 'text-content-primary'}`}>{val || '—'}</td>
                     })}
                   </tr>
                 ))}
@@ -725,32 +725,32 @@ export default function OnboardingPage() {
         <div>
           <h2 className="text-lg font-semibold text-content-primary mb-4">Import Complete</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-            <div className="p-4 rounded-lg bg-green-50 border border-green-200 text-center">
-              <div className="text-2xl font-bold text-green-700">{results.imported_count}</div>
-              <div className="text-xs text-green-600 mt-1">Imported</div>
+            <div className="p-4 rounded-lg bg-brand/10 border border-brand/20 text-center">
+              <div className="text-2xl font-bold text-brand-dark">{results.imported_count}</div>
+              <div className="text-xs text-brand mt-1">Imported</div>
             </div>
-            <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200 text-center">
-              <div className="text-2xl font-bold text-yellow-700">{results.skipped_count}</div>
-              <div className="text-xs text-yellow-600 mt-1">Skipped (Duplicates)</div>
+            <div className="p-4 rounded-lg bg-brand-ghost border border-brand-pale/30 text-center">
+              <div className="text-2xl font-bold text-brand-deep">{results.skipped_count}</div>
+              <div className="text-xs text-brand-mid mt-1">Skipped (Duplicates)</div>
             </div>
-            <div className="p-4 rounded-lg bg-blue-50 border border-blue-200 text-center">
-              <div className="text-2xl font-bold text-blue-700">{results.updated_count}</div>
-              <div className="text-xs text-blue-600 mt-1">Updated</div>
+            <div className="p-4 rounded-lg bg-brand-light/10 border border-brand-light/20 text-center">
+              <div className="text-2xl font-bold text-brand-dark">{results.updated_count}</div>
+              <div className="text-xs text-brand-mid mt-1">Updated</div>
             </div>
-            <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-center">
-              <div className="text-2xl font-bold text-red-700">{results.error_count}</div>
-              <div className="text-xs text-red-600 mt-1">Errors</div>
+            <div className="p-4 rounded-lg bg-brand-deep/10 border border-brand-deep/20 text-center">
+              <div className="text-2xl font-bold text-brand-deep">{results.error_count}</div>
+              <div className="text-xs text-brand-deep mt-1">Errors</div>
             </div>
           </div>
 
           {results.errors.length > 0 && (
-            <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200">
-              <h3 className="text-sm font-medium text-red-800 mb-2">Errors ({results.errors.length})</h3>
+            <div className="mb-6 p-4 rounded-lg bg-brand-deep/10 border border-brand-deep/20">
+              <h3 className="text-sm font-medium text-brand-deep mb-2">Errors ({results.errors.length})</h3>
               <div className="max-h-48 overflow-y-auto text-xs space-y-1">
                 {results.errors.slice(0, 50).map((e: any, i: number) => (
-                  <div key={i} className="text-red-700">Row {e.row + 1}: {e.reason}</div>
+                  <div key={i} className="text-brand-deep">Row {e.row + 1}: {e.reason}</div>
                 ))}
-                {results.errors.length > 50 && <div className="text-red-500 italic">...and {results.errors.length - 50} more</div>}
+                {results.errors.length > 50 && <div className="text-brand-deep italic">...and {results.errors.length - 50} more</div>}
               </div>
             </div>
           )}
