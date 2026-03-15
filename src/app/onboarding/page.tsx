@@ -245,7 +245,7 @@ function normalizeDate(val: string): string {
 // ══════════════════════════════════════════════════════════════════════════════
 export default function OnboardingPage() {
   const { toast } = useToast()
-  const { currentUser } = useApp()
+  const { currentUser, selectedClient, clients } = useApp()
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [step, setStep] = useState('select' as Step)
@@ -725,13 +725,35 @@ export default function OnboardingPage() {
       {/* ── Breadcrumb / Step indicator ─────────────────────────────────── */}
       <div className="flex items-center gap-2 mb-4 text-sm text-content-tertiary">
         <button type="button" onClick={reset} className="hover:text-brand font-medium">Onboarding</button>
+        {selectedClient && <><ChevronRight className="w-4 h-4" /><span className="text-brand font-medium">{selectedClient.name}</span></>}
         {entityType && <><ChevronRight className="w-4 h-4" /><span className="text-content-primary font-medium">{entityConfig?.label}</span></>}
         {step !== 'select' && step !== 'upload' && <><ChevronRight className="w-4 h-4" /><span className="capitalize">{step}</span></>}
       </div>
 
 
+
+      {/* ── Client Selection Gate ──────────────────────────────────────── */}
+      {!selectedClient && (
+        <div className="card p-8 text-center mb-6">
+          <Building2 className="w-10 h-10 text-content-tertiary mx-auto mb-3" />
+          <h2 className="text-lg font-semibold text-content-primary mb-2">Select a Practice First</h2>
+          <p className="text-sm text-content-secondary mb-4 max-w-md mx-auto">
+            You need to select a specific practice from the "All Clients" dropdown at the top before importing data. 
+            Each import must be tied to a practice so the data appears in the right place.
+          </p>
+          {clients && clients.length > 0 ? (
+            <p className="text-[12px] text-content-tertiary">Use the dropdown at the top left to select a practice like "{clients[0]?.name}" or "{clients[1]?.name || clients[0]?.name}".</p>
+          ) : (
+            <div className="text-[12px] text-content-tertiary">
+              <p className="mb-2">No practices found. Create one first:</p>
+              <p>Go to <strong>Admin & Settings</strong> → <strong>Organizations</strong> → <strong>Add Client</strong></p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Onboarding Progress Tracker ────────────────────────────────── */}
-      {step === 'select' && (
+      {step === 'select' && selectedClient && (
         <div className="card p-4 mb-6">
           <h3 className="text-[13px] font-semibold text-content-primary mb-3">Data Import Progress</h3>
           <div className="flex flex-wrap gap-3">
@@ -749,7 +771,7 @@ export default function OnboardingPage() {
       )}
 
       {/* ── Mode Tabs (Manual Upload | Connect EHR) ─────────────────────── */}
-      {step === 'select' && (
+      {step === 'select' && selectedClient && (
         <div className="flex gap-2 mb-6">
           {[{ id: 'upload' as const, label: 'Manual Upload', icon: <Upload className="w-4 h-4" /> },
             { id: 'connect' as const, label: 'Connect EHR', icon: <Plug className="w-4 h-4" /> }].map(t => (
@@ -764,7 +786,7 @@ export default function OnboardingPage() {
       {/* ════════════════════════════════════════════════════════════════════
           STEP 1: SELECT ENTITY TYPE (Manual Upload mode)
           ════════════════════════════════════════════════════════════════ */}
-      {step === 'select' && mode === 'upload' && (
+      {step === 'select' && selectedClient && mode === 'upload' && (
         <div>
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-content-primary">What data are you importing?</h2>
@@ -832,7 +854,7 @@ export default function OnboardingPage() {
       {/* ════════════════════════════════════════════════════════════════════
           CONNECT EHR TAB
           ════════════════════════════════════════════════════════════════ */}
-      {step === 'select' && mode === 'connect' && (
+      {step === 'select' && selectedClient && mode === 'connect' && (
         <div>
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-content-primary">Connect to EHR System</h2>
@@ -1299,7 +1321,7 @@ export default function OnboardingPage() {
       {/* ════════════════════════════════════════════════════════════════════
           DOCUMENT UPLOAD SECTION (always visible on select step)
           ════════════════════════════════════════════════════════════════ */}
-      {step === 'select' && (
+      {step === 'select' && selectedClient && (
         <div className="card p-5 mt-6">
           <div className="flex items-center justify-between mb-4">
             <div>
