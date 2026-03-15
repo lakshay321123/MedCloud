@@ -840,7 +840,8 @@ export default function OnboardingPage() {
       {step === 'select' && (
         <div className="flex gap-2 mb-6">
           {[{ id: 'upload' as const, label: 'Manual Upload', icon: <Upload className="w-4 h-4" /> },
-            { id: 'connect' as const, label: 'Connect EHR', icon: <Plug className="w-4 h-4" /> }].map(t => (
+            { id: 'connect' as const, label: 'Connect EHR', icon: <Plug className="w-4 h-4" /> },
+            { id: 'unmapped' as const, label: orphanData && orphanData.total > 0 ? `Unmapped (${orphanData.total})` : 'Unmapped', icon: <AlertCircle className="w-4 h-4" /> }].map(t => (
             <button key={t.id} type="button" onClick={() => setMode(t.id)}
               className={`flex items-center gap-2 px-4 py-2 text-[13px] font-medium rounded-[10px] transition-all ${mode === t.id ? 'bg-brand text-white shadow-sm' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30 hover:text-brand-dark'}`}>
               {t.icon} {t.label}
