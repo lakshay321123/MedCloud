@@ -9611,8 +9611,10 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
 
       for (const table of TABLES) {
         try {
+          // IMPORTANT: use public.${table} because tenant schema routing may be active
+          // when a client is selected. Orphaned records always live in public schema.
           const countQ = await orgQuery(effectiveOrgId,
-            `SELECT COUNT(*) as total FROM ${table} WHERE org_id = $1 AND client_id IS NULL`,
+            `SELECT COUNT(*) as total FROM public.${table} WHERE org_id = $1 AND client_id IS NULL`,
             [effectiveOrgId]);
           const orphanCount = parseInt(countQ.rows[0]?.total || 0);
 
@@ -9631,7 +9633,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
               '';
 
             const sampleQ = await orgQuery(effectiveOrgId,
-              `SELECT id, ${nameCol}${secondCol} FROM ${table} WHERE org_id = $1 AND client_id IS NULL ORDER BY created_at DESC LIMIT 20`,
+              `SELECT id, ${nameCol}${secondCol} FROM public.${table} WHERE org_id = $1 AND client_id IS NULL ORDER BY created_at DESC LIMIT 20`,
               [effectiveOrgId]);
 
             result[table] = {
@@ -9663,9 +9665,9 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       const { client_id, tables } = body;
       if (!client_id) return respond(400, { error: 'client_id required' });
 
-      // Verify client exists
+      // Verify client exists (always in public schema)
       const clientCheck = await orgQuery(effectiveOrgId,
-        `SELECT id, name FROM clients WHERE id = $1 AND org_id = $2`, [client_id, effectiveOrgId]);
+        `SELECT id, name FROM public.clients WHERE id = $1 AND org_id = $2`, [client_id, effectiveOrgId]);
       if (!clientCheck.rows[0]) return respond(400, { error: 'Client not found' });
 
       const ALLOWED_TABLES = ['patients', 'providers', 'documents', 'fee_schedules', 'payers', 'claims', 'appointments'];
@@ -9675,7 +9677,7 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
       for (const table of targetTables) {
         try {
           const r = await orgQuery(effectiveOrgId,
-            `UPDATE ${table} SET client_id = $1, updated_at = NOW() WHERE org_id = $2 AND client_id IS NULL`,
+            `UPDATE public.${table} SET client_id = $1, updated_at = NOW() WHERE org_id = $2 AND client_id IS NULL`,
             [client_id, effectiveOrgId]);
           results[table] = r.rowCount;
         } catch (e) {
