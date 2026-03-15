@@ -822,6 +822,68 @@ async function runSchemaMigration() {
     )`);
   } catch (e) { if (e.code !== '42P07') safeLog('warn', 'ehr_connections:', e.message); }
 
+  // ── Sync missing columns to ALL tenant schemas ────────────────────────────
+  // Tenant schemas were cloned from public at creation time. If columns were
+  // added to public AFTER the clone, tenant schemas are missing them. This
+  // runs ALTER TABLE IF NOT EXISTS on every tenant schema to keep them in sync.
+  // SAFE: IF NOT EXISTS prevents duplicates, all columns are nullable.
+  try {
+    const tenantSchemas = await pool.query(
+      `SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'tenant_%'`
+    );
+    if (tenantSchemas.rows.length > 0) {
+      const TENANT_COL_SYNC = [
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS category VARCHAR(100)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS provider_id UUID",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS payer_id UUID",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS linked_entity_type VARCHAR(50)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS linked_entity_id UUID",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS content_type VARCHAR(100)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS document_type VARCHAR(100)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS textract_status VARCHAR(30) DEFAULT 'pending'",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS textract_result JSONB",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS textract_confidence INT",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS textract_job_id VARCHAR(200)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS textract_doc_type VARCHAR(50)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS page_count INT",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS s3_bucket VARCHAR(200)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'uploaded'",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS classification VARCHAR(100)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS ai_confidence NUMERIC(5,2)",
+        "ALTER TABLE {schema}.documents ADD COLUMN IF NOT EXISTS patient_name VARCHAR(200)",
+        "ALTER TABLE {schema}.patients ADD COLUMN IF NOT EXISTS city VARCHAR(100)",
+        "ALTER TABLE {schema}.patients ADD COLUMN IF NOT EXISTS state VARCHAR(50)",
+        "ALTER TABLE {schema}.patients ADD COLUMN IF NOT EXISTS zip VARCHAR(20)",
+        "ALTER TABLE {schema}.providers ADD COLUMN IF NOT EXISTS phone VARCHAR(30)",
+        "ALTER TABLE {schema}.providers ADD COLUMN IF NOT EXISTS email VARCHAR(200)",
+        "ALTER TABLE {schema}.providers ADD COLUMN IF NOT EXISTS credential VARCHAR(20)",
+        "ALTER TABLE {schema}.providers ADD COLUMN IF NOT EXISTS license_number VARCHAR(50)",
+        "ALTER TABLE {schema}.providers ADD COLUMN IF NOT EXISTS license_state VARCHAR(10)",
+        "ALTER TABLE {schema}.providers ADD COLUMN IF NOT EXISTS license_expiry DATE",
+        "ALTER TABLE {schema}.providers ADD COLUMN IF NOT EXISTS dea_number VARCHAR(30)",
+        "ALTER TABLE {schema}.providers ADD COLUMN IF NOT EXISTS dea_expiry DATE",
+        "ALTER TABLE {schema}.payers ADD COLUMN IF NOT EXISTS type VARCHAR(50)",
+        "ALTER TABLE {schema}.fee_schedules ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
+      ];
+      let syncCount = 0;
+      for (const schemaRow of tenantSchemas.rows) {
+        const schema = schemaRow.schema_name;
+        for (const stmt of TENANT_COL_SYNC) {
+          try {
+            await pool.query(stmt.replace(/{schema}/g, schema));
+            syncCount++;
+          } catch (e) {
+            // Table might not exist in this tenant schema — that's fine
+            if (!e.message?.includes('does not exist') && e.code !== '42701') {
+              safeLog('warn', `[tenant-sync] ${schema}: ${e.message?.substring(0, 80)}`);
+            }
+          }
+        }
+      }
+      safeLog('info', `[tenant-sync] Synced columns across ${tenantSchemas.rows.length} tenant schemas (${syncCount} ALTER TABLE statements)`);
+    }
+  } catch (e) { safeLog('warn', '[tenant-sync] Failed:', e.message); }
+
   safeLog('info', `Column fixes applied (${colFixes.length} statements)`);
 }
 
@@ -9682,6 +9744,32 @@ Only include codes that are clearly selected/circled/checked on the form. Do not
           results[table] = r.rowCount;
         } catch (e) {
           if (!e.message?.includes('does not exist')) results[table] = `error: ${e.message?.substring(0, 80)}`;
+        }
+      }
+
+      // ── Copy assigned records into the target tenant schema ──────────────
+      // Records are now in public.{table} with client_id set. But practice
+      // pages query tenant_{N} schema. We need to copy them there too.
+      // Uses ON CONFLICT DO NOTHING so existing records aren't duplicated.
+      const tSchema = clientIdToSchema(client_id);
+      if (tSchema) {
+        const schemaExists = await pool.query(
+          `SELECT 1 FROM information_schema.schemata WHERE schema_name = $1`, [tSchema]
+        ).catch(() => ({ rows: [] }));
+        if (schemaExists.rows.length > 0) {
+          for (const table of targetTables) {
+            if (typeof results[table] === 'number' && results[table] > 0) {
+              try {
+                await pool.query(
+                  `INSERT INTO ${tSchema}.${table} SELECT * FROM public.${table} WHERE client_id = $1 AND org_id = $2 ON CONFLICT DO NOTHING`,
+                  [client_id, effectiveOrgId]
+                );
+              } catch (e) {
+                safeLog('warn', `[assign-client] Copy to ${tSchema}.${table} failed: ${e.message?.substring(0, 80)}`);
+              }
+            }
+          }
+          safeLog('info', `[assign-client] Copied records to ${tSchema}`);
         }
       }
 
