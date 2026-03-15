@@ -177,6 +177,7 @@ const DOC_CATEGORIES = [
 ] as const
 
 type DocFile = {
+  id: string
   file: File
   name: string
   size: string
@@ -557,6 +558,7 @@ export default function OnboardingPage() {
       f.type === 'application/pdf' || f.type.startsWith('image/')
     )
     const newFiles: DocFile[] = files.map((f: File) => ({
+      id: crypto.randomUUID(),
       file: f,
       name: f.name,
       size: (f.size / 1024 / 1024).toFixed(1) + ' MB',
@@ -571,6 +573,7 @@ export default function OnboardingPage() {
       f.type === 'application/pdf' || f.type.startsWith('image/')
     )
     const newFiles: DocFile[] = files.map((f: File) => ({
+      id: crypto.randomUUID(),
       file: f,
       name: f.name,
       size: (f.size / 1024 / 1024).toFixed(1) + ' MB',
@@ -581,70 +584,73 @@ export default function OnboardingPage() {
   }, [docCategory])
 
   const handleDocUploadAll = useCallback(async () => {
-    if (docFiles.length === 0) return
+    const pending = docFiles.filter((f: DocFile) => f.status === 'pending')
+    if (pending.length === 0) return
     setDocUploading(true)
     const { api } = await import('@/lib/api-client')
+    const S3_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET || 'medcloud-documents-us-prod'
 
-    for (let i = 0; i < docFiles.length; i++) {
-      const df = docFiles[i]
-      if (df.status !== 'pending') continue
+    for (const df of pending) {
+      const fileId = df.id
+      const fileCategory = df.category // Use category captured at drop time (#11)
 
       try {
         // Step 1: Get presigned URL
-        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile, idx: number) => idx === i ? { ...f, status: 'uploading' as const } : f))
+        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile) => f.id === fileId ? { ...f, status: 'uploading' as const } : f))
         const uploadRes = await api.post('/documents/upload-url', {
           file_name: df.name,
           content_type: df.file.type,
-          folder: `onboarding/${docCategory}`,
+          folder: `onboarding/${fileCategory}`,
         }) as unknown as { upload_url: string; s3_key: string }
 
-        // Step 2: Upload to S3
+        // Step 2: Upload to S3 + check response (#12)
         if (uploadRes.upload_url) {
-          await fetch(uploadRes.upload_url, {
+          const s3Resp = await fetch(uploadRes.upload_url, {
             method: 'PUT',
             body: df.file,
             headers: { 'Content-Type': df.file.type },
           })
+          if (!s3Resp.ok) throw new Error(`S3 upload failed: ${s3Resp.status} ${s3Resp.statusText}`)
         }
 
         // Step 3: Create document record
         const docRes = await api.post('/documents', {
-          document_type: docCategory.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+          document_type: fileCategory.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
           file_name: df.name,
-          s3_key: uploadRes.s3_key || `onboarding/${docCategory}/${df.name}`,
-          s3_bucket: 'medcloud-documents-us-prod',
+          s3_key: uploadRes.s3_key || `onboarding/${fileCategory}/${df.name}`,
+          s3_bucket: S3_BUCKET,
           content_type: df.file.type,
           file_size: df.file.size,
           source: 'Onboarding Upload',
-          category: docCategory,
+          category: fileCategory,
         }) as unknown as { id: string }
 
         // Step 4: Trigger Textract + Classify
-        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile, idx: number) => idx === i ? { ...f, status: 'processing' as const, docId: docRes.id } : f))
+        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile) => f.id === fileId ? { ...f, status: 'processing' as const, docId: docRes.id } : f))
 
-        let classification = docCategory
+        let classification = fileCategory
         let extractedData = {} as Record<string, string>
         try {
           await api.post(`/documents/${docRes.id}/textract`, {})
-          const classRes = await api.post(`/documents/${docRes.id}/classify`, {}) as unknown as { document_type?: string; confidence?: number; extracted_fields?: Record<string, string> }
-          if (classRes.document_type) classification = classRes.document_type
-          if (classRes.extracted_fields) extractedData = classRes.extracted_fields
-        } catch {
-          // Textract/classify may fail for non-text images, that's OK
+          const classRes = await api.post(`/documents/${docRes.id}/classify`, {}) as unknown as { classified_type?: string; document_type?: string; confidence?: number; extracted_fields?: Record<string, string> }
+          classification = classRes.classified_type || classRes.document_type || fileCategory
+          extractedData = classRes.extracted_fields || {}
+        } catch (classErr) {
+          console.warn(`Textract/classify failed for ${df.name}:`, (classErr as Error).message)
         }
 
-        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile, idx: number) => idx === i ? { ...f, status: 'done' as const, classification, extractedData } : f))
+        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile) => f.id === fileId ? { ...f, status: 'done' as const, classification, extractedData } : f))
         toast.success(`Uploaded ${df.name}`)
       } catch (e) {
-        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile, idx: number) => idx === i ? { ...f, status: 'error' as const, error: (e as Error).message } : f))
+        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile) => f.id === fileId ? { ...f, status: 'error' as const, error: (e as Error).message } : f))
         toast.error(`Failed: ${df.name}`)
       }
     }
     setDocUploading(false)
-  }, [docFiles, docCategory, toast])
+  }, [docFiles, toast])
 
-  const removeDocFile = useCallback((idx: number) => {
-    setDocFiles((prev: DocFile[]) => prev.filter((_: DocFile, i: number) => i !== idx))
+  const removeDocFile = useCallback((fileId: string) => {
+    setDocFiles((prev: DocFile[]) => prev.filter((f: DocFile) => f.id !== fileId))
   }, [])
 
   // ── Compute progress from import jobs ───────────────────────────────────────
@@ -1275,8 +1281,8 @@ export default function OnboardingPage() {
           {/* File list */}
           {docFiles.length > 0 && (
             <div className="space-y-2 mb-4">
-              {docFiles.map((df: DocFile, idx: number) => (
-                <div key={idx} className="flex items-center justify-between p-3 rounded-[8px] bg-surface-elevated">
+              {docFiles.map((df: DocFile) => (
+                <div key={df.id} className="flex items-center justify-between p-3 rounded-[8px] bg-surface-elevated">
                   <div className="flex items-center gap-3 min-w-0">
                     <FileText className="w-4 h-4 text-brand shrink-0" />
                     <div className="min-w-0">
@@ -1301,7 +1307,7 @@ export default function OnboardingPage() {
                       </span>
                     )}
                     {df.status === 'pending' && (
-                      <button type="button" onClick={() => removeDocFile(idx)} className="text-content-tertiary hover:text-brand-deep">
+                      <button type="button" onClick={() => removeDocFile(df.id)} className="text-content-tertiary hover:text-brand-deep">
                         <X className="w-4 h-4" />
                       </button>
                     )}
@@ -1326,8 +1332,8 @@ export default function OnboardingPage() {
                 <Eye className="w-3.5 h-3.5 text-brand" />
                 AI Extracted Data
               </h4>
-              {docFiles.filter((f: DocFile) => f.status === 'done' && f.extractedData && Object.keys(f.extractedData).length > 0).map((df: DocFile, idx: number) => (
-                <div key={idx} className="mb-2 last:mb-0">
+              {docFiles.filter((f: DocFile) => f.status === 'done' && f.extractedData && Object.keys(f.extractedData).length > 0).map((df: DocFile) => (
+                <div key={df.id} className="mb-2 last:mb-0">
                   <div className="text-[11px] font-medium text-brand-dark mb-1">{df.name}</div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                     {Object.entries(df.extractedData || {}).map(([k, v]) => (
