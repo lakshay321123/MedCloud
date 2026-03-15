@@ -2270,7 +2270,7 @@ export function useImportJobs(extra?: ApiListParams) {
 }
 
 export function useImportJob(id: string | null) {
-  return useApi<ApiImportJob>(id ? `/import/jobs/${id}` : null, {})
+  return useApi<ApiImportJob>(id ? `/import/jobs/${id}` : '/import/jobs', {}, { skip: !id })
 }
 
 export function useImportPreview() {
