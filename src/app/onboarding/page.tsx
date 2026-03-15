@@ -3,7 +3,7 @@ import React, { useState, useCallback, useRef, useMemo } from 'react'
 import ModuleShell from '@/components/shared/ModuleShell'
 import KPICard from '@/components/shared/KPICard'
 import { useToast } from '@/components/shared/Toast'
-import { Upload, FileSpreadsheet, Users, Building2, DollarSign, Stethoscope, CalendarDays, CheckCircle2, AlertCircle, X, ChevronRight, Loader2, RotateCcw, ArrowLeft, Info, Plug, Globe, Wifi, WifiOff, RefreshCw, Trash2, Server } from 'lucide-react'
+import { Upload, FileSpreadsheet, Users, Building2, DollarSign, Stethoscope, CalendarDays, CheckCircle2, AlertCircle, X, ChevronRight, Loader2, RotateCcw, ArrowLeft, Info, Plug, Globe, Wifi, WifiOff, RefreshCw, Trash2, Server, FileText, FolderUp, Eye, Link2, Circle } from 'lucide-react'
 import { useImportJobs, useImportPreview, useImportExecute, useClients, ApiImportJob, useEhrConnections, useCreateEhrConnection, ApiEhrConnection } from '@/lib/hooks'
 import { useApp } from '@/lib/context'
 import * as XLSX from 'xlsx'
@@ -166,6 +166,28 @@ function fuzzyMatch(header: string): string | null {
   return null
 }
 
+
+// ── Document categories for bulk upload ──────────────────────────────────────
+const DOC_CATEGORIES = [
+  { id: 'provider_credentials', label: 'Provider Credentials', desc: 'Licenses, DEA certs, malpractice insurance, board certs, CAQH', icon: 'Stethoscope' },
+  { id: 'payer_contracts', label: 'Payer Contracts', desc: 'Signed contract PDFs with fee schedule exhibits', icon: 'DollarSign' },
+  { id: 'prior_authorizations', label: 'Prior Authorizations', desc: 'Active/pending prior auth letters', icon: 'FileText' },
+  { id: 'appeals', label: 'Appeal Documents', desc: 'Supporting docs for claims currently in appeals', icon: 'AlertCircle' },
+  { id: 'other', label: 'Other Documents', desc: 'EOBs, W-9s, CVs, other operational documents', icon: 'FileSpreadsheet' },
+] as const
+
+type DocFile = {
+  file: File
+  name: string
+  size: string
+  category: string
+  status: 'pending' | 'uploading' | 'processing' | 'done' | 'error'
+  docId?: string
+  classification?: string
+  extractedData?: Record<string, string>
+  error?: string
+}
+
 // ── CSV Parser ───────────────────────────────────────────────────────────────
 function parseCSV(text: string, delimiter: string = ','): { headers: string[]; rows: Record<string, string>[] } {
   const lines = text.split(/\r?\n/).filter(l => l.trim())
@@ -243,6 +265,12 @@ export default function OnboardingPage() {
   const [pullingId, setPullingId] = useState(null as string | null)
   const [selectedResources, setSelectedResources] = useState([] as string[])
   const [pullResultMap, setPullResultMap] = useState({} as Record<string, { resources_pulled: Record<string, number>; errors: Array<{ resource: string; reason: string }>; total_records: number }>)
+
+
+  // ── Document Upload State ───────────────────────────────────────────────────
+  const [docCategory, setDocCategory] = useState('provider_credentials')
+  const [docFiles, setDocFiles] = useState([] as DocFile[])
+  const [docUploading, setDocUploading] = useState(false)
 
   // ── API hooks ──────────────────────────────────────────────────────────────
   const { data: jobsData, refetch: refreshJobs } = useImportJobs({})
@@ -521,6 +549,111 @@ export default function OnboardingPage() {
     setPullingId(null)
   }, [selectedResources, refreshEhr, refreshJobs, toast])
 
+
+  // ── Document Upload Handlers ────────────────────────────────────────────────
+  const handleDocDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    const files = Array.from(e.dataTransfer.files as unknown as File[]).filter((f) =>
+      f.type === 'application/pdf' || f.type.startsWith('image/')
+    )
+    const newFiles: DocFile[] = files.map((f: File) => ({
+      file: f,
+      name: f.name,
+      size: (f.size / 1024 / 1024).toFixed(1) + ' MB',
+      category: docCategory,
+      status: 'pending' as const,
+    }))
+    setDocFiles((prev: DocFile[]) => [...prev, ...newFiles])
+  }, [docCategory])
+
+  const handleDocBrowse = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from((e.target.files || []) as unknown as File[]).filter((f) =>
+      f.type === 'application/pdf' || f.type.startsWith('image/')
+    )
+    const newFiles: DocFile[] = files.map((f: File) => ({
+      file: f,
+      name: f.name,
+      size: (f.size / 1024 / 1024).toFixed(1) + ' MB',
+      category: docCategory,
+      status: 'pending' as const,
+    }))
+    setDocFiles((prev: DocFile[]) => [...prev, ...newFiles])
+  }, [docCategory])
+
+  const handleDocUploadAll = useCallback(async () => {
+    if (docFiles.length === 0) return
+    setDocUploading(true)
+    const { api } = await import('@/lib/api-client')
+
+    for (let i = 0; i < docFiles.length; i++) {
+      const df = docFiles[i]
+      if (df.status !== 'pending') continue
+
+      try {
+        // Step 1: Get presigned URL
+        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile, idx: number) => idx === i ? { ...f, status: 'uploading' as const } : f))
+        const uploadRes = await api.post('/documents/upload-url', {
+          file_name: df.name,
+          content_type: df.file.type,
+          folder: `onboarding/${docCategory}`,
+        }) as unknown as { upload_url: string; s3_key: string }
+
+        // Step 2: Upload to S3
+        if (uploadRes.upload_url) {
+          await fetch(uploadRes.upload_url, {
+            method: 'PUT',
+            body: df.file,
+            headers: { 'Content-Type': df.file.type },
+          })
+        }
+
+        // Step 3: Create document record
+        const docRes = await api.post('/documents', {
+          document_type: docCategory.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+          file_name: df.name,
+          s3_key: uploadRes.s3_key || `onboarding/${docCategory}/${df.name}`,
+          s3_bucket: 'medcloud-documents-us-prod',
+          content_type: df.file.type,
+          file_size: df.file.size,
+          source: 'Onboarding Upload',
+          category: docCategory,
+        }) as unknown as { id: string }
+
+        // Step 4: Trigger Textract + Classify
+        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile, idx: number) => idx === i ? { ...f, status: 'processing' as const, docId: docRes.id } : f))
+
+        let classification = docCategory
+        let extractedData = {} as Record<string, string>
+        try {
+          await api.post(`/documents/${docRes.id}/textract`, {})
+          const classRes = await api.post(`/documents/${docRes.id}/classify`, {}) as unknown as { document_type?: string; confidence?: number; extracted_fields?: Record<string, string> }
+          if (classRes.document_type) classification = classRes.document_type
+          if (classRes.extracted_fields) extractedData = classRes.extracted_fields
+        } catch {
+          // Textract/classify may fail for non-text images, that's OK
+        }
+
+        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile, idx: number) => idx === i ? { ...f, status: 'done' as const, classification, extractedData } : f))
+        toast.success(`Uploaded ${df.name}`)
+      } catch (e) {
+        setDocFiles((prev: DocFile[]) => prev.map((f: DocFile, idx: number) => idx === i ? { ...f, status: 'error' as const, error: (e as Error).message } : f))
+        toast.error(`Failed: ${df.name}`)
+      }
+    }
+    setDocUploading(false)
+  }, [docFiles, docCategory, toast])
+
+  const removeDocFile = useCallback((idx: number) => {
+    setDocFiles((prev: DocFile[]) => prev.filter((_: DocFile, i: number) => i !== idx))
+  }, [])
+
+  // ── Compute progress from import jobs ───────────────────────────────────────
+  const completedEntities = new Set(
+    (jobs || [])
+      .filter((j: ApiImportJob) => j.status === 'completed' && (j.imported_count || 0) > 0)
+      .map((j: ApiImportJob) => j.entity_type)
+  )
+
   // ═════════════════════════════════════════════════════════════════════════════
   // RENDER
   // ═════════════════════════════════════════════════════════════════════════════
@@ -532,6 +665,25 @@ export default function OnboardingPage() {
         {entityType && <><ChevronRight className="w-4 h-4" /><span className="text-content-primary font-medium">{entityConfig?.label}</span></>}
         {step !== 'select' && step !== 'upload' && <><ChevronRight className="w-4 h-4" /><span className="capitalize">{step}</span></>}
       </div>
+
+
+      {/* ── Onboarding Progress Tracker ────────────────────────────────── */}
+      {step === 'select' && (
+        <div className="card p-4 mb-6">
+          <h3 className="text-[13px] font-semibold text-content-primary mb-3">Data Import Progress</h3>
+          <div className="flex flex-wrap gap-3">
+            {ENTITIES.map(e => {
+              const done = completedEntities.has(e.id)
+              return (
+                <div key={e.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-[8px] text-[12px] font-medium ${done ? 'bg-brand/10 text-brand-dark' : 'bg-surface-elevated text-content-tertiary'}`}>
+                  {done ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
+                  {e.label}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Mode Tabs (Manual Upload | Connect EHR) ─────────────────────── */}
       {step === 'select' && (
@@ -1080,6 +1232,118 @@ export default function OnboardingPage() {
           </div>
         </div>
       )}
+
+      {/* ════════════════════════════════════════════════════════════════════
+          DOCUMENT UPLOAD SECTION (always visible on select step)
+          ════════════════════════════════════════════════════════════════ */}
+      {step === 'select' && (
+        <div className="card p-5 mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-content-primary flex items-center gap-2">
+                <FolderUp className="w-5 h-5 text-brand" />
+                Document Upload
+              </h2>
+              <p className="text-sm text-content-secondary mt-1">Upload provider credentials, payer contracts, prior auth letters, and other operational documents.</p>
+            </div>
+          </div>
+
+          {/* Category selector */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {DOC_CATEGORIES.map(cat => (
+              <button key={cat.id} type="button" onClick={() => setDocCategory(cat.id)}
+                className={`px-3 py-1.5 rounded-[8px] text-[12px] font-medium transition-all ${docCategory === cat.id ? 'bg-brand text-white' : 'bg-surface-elevated text-content-secondary border border-separator hover:border-brand/30'}`}>
+                {cat.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[12px] text-content-tertiary mb-4">{DOC_CATEGORIES.find(c => c.id === docCategory)?.desc}</p>
+
+          {/* Drop zone */}
+          <div
+            onDrop={handleDocDrop}
+            onDragOver={(e: React.DragEvent) => e.preventDefault()}
+            className="border-2 border-dashed border-separator rounded-[12px] p-8 text-center hover:border-brand/40 transition-colors cursor-pointer mb-4"
+            onClick={() => document.getElementById('doc-file-input')?.click()}
+          >
+            <Upload className="w-8 h-8 text-content-tertiary mx-auto mb-2" />
+            <p className="text-sm text-content-secondary">Drag and drop PDF, JPG, or PNG files here</p>
+            <p className="text-[12px] text-content-tertiary mt-1">or click to browse</p>
+            <input id="doc-file-input" type="file" multiple accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={handleDocBrowse} />
+          </div>
+
+          {/* File list */}
+          {docFiles.length > 0 && (
+            <div className="space-y-2 mb-4">
+              {docFiles.map((df: DocFile, idx: number) => (
+                <div key={idx} className="flex items-center justify-between p-3 rounded-[8px] bg-surface-elevated">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <FileText className="w-4 h-4 text-brand shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-[13px] font-medium text-content-primary truncate">{df.name}</div>
+                      <div className="text-[11px] text-content-tertiary">{df.size} &middot; {df.category.replace(/_/g, ' ')}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {df.status === 'pending' && <span className="text-[11px] text-content-tertiary">Ready</span>}
+                    {df.status === 'uploading' && <Loader2 className="w-4 h-4 text-brand animate-spin" />}
+                    {df.status === 'processing' && <span className="text-[11px] text-brand">Processing...</span>}
+                    {df.status === 'done' && (
+                      <span className="flex items-center gap-1 text-[11px] text-brand-dark">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        {df.classification || 'Uploaded'}
+                      </span>
+                    )}
+                    {df.status === 'error' && (
+                      <span className="flex items-center gap-1 text-[11px] text-brand-deep">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        Failed
+                      </span>
+                    )}
+                    {df.status === 'pending' && (
+                      <button type="button" onClick={() => removeDocFile(idx)} className="text-content-tertiary hover:text-brand-deep">
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload button */}
+          {docFiles.some((f: DocFile) => f.status === 'pending') && (
+            <button type="button" onClick={handleDocUploadAll} disabled={docUploading}
+              className="w-full py-2.5 rounded-[10px] bg-brand text-white text-[13px] font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50">
+              {docUploading ? <><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Uploading...</> : `Upload ${docFiles.filter((f: DocFile) => f.status === 'pending').length} file(s) to S3`}
+            </button>
+          )}
+
+          {/* Extracted data summary for completed files */}
+          {docFiles.some((f: DocFile) => f.status === 'done' && f.extractedData && Object.keys(f.extractedData).length > 0) && (
+            <div className="mt-4 p-3 rounded-[8px] bg-surface-elevated">
+              <h4 className="text-[12px] font-semibold text-content-primary mb-2 flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-brand" />
+                AI Extracted Data
+              </h4>
+              {docFiles.filter((f: DocFile) => f.status === 'done' && f.extractedData && Object.keys(f.extractedData).length > 0).map((df: DocFile, idx: number) => (
+                <div key={idx} className="mb-2 last:mb-0">
+                  <div className="text-[11px] font-medium text-brand-dark mb-1">{df.name}</div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    {Object.entries(df.extractedData || {}).map(([k, v]) => (
+                      <div key={k} className="text-[11px]">
+                        <span className="text-content-tertiary">{k.replace(/_/g, ' ')}:</span>{' '}
+                        <span className="text-content-primary">{String(v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
     </ModuleShell>
   )
 }
