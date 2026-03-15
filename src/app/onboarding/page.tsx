@@ -261,7 +261,7 @@ export default function OnboardingPage() {
   const fileRef = useRef(null as HTMLInputElement | null)
 
   // ── Mode (tab) ─────────────────────────────────────────────────────────────
-  const [mode, setMode] = useState('upload' as 'upload' | 'connect')
+  const [mode, setMode] = useState('upload' as 'upload' | 'connect' | 'unmapped')
 
   // ── EHR Connection State ───────────────────────────────────────────────────
   const [showAddConnection, setShowAddConnection] = useState(false)
@@ -837,7 +837,7 @@ export default function OnboardingPage() {
       )}
 
       {/* ── Mode Tabs (Manual Upload | Connect EHR) ─────────────────────── */}
-      {step === 'select' && selectedClient && (
+      {step === 'select' && (
         <div className="flex gap-2 mb-6">
           {[{ id: 'upload' as const, label: 'Manual Upload', icon: <Upload className="w-4 h-4" /> },
             { id: 'connect' as const, label: 'Connect EHR', icon: <Plug className="w-4 h-4" /> }].map(t => (
@@ -1381,6 +1381,60 @@ export default function OnboardingPage() {
               <RotateCcw className="w-4 h-4" /> Import More Data
             </button>
           </div>
+        </div>
+      )}
+
+
+      {/* ════════════════════════════════════════════════════════════════════
+          UNMAPPED DATA TAB
+          ════════════════════════════════════════════════════════════════ */}
+      {step === 'select' && mode === 'unmapped' && (
+        <div>
+          {!orphanData || orphanData.total === 0 ? (
+            <div className="card p-8 text-center">
+              <CheckCircle2 className="w-10 h-10 text-brand mx-auto mb-3" />
+              <h3 className="text-lg font-semibold text-content-primary mb-2">All Data is Linked</h3>
+              <p className="text-sm text-content-secondary">Every record in the system is assigned to a practice. Nothing to fix.</p>
+            </div>
+          ) : (
+            <div>
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-content-primary">{orphanData.total} Records Without a Practice</h2>
+                <p className="text-sm text-content-secondary mt-1">These records were imported without selecting a practice. Select a practice below and assign them.</p>
+              </div>
+
+              {/* Per-table breakdown */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+                {(Object.entries(orphanData.orphaned) as [string, { count: number; samples: Array<{ id: string; label: string }> }][]).map(([table, info]) => (
+                  <div key={table} className="card p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[13px] font-semibold text-content-primary capitalize">{table.replace(/_/g, ' ')}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-brand-deep/10 text-brand-deep text-[12px] font-bold">{info.count}</span>
+                    </div>
+                    <div className="space-y-1">
+                      {info.samples.slice(0, 5).map((s: { id: string; label: string }) => (
+                        <div key={s.id} className="text-[11px] text-content-tertiary truncate">{s.label}</div>
+                      ))}
+                      {info.count > 5 && <div className="text-[11px] text-content-tertiary">+{info.count - 5} more</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Assign action */}
+              {selectedClient ? (
+                <button type="button" onClick={handleAssignOrphans} disabled={assigningClient}
+                  className="w-full py-3 rounded-[10px] bg-brand text-white text-[14px] font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50">
+                  {assigningClient ? <><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Assigning...</> : `Assign all ${orphanData.total} records to ${selectedClient.name}`}
+                </button>
+              ) : (
+                <div className="card p-6 text-center">
+                  <Building2 className="w-8 h-8 text-content-tertiary mx-auto mb-2" />
+                  <p className="text-sm text-content-secondary">Select a practice from the "All Clients" dropdown at the top, then come back here to assign these records.</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
